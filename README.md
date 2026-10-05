@@ -42,5 +42,5 @@ Add a sponsor (only with their permission) and push:
 ```
 
 Stage 1 shows the first sponsor, stage 2 the second, and so on (cycling). With no
-sponsors, the sign shows "광고 문의 · YOUR NAME HERE". Signs are labeled 스폰서 because
-paid ads must be disclosed (표시광고법). `contact` can be a URL or an email address.
+sponsors, the sign shows "YOUR NAME HERE · Advertise". Signs are labeled SPONSORED because
+paid ads must be disclosed (Korea's Labeling and Advertising Act, US FTC rules). `contact` can be a URL or an email address.

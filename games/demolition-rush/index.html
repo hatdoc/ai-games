@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>철거 러시 · Demolition Rush</title>
+<title>Demolition Rush</title>
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #0e1420; color: #fff;
     font-family: system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
@@ -67,26 +67,26 @@
   </div>
 </div>
 <script>
-// 철거 러시 (Demolition Rush) — original game: code, art (canvas-drawn) and sound (synthesized) all made from scratch.
+// Demolition Rush — original game: code, art (canvas-drawn) and sound (synthesized) all made from scratch.
 const $ = (id) => document.getElementById(id);
 const cv = $('c'), ctx = cv.getContext('2d');
 
 const MATS = [
-  { name: '나무', hp: 3,  coin: 1, c: '#b07a45', d: '#7a5230', win: '#f7d98a' },
-  { name: '벽돌', hp: 6,  coin: 2, c: '#b5523b', d: '#7d3526', win: '#ffe6a0' },
-  { name: '콘크리트', hp: 11, coin: 4, c: '#9aa0a8', d: '#6b7078', win: '#cfe8ff' },
-  { name: '강철', hp: 18, coin: 7, c: '#5d7f9e', d: '#3c566e', win: '#9fe0ff' },
+  { name: 'Wood', hp: 3,  coin: 1, c: '#b07a45', d: '#7a5230', win: '#f7d98a' },
+  { name: 'Brick', hp: 6,  coin: 2, c: '#b5523b', d: '#7d3526', win: '#ffe6a0' },
+  { name: 'Concrete', hp: 11, coin: 4, c: '#9aa0a8', d: '#6b7078', win: '#cfe8ff' },
+  { name: 'Steel', hp: 18, coin: 7, c: '#5d7f9e', d: '#3c566e', win: '#9fe0ff' },
 ];
-const TOOLS = [['👊', '맨주먹'], ['🔨', '망치'], ['⛏️', '곡괭이'], ['🪚', '전기톱'], ['🚜', '굴착기'], ['🏗️', '철거 크레인'], ['☄️', '운석']];
+const TOOLS = [['👊', 'Bare Fist'], ['🔨', 'Hammer'], ['⛏️', 'Pickaxe'], ['🪚', 'Chainsaw'], ['🚜', 'Excavator'], ['🏗️', 'Wrecking Crane'], ['☄️', 'Meteor']];
 const tier = (l) => Math.min(TOOLS.length - 1, Math.floor(l / 3));
 const dmg = (l) => Math.round((1 + l) * (1 + tier(l) * 0.4));
 
 const UP = {
-  power: { ic: (l) => TOOLS[tier(l)][0], name: '도구 파워', desc: (l) => `${TOOLS[tier(l)][1]} · 타격력 ${dmg(l)}`, cost: (l) => Math.round(12 * 1.5 ** l) },
-  blast: { ic: () => '💥', name: '타격 범위', max: 3, desc: (l) => (l ? `반경 ${l}칸` : '한 칸씩'), cost: (l) => Math.round(80 * 3 ** l) },
-  crew:  { ic: () => '👷', name: '철거 인부', desc: (l) => (l ? `${l}명이 자동으로 부숨` : '자동 타격 없음'), cost: (l) => Math.round(40 * 1.75 ** l) },
-  time:  { ic: () => '⏱️', name: '추가 시간', max: 6, desc: (l) => `제한 시간 +${l * 5}초`, cost: (l) => Math.round(30 * 1.9 ** l) },
-  tnt:   { ic: () => '🧨', name: '다이너마이트', max: 3, desc: (l) => (l ? `스테이지마다 ${l}개` : '대폭발!'), cost: (l) => Math.round(150 * 2.4 ** l) },
+  power: { ic: (l) => TOOLS[tier(l)][0], name: 'Tool Power', desc: (l) => `${TOOLS[tier(l)][1]} · Damage ${dmg(l)}`, cost: (l) => Math.round(12 * 1.5 ** l) },
+  blast: { ic: () => '💥', name: 'Blast Radius', max: 3, desc: (l) => (l ? `${l}-block radius` : 'One block at a time'), cost: (l) => Math.round(80 * 3 ** l) },
+  crew:  { ic: () => '👷', name: 'Demolition Crew', desc: (l) => (l ? `${l} worker${l > 1 ? 's' : ''} smashing for you` : 'No auto-smash'), cost: (l) => Math.round(40 * 1.75 ** l) },
+  time:  { ic: () => '⏱️', name: 'Extra Time', max: 6, desc: (l) => (l ? `+${l * 5}s per stage` : 'No extra time'), cost: (l) => Math.round(30 * 1.9 ** l) },
+  tnt:   { ic: () => '🧨', name: 'Dynamite', max: 3, desc: (l) => (l ? `${l} per stage` : 'Big boom!'), cost: (l) => Math.round(150 * 2.4 ** l) },
 };
 
 // ---------- save ----------
@@ -283,7 +283,7 @@ function stageClear() {
   state = 'clear'; endTimer = 1.4;
   const bonus = Math.round(timeLeft * save.stage * 2);
   save.coins += bonus;
-  floats.push({ x: W / 2, y: H * 0.4, t: `클리어! 시간 보너스 +${bonus}`, life: 1.6, big: true });
+  floats.push({ x: W / 2, y: H * 0.4, t: `Cleared! Time bonus +${bonus}`, life: 1.6, big: true });
   for (let i = 0; i < 6; i++) spark(W * Math.random(), H * 0.3 * Math.random() + 80, 20, `hsl(${Math.random() * 360},90%,65%)`);
   save.stage++; save.best = Math.max(save.best, save.stage); persist();
   sfx('clear');
@@ -296,27 +296,27 @@ let menuKind = 'menu';
 function showMenu(kind) {
   menuKind = kind;
   const pct = Math.round((1 - left / total) * 100);
-  const title = { menu: '🏗️ 철거 러시', clear: '🎉 스테이지 클리어!', fail: '⏰ 시간 초과!' }[kind];
+  const title = { menu: '🏗️ Demolition Rush', clear: '🎉 Stage Clear!', fail: '⏰ Time\'s Up!' }[kind];
   const sub = {
-    menu: '건물을 클릭(터치)해서 제한 시간 안에 전부 부수세요! 빠르게 연타하면 콤보 보너스. 번 코인으로 도구를 업그레이드하세요.',
-    clear: `다음은 스테이지 ${save.stage} — 더 높고 단단한 건물이 기다립니다.`,
-    fail: `${pct}% 철거했어요. 업그레이드하고 다시 도전!`,
+    menu: 'Click (or tap) the building to smash it before time runs out! Hit fast to build combo bonuses, then spend your coins on bigger tools.',
+    clear: `Up next: stage ${save.stage} — a taller, tougher building.`,
+    fail: `You demolished ${pct}%. Upgrade and try again!`,
   }[kind];
   $('ovTitle').textContent = title;
-  $('ovSub').textContent = sub + (kind === 'menu' && save.best > 1 ? ` (최고 기록: 스테이지 ${save.best})` : '');
+  $('ovSub').textContent = sub + (kind === 'menu' && save.best > 1 ? ` (Best: stage ${save.best})` : '');
   const sp = sponsor(), sl = $('ovSponsor');
   sl.textContent = '';
-  if (sp) sl.append(`🏢 이번 건물 스폰서: ${sp.name}`);
+  if (sp) sl.append(`🏢 This building is sponsored by ${sp.name}`);
   else {
-    sl.append('📣 이 건물에 당신의 이름이나 브랜드를 넣고 싶다면 연락주세요! ');
+    sl.append('📣 Want your name or brand on this building? Get in touch! ');
     if (contact) {
       const a = document.createElement('a');
       a.href = contact.includes('@') && !contact.startsWith('http') ? `mailto:${contact}` : contact;
-      a.target = '_blank'; a.rel = 'noopener'; a.textContent = contact.includes('@') ? contact : '문의하기';
+      a.target = '_blank'; a.rel = 'noopener'; a.textContent = contact.includes('@') ? contact : 'Contact me';
       sl.append(a);
     }
   }
-  $('go').textContent = kind === 'fail' ? `다시 도전 ▶ 스테이지 ${save.stage}` : `시작 ▶ 스테이지 ${save.stage}`;
+  $('go').textContent = kind === 'fail' ? `Try again ▶ Stage ${save.stage}` : `Start ▶ Stage ${save.stage}`;
   renderShop();
   $('ov').hidden = false;
 }
@@ -405,16 +405,16 @@ function update(dt) {
   swing = Math.max(0, swing - dt);
 
   // HUD
-  $('stage').textContent = `🏢 스테이지 ${save.stage}`;
+  $('stage').textContent = `🏢 Stage ${save.stage}`;
   $('time').textContent = `⏱ ${Math.ceil(timeLeft)}s`;
   $('time').classList.toggle('low', state === 'play' && timeLeft < 6);
   $('coins').textContent = `🪙 ${fmt(save.coins)}`;
   const mult = Math.min(5, 1 + Math.floor(combo / 10) * 0.5);
-  $('combo').textContent = `🔥 ${combo} 콤보${mult > 1 ? ` ×${mult}` : ''}`;
+  $('combo').textContent = `🔥 ${combo} combo${mult > 1 ? ` ×${mult}` : ''}`;
   $('combo').style.opacity = combo >= 5 ? 1 : 0;
   $('bar').firstChild.style.width = `${(1 - left / total) * 100}%`;
   $('tnt').hidden = state !== 'play' || tntLeft <= 0;
-  $('tnt').textContent = armed ? '🧨 건물을 터치!' : `🧨 ×${tntLeft}`;
+  $('tnt').textContent = armed ? '🧨 Tap the building!' : `🧨 ×${tntLeft}`;
   $('tnt').classList.toggle('armed', armed);
 }
 
@@ -454,7 +454,7 @@ function drawSign() {
   ctx.lineWidth = 3; ctx.strokeStyle = '#2a2f3a';
   if (!sp) ctx.setLineDash([8, 5]);
   ctx.strokeRect(x, y, w, h); ctx.setLineDash([]);
-  const text = sp ? sp.name : '광고 문의 · YOUR NAME HERE';
+  const text = sp ? sp.name : 'YOUR NAME HERE · Advertise';
   const dark = !sp || !sp.color || isLight(sp.color);
   let fs = h * 0.5;
   ctx.font = `900 ${fs}px system-ui, sans-serif`;
@@ -462,10 +462,10 @@ function drawSign() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = dark ? '#1a1a1a' : '#ffffff';
   ctx.fillText(text, x + w / 2, y + h / 2 + 2);
-  // Paid placements must be labeled as ads (표시광고법)
+  // Paid placements must be labeled as ads (e.g. Korea's Labeling and Advertising Act, US FTC rules)
   ctx.font = `800 ${Math.max(8, h * 0.2)}px system-ui, sans-serif`;
   ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-  ctx.fillText(sp ? '스폰서' : 'AD', x + 5, y + 3);
+  ctx.fillText(sp ? 'SPONSORED' : 'AD', x + 5, y + 3);
   ctx.textBaseline = 'alphabetic';
 }
 const isLight = (hex) => {
