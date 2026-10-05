@@ -29,7 +29,7 @@ jobs:
       # Every game needs a gameplay clip on its blog card; record any that are missing
       - name: Record missing preview clips
         run: |
-          missing=$(for d in games/*/; do [ -f "$d/index.html" ] && [ ! -f "$d/preview.webm" ] && echo "$d"; done)
+          missing=$(for d in games/*/; do if [ -f "$d/index.html" ] && [ ! -f "$d/preview.webm" ]; then echo "$d"; fi; done)
           [ -z "$missing" ] && exit 0
           npm i --no-save playwright
           npx playwright install --with-deps chromium ffmpeg
