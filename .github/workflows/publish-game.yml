@@ -1,0 +1,42 @@
+# On every push that touches games/: deploy this repo to GitHub Pages, then add any
+# new game folders to the blog (Gemini writes the title/summary/tags).
+name: Publish games
+
+on:
+  push:
+    branches: [main]
+    paths: ['games/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: .
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Add new games to the blog
+        run: node scripts/publish.mjs
+        env:
+          PAGES_URL: ${{ steps.deploy.outputs.page_url }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          BLOG_REPO_TOKEN: ${{ secrets.BLOG_REPO_TOKEN }}
+          BLOG_REPO: ${{ vars.BLOG_REPO }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
