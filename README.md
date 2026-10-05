@@ -26,3 +26,21 @@ HTML just redeploys it; edit its text in the blog's `/admin`.
    - Variable `BLOG_REPO`: `your-username/personal-blog`
    - Variable `GEMINI_MODEL` (optional): defaults to `gemini-3.8-flash`
 4. Actions → Publish games → **Run workflow** to publish what's already here.
+
+## Sponsors (Demolition Rush)
+
+`games/demolition-rush/sponsors.json` controls the rooftop sign on each building.
+Add a sponsor (only with their permission) and push:
+
+```json
+{
+  "contact": "https://personal-blog-phi-green.vercel.app/about",
+  "sponsors": [
+    { "name": "Jed's Cafe", "color": "#1f7a4d" }
+  ]
+}
+```
+
+Stage 1 shows the first sponsor, stage 2 the second, and so on (cycling). With no
+sponsors, the sign shows "광고 문의 · YOUR NAME HERE". Signs are labeled 스폰서 because
+paid ads must be disclosed (표시광고법). `contact` can be a URL or an email address.
