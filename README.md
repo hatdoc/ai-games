@@ -34,7 +34,7 @@ Add a sponsor (only with their permission) and push:
 
 ```json
 {
-  "contact": "https://personal-blog-phi-green.vercel.app/about",
+  "contact": "https://rank-game.com/about",
   "sponsors": [
     { "name": "Jed's Cafe", "color": "#1f7a4d" }
   ]

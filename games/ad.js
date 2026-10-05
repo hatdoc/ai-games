@@ -3,7 +3,7 @@
 // With AD = null it shows a house ad that sends advertisers to the blog's enquiry form.
 (() => {
   const AD = null; // e.g. { text: "☕ Jed's Cafe · 10% off with code GAMER", url: 'https://example.com', color: '#1f7a4d' }
-  const BLOG = 'https://personal-blog-phi-green.vercel.app/about';
+  const BLOG = 'https://rank-game.com/about';
   const ad = AD || { text: '📣 Your brand here · Advertise →', url: `${BLOG}?topic=ad#contact`, color: '#2a2f45' };
 
   document.head.insertAdjacentHTML('beforeend', `<style>

@@ -74,7 +74,7 @@
 </head>
 <body>
 <!-- Shown only when played standalone; inside the blog's iframe the site navbar covers it. -->
-<a id="home" href="https://personal-blog-phi-green.vercel.app/">← Home</a>
+<a id="home" href="https://rank-game.com/">← Home</a>
 <script>if (top !== self) home.remove();</script>
 <canvas id="c"></canvas>
 
@@ -156,7 +156,7 @@ const $ = (id) => document.getElementById(id);
 const cv = $('c'), ctx = cv.getContext('2d');
 
 // Where the "Challenge a friend" link points (the blog page that embeds this game).
-const SHARE_URL = 'https://personal-blog-phi-green.vercel.app/games/demolition-rush';
+const SHARE_URL = 'https://rank-game.com/games/demolition-rush';
 // Leaderboard (Firestore, public read / create-only; rules live in the blog repo's firebase/ folder)
 const FS = 'https://firestore.googleapis.com/v1/projects/hatdoc-blog-1048/databases/(default)/documents';
 const FKEY = 'AIzaSyDz5J34ahi7fP48CU2cPrp1FNmqK-20D5E';
