@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 
 const { GEMINI_API_KEY, BLOG_REPO_TOKEN, BLOG_REPO, PAGES_URL } = process.env;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 const BLOG_FILE = `https://api.github.com/repos/${BLOG_REPO}/contents/data/games.json`;
 const gh = { Authorization: `Bearer ${BLOG_REPO_TOKEN}`, Accept: 'application/vnd.github+json' };
 
@@ -34,7 +34,7 @@ Folder name: ${slug}
 Source:
 ${html.slice(0, 40000)}`;
 
-  const res = await fetch(
+  const call = () => fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
     {
       method: 'POST',
@@ -57,6 +57,13 @@ ${html.slice(0, 40000)}`;
       }),
     }
   );
+  // Gemini returns 429/503 when busy; retry with backoff (up to ~5 min total).
+  let res = await call();
+  for (let i = 1; i <= 6 && [429, 500, 503].includes(res.status); i++) {
+    console.log(`Gemini busy (${res.status}), retrying in ${i * 15}s…`);
+    await new Promise((r) => setTimeout(r, i * 15000));
+    res = await call();
+  }
   const data = await res.json();
   if (!res.ok) throw new Error(`Gemini error for ${slug}: ${JSON.stringify(data)}`);
   return JSON.parse(data.candidates[0].content.parts[0].text);

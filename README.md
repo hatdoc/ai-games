@@ -24,5 +24,5 @@ HTML just redeploys it; edit its text in the blog's `/admin`.
    - Secret `BLOG_REPO_TOKEN`: fine-grained token, repo `personal-blog` only, **Contents: Read and write**
      (the same kind of token the blog uses; you can reuse it)
    - Variable `BLOG_REPO`: `your-username/personal-blog`
-   - Variable `GEMINI_MODEL` (optional): defaults to `gemini-2.5-flash`
+   - Variable `GEMINI_MODEL` (optional): defaults to `gemini-3.8-flash`
 4. Actions → Publish games → **Run workflow** to publish what's already here.
