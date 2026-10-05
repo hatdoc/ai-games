@@ -35,8 +35,11 @@
   <div id="bestTxt"></div>
   <div id="lb"></div>
   <div class="btns"><button id="retry">Play again</button><button id="share">Share</button></div>
+  <div id="ad"></div>
 </div>
 <script src="../leaderboard.js"></script>
+<script src="../ad.js"></script>
+<script>adBanner(document.getElementById('ad'));</script>
 <script>
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 let W, H;
