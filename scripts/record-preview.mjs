@@ -77,6 +77,24 @@ const BOTS = {
       if (C.vx > 0 && ang > -55 && ang < -25 && C.x > C.hold.x) release();
     }, 16));
   } },
+  'tight-lines': { skip: 2, len: 9, poster: 6, async play(page) { // Coral Bay with decent gear: cast, a fish comes straight in, strike, fight
+    await page.evaluate(() => localStorage.setItem('tightlines-save', JSON.stringify({ loc: 'bay', open: ['lake', 'river', 'bay', 'fjord'], lv: { rod: 2, reel: 2, line: 3, bait: 2 }, coins: 2400 })));
+    await page.reload(); await page.waitForTimeout(500);
+    await page.evaluate(() => setInterval(() => {
+      if ($('card').classList.contains('on')) return; // leave the catch card up
+      if (state === 'title' || state === 'idle') { if (!down) press(); return; }
+      if (state === 'charge') { if (power > 0.55) release(); return; }
+      if (state === 'wait') {
+        if (!lure.fish && lure.d > 1) {
+          const f = fish.filter((x) => x.state === 'wander' && x.sp.rar >= 1).sort((a, b) => Math.abs(a.x - lure.x) - Math.abs(b.x - lure.x))[0];
+          if (f) { f.state = 'approach'; lure.fish = f; }
+        }
+        if (lure.bite === 'strike' && lure.biteT > 0.1) { press(); setTimeout(release, 30); }
+        return;
+      }
+      if (state === 'fight') { if (T > 0.8 && down) release(); else if (T < 0.6 && !down) press(); }
+    }, 30));
+  } },
   'demolition-rush': { skip: 2, len: 7, poster: 0.5, async play(page) {
     await page.click('#playBtn');
     await page.evaluate(() => setInterval(() => { // smash the leftmost columns, take the first upgrade card

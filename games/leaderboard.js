@@ -2,6 +2,7 @@
 // Firestore, public read / create-only; rules live in the blog repo's firebase/ folder:
 // a new game needs its slug and max score added to the games/{game}/scores rule there.
 // Usage: const lb = leaderboard(containerEl, 'my-game'); then lb.show(score) at game over.
+// Optional 3rd arg formats the stored integer for display, e.g. (g) => `${(g / 1000).toFixed(2)} kg`.
 (() => {
   const FS = 'https://firestore.googleapis.com/v1/projects/hatdoc-blog-1048/databases/(default)/documents';
   const FKEY = 'AIzaSyDz5J34ahi7fP48CU2cPrp1FNmqK-20D5E';
@@ -28,7 +29,7 @@
     .lb .muted { justify-content: center; opacity: .6; background: none !important; }
   </style>`);
 
-  window.leaderboard = (root, game) => {
+  window.leaderboard = (root, game, fmt = String) => {
     const path = `${FS}/games/${game}/scores`;
     const myIds = new Set(get(`lb-ids-${game}`, []));
     root.classList.add('lb');
@@ -56,7 +57,7 @@
         rows.forEach(({ document: d }, i) => {
           const li = document.createElement('li');
           if (myIds.has(d.name)) li.className = 'me';
-          for (const [cls, text] of [['rk', ['🥇', '🥈', '🥉'][i] || i + 1], ['nm', d.fields.name.stringValue], ['sc', d.fields.score.integerValue]]) {
+          for (const [cls, text] of [['rk', ['🥇', '🥈', '🥉'][i] || i + 1], ['nm', d.fields.name.stringValue], ['sc', fmt(+d.fields.score.integerValue)]]) {
             const s = document.createElement('span'); s.className = cls; s.textContent = text; li.append(s);
           }
           list.append(li);
