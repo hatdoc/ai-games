@@ -8,10 +8,13 @@
   html, body { margin: 0; height: 100%; background: #111; color: #eee; font: 16px system-ui, sans-serif; }
   body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; touch-action: none; }
   canvas { background: #1b1b1b; border-radius: 8px; max-width: 95vmin; max-height: 80vmin; aspect-ratio: 1; }
+  #home { color: #999; text-decoration: none; font-size: 14px; }
   #hud { display: flex; gap: 24px; } #msg { color: #999; font-size: 14px; }
 </style>
 </head>
 <body>
+<a id="home" href="https://personal-blog-phi-green.vercel.app/">← Home</a>
+<script>if (top !== self) home.remove();</script>
 <div id="hud"><span>Score: <b id="score">0</b></span><span>Best: <b id="best">0</b></span></div>
 <canvas id="c" width="400" height="400"></canvas>
 <div id="msg">Arrow keys / WASD or swipe to start</div>

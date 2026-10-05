@@ -63,6 +63,8 @@
   #tnt, #mute { position: fixed; bottom: 16px; padding: 12px 14px; font-size: 18px; }
   #tnt { right: 16px; }
   #tnt.armed { background: #ff4d3d; color: #fff; animation: pulse .5s infinite alternate; }
+  #home { position: fixed; left: 16px; bottom: 72px; padding: 8px 12px; border-radius: 10px; background: #000a; color: #fff;
+    font-weight: 700; text-decoration: none; z-index: 5; }
   #mute { left: 16px; background: #000a; color: #fff; z-index: 5; }
   #toast { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); background: #000d; padding: 10px 16px;
     border-radius: 10px; font-weight: 700; z-index: 9; max-width: 90vw; text-align: center; }
@@ -71,6 +73,9 @@
 </style>
 </head>
 <body>
+<!-- Shown only when played standalone; inside the blog's iframe the site navbar covers it. -->
+<a id="home" href="https://personal-blog-phi-green.vercel.app/">← Home</a>
+<script>if (top !== self) home.remove();</script>
 <canvas id="c"></canvas>
 
 <div id="hud" hidden>
