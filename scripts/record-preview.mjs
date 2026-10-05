@@ -68,6 +68,15 @@ const BOTS = {
       await page.keyboard.up(k);
     }
   } },
+  'comet-sling': { skip: 7, len: 7, poster: 2.5, async play(page) {
+    await page.evaluate(() => setInterval(() => { // grab while falling, let go flying up-forward (a SLING)
+      if (state === 'ready') return press();
+      if (state !== 'play') return;
+      if (!C.hold) { if (target() && (C.vy > 0 || C.y > 480)) press(); return; }
+      const ang = Math.atan2(C.vy, C.vx) * 180 / Math.PI;
+      if (C.vx > 0 && ang > -55 && ang < -25 && C.x > C.hold.x) release();
+    }, 16));
+  } },
   'demolition-rush': { skip: 2, len: 7, poster: 0.5, async play(page) {
     await page.click('#playBtn');
     await page.evaluate(() => setInterval(() => { // smash the leftmost columns, take the first upgrade card
