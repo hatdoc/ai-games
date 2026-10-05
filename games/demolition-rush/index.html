@@ -9,7 +9,7 @@
   html, body { margin: 0; height: 100%; overflow: hidden; background: #0e1420; color: #fff;
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
   input { user-select: text; -webkit-user-select: text; }
-  canvas { display: block; width: 100vw; height: 100vh; cursor: none; }
+  canvas { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
   #hud { position: fixed; top: 0; left: 0; right: 0; padding: 10px 12px; pointer-events: none; }
   #hud .row { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
   .pill { background: #000a; padding: 6px 12px; border-radius: 999px; font-weight: 800; font-size: 15px; white-space: nowrap; }
@@ -877,6 +877,21 @@ function draw(now) {
     const col = grid[c];
     for (let r = 0; r < col.length; r++) drawBlock(col[r], bx + c * bs, blockY(r, col[r]), r === col.length - 1, now);
   }
+  // mouse: outline the block you're aiming at (plus splash area)
+  if (state === 'play' && mouse) {
+    const at = blockAt(px, py);
+    if (at) {
+      const [c, r] = at;
+      for (let dc = -run.radius; dc <= run.radius; dc++)
+        for (let dr = -run.radius; dr <= run.radius; dr++) {
+          const d = Math.abs(dc) + Math.abs(dr), col = grid[c + dc], b = col && col[r + dr];
+          if (d > run.radius || !b) continue;
+          ctx.lineWidth = d ? 2 : 3.5;
+          ctx.strokeStyle = armed ? '#ff4d3d' : d ? 'rgba(255,255,255,.5)' : '#ffffff';
+          ctx.strokeRect(bx + (c + dc) * bs + 1.5, blockY(r + dr, b) + 1.5, bs - 3, bs - 3);
+        }
+    }
+  }
   drawSign();
   // ground
   ctx.fillStyle = '#3b3b40'; ctx.fillRect(-30, groundY, W + 60, H - groundY + 30);
@@ -945,7 +960,9 @@ function draw(now) {
   // tool cursor
   if (state === 'play' && (mouse || swing > 0)) {
     const size = Math.max(34, Math.min(56, bs * 1.1));
-    ctx.save(); ctx.translate(px, py); ctx.rotate(swing > 0 ? -0.9 * (swing / 0.12) : 0.25);
+    // On mouse the real crosshair cursor marks the spot, so the tool sits beside it
+    const off = mouse ? size * 0.55 : 0;
+    ctx.save(); ctx.translate(px + off, py - off); ctx.rotate(swing > 0 ? -0.9 * (swing / 0.12) : 0.25);
     emoji(armed ? '🧨' : TOOLS[Math.min(TOOLS.length - 1, run.tool)], 0, 0, size);
     ctx.restore();
   }
