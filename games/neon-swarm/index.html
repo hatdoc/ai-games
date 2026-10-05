@@ -60,6 +60,7 @@ const TYPES = {
   runner: { r: 9,  speed: 165, hp: 1, pts: 15, color: '#ffd84a' },
   brute:  { r: 22, speed: 52,  hp: 7, pts: 60, color: '#a66bff' },
   shooter: { r: 11, speed: 75, hp: 2, pts: 30, color: '#ff8a3d' }, // keeps its distance and fires at you
+  charger: { r: 13, speed: 70, hp: 3, pts: 45, color: '#ff3b3b' }, // stops, aims (warning line), then lunges
 };
 const POWERS = {
   rapid:  { icon: '⚡', color: '#ffd84a', label: 'RAPID FIRE' },
@@ -74,7 +75,7 @@ let state = 'ready', P, run, enemies, bullets, ebullets, parts, powers, popups, 
 function reset() {
   P = { x: W / 2, y: H / 2, r: 12, dir: [1, 0], inv: 0, dashT: 0, dashCd: 0, shield: false };
   run = { t: 0, score: 0, kills: 0, chain: 0, mult: 1, multT: 0, hearts: 3, fireT: 0, rapidT: 0, spreadT: 0,
-    spawnT: 1, swarmT: 25, swarms: 0, shake: 0 };
+    spawnT: 1, swarmT: 20, swarms: 0, shake: 0 };
   enemies = []; bullets = []; ebullets = []; parts = []; powers = []; popups = [];
 }
 
@@ -123,9 +124,10 @@ function startOrRetry() {
   }
 }
 
+const DASH_CD = 2;
 function dash() {
   if (P.dashCd > 0) return;
-  P.dashT = 0.18; P.dashCd = 1.4; P.inv = Math.max(P.inv, 0.25);
+  P.dashT = 0.18; P.dashCd = DASH_CD; P.inv = Math.max(P.inv, 0.25);
   tone(520, 0.12, 'triangle', 0.08);
 }
 
@@ -143,11 +145,11 @@ function tone(f, d, type, v) {
 // ---------- game ----------
 function spawnEnemy(kind, x, y) {
   const T = TYPES[kind];
-  enemies.push({ ...T, kind, x, y, hp: T.hp, flash: 0, cd: 1 + Math.random() * 2, speed: T.speed * (1 + run.t / 120) });
+  enemies.push({ ...T, kind, x, y, hp: T.hp, flash: 0, cd: 1 + Math.random() * 2, speed: T.speed * (1 + run.t / 75), mode: 'walk' });
 }
 function spawnAtEdge() {
   const r = Math.random(), t = run.t;
-  const kind = t > 40 && r < 0.14 ? 'brute' : t > 25 && r < 0.3 ? 'shooter' : t > 10 && r < 0.55 ? 'runner' : 'grunt';
+  const kind = t > 30 && r < 0.12 ? 'brute' : t > 28 && r < 0.24 ? 'charger' : t > 15 && r < 0.38 ? 'shooter' : t > 5 && r < 0.6 ? 'runner' : 'grunt';
   const side = Math.random() * 4 | 0, m = 30;
   const x = side === 0 ? -m : side === 1 ? W + m : Math.random() * W;
   const y = side === 2 ? -m : side === 3 ? H + m : Math.random() * H;
@@ -155,10 +157,10 @@ function spawnAtEdge() {
 }
 function swarm() {
   run.swarms++;
-  const n = 14 + run.swarms * 6, R = Math.max(W, H) * 0.6;
+  const n = 18 + run.swarms * 8, R = Math.max(W, H) * 0.6;
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2;
-    spawnEnemy(run.swarms > 2 && i % 4 === 0 ? 'runner' : 'grunt', P.x + Math.cos(a) * R, P.y + Math.sin(a) * R);
+    spawnEnemy(run.swarms > 1 && i % 3 === 0 ? 'runner' : 'grunt', P.x + Math.cos(a) * R, P.y + Math.sin(a) * R);
   }
   popup('SWARM!', '#ff4fa3');
   tone(150, 0.5, 'triangle', 0.12);
@@ -195,7 +197,7 @@ function kill(e) {
   burst(e.x, e.y, e.color, e.kind === 'brute' ? 30 : 12);
   run.shake = Math.max(run.shake, e.kind === 'brute' ? 8 : 2);
   tone(260 + run.mult * 50, 0.06, 'square', 0.035);
-  if (Math.random() < (e.kind === 'brute' ? 0.5 : 0.03)) {
+  if (Math.random() < (e.kind === 'brute' ? 0.45 : e.kind === 'charger' ? 0.1 : 0.02)) {
     const pool = ['rapid', 'rapid', 'spread', 'spread', 'shield', 'bomb'];
     if (e.kind === 'brute' && run.hearts < 3) pool.push('heart', 'heart');
     powers.push({ x: e.x, y: e.y, type: pool[Math.random() * pool.length | 0], t: 9 });
@@ -215,7 +217,7 @@ function hurt() {
     return;
   }
   run.hearts--; P.inv = 1.6; run.shake = 16;
-  blast(P.x, P.y, 80); // a little breathing room after a hit
+  blast(P.x, P.y, 55); // a little breathing room after a hit
   tone(90, 0.35, 'sawtooth', 0.15);
   navigator.vibrate?.(80);
   if (run.hearts <= 0) gameOver();
@@ -284,7 +286,7 @@ function update(dt) {
 
   // shooting: gets faster with kills, much faster with RAPID FIRE
   if ((run.fireT -= dt) <= 0 && fire()) {
-    run.fireT = Math.max(0.09, 0.32 - run.kills * 0.0008) / (run.rapidT > 0 ? 2.5 : 1);
+    run.fireT = Math.max(0.13, 0.32 - run.kills * 0.0006) / (run.rapidT > 0 ? 2.5 : 1);
   }
   for (const b of bullets) { b.x += b.vx * dt; b.y += b.vy * dt; }
   bullets = bullets.filter((b) => !b.dead && b.x > -20 && b.x < W + 20 && b.y > -20 && b.y < H + 20);
@@ -292,20 +294,31 @@ function update(dt) {
   // spawning
   if ((run.spawnT -= dt) <= 0) {
     spawnAtEdge();
-    run.spawnT = Math.max(0.1, 0.7 - run.t * 0.011) * (0.6 + Math.random() * 0.8);
+    run.spawnT = Math.max(0.08, 0.55 - run.t * 0.014) * (0.6 + Math.random() * 0.8);
   }
-  if ((run.swarmT -= dt) <= 0) { run.swarmT = 25; swarm(); }
+  if ((run.swarmT -= dt) <= 0) { run.swarmT = 20; swarm(); }
 
   // enemies chase the player
   for (const e of enemies) {
     const dx = P.x - e.x, dy = P.y - e.y, d = Math.hypot(dx, dy) || 1;
     const onScreen = e.x > 30 && e.x < W - 30 && e.y > 30 && e.y < H - 30;
     const back = e.kind === 'shooter' && d < 230 && onScreen ? -0.6 : 1;
-    e.x += (dx / d) * e.speed * back * dt; e.y += (dy / d) * e.speed * back * dt;
     e.flash -= dt;
+    if (e.kind === 'charger' && e.mode !== 'walk') { // aim (frozen, locked direction) → lunge
+      if ((e.modeT -= dt) <= 0) {
+        if (e.mode === 'aim') { e.mode = 'lunge'; e.modeT = 0.45; tone(180, 0.15, 'sawtooth', 0.05); }
+        else { e.mode = 'walk'; e.cd = 2 + Math.random(); }
+      }
+      if (e.mode === 'lunge') { e.x += e.ax * 620 * dt; e.y += e.ay * 620 * dt; }
+      continue;
+    }
+    e.x += (dx / d) * e.speed * back * dt; e.y += (dy / d) * e.speed * back * dt;
+    if (e.kind === 'charger' && onScreen && d < 320 && (e.cd -= dt) <= 0) {
+      e.mode = 'aim'; e.modeT = 0.6; e.ax = dx / d; e.ay = dy / d;
+    }
     if (e.kind === 'shooter' && onScreen && (e.cd -= dt) <= 0) {
-      e.cd = 2 + Math.random();
-      ebullets.push({ x: e.x, y: e.y, vx: (dx / d) * 230, vy: (dy / d) * 230 });
+      e.cd = 1.4 + Math.random() * 0.8;
+      ebullets.push({ x: e.x, y: e.y, vx: (dx / d) * 280, vy: (dy / d) * 280 });
     }
   }
   // ponytail: O(bullets × enemies) collision; a spatial grid if counts ever reach the thousands
@@ -363,6 +376,10 @@ function draw() {
   for (const e of enemies) {
     glow(e.x, e.y, e.r, e.flash > 0 ? '#fff' : e.color);
     if (e.kind === 'brute') { ctx.fillStyle = '#07070f'; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * 0.45, 0, 7); ctx.fill(); }
+    if (e.mode === 'aim') { // warning line where it's about to lunge
+      ctx.strokeStyle = `rgba(255,59,59,${0.3 + 0.5 * Math.abs(Math.sin(e.modeT * 30))})`; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + e.ax * 280, e.y + e.ay * 280); ctx.stroke();
+    }
   }
   ctx.fillStyle = '#bff';
   for (const b of bullets) { ctx.beginPath(); ctx.arc(b.x, b.y, 3.5, 0, 7); ctx.fill(); }
@@ -381,7 +398,7 @@ function draw() {
     if (P.shield) { ctx.strokeStyle = '#6f6'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(P.x, P.y, P.r + 9, 0, 7); ctx.stroke(); }
     if (P.dashCd > 0) { // dash recharge arc
       ctx.strokeStyle = '#5ff8'; ctx.lineWidth = 3; ctx.beginPath();
-      ctx.arc(P.x, P.y, P.r + 5, -Math.PI / 2, -Math.PI / 2 + (1 - P.dashCd / 1.4) * Math.PI * 2); ctx.stroke();
+      ctx.arc(P.x, P.y, P.r + 5, -Math.PI / 2, -Math.PI / 2 + (1 - P.dashCd / DASH_CD) * Math.PI * 2); ctx.stroke();
     }
   }
   ctx.font = '20px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

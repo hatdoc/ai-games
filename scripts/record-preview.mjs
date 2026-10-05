@@ -58,7 +58,7 @@ const BOTS = {
       }, 8);
     });
   } },
-  'neon-swarm': { skip: 19, len: 7, poster: 6.5, async play(page, until) { // circle the arena, dash now and then; clip catches the 25s SWARM
+  'neon-swarm': { skip: 14, len: 7, poster: 6.3, async play(page, until) { // circle the arena, dash now and then; clip catches the 20s SWARM
     await page.keyboard.press('Enter');
     for (let i = 0; Date.now() < until; i++) {
       const k = ['KeyD', 'KeyS', 'KeyA', 'KeyW'][i % 4];
