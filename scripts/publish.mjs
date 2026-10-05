@@ -17,8 +17,14 @@ const newSlugs = fs
   .readdirSync('games')
   .filter((slug) => fs.existsSync(`games/${slug}/index.html`) && !known.has(slug));
 
-if (newSlugs.length === 0) {
-  console.log('No new games to publish.');
+// Gameplay clips (scripts/record-preview.mjs) are served from Pages next to each game
+const media = (slug) => fs.existsSync(`games/${slug}/preview.webm`)
+  ? { preview: new URL(`games/${slug}/preview.webm`, PAGES_URL).href, thumbnail: new URL(`games/${slug}/preview.jpg`, PAGES_URL).href }
+  : { thumbnail: null };
+const backfilled = games.filter((g) => !g.preview && media(g.slug).preview).map((g) => (Object.assign(g, media(g.slug)), g.slug));
+
+if (newSlugs.length === 0 && backfilled.length === 0) {
+  console.log('No new games or clips to publish.');
   process.exit(0);
 }
 
@@ -74,7 +80,7 @@ for (const slug of newSlugs) {
   games.unshift({
     slug,
     ...meta,
-    thumbnail: null,
+    ...media(slug),
     gameUrl: new URL(`games/${slug}/`, PAGES_URL).href,
     createdAt: new Date().toISOString(),
     featured: false,
@@ -86,10 +92,10 @@ const res = await fetch(BLOG_FILE, {
   method: 'PUT',
   headers: gh,
   body: JSON.stringify({
-    message: `games: publish ${newSlugs.join(', ')}`,
+    message: `games: publish ${[...newSlugs, ...backfilled.map((s) => `${s} clip`)].join(', ')}`,
     content: Buffer.from(JSON.stringify(games, null, 2) + '\n').toString('base64'),
     sha: file.sha,
   }),
 });
 if (!res.ok) throw new Error(`Commit to blog failed: ${res.status} ${await res.text()}`);
-console.log(`Committed ${newSlugs.length} game(s) to ${BLOG_REPO}.`);
+console.log(`Committed ${newSlugs.length} game(s), ${backfilled.length} clip(s) to ${BLOG_REPO}.`);
