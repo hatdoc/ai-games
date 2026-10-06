@@ -251,7 +251,7 @@ const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padSt
 
 $('retry').onclick = startOrRetry;
 $('share').onclick = async (e) => {
-  const text = `I scored ${run.score.toLocaleString()} in Neon Swarm and survived ${fmtTime(run.t)}. Can you beat me?`, url = location.href;
+  const text = `I scored ${run.score.toLocaleString()} in Neon Swarm and survived ${fmtTime(run.t)}. Can you beat me?`, url = 'https://rank-game.com/games/neon-swarm';
   try {
     if (navigator.share) await navigator.share({ title: 'Neon Swarm', text, url });
     else { await navigator.clipboard.writeText(`${text} ${url}`); e.target.textContent = 'Copied!'; }

@@ -144,6 +144,7 @@
   <div class="sub" id="cardFact"></div>
   <div id="cardLb"></div>
   <button class="cta" id="cardOk">Sell</button>
+  <button class="cta" id="cardShare" style="background:none;border:1px solid var(--line);color:var(--txt);margin-top:8px">Share this catch</button>
 </div></div>
 <div class="modal" id="shop"><div class="panel glass">
   <button class="x" data-close>×</button>
@@ -588,6 +589,7 @@ function land() {
   $('cardW').textContent = `${f.w.toFixed(2)} kg`; $('cardL').textContent = `${Math.round(f.len)} cm`; $('cardV').textContent = `🪙 ${value.toLocaleString()}`;
   $('cardFlags').textContent = [isNew && '★ NEW SPECIES', isRecord && '▲ SPECIES RECORD', isBounty && '🎯 BOUNTY ×3', streak > 1 && `🔥 ×${mult.toFixed(1)} STREAK`].filter(Boolean).join('   ');
   $('cardFact').textContent = sp.fact;
+  $('cardShare').textContent = 'Share this catch';
   $('cardOk').textContent = `Sell for 🪙 ${value.toLocaleString()}`;
   $('cardLb').hidden = !pb;
   if (pb) lb.show(Math.round(f.w * 1000)); // personal-best weight goes to the leaderboard
@@ -602,6 +604,13 @@ $('cardOk').onclick = () => {
   const next = LOCS.find((l) => !save.open.includes(l.id) && save.coins >= l.cost);
   if (next && !save.told?.includes(next.id)) { save.told = [...(save.told || []), next.id]; persist(); toast(`🗺️ You can afford ${next.name}! Open Travel.`, '#f5c86a', 3200); }
   if (Object.keys(save.dex).length === SPECIES.length && !save.complete) { save.complete = true; persist(); toast('🏆 Fish Book complete! You are a legend.', '#f5c86a', 4000); }
+};
+$('cardShare').onclick = async (e) => {
+  const f = lastCatch.f, text = `I just landed a ${f.w.toFixed(2)} kg ${f.sp.name} (${RAR[f.sp.rar].name}) in Tight Lines 🎣 Can you beat it?`, url = 'https://rank-game.com/games/tight-lines';
+  try {
+    if (navigator.share) await navigator.share({ title: 'Tight Lines', text, url });
+    else { await navigator.clipboard.writeText(`${text} ${url}`); e.target.textContent = 'Copied!'; }
+  } catch {}
 };
 function drawCardArt(f) {
   const c = $('cardArt'), g = c.getContext('2d'), w = c.width, h = c.height;

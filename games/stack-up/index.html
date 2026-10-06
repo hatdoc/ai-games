@@ -144,7 +144,7 @@ cv.addEventListener('pointerdown', act);
 addEventListener('keydown', (e) => { if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); act(); } });
 document.getElementById('retry').onclick = retry;
 document.getElementById('share').onclick = async (e) => {
-  const text = `I stacked ${score()} blocks in Stack Up! Can you beat me?`, url = location.href;
+  const text = `I stacked ${score()} blocks in Stack Up! Can you beat me?`, url = 'https://rank-game.com/games/stack-up';
   try {
     if (navigator.share) await navigator.share({ title: 'Stack Up', text, url });
     else { await navigator.clipboard.writeText(`${text} ${url}`); e.target.textContent = 'Copied!'; }
