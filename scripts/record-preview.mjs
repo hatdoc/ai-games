@@ -110,6 +110,21 @@ const BOTS = {
       await page.evaluate(() => { const i = garden.findIndex((p) => p?.f && Math.random() < 0.2); if (i >= 0) collect(i, true); });
     }
   } },
+  'gearlock': { skip: 1, len: 8, poster: 3, async play(page, until) { // a 5-gear lock solved move by move along the optimal path
+    await page.evaluate(() => { document.querySelectorAll('.modal').forEach((m) => m.classList.remove('on')); save.level = 18; load('level'); });
+    while (Date.now() < until) {
+      const done = await page.evaluate(() => {
+        if (solved()) return true;
+        const d = lv.dist[enc(cur)];
+        for (let i = 0; i < lv.n; i++) for (const s of [1, -1]) {
+          const nx = [...cur]; nx[i] = (nx[i] + s + 10) % 10; for (const l of lv.links) if (l.a === i) nx[l.b] = ((nx[l.b] + s * l.w) % 10 + 10) % 10;
+          if (lv.dist[enc(nx)] === d - 1) { move(i, s); return false; }
+        }
+      });
+      if (done) break;
+      await page.waitForTimeout(560);
+    }
+  } },
   'demolition-rush': { skip: 2, len: 7, poster: 0.5, async play(page) {
     await page.click('#playBtn');
     await page.evaluate(() => setInterval(() => { // smash the leftmost columns, take the first upgrade card

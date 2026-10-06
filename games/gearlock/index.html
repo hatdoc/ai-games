@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Gearlock</title>
+<style>
+  :root { --brass: #d9a54a; --ink: #f3ead8; --mut: #a89a80; --panel: rgba(20, 16, 12, .82); --line: rgba(217, 165, 74, .28); }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #120e0a; color: var(--ink);
+    font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+  canvas { display: block; width: 100vw; height: 100vh; height: 100dvh; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 8px 28px rgba(0, 0, 0, .45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  #home { position: fixed; top: 10px; left: 10px; color: var(--ink); text-decoration: none; font-weight: 800; font-size: 13px; padding: 6px 10px; }
+  #top { position: fixed; top: 10px; right: 10px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100vw - 96px); }
+  .pill { padding: 6px 11px; font-weight: 800; font-size: 13px; white-space: nowrap; }
+  .pill b { color: var(--brass); font-variant-numeric: tabular-nums; }
+  .tb { padding: 6px 11px; font-weight: 800; font-size: 13px; border: 1px solid var(--line); background: var(--panel); border-radius: 12px; }
+  .tb:disabled { opacity: .4; cursor: default; }
+  #bar { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; }
+  #bar .tb { padding: 9px 14px; }
+  #toast { position: fixed; left: 50%; top: 56px; transform: translateX(-50%); padding: 9px 16px; font-weight: 800; pointer-events: none; opacity: 0;
+    transition: opacity .3s; white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; }
+  #toast.show { opacity: 1; }
+  .modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(8, 6, 4, .6); padding: 12px; }
+  .modal.on { display: flex; }
+  .panel { width: min(420px, 100%); max-height: calc(100dvh - 24px); overflow-y: auto; padding: 20px; box-sizing: border-box; text-align: center; }
+  .panel h2 { margin: 0; font-size: 24px; letter-spacing: 1px; color: var(--brass); font-family: Georgia, serif; }
+  .stars { font-size: 40px; letter-spacing: 6px; margin: 8px 0 2px; }
+  .sub { color: var(--mut); font-size: 13px; }
+  .cta { width: 100%; border: 0; border-radius: 12px; padding: 13px; font-weight: 800; font-size: 16px; margin-top: 12px;
+    background: linear-gradient(180deg, #f0c56a, #b9802c); color: #2a1a06; }
+  .ghost { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 11px; font-weight: 800; margin-top: 8px; background: none; }
+  #lb { margin: 12px auto 0; }
+  .help { text-align: left; line-height: 1.6; font-size: 14px; }
+  .help b { color: var(--brass); }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<!-- Shown only when played standalone; inside the blog's iframe the site navbar covers it. -->
+<a id="home" class="card" href="https://rank-game.com/">← Home</a>
+<script>if (top !== self) home.remove();</script>
+<div id="top">
+  <div class="pill card" id="lvlPill">Level <b id="lvl">1</b></div>
+  <div class="pill card">⭐ <b id="starsTot">0</b></div>
+  <div class="pill card">💡 <b id="hintsN">3</b></div>
+  <button class="tb" id="dailyBtn">📅 Daily</button>
+  <button class="tb" id="helpBtn">?</button>
+  <button class="tb" id="muteBtn" aria-label="Toggle sound">🔊</button>
+</div>
+<div id="bar" class="card">
+  <button class="tb" id="undoBtn">↶ Undo</button>
+  <button class="tb" id="resetBtn">⟲ Reset</button>
+  <button class="tb" id="hintBtn">💡 Hint</button>
+</div>
+<div id="toast" class="card"></div>
+<div class="modal" id="win"><div class="panel card">
+  <h2 id="winTitle">UNLOCKED</h2>
+  <div class="stars" id="winStars">★★★</div>
+  <div class="sub" id="winSub"></div>
+  <div id="lb"></div>
+  <button class="cta" id="nextBtn">Next lock →</button>
+  <button class="ghost" id="shareBtn">Share</button>
+  <button class="ghost" id="retryBtn">Try for fewer moves</button>
+</div></div>
+<div class="modal" id="help"><div class="panel card">
+  <h2>How to play</h2>
+  <div class="help" style="margin-top:12px">
+    <p>Turn every gear to its <b>target digit</b> (shown above it) to open the lock.</p>
+    <p>Tap the <b>▲</b> or <b>▼</b> on a gear to turn it one step. Digits wrap: 9 + 1 = 0.</p>
+    <p>Gears are <b>chained</b>. An arrow from gear A to gear B labelled <b>+2</b> means every step you turn A also turns B two steps the same way. <b>−1</b> turns B one step the opposite way. Chains only push in the arrow's direction.</p>
+    <p><b>Par</b> is the fewest moves possible, so 3 stars means you found a perfect solution. Hints show the best next move; earn more with 3-star solves.</p>
+  </div>
+  <button class="cta" data-close>Got it</button>
+</div></div>
+<script src="../leaderboard.js"></script>
+<script>
+// Gearlock — original game: code, art (canvas-drawn) and sound (synthesized) all made from scratch.
+const cv = document.getElementById('c'), ctx = cv.getContext('2d'), $ = (id) => document.getElementById(id);
+let W, H, dpr;
+const lb = leaderboard($('lb'), 'gearlock', (n) => `${n} ⭐`);
+
+// ---------- save ----------
+let save = { level: 1, stars: {}, hints: 3, daily: {}, muted: false, seenHelp: false };
+try { Object.assign(save, JSON.parse(localStorage.getItem('gearlock-save')) || {}); } catch {}
+const persist = () => { try { localStorage.setItem('gearlock-save', JSON.stringify(save)); } catch {} };
+const totalStars = () => Object.values(save.stars).reduce((a, b) => a + b, 0) + Object.values(save.daily).reduce((a, b) => a + b, 0);
+
+// ---------- puzzle generation ----------
+// A move turns gear i by ±1 and each chained gear j by ±w (mod 10). Moves form a group, so a
+// breadth-first search from the solved state gives the exact fewest moves from every state.
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const P10 = [1, 10, 100, 1000, 10000, 100000, 1000000];
+const enc = (d) => d.reduce((s, v, i) => s + v * P10[i], 0);
+const dec = (s, n) => Array.from({ length: n }, (_, i) => Math.floor(s / P10[i]) % 10);
+function solveAll(n, moves, target) { // dist[state] = fewest moves from state to target
+  const size = P10[n], dist = new Uint8Array(size).fill(255), q = new Int32Array(size);
+  const t = enc(target); dist[t] = 0; q[0] = t;
+  let head = 0, tail = 1;
+  const dg = new Int8Array(n);
+  while (head < tail) {
+    const s = q[head++], d = dist[s] + 1;
+    for (let i = 0; i < n; i++) dg[i] = Math.floor(s / P10[i]) % 10;
+    for (const m of moves) {
+      let ns = 0;
+      for (let i = 0; i < n; i++) ns += ((dg[i] - m[i] + 20) % 10) * P10[i]; // inverse of m: states that reach s via m
+      if (dist[ns] === 255) { dist[ns] = d; q[tail++] = ns; }
+    }
+  }
+  return dist;
+}
+function buildMoves(n, links) {
+  const moves = [];
+  for (let i = 0; i < n; i++) for (const sgn of [1, -1]) {
+    const v = new Array(n).fill(0); v[i] = sgn;
+    for (const l of links) if (l.a === i) v[l.b] = (v[l.b] + sgn * l.w + 20) % 10;
+    moves.push(v.map((x) => (x + 10) % 10));
+  }
+  return moves;
+}
+function makeLevel(L, seed) {
+  const r = mulberry32(seed);
+  const n = Math.min(6, 2 + Math.floor((L + 1) / 3));
+  const pool = L < 4 ? [1] : L < 9 ? [1, -1] : L < 16 ? [1, -1, 2] : L < 26 ? [1, -1, 2, -2] : [1, -1, 2, -2, 3, 5];
+  const nLinks = Math.min(n * 2 - 1, Math.max(1, Math.floor(n * (0.7 + Math.min(L, 40) / 40))));
+  for (let tries = 0; ; tries++) {
+    const links = [], seen = new Set();
+    while (links.length < nLinks) {
+      const a = Math.floor(r() * n), b = Math.floor(r() * n), k = `${a}>${b}`;
+      if (a === b || seen.has(k) || seen.has(`${b}>${a}`) && L < 12) continue;
+      seen.add(k); links.push({ a, b, w: pool[Math.floor(r() * pool.length)] });
+    }
+    const target = Array.from({ length: n }, () => Math.floor(r() * 10));
+    const moves = buildMoves(n, links), dist = solveAll(n, moves, target);
+    let max = 0; for (let s = 0; s < dist.length; s++) if (dist[s] !== 255 && dist[s] > max) max = dist[s];
+    const want = Math.min(max, Math.round(2 + L * 0.6 + (L > 20 ? (L - 20) * 0.3 : 0)));
+    if (want < Math.min(max, 3) && tries < 20) continue;
+    const cands = []; for (let s = 0; s < dist.length; s++) if (dist[s] === want) cands.push(s);
+    const start = dec(cands[Math.floor(r() * cands.length)], n);
+    return { n, links, target, moves, dist, start, par: want };
+  }
+}
+
+// ---------- state ----------
+let lv, cur, hist, moves = 0, mode = 'level', dailyKey = '', anim = [], solvedAt = 0, hintGlow = null, layout = [];
+function today() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function load(m) {
+  mode = m;
+  if (m === 'daily') { dailyKey = today(); const L = 22; lv = makeLevel(L, [...dailyKey].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619), 2166136261)); }
+  else lv = makeLevel(save.level, save.level * 7919 + 13);
+  cur = [...lv.start]; hist = []; moves = 0; solvedAt = 0; hintGlow = null;
+  anim = Array.from({ length: lv.n }, (_, i) => ({ rot: cur[i] * -36, to: cur[i] * -36, pulse: 0 }));
+  doLayout(); updateHud();
+  $('dailyBtn').textContent = mode === 'daily' ? '🔒 Levels' : '📅 Daily';
+}
+const solved = () => cur.every((d, i) => d === lv.target[i]);
+
+// ---------- layout ----------
+function resize() {
+  dpr = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  if (lv) doLayout();
+}
+function doLayout() { // grid of cells; each gear has ▼ on its left and ▲ on its right
+  const n = lv.n, portrait = W < H * 0.9, top = 112, bottom = H - 76;
+  const cols = portrait ? (n <= 2 ? n : 2) : (n <= 3 ? n : n === 4 ? 2 : 3), rows = Math.ceil(n / cols);
+  const cw = Math.min((W - 24) / cols, 300), ch = (bottom - top) / rows;
+  const r = Math.max(26, Math.min(cw / 2 / 1.7, ch * 0.3, 78));
+  layout = Array.from({ length: n }, (_, i) => {
+    const row = Math.floor(i / cols), inRow = Math.min(cols, n - row * cols), col = i % cols;
+    return { x: W / 2 + (col - (inRow - 1) / 2) * cw, y: top + ch * (row + 0.55), r };
+  });
+}
+const btns = (g) => { const br = Math.max(17, g.r * 0.3), off = g.r * 1.08 + br; return { br, up: { x: g.x + off, y: g.y }, dn: { x: g.x - off, y: g.y } }; };
+
+// ---------- audio ----------
+let ac;
+function tone(f, dur, type = 'square', vol = 0.04, slide = 0, delay = 0) {
+  if (save.muted) return;
+  try {
+    ac ||= new AudioContext(); if (ac.state === 'suspended') ac.resume();
+    const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + delay;
+    o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(f * slide, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+  } catch {}
+}
+const click = (k = 0) => { tone(1800 + k * 120, 0.03, 'square', 0.03); tone(260, 0.05, 'triangle', 0.04); };
+
+// ---------- moves ----------
+function move(i, sgn, record = true) {
+  if (solvedAt) return;
+  const affected = [[i, sgn]];
+  for (const l of lv.links) if (l.a === i) affected.push([l.b, sgn * l.w]);
+  for (const [j, d] of affected) { cur[j] = ((cur[j] + d) % 10 + 10) % 10; anim[j].to -= d * 36; anim[j].pulse = 1; }
+  if (record) { hist.push([i, sgn]); moves++; }
+  hintGlow = null; click(affected.length);
+  if (solved()) win();
+  updateHud();
+}
+function undo() {
+  if (!hist.length || solvedAt) return;
+  const [i, sgn] = hist.pop(); move(i, -sgn, false); moves--; updateHud();
+}
+function hint() {
+  if (solvedAt) return;
+  if (save.hints <= 0) return toast('No hints left. Solve a lock in par for +1 💡');
+  const s = enc(cur), d = lv.dist[s];
+  for (let i = 0; i < lv.n; i++) for (const sgn of [1, -1]) {
+    const nx = cur.map((v) => v);
+    nx[i] = (nx[i] + sgn + 10) % 10; for (const l of lv.links) if (l.a === i) nx[l.b] = ((nx[l.b] + sgn * l.w) % 10 + 10) % 10;
+    if (lv.dist[enc(nx)] === d - 1) { save.hints--; persist(); hintGlow = { i, sgn, t: 4 }; updateHud(); tone(880, 0.2, 'sine', 0.05); return; }
+  }
+}
+function win() {
+  solvedAt = performance.now();
+  const extra = moves - lv.par, stars = extra <= 0 ? 3 : extra <= 2 ? 2 : 1;
+  let gotHint = false;
+  if (mode === 'daily') save.daily[dailyKey] = Math.max(save.daily[dailyKey] || 0, stars);
+  else { if (stars === 3 && (save.stars[save.level] || 0) < 3) { save.hints++; gotHint = true; } save.stars[save.level] = Math.max(save.stars[save.level] || 0, stars); }
+  persist();
+  [523, 659, 784, 1047].forEach((f, k) => tone(f, 0.4, 'triangle', 0.06, 1, 0.25 + k * 0.08));
+  tone(120, 0.25, 'sawtooth', 0.06, 0.5, 0.05); // the bolt sliding open
+  setTimeout(() => {
+    $('winTitle').textContent = mode === 'daily' ? `DAILY ${dailyKey}` : `LOCK ${save.level} OPEN`;
+    $('winStars').innerHTML = '<span style="color:#f0c56a">' + '★'.repeat(stars) + '</span><span style="opacity:.25">' + '★'.repeat(3 - stars) + '</span>';
+    $('winSub').textContent = `${moves} moves · par ${lv.par}${stars === 3 ? ' · perfect!' : ''}${gotHint ? ' · +1 💡' : ''}`;
+    $('retryBtn').hidden = stars === 3;
+    $('nextBtn').textContent = mode === 'daily' ? 'Back to levels →' : 'Next lock →';
+    $('win').classList.add('on');
+    lb.show(totalStars());
+  }, 900);
+}
+$('nextBtn').onclick = () => { $('win').classList.remove('on'); if (mode === 'level') save.level++; persist(); load('level'); };
+$('retryBtn').onclick = () => { $('win').classList.remove('on'); load(mode); };
+$('shareBtn').onclick = async (e) => {
+  const text = mode === 'daily' ? `I cracked today's Gearlock in ${moves} moves (par ${lv.par}) 🔐 Can you?` : `I'm on lock ${save.level} in Gearlock with ${totalStars()} ⭐ 🔐 Can you beat me?`;
+  const url = 'https://rank-game.com/games/gearlock';
+  try { if (navigator.share) await navigator.share({ title: 'Gearlock', text, url }); else { await navigator.clipboard.writeText(`${text} ${url}`); e.target.textContent = 'Copied!'; } } catch {}
+};
+
+// ---------- input ----------
+cv.addEventListener('pointerdown', (e) => {
+  if (document.querySelector('.modal.on')) return;
+  const x = e.clientX, y = e.clientY;
+  layout.forEach((g, i) => {
+    const { up, dn, br } = btns(g);
+    if (Math.hypot(x - up.x, y - up.y) < br) move(i, 1);
+    else if (Math.hypot(x - dn.x, y - dn.y) < br) move(i, -1);
+    else if (Math.hypot(x - g.x, y - g.y) < g.r) move(i, x > g.x ? 1 : -1); // tapping the gear itself: +1 (right half) / −1 (left half)
+  });
+});
+cv.addEventListener('contextmenu', (e) => e.preventDefault());
+addEventListener('keydown', (e) => {
+  if (document.activeElement?.tagName === 'INPUT') return;
+  if (e.key === 'z' && (e.metaKey || e.ctrlKey) || e.key === 'Backspace') { e.preventDefault(); undo(); }
+  if (e.key === 'Escape') for (const m of document.querySelectorAll('.modal')) m.classList.remove('on');
+  if ((e.key === 'Enter' || e.key === ' ') && $('win').classList.contains('on')) { e.preventDefault(); $('nextBtn').click(); }
+  const k = parseInt(e.key); // number keys: 1..6 turn gear +1, with Shift −1
+  if (k >= 1 && k <= (lv?.n || 0)) move(k - 1, e.shiftKey ? -1 : 1);
+});
+$('undoBtn').onclick = undo;
+$('resetBtn').onclick = () => { if (!solvedAt) load(mode); };
+$('hintBtn').onclick = hint;
+$('dailyBtn').onclick = () => load(mode === 'daily' ? 'level' : 'daily');
+$('helpBtn').onclick = () => $('help').classList.add('on');
+for (const b of document.querySelectorAll('[data-close]')) b.onclick = () => b.closest('.modal').classList.remove('on');
+$('muteBtn').onclick = () => { save.muted = !save.muted; persist(); $('muteBtn').textContent = save.muted ? '🔇' : '🔊'; };
+$('muteBtn').textContent = save.muted ? '🔇' : '🔊';
+for (const el of document.querySelectorAll('#top, #bar, .modal')) for (const ev of ['pointerdown', 'touchstart']) el.addEventListener(ev, (e) => e.stopPropagation());
+
+let toastT;
+function toast(msg, ms = 2200) { const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), ms); }
+function updateHud() {
+  $('lvl').textContent = mode === 'daily' ? 'Daily' : save.level;
+  $('starsTot').textContent = totalStars(); $('hintsN').textContent = save.hints;
+  $('undoBtn').disabled = !hist.length; $('hintBtn').disabled = !!solvedAt;
+}
+
+// ---------- drawing ----------
+const linkColor = (w) => ({ 1: '#7fc8ff', '-1': '#ff8a7a', 2: '#9cf09a', '-2': '#f0a0ff', 3: '#ffd36a', 5: '#ff9ad0' })[w] || '#fff';
+function gearPath(g, x, y, r, teeth, rot) {
+  g.beginPath();
+  for (let k = 0; k < teeth * 2; k++) {
+    const a0 = rot + (k / (teeth * 2)) * Math.PI * 2, a1 = rot + ((k + 1) / (teeth * 2)) * Math.PI * 2, rr = k % 2 ? r * 0.86 : r;
+    g.arc(x, y, rr, a0 + (k % 2 ? 0 : 0.04), a1 - (k % 2 ? 0 : 0.04));
+  }
+  g.closePath();
+}
+function drawGear(i, t) {
+  const L = layout[i], a = anim[i], ok = cur[i] === lv.target[i], r = L.r;
+  const rot = a.rot * Math.PI / 180;
+  ctx.save();
+  // shadow + body
+  ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 6;
+  gearPath(ctx, L.x, L.y, r, 14, rot);
+  const bg = ctx.createRadialGradient(L.x - r * 0.3, L.y - r * 0.35, r * 0.1, L.x, L.y, r);
+  bg.addColorStop(0, ok ? '#ffe9a8' : '#f2c875'); bg.addColorStop(0.55, ok ? '#d9b04e' : '#c08a36'); bg.addColorStop(1, ok ? '#8a6a20' : '#6e4a1a');
+  ctx.fillStyle = bg; ctx.fill(); ctx.shadowColor = 'transparent';
+  ctx.strokeStyle = 'rgba(40,24,6,.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+  // spokes
+  ctx.strokeStyle = 'rgba(60,36,10,.35)'; ctx.lineWidth = r * 0.07;
+  for (let k = 0; k < 5; k++) { const an = rot + k * Math.PI * 2 / 5; ctx.beginPath(); ctx.moveTo(L.x + Math.cos(an) * r * 0.5, L.y + Math.sin(an) * r * 0.5); ctx.lineTo(L.x + Math.cos(an) * r * 0.78, L.y + Math.sin(an) * r * 0.78); ctx.stroke(); }
+  // face with the digit
+  const fr = r * 0.52, fg = ctx.createRadialGradient(L.x, L.y - fr * 0.4, 1, L.x, L.y, fr);
+  fg.addColorStop(0, '#2c241a'); fg.addColorStop(1, '#14100b');
+  ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(L.x, L.y, fr, 0, 7); ctx.fill();
+  ctx.strokeStyle = ok ? '#9cf09a' : 'rgba(240,197,106,.5)'; ctx.lineWidth = 2.5; ctx.stroke();
+  const sc = 1 + a.pulse * 0.18;
+  ctx.font = `800 ${Math.round(fr * 1.15 * sc)}px ui-monospace, Menlo, monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = ok ? '#b6ffb0' : '#f6e7c4'; ctx.fillText(cur[i], L.x, L.y + 2);
+  // target tag above
+  ctx.font = `800 ${Math.round(Math.max(12, r * 0.24))}px system-ui`; ctx.fillStyle = ok ? '#9cf09a' : 'rgba(246,231,196,.7)';
+  ctx.fillText(`→ ${lv.target[i]}`, L.x, L.y - r - Math.max(12, r * 0.22));
+  ctx.fillStyle = 'rgba(246,231,196,.35)'; ctx.font = `700 ${Math.round(Math.max(10, r * 0.17))}px system-ui`; ctx.fillText(i + 1, L.x - r * 0.95, L.y - r * 0.95); // key number
+  // ▲ ▼ buttons
+  const B = btns(L), br = B.br;
+  for (const [p, sg, sym] of [[B.up, 1, '▲'], [B.dn, -1, '▼']]) {
+    const bx = p.x, by = p.y, glow = hintGlow && hintGlow.i === i && hintGlow.sgn === sg;
+    ctx.fillStyle = glow ? `rgba(255,220,120,${0.55 + 0.45 * Math.sin(t * 10)})` : 'rgba(30,24,16,.85)';
+    ctx.beginPath(); ctx.arc(bx, by, br, 0, 7); ctx.fill();
+    ctx.strokeStyle = glow ? '#ffe08a' : 'rgba(217,165,74,.5)'; ctx.lineWidth = glow ? 3 : 1.5; ctx.stroke();
+    ctx.fillStyle = glow ? '#2a1a06' : '#f0c56a'; ctx.font = `800 ${Math.round(br * 0.9)}px system-ui`; ctx.fillText(sym, bx, by + 1);
+  }
+  ctx.restore();
+}
+function drawLink(l, t, badgeOnly) {
+  const A = layout[l.a], B = layout[l.b], col = linkColor(l.w);
+  const dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy), ux = dx / d, uy = dy / d;
+  const rev = lv.links.some((m) => m.a === l.b && m.b === l.a), off = rev ? 14 : 0; // two-way pairs sit side by side
+  const nx = -uy * off, ny = ux * off;
+  const x1 = A.x + ux * A.r * 1.02 + nx, y1 = A.y + uy * A.r * 1.02 + ny, x2 = B.x - ux * (B.r * 1.08 + 6) + nx, y2 = B.y - uy * (B.r * 1.08 + 6) + ny;
+  const bend = 18 + d * 0.16, mx = (x1 + x2) / 2 - uy * bend, my = (y1 + y2) / 2 + ux * bend;
+  const lx = 0.25 * x1 + 0.5 * mx + 0.25 * x2, ly = 0.25 * y1 + 0.5 * my + 0.25 * y2; // badge at the curve's midpoint
+  ctx.save();
+  if (badgeOnly) { // drawn after the gears so labels are never hidden
+    ctx.fillStyle = '#17120c'; ctx.beginPath(); ctx.roundRect(lx - 17, ly - 12, 34, 24, 8); ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = col; ctx.font = '800 14px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(l.w > 0 ? `+${l.w}` : `−${-l.w}`, lx, ly + 1);
+    return ctx.restore();
+  }
+  ctx.strokeStyle = col; ctx.globalAlpha = 0.85; ctx.lineWidth = 3; ctx.setLineDash([10, 7]); ctx.lineDashOffset = -t * 30;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(mx, my, x2, y2); ctx.stroke(); ctx.setLineDash([]);
+  const ang = Math.atan2(y2 - my, x2 - mx);
+  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x2 + Math.cos(ang) * 6, y2 + Math.sin(ang) * 6);
+  ctx.lineTo(x2 + Math.cos(ang + 2.6) * 14, y2 + Math.sin(ang + 2.6) * 14); ctx.lineTo(x2 + Math.cos(ang - 2.6) * 14, y2 + Math.sin(ang - 2.6) * 14); ctx.fill();
+  ctx.restore();
+}
+function draw(t) {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const bg = ctx.createRadialGradient(W / 2, H * 0.45, 40, W / 2, H / 2, Math.max(W, H) * 0.75);
+  bg.addColorStop(0, '#2e2418'); bg.addColorStop(1, '#0d0a07');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(217,165,74,.05)'; ctx.lineWidth = 1; // brushed-metal lines
+  for (let y = 0; y < H; y += 4) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y + 2); ctx.stroke(); }
+  if (!lv) return;
+  // lock header: target code + moves/par
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '800 12px system-ui'; ctx.fillStyle = 'rgba(246,231,196,.55)'; ctx.fillText(mode === 'daily' ? `DAILY LOCK · ${dailyKey}` : `LOCK ${save.level}`, W / 2, 66);
+  ctx.font = '800 20px system-ui'; ctx.fillStyle = '#f6e7c4';
+  ctx.fillText(`Moves ${moves}  ·  Par ${lv.par}`, W / 2, 90);
+  for (const l of lv.links) drawLink(l, t);
+  for (let i = 0; i < lv.n; i++) drawGear(i, t);
+  for (const l of lv.links) drawLink(l, t, true);
+  if (solvedAt) { // light sweep when the lock opens
+    const k = Math.min(1, (performance.now() - solvedAt) / 900);
+    ctx.fillStyle = `rgba(255,230,160,${0.25 * Math.sin(k * Math.PI)})`; ctx.fillRect(0, 0, W, H);
+  }
+}
+
+// ---------- loop ----------
+addEventListener('resize', resize); resize();
+load('level');
+if (!save.seenHelp) { save.seenHelp = true; persist(); $('help').classList.add('on'); }
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  for (const a of anim) { a.rot += (a.to - a.rot) * Math.min(1, dt * 12); a.pulse = Math.max(0, a.pulse - dt * 4); }
+  if (hintGlow && (hintGlow.t -= dt) <= 0) hintGlow = null;
+  draw(now / 1000);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
