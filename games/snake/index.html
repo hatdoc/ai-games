@@ -29,7 +29,13 @@
 <script>
 const N = 20, S = 20, ctx = c.getContext('2d'), lb = leaderboard(document.getElementById('lb'), 'snake');
 const DIRS = { ArrowUp: [0,-1], w: [0,-1], ArrowDown: [0,1], s: [0,1], ArrowLeft: [-1,0], a: [-1,0], ArrowRight: [1,0], d: [1,0] };
-let best = +(localStorage.getItem('snake-best') || 0), snake, dir, next, food, score, alive, timer, particles = [];
+let best = +(localStorage.getItem('snake-best') || 0), snake, dir, next, food, score, alive, timer, particles = [], overAt = 0;
+// keys/swipes pressed in the moment you crash shouldn't skip the leaderboard: ignore restarts for a beat
+const canRestart = () => performance.now() - overAt > 1200;
+const lbBox = document.getElementById('lb'), againBtn = document.createElement('button');
+againBtn.textContent = '▶ Play'; againBtn.style.cssText = 'width:100%;margin-top:10px;padding:10px;border:0;border-radius:10px;background:#3ad07a;color:#062;font:800 16px system-ui;cursor:pointer';
+againBtn.onclick = () => reset(); lbBox.append(againBtn);
+lbBox.hidden = false; lb.show(0); // top 10 on the start screen too
 document.getElementById('best').textContent = best;
 
 function reset() {
@@ -42,7 +48,7 @@ function placeFood() {
 }
 function setScore(v) { score = v; document.getElementById('score').textContent = v; }
 function turn(d) {
-  if (!alive) return reset();
+  if (!alive) { if (canRestart()) reset(); return; }
   if (d[0] !== -dir[0] || d[1] !== -dir[1]) next = d;
 }
 function tick() {
@@ -57,10 +63,10 @@ function tick() {
   } else snake.pop();
 }
 function gameOver() {
-  alive = false; clearInterval(timer);
+  alive = false; clearInterval(timer); overAt = performance.now(); againBtn.textContent = '▶ Play again';
   if (score > best) { best = score; try { localStorage.setItem('snake-best', best); } catch {} document.getElementById('best').textContent = best; }
   document.getElementById('lb').hidden = false; lb.show(score);
-  msg.textContent = `Game over — score ${score}. Press any arrow / swipe to retry`;
+  msg.textContent = `Game over — score ${score}. Play again, or press an arrow key / swipe`;
 }
 function draw() {
   ctx.clearRect(0, 0, 400, 400);
@@ -80,7 +86,7 @@ let t0;
 addEventListener('touchstart', e => t0 = e.touches[0], { passive: true });
 addEventListener('touchend', e => {
   const t = e.changedTouches[0], dx = t.clientX - t0.clientX, dy = t.clientY - t0.clientY;
-  if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return alive === undefined || !alive ? reset() : null;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return !alive && canRestart() ? reset() : null;
   turn(Math.abs(dx) > Math.abs(dy) ? [Math.sign(dx), 0] : [0, Math.sign(dy)]);
 });
 alive = false; draw();
