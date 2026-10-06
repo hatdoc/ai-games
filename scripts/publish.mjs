@@ -99,3 +99,24 @@ const res = await fetch(BLOG_FILE, {
 });
 if (!res.ok) throw new Error(`Commit to blog failed: ${res.status} ${await res.text()}`);
 console.log(`Committed ${newSlugs.length} game(s), ${backfilled.length} clip(s) to ${BLOG_REPO}.`);
+
+// Tell Bing/Yahoo/DuckDuckGo/Yandex about the new pages (IndexNow; Google reads the sitemap).
+// Waits for Cloudflare to rebuild the blog first, so the URLs exist when crawlers come.
+// The key is public by design: it's served at https://rank-game.com/<key>.txt.
+const SITE = 'https://rank-game.com', INDEXNOW_KEY = '682daa34c992ff6e9dbecfe71623a490';
+const urls = newSlugs.map((s) => `${SITE}/games/${s}`);
+if (urls.length) {
+  let live = false;
+  for (let i = 0; i < 30 && !live; i++) { // up to ~10 minutes
+    await new Promise((r) => setTimeout(r, 20000));
+    live = (await fetch(urls[0], { method: 'HEAD' }).catch(() => ({}))).status === 200;
+  }
+  if (!live) console.log(`IndexNow skipped: ${urls[0]} not live yet.`);
+  else {
+    const ping = await fetch('https://api.indexnow.org/indexnow', {
+      method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({ host: 'rank-game.com', key: INDEXNOW_KEY, keyLocation: `${SITE}/${INDEXNOW_KEY}.txt`, urlList: [...urls, `${SITE}/games`, SITE] }),
+    });
+    console.log(`IndexNow: ${ping.status} for ${urls.join(', ')}`); // a failed ping never fails the publish
+  }
+}
