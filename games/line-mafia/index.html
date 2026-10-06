@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Line Mafia</title>
+<style>
+  :root { --bg: #17131f; --ink: #f5f1ff; --mut: #a79fbd; --panel: rgba(32, 26, 46, .92); --line: rgba(255, 255, 255, .12); --acc: #ff4f6d; --ok: #52d88a; --gold: #ffd166; }
+  [hidden] { display: none !important; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: radial-gradient(circle at 50% 0, #2c2140, var(--bg) 60%); color: var(--ink);
+    font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; -webkit-user-select: none; user-select: none; }
+  body { display: flex; flex-direction: column; overflow: hidden; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 1px solid var(--line); background: rgba(255, 255, 255, .07); border-radius: 12px; padding: 10px 14px; font-weight: 800; }
+  button:disabled { opacity: .4; cursor: default; }
+  button.cta { background: linear-gradient(90deg, var(--acc), #ff8a5c); border: 0; color: #fff; }
+  button.ok { background: var(--ok); border: 0; color: #10251a; }
+  input { width: 100%; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, .3); font-weight: 700; -webkit-user-select: text; user-select: text; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
+  #home { position: fixed; top: 10px; left: 10px; color: var(--ink); text-decoration: none; font-weight: 800; font-size: 13px; padding: 6px 10px; z-index: 5; }
+  .screen { flex: 1; display: flex; flex-direction: column; align-items: center; overflow-y: auto; padding: 16px 12px; }
+  h1 { margin: 34px 0 2px; font-size: clamp(40px, 10vw, 64px); font-weight: 900; letter-spacing: 1px; font-style: italic; }
+  h1 span { color: var(--acc); }
+  .tag { color: var(--mut); text-align: center; margin-bottom: 18px; font-weight: 600; }
+  .box { width: min(420px, 100%); padding: 16px; display: grid; gap: 10px; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .or { text-align: center; color: var(--mut); font-size: 12px; font-weight: 700; }
+  .how { width: min(420px, 100%); margin-top: 14px; padding: 14px 16px; color: var(--mut); font-size: 13px; line-height: 1.55; }
+  .how b { color: var(--ink); }
+  .code { font-size: 44px; font-weight: 900; letter-spacing: 8px; text-align: center; color: var(--gold); }
+  .mut { color: var(--mut); font-size: 13px; text-align: center; }
+  .players { display: grid; gap: 6px; }
+  .pl { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: rgba(255, 255, 255, .05); font-weight: 700; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+  .pl .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pl .sc { color: var(--gold); font-variant-numeric: tabular-nums; }
+  .pl small { color: var(--mut); font-weight: 600; }
+  .pl .x { padding: 2px 8px; border-radius: 8px; font-size: 12px; }
+  .seg { display: flex; gap: 6px; align-items: center; }
+  .seg button { flex: 1; padding: 7px; }
+  .seg button.on { background: var(--gold); color: #2a2000; border-color: transparent; }
+  /* game */
+  #game { flex: 1; display: grid; grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; gap: 8px; padding: 8px; min-height: 0; }
+  #topbar { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; justify-content: center; padding-top: 34px; }
+  #role { padding: 8px 12px; display: flex; gap: 10px; align-items: center; cursor: pointer; }
+  #role .big { font-weight: 900; font-size: 18px; letter-spacing: .5px; }
+  #role .k { font-size: 11px; color: var(--mut); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+  #role.mafia .big { color: var(--acc); }
+  #status { padding: 8px 12px; display: flex; flex-direction: column; justify-content: center; min-width: 150px; text-align: center; }
+  #status .t1 { font-weight: 900; }
+  #status .t2 { font-size: 12px; color: var(--mut); font-weight: 700; }
+  #timer { height: 4px; background: rgba(255, 255, 255, .1); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+  #timer i { display: block; height: 100%; background: var(--gold); transition: width .25s linear; }
+  #mid { display: flex; gap: 8px; min-height: 0; justify-content: center; }
+  #paperWrap { position: relative; aspect-ratio: 1; height: 100%; max-width: 100%; align-self: center; }
+  #paper { width: 100%; height: 100%; display: block; background: #fffdf6; border-radius: 14px; touch-action: none; box-shadow: 0 10px 40px rgba(0, 0, 0, .4); }
+  #paper.mine { outline: 4px solid var(--gold); cursor: crosshair; }
+  #overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  #overlay div { background: rgba(23, 19, 31, .85); color: #fff; padding: 10px 16px; border-radius: 12px; font-weight: 900; font-size: 18px; text-align: center; }
+  #side { width: 230px; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+  #roster { padding: 8px; display: grid; gap: 4px; overflow-y: auto; }
+  #roster .pl { padding: 6px 8px; font-size: 14px; }
+  #roster .pl.turn { outline: 2px solid var(--gold); }
+  #roster .pl.vote { cursor: pointer; }
+  #roster .pl.vote:hover { background: rgba(255, 255, 255, .12); }
+  #roster .pl.picked { background: rgba(255, 79, 109, .25); outline: 2px solid var(--acc); }
+  #roster .pl.out { opacity: .45; }
+  #chat { flex: 1; min-height: 120px; display: flex; flex-direction: column; padding: 8px; }
+  #msgs { flex: 1; overflow-y: auto; font-size: 13px; display: flex; flex-direction: column; gap: 3px; -webkit-user-select: text; user-select: text; }
+  #msgs b { font-weight: 800; }
+  #chatForm { display: flex; gap: 6px; margin-top: 6px; }
+  #chatForm input { padding: 7px 9px; font-size: 13px; }
+  #chatForm button { padding: 7px 10px; }
+  #actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; align-items: center; }
+  #guessForm { display: flex; gap: 8px; width: min(420px, 100%); }
+  #result { padding: 12px 16px; text-align: center; width: min(520px, 100%); }
+  #result .win { font-size: 24px; font-weight: 900; }
+  #toast { position: fixed; left: 50%; top: 12px; transform: translateX(-50%); padding: 9px 16px; font-weight: 800; z-index: 9; pointer-events: none; opacity: 0; transition: opacity .3s; max-width: calc(100vw - 24px); }
+  #toast.show { opacity: 1; }
+  @media (max-width: 760px) {
+    #mid { flex-direction: column; align-items: center; }
+    #paperWrap { height: auto; width: min(100%, 52vh); }
+    #side { width: min(100%, 520px); flex: 1; flex-direction: row; }
+    #roster { flex: 1; align-content: start; }
+    #chat { flex: 1.2; min-height: 0; }
+    #topbar { padding-top: 30px; }
+  }
+</style>
+</head>
+<body>
+<a id="home" class="card" href="https://rank-game.com/">← Home</a>
+<script>if (top !== self) home.remove();</script>
+
+<div id="menu" class="screen">
+  <h1>LINE <span>MAFIA</span></h1>
+  <div class="tag">Everyone draws the secret word, one line at a time.<br>One of you has no idea what it is.</div>
+  <div class="box card">
+    <input id="name" maxlength="12" placeholder="Your name" autocomplete="off">
+    <button class="cta" id="quickBtn">⚡ Quick Play: join random players</button>
+    <button id="createBtn">🔒 Create private room</button>
+    <div class="or">or join friends with a code</div>
+    <div class="row"><input id="codeIn" maxlength="5" placeholder="CODE" autocomplete="off" style="text-transform:uppercase;letter-spacing:3px;text-align:center"><button id="joinBtn">Join</button></div>
+  </div>
+  <div class="how card">
+    <b>How to play</b><br>
+    🎯 Everyone sees the <b>category</b>. Everyone except the mafia also sees the <b>secret word</b>.<br>
+    ✏️ Take turns drawing <b>one line</b> each on a shared page, a few laps around the table.<br>
+    🕵️ The <b>mafia</b> has to fake it: draw something that fits without giving themselves away.<br>
+    🗳️ Then vote. Catch the mafia and the town wins, unless the mafia <b>guesses the word</b>.<br>
+    👥 3–10 players. Share the room code with friends, or hit Quick Play.
+  </div>
+</div>
+
+<div id="lobby" class="screen" hidden>
+  <div class="box card" style="margin-top:34px">
+    <div class="mut" id="lobbyKind">Room code</div>
+    <div class="code" id="lobbyCode">-----</div>
+    <div class="row"><button id="shareBtn">📨 Invite friends</button><button id="copyBtn">📋 Copy code</button></div>
+    <div class="mut" id="lobbyHint"></div>
+    <div class="players" id="lobbyPlayers"></div>
+    <div id="hostSet">
+      <div class="seg"><span class="mut" style="flex:none;width:110px;text-align:left">Lines each</span><button data-l="2">2</button><button data-l="3">3</button><button data-l="4">4</button></div>
+    </div>
+    <button class="cta" id="startBtn">Start game</button>
+    <button id="leaveBtn">Leave room</button>
+  </div>
+</div>
+
+<div id="game" hidden>
+  <div id="topbar">
+    <div id="role" class="card" title="Tap to hide or show your word"></div>
+    <div id="status" class="card"><div class="t1" id="st1"></div><div class="t2" id="st2"></div><div id="timer"><i></i></div></div>
+  </div>
+  <div id="mid">
+    <div id="paperWrap"><canvas id="paper" width="1000" height="1000"></canvas><div id="overlay" hidden><div id="overlayTxt"></div></div></div>
+    <div id="side">
+      <div id="roster" class="card"></div>
+      <div id="chat" class="card"><div id="msgs"></div><form id="chatForm"><input id="chatIn" maxlength="80" placeholder="Say something…" autocomplete="off"><button>➤</button></form></div>
+    </div>
+  </div>
+  <div id="actions">
+    <form id="guessForm" hidden><input id="guessIn" maxlength="30" placeholder="Your guess for the word" autocomplete="off"><button class="cta">Guess</button></form>
+    <div id="result" class="card" hidden></div>
+    <button id="nextBtn" class="cta" hidden>Next round</button>
+    <button id="leave2Btn">Leave</button>
+  </div>
+</div>
+<div id="toast" class="card"></div>
+
+<script type="module">
+// Line Mafia: a drawing liar game. Each room is one Firestore document every player listens to; any player can
+// apply a change through a transaction, so the game keeps running when the room's creator leaves.
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import { getFirestore, doc, onSnapshot, runTransaction, collection, query, where, limit, getDocs } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+
+const $ = (id) => document.getElementById(id);
+const CATS = {
+  Animals: ['cat', 'dog', 'fish', 'bird', 'snake', 'rabbit', 'elephant', 'giraffe', 'spider', 'turtle', 'horse', 'penguin', 'butterfly', 'snail', 'octopus', 'duck'],
+  Food: ['pizza', 'banana', 'apple', 'ice cream', 'burger', 'carrot', 'cake', 'egg', 'donut', 'cherry', 'bread', 'hot dog', 'watermelon', 'cheese', 'grapes', 'cookie'],
+  Objects: ['chair', 'umbrella', 'glasses', 'key', 'clock', 'lamp', 'scissors', 'cup', 'book', 'phone', 'guitar', 'hat', 'shoe', 'candle', 'ladder', 'balloon'],
+  Nature: ['tree', 'sun', 'moon', 'flower', 'mountain', 'cloud', 'rain', 'star', 'wave', 'volcano', 'rainbow', 'leaf', 'cactus', 'lightning', 'island', 'snowman'],
+  Places: ['house', 'castle', 'bridge', 'tent', 'church', 'lighthouse', 'pyramid', 'school', 'farm', 'igloo', 'tower', 'stadium', 'beach', 'park', 'hospital', 'zoo'],
+  Vehicles: ['car', 'bicycle', 'boat', 'train', 'airplane', 'rocket', 'bus', 'helicopter', 'truck', 'tractor', 'scooter', 'submarine', 'skateboard', 'hot air balloon', 'ambulance', 'sailboat'],
+  Sports: ['soccer', 'basketball', 'tennis', 'golf', 'bowling', 'skiing', 'surfing', 'boxing', 'swimming', 'baseball', 'trophy', 'medal', 'darts', 'archery', 'fishing', 'karate'],
+};
+const COLORS = ['#e6194b', '#2f9e44', '#1c7ed6', '#f76707', '#9c36b5', '#0ca5b0', '#e64980', '#74b816', '#8d5524', '#495057'];
+const MAXP = 10, MINP = 3, TURN_MS = 25000, VOTE_MS = 50000, GUESS_MS = 30000, REVEAL_MS = 25000, AUTOSTART_MS = 15000, GONE_MS = 60000, ROOM_TTL = 3 * 3600e3;
+const BAD = /f+u+c+k|sh[i1]t|b[i1]tch|cunt|n[i1]gg|fag|dick|pussy|씨발|시발|병신|좆|썅|개새/i;
+const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const store = { get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const rid = (n, a = ALPHA) => Array.from(crypto.getRandomValues(new Uint32Array(n)), (x) => a[x % a.length]).join('');
+const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const pick = (a) => a[Math.random() * a.length | 0];
+// ponytail: the word and mafia ids are only scrambled in the room doc, so a player reading network traffic could
+// peek. Fine for a party game between friends; real secrecy needs a server function that deals roles.
+const enc = (o) => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).split('').reverse().join('');
+const dec = (s) => { try { return JSON.parse(decodeURIComponent(escape(atob(s.split('').reverse().join(''))))); } catch { return { w: '', m: [] }; } };
+const norm = (s) => s.toLowerCase().replace(/[^a-z가-힣]/g, '');
+const isRight = (guess, word) => { const g = norm(guess), w = norm(word); return !!g && (g === w || g === w + 's' || g + 's' === w || g === w + 'es'); };
+const clean = (t) => t.replace(BAD, '***');
+
+const me = { id: store.get('lm-id', null) || rid(10, 'abcdefghijklmnopqrstuvwxyz0123456789'), name: store.get('lm-name', '') };
+store.set('lm-id', me.id);
+$('name').value = me.name;
+
+// ---------- room rules (pure: take a room, return the changed room, or null for no change) ----------
+const now = () => Date.now();
+const ids = (r) => Object.keys(r.players).sort((a, b) => r.players[a].j - r.players[b].j);
+const secret = (r) => dec(r.secret || '');
+const drawer = (r) => r.order[r.turn % r.order.length];
+const totalTurns = (r) => r.order.length * r.set.lines;
+function newRoom(code, pub) {
+  return { code, pub, created: now(), host: me.id, players: {}, phase: 'lobby', ends: 0, round: 0, set: { lines: 3 }, cat: '', secret: '',
+    order: [], turn: 0, strokes: [], votes: {}, result: null, chat: [], last: '' };
+}
+function join(r, name) {
+  const p = r.players[me.id];
+  if (p) { p.n = name; p.t = now(); return r; }
+  if (Object.keys(r.players).length >= MAXP) return null;
+  const used = new Set(Object.values(r.players).map((x) => x.c));
+  r.players[me.id] = { n: name, c: COLORS.findIndex((_, i) => !used.has(i)), s: 0, j: now(), t: now() };
+  if (!r.players[r.host]) r.host = me.id;
+  sys(r, `${name} joined`);
+  if (r.pub && r.phase === 'lobby' && Object.keys(r.players).length >= MINP && !r.ends) r.ends = now() + AUTOSTART_MS;
+  return r;
+}
+function leave(r, id = me.id) {
+  const p = r.players[id]; if (!p) return null;
+  delete r.players[id]; sys(r, `${p.n} left`);
+  if (r.host === id) r.host = ids(r)[0] || '';
+  return settle(r);
+}
+function sys(r, t) { r.chat = [...r.chat, { p: '', t, a: now() }].slice(-30); }
+function startRound(r) {
+  const people = ids(r);
+  if (people.length < MINP) { r.phase = 'lobby'; r.ends = 0; return r; }
+  const cat = pick(Object.keys(CATS)), word = pick(CATS[cat].filter((w) => w !== r.last));
+  const mafia = shuffle(people).slice(0, people.length >= 7 ? 2 : 1);
+  Object.assign(r, { phase: 'draw', round: r.round + 1, cat, secret: enc({ w: word, m: mafia }), last: word, order: shuffle(people), turn: 0,
+    strokes: [], votes: {}, result: null, ends: now() + TURN_MS });
+  sys(r, `Round ${r.round} · ${cat}`);
+  return settle(r);
+}
+// skip turns of players who left, and move on when every turn or vote is done
+function settle(r) {
+  if (r.phase === 'draw') {
+    while (r.turn < totalTurns(r) && !r.players[drawer(r)]) r.turn++;
+    if (r.turn >= totalTurns(r)) { r.phase = 'vote'; r.ends = now() + VOTE_MS; }
+  }
+  if (r.phase === 'vote') {
+    const voters = r.order.filter((id) => r.players[id]);
+    if (voters.length && voters.every((id) => r.votes[id])) return tally(r);
+  }
+  if (r.phase !== 'lobby' && ids(r).length === 0) r.phase = 'lobby';
+  return r;
+}
+function addStroke(r, pts) {
+  if (r.phase !== 'draw' || drawer(r) !== me.id) return null;
+  r.strokes = [...r.strokes, { p: me.id, d: pts }]; r.turn++; r.ends = now() + TURN_MS;
+  return settle(r);
+}
+function vote(r, target) {
+  if (r.phase !== 'vote' || !r.order.includes(me.id) || target === me.id) return null;
+  r.votes[me.id] = target;
+  return settle(r);
+}
+function tally(r) {
+  const count = {}; for (const t of Object.values(r.votes)) count[t] = (count[t] || 0) + 1;
+  const top = Math.max(0, ...Object.values(count)), leaders = Object.keys(count).filter((k) => count[k] === top);
+  const accused = top > 0 && leaders.length === 1 ? leaders[0] : null, { m } = secret(r);
+  r.result = { accused, count };
+  if (accused && m.includes(accused)) { r.phase = 'guess'; r.ends = now() + GUESS_MS; return r; }
+  return finish(r, 'mafia', '');
+}
+function finish(r, winner, guess) {
+  const { w, m } = secret(r);
+  for (const id of r.order) if (r.players[id]) r.players[id].s += winner === 'town' ? (m.includes(id) ? 0 : 1) : (m.includes(id) ? (guess ? 3 : 2) : 0);
+  r.result = { ...r.result, winner, guess, word: w, mafia: m };
+  r.phase = 'reveal'; r.ends = now() + REVEAL_MS;
+  return r;
+}
+function guessWord(r, g) {
+  const { w, m } = secret(r);
+  if (r.phase !== 'guess' || !m.includes(me.id)) return null;
+  return finish(r, isRight(g, w) ? 'mafia' : 'town', g || '');
+}
+function tick(r) { // runs when the current deadline has passed
+  if (r.ends > now()) return null;
+  if (r.phase === 'lobby') return r.pub && r.ends ? startRound(r) : null;
+  if (r.phase === 'draw') { r.turn++; r.ends = now() + TURN_MS; return settle(r); }
+  if (r.phase === 'vote') return tally(r);
+  if (r.phase === 'guess') return finish(r, 'town', '');
+  if (r.phase === 'reveal') return startRound(r);
+  return null;
+}
+function prune(r) { // drop players whose tab has been gone a while
+  const gone = ids(r).filter((id) => id !== me.id && now() - r.players[id].t > GONE_MS);
+  if (!gone.length) return null;
+  for (const id of gone) leave(r, id);
+  return r;
+}
+
+// ---------- sync: Firestore online, or a local room for the preview demo ----------
+const fb = initializeApp({ apiKey: 'AIzaSyDz5J34ahi7fP48CU2cPrp1FNmqK-20D5E', authDomain: 'hatdoc-blog-1048.firebaseapp.com', projectId: 'hatdoc-blog-1048' });
+const db = getFirestore(fb);
+const ROOMS = 'lineMafia';
+let room = null, code = '', unsub = null, demo = false, busy = false;
+
+async function mutate(fn) {
+  if (demo) { const r = fn(structuredClone(room)); if (r) { room = r; render(); } return; }
+  if (!code) return;
+  try {
+    await runTransaction(db, async (t) => {
+      const ref = doc(db, ROOMS, code), snap = await t.get(ref);
+      if (!snap.exists()) return;
+      const r = fn(snap.data()); if (r) t.set(ref, r);
+    });
+  } catch (e) { console.warn(e); toast('Connection problem, retrying…'); }
+}
+async function enter(c, makeRoom) { // create (if makeRoom) or join room c, then listen to it
+  const name = $('name').value.trim().slice(0, 12) || 'Player ' + rid(2, '123456789');
+  me.name = clean(name); store.set('lm-name', me.name);
+  const ref = doc(db, ROOMS, c);
+  let ok = false;
+  try {
+    await runTransaction(db, async (t) => {
+      const snap = await t.get(ref);
+      let r = snap.exists() ? snap.data() : null;
+      if (makeRoom) { if (r && now() - r.created < ROOM_TTL) return; r = newRoom(c, makeRoom === 'pub'); }
+      else if (!r || now() - r.created > ROOM_TTL) return;
+      r = join(r, me.name); if (!r) return;
+      t.set(ref, r); ok = true;
+    });
+  } catch (e) { console.warn(e); toast('Could not connect. Check your internet and try again.'); return false; }
+  if (!ok) return false;
+  code = c; location.hash = c;
+  unsub?.(); unsub = onSnapshot(ref, (s) => {
+    const r = s.data() || null;
+    if (r && !r.players[me.id]) { if (!s.metadata.fromCache) { toast('You were removed from the room'); exitRoom(); } return; } // a cached copy from before we joined
+    room = r; render();
+  });
+  return true;
+}
+async function createRoom(pub) { for (let i = 0; i < 5; i++) if (await enter(rid(5), pub ? 'pub' : 'priv')) return; toast('Could not create a room, try again'); }
+async function joinCode(c) {
+  c = c.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (c.length !== 5) return toast('Room codes have 5 characters');
+  if (!(await enter(c, false))) toast('Room not found or full');
+}
+async function quickPlay() { // join the busiest open public room, else open a new one
+  try {
+    const snap = await getDocs(query(collection(db, ROOMS), where('pub', '==', true), limit(30)));
+    const open = snap.docs.map((d) => d.data()).filter((r) => {
+      const ps = Object.values(r.players), live = ps.some((p) => now() - p.t < GONE_MS);
+      return live && ps.length < MAXP && now() - r.created < ROOM_TTL;
+    }).sort((a, b) => (a.phase === 'lobby' ? 0 : 1) - (b.phase === 'lobby' ? 0 : 1) || Object.keys(b.players).length - Object.keys(a.players).length);
+    for (const r of open) if (await enter(r.code, false)) return;
+  } catch (e) { console.warn(e); }
+  await createRoom(true);
+}
+function exitRoom() {
+  unsub?.(); unsub = null; room = null; code = ''; demo = false;
+  history.replaceState(null, '', location.pathname + location.search);
+  render();
+}
+async function leaveRoom() { const c = code; if (c && !demo) await mutate(leave); if (code === c) exitRoom(); }
+
+// heartbeat + deadlines: the host acts right away, anyone else steps in if the host has gone quiet
+setInterval(() => {
+  renderTimer();
+  if (!room || busy || demo) return;
+  const late = now() - room.ends, isHost = room.host === me.id;
+  const job = room.ends && late > (isHost ? 0 : 4000) ? tick
+    : now() - (room.players[me.id]?.t || 0) > 20000 && !document.hidden ? (r) => { // heartbeat; the host (or anyone, once the host is gone) drops dead players
+        if (!r.players[me.id]) return null;
+        r.players[me.id].t = now();
+        return isHost || !r.players[r.host] || now() - r.players[r.host].t > GONE_MS ? prune(r) || r : r;
+      }
+    : null;
+  if (job) { busy = true; mutate(job).finally(() => (busy = false)); }
+}, 500);
+addEventListener('pagehide', () => { if (code && !demo) mutate(leave); });
+
+// ---------- drawing ----------
+const cv = $('paper'), ctx = cv.getContext('2d');
+const B36 = (n) => Math.max(0, Math.min(999, Math.round(n))).toString(36).padStart(2, '0');
+const packPts = (pts) => pts.map(([x, y]) => B36(x) + B36(y)).join('');
+const unpack = (s) => { const o = []; for (let i = 0; i + 3 < s.length; i += 4) o.push([parseInt(s.slice(i, i + 2), 36), parseInt(s.slice(i + 2, i + 4), 36)]); return o; };
+let shown = 0, anim = null, live = null; // strokes already drawn, the one animating in, my stroke in progress
+function strokePath(pts, col, upto = 1) {
+  const n = Math.max(2, Math.ceil(pts.length * upto));
+  ctx.strokeStyle = col; ctx.lineWidth = 11; ctx.lineCap = ctx.lineJoin = 'round';
+  ctx.beginPath(); pts.slice(0, n).forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+  if (pts.length === 1) ctx.lineTo(pts[0][0] + 0.1, pts[0][1]);
+  ctx.stroke();
+}
+const colorOf = (id) => COLORS[room?.players[id]?.c ?? 9] || '#333';
+function drawPaper(t) {
+  ctx.clearRect(0, 0, 1000, 1000);
+  ctx.strokeStyle = '#ece6d6'; ctx.lineWidth = 2;
+  for (let y = 80; y < 1000; y += 80) { ctx.beginPath(); ctx.moveTo(30, y); ctx.lineTo(970, y); ctx.stroke(); }
+  if (!room) return;
+  const S = room.strokes;
+  if (S.length < shown) shown = 0, anim = null;
+  if (!anim && shown < S.length) anim = { i: shown, t0: t };
+  for (let i = 0; i < shown; i++) strokePath(unpack(S[i].d), colorOf(S[i].p));
+  if (anim) {
+    const k = Math.min(1, (t - anim.t0) / 600);
+    strokePath(unpack(S[anim.i].d), colorOf(S[anim.i].p), k);
+    if (k >= 1) { shown = anim.i + 1; anim = null; }
+  }
+  if (live) strokePath(live, colorOf(me.id));
+}
+(function loop(t) { drawPaper(t); requestAnimationFrame(loop); })(0);
+const toPaper = (e) => { const b = cv.getBoundingClientRect(); return [(e.clientX - b.left) / b.width * 1000, (e.clientY - b.top) / b.height * 1000]; };
+cv.addEventListener('pointerdown', (e) => {
+  if (!room || room.phase !== 'draw' || drawer(room) !== me.id || anim) return;
+  cv.setPointerCapture(e.pointerId); live = [toPaper(e)];
+});
+cv.addEventListener('pointermove', (e) => {
+  if (!live) return;
+  const p = toPaper(e), q = live[live.length - 1];
+  if (Math.hypot(p[0] - q[0], p[1] - q[1]) > 7 && live.length < 150) live.push(p);
+});
+const endStroke = () => {
+  if (!live) return;
+  const pts = live; live = null;
+  if (pts.length < 2) return;
+  if (!demo) { shown = room.strokes.length + 1; room.strokes = [...room.strokes, { p: me.id, d: packPts(pts) }]; } // show it now, before the round trip
+  mutate((r) => addStroke(r, packPts(pts)));
+};
+cv.addEventListener('pointerup', endStroke); cv.addEventListener('pointercancel', endStroke);
+
+// ---------- UI ----------
+let hideWord = false, lastTurnPing = '';
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+function toast(t) { $('toast').textContent = t; $('toast').classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => $('toast').classList.remove('show'), 2600); }
+function ping() { // short chime + buzz when it's your turn
+  try { const a = ping.ac ||= new AudioContext(), o = a.createOscillator(), g = a.createGain(); o.frequency.value = 880; g.gain.setValueAtTime(0.15, a.currentTime); g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.3); o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime + 0.3); } catch {}
+  navigator.vibrate?.(120);
+}
+function show(id) { for (const s of ['menu', 'lobby', 'game']) $(s).hidden = s !== id; }
+function playerRow(id, extra = '') {
+  const p = room.players[id];
+  return `<div class="pl" data-id="${id}"><span class="dot" style="background:${COLORS[p.c]}"></span><span class="nm">${esc(p.n)}${id === me.id ? ' <small>(you)</small>' : ''}${id === room.host ? ' <small>👑</small>' : ''}</span>${extra}<span class="sc">${p.s}</span></div>`;
+}
+function render() {
+  if (!room) { show('menu'); return; }
+  if (room.phase === 'lobby') return renderLobby();
+  show('game'); renderGame();
+}
+function renderLobby() {
+  show('lobby');
+  const n = Object.keys(room.players).length, isHost = room.host === me.id;
+  $('lobbyKind').textContent = room.pub ? 'Public room · anyone on Quick Play can join' : 'Private room · share the code';
+  $('lobbyCode').textContent = room.code;
+  $('lobbyPlayers').innerHTML = ids(room).map((id) => playerRow(id, isHost && id !== me.id && !room.pub ? `<button class="x" data-kick="${id}">✕</button>` : '')).join('');
+  $('lobbyHint').textContent = n < MINP ? `Waiting for players… ${n}/${MINP} needed` : room.pub ? 'Starting soon…' : isHost ? `${n} players. Start when everyone's in!` : 'Waiting for the host to start';
+  $('hostSet').hidden = !isHost || room.pub;
+  for (const b of $('hostSet').querySelectorAll('button')) b.classList.toggle('on', +b.dataset.l === room.set.lines);
+  $('startBtn').hidden = room.pub || !isHost; $('startBtn').disabled = n < MINP;
+}
+function renderGame() {
+  const r = room, { w, m } = secret(r), mafia = m.includes(me.id), playing = r.order.includes(me.id), reveal = r.phase === 'reveal';
+  // role card
+  const role = $('role'); role.classList.toggle('mafia', playing && mafia);
+  role.innerHTML = !playing ? `<div><div class="k">Watching</div><div class="big">${esc(r.cat)}</div></div><div class="mut">You'll join next round</div>`
+    : hideWord ? `<div><div class="k">${esc(r.cat)}</div><div class="big">👁 tap to show</div></div>`
+    : mafia ? `<div style="font-size:26px">🕵️</div><div><div class="k">Category: ${esc(r.cat)}</div><div class="big">You are the MAFIA</div>${m.length > 1 ? `<div class="mut">Partner: ${m.filter((x) => x !== me.id).map((x) => esc(r.players[x]?.n || '?')).join(', ')}</div>` : ''}</div>`
+    : `<div style="font-size:26px">✏️</div><div><div class="k">Category: ${esc(r.cat)}</div><div class="big">${esc(w.toUpperCase())}</div></div>`;
+  // status
+  const d = r.phase === 'draw' ? drawer(r) : null, myTurn = d === me.id;
+  const lap = r.phase === 'draw' ? Math.floor(r.turn / r.order.length) + 1 : 0;
+  const [t1, t2] = r.phase === 'draw' ? [myTurn ? '✏️ Your turn: draw ONE line' : `${esc(r.players[d]?.n || '…')} is drawing`, `Lap ${lap} of ${r.set.lines} · line ${r.turn + 1} of ${totalTurns(r)}`]
+    : r.phase === 'vote' ? [playing ? (r.votes[me.id] ? 'Vote cast. Waiting…' : '🗳️ Who is the mafia? Tap a player') : 'Players are voting', `${Object.keys(r.votes).length}/${r.order.filter((id) => r.players[id]).length} voted`]
+    : r.phase === 'guess' ? [mafia ? '🕵️ Caught! Guess the word to steal the win' : `${esc(r.players[r.result.accused]?.n || 'The mafia')} was caught!`, mafia ? 'One guess' : 'The mafia gets one guess at the word…']
+    : ['Round over', 'Next round starts soon'];
+  $('st1').innerHTML = t1; $('st2').textContent = t2;
+  if (myTurn && lastTurnPing !== r.round + ':' + r.turn) { lastTurnPing = r.round + ':' + r.turn; ping(); }
+  cv.classList.toggle('mine', myTurn);
+  $('overlay').hidden = !(r.phase === 'guess' || (r.phase === 'draw' && !playing && r.strokes.length === 0));
+  $('overlayTxt').textContent = r.phase === 'guess' ? '🕵️ The mafia is guessing…' : 'Round in progress';
+  // roster
+  const voting = r.phase === 'vote' && playing && !r.votes[me.id];
+  const vc = r.result?.count || {};
+  $('roster').innerHTML = ids(r).map((id) => {
+    const inRound = r.order.includes(id), lines = r.strokes.filter((s) => s.p === id).length;
+    const tagTxt = reveal && r.result.mafia.includes(id) ? '🕵️' : r.phase === 'vote' && r.votes[id] ? '✅' : inRound && r.phase === 'draw' ? `${lines}/${r.set.lines}` : !inRound ? '👀' : '';
+    const votes = (reveal || r.phase === 'guess') && vc[id] ? ` <small>${vc[id]}🗳️</small>` : '';
+    const row = playerRow(id, `<small>${tagTxt}${votes}</small>`);
+    const cls = [id === d && 'turn', voting && inRound && id !== me.id && 'vote', r.votes[me.id] === id && 'picked', !inRound && 'out'].filter(Boolean).join(' ');
+    return row.replace('class="pl"', `class="pl ${cls}"`);
+  }).join('');
+  // chat
+  const box = $('msgs'), atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 30;
+  box.innerHTML = r.chat.map((c) => c.p ? `<div><b style="color:${colorOf(c.p)}">${esc(r.players[c.p]?.n || '?')}:</b> ${esc(c.t)}</div>` : `<div class="mut" style="text-align:left">${esc(c.t)}</div>`).join('');
+  if (atEnd) box.scrollTop = box.scrollHeight;
+  // actions
+  $('guessForm').hidden = !(r.phase === 'guess' && mafia);
+  $('nextBtn').hidden = !reveal;
+  const res = $('result'); res.hidden = !reveal;
+  if (reveal) {
+    const R = r.result, names = R.mafia.map((x) => esc(r.players[x]?.n || 'someone')).join(' & ');
+    const why = R.winner === 'town' ? (R.guess ? `${names} guessed "${esc(R.guess)}". Wrong!` : `${names} couldn't name the word.`)
+      : R.guess ? `${names} was caught but guessed the word!` : R.accused ? `You voted out ${esc(r.players[R.accused]?.n || 'someone')}, who was innocent.` : 'The vote was a tie, so the mafia slipped away.';
+    res.innerHTML = `<div class="win">${R.winner === 'town' ? '🎉 Town wins!' : '🕵️ Mafia wins!'}</div><div>The word was <b style="color:var(--gold)">${esc(R.word.toUpperCase())}</b> · Mafia: <b style="color:var(--acc)">${names}</b></div><div class="mut">${why}</div>`;
+  }
+}
+function renderTimer() {
+  if (!room || !room.ends) { $('timer').firstChild.style.width = '0'; return; }
+  const total = { draw: TURN_MS, vote: VOTE_MS, guess: GUESS_MS, reveal: REVEAL_MS, lobby: AUTOSTART_MS }[room.phase];
+  const left = Math.max(0, room.ends - now());
+  $('timer').firstChild.style.width = `${Math.min(100, left / total * 100)}%`;
+  if (room.phase === 'lobby' && room.pub && room.ends) $('lobbyHint').textContent = `Starting in ${Math.ceil(left / 1000)}s…`;
+}
+
+// ---------- events ----------
+$('quickBtn').onclick = () => quickPlay();
+$('createBtn').onclick = () => createRoom(false);
+$('joinBtn').onclick = () => joinCode($('codeIn').value);
+$('codeIn').onkeydown = (e) => e.key === 'Enter' && joinCode($('codeIn').value);
+$('leaveBtn').onclick = $('leave2Btn').onclick = () => leaveRoom();
+$('startBtn').onclick = () => mutate((r) => (r.phase === 'lobby' && r.host === me.id ? startRound(r) : null));
+$('nextBtn').onclick = () => mutate((r) => (r.phase === 'reveal' ? startRound(r) : null));
+$('hostSet').onclick = (e) => { const l = +e.target.dataset.l; if (l) mutate((r) => { r.set.lines = l; return r; }); };
+$('lobbyPlayers').onclick = (e) => { const id = e.target.dataset.kick; if (id) mutate((r) => (r.host === me.id ? leave(r, id) : null)); };
+$('roster').onclick = (e) => { const id = e.target.closest('.pl.vote')?.dataset.id; if (id) mutate((r) => vote(r, id)); };
+$('role').onclick = () => { hideWord = !hideWord; render(); };
+const invite = () => `https://rank-game.com/games/line-mafia#${code}`;
+$('shareBtn').onclick = async () => {
+  const text = `Join my Line Mafia room! Code: ${code}`;
+  try { if (navigator.share) await navigator.share({ title: 'Line Mafia', text, url: invite() }); else { await navigator.clipboard.writeText(`${text} ${invite()}`); toast('Invite link copied!'); } } catch {}
+};
+$('copyBtn').onclick = async () => { try { await navigator.clipboard.writeText(code); toast('Code copied'); } catch { toast(code); } };
+$('chatForm').onsubmit = (e) => {
+  e.preventDefault();
+  const t = clean($('chatIn').value.trim()).slice(0, 80); $('chatIn').value = '';
+  if (t) mutate((r) => { if (!r.players[me.id]) return null; r.chat = [...r.chat, { p: me.id, t, a: now() }].slice(-30); return r; });
+};
+$('guessForm').onsubmit = (e) => { e.preventDefault(); const g = $('guessIn').value.trim().slice(0, 30); $('guessIn').value = ''; if (g) mutate((r) => guessWord(r, g)); };
+for (const el of [$('name'), $('codeIn')]) el.addEventListener('keydown', (e) => e.stopPropagation());
+
+// ---------- preview demo: a local room with bots drawing a cat (used for the gameplay clip) ----------
+const arc = (cx, cy, rx, ry, a0, a1, n = 18) => Array.from({ length: n + 1 }, (_, i) => { const a = a0 + (a1 - a0) * i / n; return [cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]; });
+const CAT = [arc(500, 430, 190, 170, Math.PI * 0.95, Math.PI * 2.05), [[340, 330], [360, 170], [450, 270]], [[550, 270], [640, 170], [660, 330]], arc(500, 430, 190, 170, 0.05, Math.PI * 0.95),
+  arc(430, 410, 22, 30, 0, Math.PI * 2, 10), arc(570, 410, 22, 30, 0, Math.PI * 2, 10), [[480, 480], [520, 480], [500, 505], [480, 480]], [[300, 470], [430, 495]], [[700, 470], [570, 495]],
+  arc(500, 760, 230, 160, Math.PI * 1.2, Math.PI * 1.8 + Math.PI * 1.2, 24), [[720, 800], [820, 700], [800, 560]], [[480, 540], [500, 560], [520, 540]]];
+window.startDemo = () => {
+  demo = true; code = 'DEMO1';
+  const bots = [['Ava', 0], ['Leo', 1], ['Mina', 2], ['Sam', 3], ['Jun', 4]], t = now();
+  room = newRoom('DEMO1', false);
+  bots.forEach(([n, c], i) => (room.players['b' + i] = { n, c, s: [2, 1, 3, 0, 1][i], j: t + i, t }));
+  room.players[me.id] = { n: me.name || 'You', c: 5, s: 2, j: t + 9, t };
+  Object.assign(room, { phase: 'draw', round: 3, cat: 'Animals', secret: enc({ w: 'cat', m: ['b3'] }), order: ['b0', me.id, 'b1', 'b2', 'b3', 'b4'], set: { lines: 2 }, ends: t + 60000,
+    chat: [{ p: 'b1', t: 'ok this one is easy', a: t }, { p: 'b3', t: 'yeah totally 😅', a: t }] });
+  let k = 0;
+  const step = setInterval(() => {
+    const r = room; if (!r || !demo) return clearInterval(step);
+    if (r.phase === 'draw') {
+      const id = drawer(r), pts = id === 'b3' ? arc(rand(300, 700), rand(250, 750), 90, 40, 0, Math.PI * 1.3, 10) : CAT[k++ % CAT.length];
+      r.strokes = [...r.strokes, { p: id, d: packPts(pts) }]; r.turn++; settle(r);
+      if (r.phase === 'vote') r.chat = [...r.chat, { p: 'b0', t: 'Sam drew a… noodle?', a: now() }, { p: 'b2', t: 'sus 👀', a: now() }];
+    } else if (r.phase === 'vote') {
+      const next = r.order.find((id) => !r.votes[id]);
+      r.votes[next] = next === 'b3' ? 'b1' : 'b3';
+      if (r.order.every((id) => r.votes[id])) { tally(r); if (r.phase === 'guess') finish(r, 'town', 'dog'); }
+    } else clearInterval(step);
+    room = { ...r }; render();
+  }, 900);
+  render();
+};
+const rand = (a, b) => a + Math.random() * (b - a);
+
+// open a room from the link (#CODE), e.g. rank-game.com/games/line-mafia#K7QXM
+const fromHash = location.hash.slice(1).toUpperCase();
+if (fromHash === 'DEMO') startDemo();
+else if (/^[A-Z2-9]{5}$/.test(fromHash)) { $('codeIn').value = fromHash; if (me.name) joinCode(fromHash); else { toast('Enter your name, then tap Join'); $('name').focus(); } }
+render();
+</script>
+</body>
+</html>
