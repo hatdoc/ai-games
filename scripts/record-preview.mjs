@@ -125,6 +125,22 @@ const BOTS = {
       await page.waitForTimeout(560);
     }
   } },
+  'beat-bloom': { skip: 2.5, len: 8, poster: 4, async play(page) { // Neon Avenue (Normal), jumped to the chorus, played perfectly
+    await page.evaluate(() => {
+      start(SONGS[1], 'normal');
+      const ch = G.music.ev.find((e) => e.sec === 'chorus').t - 2;
+      G.t0 = ac.currentTime + 0.3 - ch; G.sched = G.music.ev.findIndex((e) => e.t >= ch);
+      for (const n of G.notes) if (n.t < ch) { n.judged = n.done = true; }
+      G.combo = 40; G.maxCombo = 40;
+      const done = new Set(), rel = new Set();
+      setInterval(() => {
+        if (state !== 'play') return; const t = songTime();
+        for (const n of G.notes) { if (n.t - t > 0.1) break; if (n.done && !done.has(n) && n.t < ch) continue;
+          if (!done.has(n) && t >= n.t - 0.01) { done.add(n); laneDown(n.lane, n.t + G.t0 + outLat() + save.offset / 1000); if (!n.dur) setTimeout(() => (G.held[n.lane] = false), 60); }
+          if (n.dur && done.has(n) && !rel.has(n) && t >= n.t + n.dur) { rel.add(n); laneUp(n.lane, ac.currentTime); } }
+      }, 5);
+    });
+  } },
   'demolition-rush': { skip: 2, len: 7, poster: 0.5, async play(page) {
     await page.click('#playBtn');
     await page.evaluate(() => setInterval(() => { // smash the leftmost columns, take the first upgrade card
@@ -157,7 +173,7 @@ const server = http.createServer((req, res) => {
 }).listen(0);
 const BASE = `http://localhost:${server.address().port}`;
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] }); // lets audio-clocked games (Beat Bloom) run without a click
 for (const slug of slugs) {
   const bot = BOTS[slug] || GENERIC, out = `${ROOT}/games/${slug}`;
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'preview-'));

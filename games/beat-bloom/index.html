@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Beat Bloom</title>
+<style>
+  :root { --ink: #f4f1ff; --mut: #a9a3c9; --panel: rgba(18, 12, 38, .78); --line: rgba(255, 255, 255, .14); --acc: #ff5fa8; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0718; color: var(--ink);
+    font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
+  canvas { display: block; width: 100vw; height: 100vh; height: 100dvh; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 10px 40px rgba(0, 0, 0, .45); }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  #home { position: fixed; top: 10px; left: 10px; color: var(--ink); text-decoration: none; font-weight: 800; font-size: 13px; padding: 6px 10px; z-index: 5; }
+  /* song select */
+  #menu { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; overflow-y: auto; padding: 56px 12px 24px; box-sizing: border-box; }
+  #menu h1 { margin: 0; font-size: clamp(38px, 8vw, 70px); font-weight: 900; letter-spacing: 2px; font-style: italic;
+    background: linear-gradient(90deg, #ff5fa8, #ffd36a, #6ff0ff); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 4px 20px rgba(255, 95, 168, .45)); }
+  #menu .tag { color: var(--mut); margin: 2px 0 14px; font-weight: 600; text-align: center; }
+  #stats { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; justify-content: center; }
+  .pill { padding: 6px 12px; font-weight: 800; font-size: 13px; }
+  .pill b { color: #ffd36a; }
+  #songs { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; width: min(1100px, 100%); }
+  .song { display: flex; gap: 12px; padding: 10px; align-items: center; position: relative; overflow: hidden; }
+  .song canvas { width: 96px; height: 96px; border-radius: 12px; flex: none; }
+  .song .info { flex: 1; min-width: 0; }
+  .song .ttl { font-weight: 900; font-size: 17px; }
+  .song .meta { color: var(--mut); font-size: 12px; margin: 2px 0 8px; }
+  .diffs { display: flex; gap: 5px; }
+  .diffs button { flex: 1; border: 1px solid var(--line); background: rgba(255, 255, 255, .05); border-radius: 10px; padding: 6px 0 5px; font-weight: 800; font-size: 12px; line-height: 1.2; }
+  .diffs button small { display: block; font-size: 11px; color: #ffd36a; font-weight: 800; min-height: 13px; }
+  .diffs button:hover:not(:disabled) { border-color: rgba(255, 255, 255, .45); background: rgba(255, 255, 255, .1); }
+  .diffs button:disabled { opacity: .35; cursor: default; }
+  .lock { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10, 6, 24, .72); font-weight: 900; border-radius: 16px; }
+  #settings { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-top: 16px; padding: 10px 14px; font-size: 13px; font-weight: 700; color: var(--mut); }
+  #settings label { display: flex; align-items: center; gap: 8px; }
+  #settings input { accent-color: #ff5fa8; width: 110px; }
+  #settings b { color: var(--ink); min-width: 46px; display: inline-block; }
+  .keys { color: var(--mut); font-size: 12px; margin-top: 10px; text-align: center; }
+  kbd { background: rgba(255, 255, 255, .12); border-radius: 5px; padding: 1px 6px; font-weight: 800; color: var(--ink); }
+  /* in-game */
+  #pauseBtn { position: fixed; top: 10px; right: 10px; padding: 7px 12px; font-weight: 800; z-index: 5; }
+  .modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(6, 3, 16, .6); padding: 12px; z-index: 6; }
+  .modal.on { display: flex; }
+  .panel { width: min(430px, 100%); max-height: calc(100dvh - 24px); overflow-y: auto; padding: 20px; box-sizing: border-box; text-align: center; }
+  .grade { font-size: 84px; font-weight: 900; line-height: 1; font-style: italic; margin: 4px 0; }
+  .big { font-size: 34px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .row { display: flex; justify-content: center; gap: 14px; margin: 10px 0; font-weight: 800; font-size: 13px; }
+  .row span { display: flex; flex-direction: column; } .row small { color: var(--mut); font-size: 11px; }
+  .cta { width: 100%; border: 0; border-radius: 12px; padding: 13px; font-weight: 900; font-size: 16px; margin-top: 10px; background: linear-gradient(90deg, #ff5fa8, #ff9a5a); color: #fff; }
+  .ghost { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 11px; font-weight: 800; margin-top: 8px; background: none; }
+  #lb { margin: 12px auto 0; }
+  .newbest { color: #ffd36a; font-weight: 900; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<!-- Shown only when played standalone; inside the blog's iframe the site navbar covers it. -->
+<a id="home" class="card" href="https://rank-game.com/">← Home</a>
+<script>if (top !== self) home.remove();</script>
+<div id="menu">
+  <h1>BEAT BLOOM</h1>
+  <div class="tag">Original songs · tap to the beat · bloom the stage</div>
+  <div id="stats"><div class="pill card">⭐ <b id="starTot">0</b></div><div class="pill card">🏆 <b id="scoreTot">0</b></div></div>
+  <div id="songs"></div>
+  <div id="settings" class="card">
+    <label>Note speed <input type="range" id="speed" min="1" max="8" step="0.5"><b id="speedV"></b></label>
+    <label>Audio offset <input type="range" id="offset" min="-150" max="150" step="5"><b id="offsetV"></b></label>
+  </div>
+  <div class="keys">Keys <kbd>D</kbd> <kbd>F</kbd> <kbd>J</kbd> <kbd>K</kbd> · or tap the lanes · <kbd>Esc</kbd> pauses</div>
+</div>
+<button id="pauseBtn" class="card" hidden>❚❚</button>
+<div class="modal" id="pause"><div class="panel card">
+  <div class="big">Paused</div>
+  <button class="cta" id="resumeBtn">Resume</button>
+  <button class="ghost" id="restartBtn">Restart</button>
+  <button class="ghost" id="quitBtn">Song list</button>
+</div></div>
+<div class="modal" id="result"><div class="panel card">
+  <div id="resSong" style="font-weight:900"></div>
+  <div class="grade" id="resGrade">S</div>
+  <div class="big" id="resScore">0</div>
+  <div class="newbest" id="resBest" hidden>★ NEW BEST ★</div>
+  <div class="row" id="resCounts"></div>
+  <div style="color:var(--mut);font-size:13px" id="resMore"></div>
+  <div id="lb"></div>
+  <button class="cta" id="againBtn">Play again</button>
+  <button class="ghost" id="shareBtn">Share</button>
+  <button class="ghost" id="backBtn">Song list</button>
+</div></div>
+<script src="../leaderboard.js"></script>
+<script>
+// Beat Bloom — original game: code, art (canvas-drawn) and every song (composed here, synthesized live) made from scratch.
+const cv = document.getElementById('c'), ctx = cv.getContext('2d'), $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, t) => a + (b - a) * t, rand = (a, b) => a + Math.random() * (b - a);
+let W, H, dpr;
+
+// ---------- songs ----------
+// Melodies are written as chord-relative degrees (0 = chord root, 2 = third, 4 = fifth, 7 = octave), so they follow
+// the progression and always sit on the harmony. Motifs: [16th-step, degree, length in 16ths] over 2 bars (32 steps).
+const SCALES = { major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10] };
+const SONGS = [
+  { id: 'sunrise', title: 'Sunrise Run', bpm: 112, root: 60, scale: 'major', prog: [0, 4, 5, 3], hue: 32, need: 0,
+    drums: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: '..x...x...x...x.' },
+    A: [[0, 4, 4], [4, 2, 2], [6, 4, 2], [8, 7, 6], [16, 4, 4], [20, 5, 2], [22, 4, 2], [24, 2, 8]],
+    B: [[0, 7, 3], [3, 7, 3], [6, 9, 2], [8, 7, 4], [12, 4, 4], [16, 4, 3], [19, 5, 3], [22, 7, 2], [24, 9, 4], [28, 7, 4]] },
+  { id: 'neon', title: 'Neon Avenue', bpm: 124, root: 57, scale: 'minor', prog: [0, 5, 2, 6], hue: 300, need: 0,
+    drums: { kick: 'x.....x.x.......', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.' },
+    A: [[0, 0, 2], [2, 2, 2], [4, 4, 4], [10, 2, 2], [12, 4, 4], [16, 7, 4], [20, 4, 2], [22, 2, 2], [24, 0, 8]],
+    B: [[0, 7, 2], [2, 7, 2], [4, 9, 2], [6, 7, 2], [8, 4, 4], [12, 2, 2], [14, 4, 2], [16, 7, 2], [18, 9, 2], [20, 11, 4], [24, 9, 2], [26, 7, 2], [28, 4, 4]] },
+  { id: 'lanterns', title: 'Paper Lanterns', bpm: 96, root: 62, scale: 'major', prog: [0, 5, 3, 4], hue: 18, need: 2,
+    drums: { kick: 'x.......x.x.....', snare: '....x.......x...', hat: '..x...x...x...xx' },
+    A: [[0, 4, 6], [6, 2, 2], [8, 4, 8], [16, 7, 6], [22, 4, 2], [24, 2, 8]],
+    B: [[0, 7, 4], [4, 9, 4], [8, 7, 2], [10, 4, 2], [12, 2, 4], [16, 4, 4], [20, 7, 4], [24, 4, 4], [28, 2, 4]] },
+  { id: 'cascade', title: 'Crystal Cascade', bpm: 132, root: 65, scale: 'major', prog: [0, 3, 5, 4], hue: 190, need: 5,
+    drums: { kick: 'x...x...x...x..x', snare: '....x.......x...', hat: 'xxx.xxx.xxx.xxx.' },
+    A: [[0, 0, 2], [2, 2, 2], [4, 4, 2], [6, 7, 2], [8, 4, 2], [10, 2, 2], [12, 4, 4], [16, 2, 2], [18, 4, 2], [20, 7, 2], [22, 9, 2], [24, 7, 4], [28, 4, 4]],
+    B: [[0, 7, 2], [2, 9, 2], [4, 7, 2], [6, 4, 2], [8, 7, 2], [10, 9, 2], [12, 11, 4], [16, 9, 2], [18, 7, 2], [20, 4, 2], [22, 7, 2], [24, 9, 2], [26, 7, 2], [28, 4, 2], [30, 2, 2]] },
+  { id: 'overdrive', title: 'Overdrive', bpm: 150, root: 52, scale: 'minor', prog: [0, 3, 5, 4], hue: 355, need: 8,
+    drums: { kick: 'x..xx...x..xx...', snare: '....x.......x..x', hat: 'x.xxx.xxx.xxx.xx' },
+    A: [[0, 0, 2], [3, 0, 1], [4, 2, 2], [6, 4, 2], [8, 7, 2], [11, 4, 1], [12, 2, 4], [16, 0, 2], [19, 0, 1], [20, 2, 2], [22, 4, 2], [24, 9, 2], [26, 7, 2], [28, 4, 4]],
+    B: [[0, 7, 1], [2, 7, 1], [3, 9, 1], [4, 11, 2], [6, 9, 2], [8, 7, 2], [10, 4, 2], [12, 7, 4], [16, 9, 1], [18, 9, 1], [19, 11, 1], [20, 14, 2], [22, 11, 2], [24, 9, 2], [26, 7, 2], [28, 11, 4]] },
+];
+// Song form: intro, verse, build, chorus, verse, build, chorus ×2 (key lift), outro
+const FORM = [['intro', 4], ['verse', 8], ['build', 4], ['chorus', 8], ['verse', 8], ['build', 4], ['chorus', 8], ['chorus', 8], ['outro', 4]];
+const DIFFS = [{ id: 'easy', name: 'Easy', w: 0.6 }, { id: 'normal', name: 'Normal', w: 0.8 }, { id: 'hard', name: 'Hard', w: 1 }];
+
+function compose(song) {
+  const spb = 60 / song.bpm, s16 = spb / 4, sc = SCALES[song.scale], ev = [];
+  const note = (deg, chord, lift = 0) => { const d = chord + deg, oct = Math.floor(d / 7); return song.root + sc[((d % 7) + 7) % 7] + oct * 12 + lift; };
+  let bar = 0, lastChorus = false;
+  FORM.forEach(([sec, bars], si) => {
+    const lift = sec === 'chorus' && lastChorus ? 2 : 0; // final chorus goes up a step
+    for (let b = 0; b < bars; b++, bar++) {
+      const t0 = bar * 16 * s16, chord = song.prog[bar % 4], full = sec === 'chorus' || sec === 'verse';
+      const add = (type, step, extra = {}) => ev.push({ type, t: t0 + step * s16, sec, ...extra });
+      for (let i = 0; i < 16; i++) {
+        if ((full || sec === 'outro' && b < 2) && song.drums.kick[i] === 'x') add('kick', i);
+        if (full && song.drums.snare[i] === 'x') add('snare', i);
+        if (sec !== 'intro' && song.drums.hat[i] === 'x') add('hat', i, { open: i % 4 === 2 && sec === 'chorus' });
+      }
+      if (sec === 'build') { const n = b < 2 ? 4 : b < 3 ? 8 : 16; for (let i = 0; i < 16; i += 16 / n) add('snare', i, { roll: true }); add('kick', 0); }
+      if (sec === 'chorus' && b === 0) add('crash', 0);
+      // bass: root on beats with an octave push
+      if (sec !== 'intro') for (const [i, len, o] of [[0, 3, 0], [4, 2, 12], [6, 2, 0], [8, 3, 0], [12, 2, 12], [14, 2, 0]]) add('bass', i, { midi: note(0, chord, lift) - 24 + o, dur: len * s16 });
+      // pad: triad, whole bar
+      add('pad', 0, { midis: [0, 2, 4].map((d) => note(d, chord, lift) - 12), dur: 16 * s16 });
+      // arp in chorus / build
+      if (sec === 'chorus' || sec === 'build') for (let i = 0; i < 16; i += 2) add('arp', i, { midi: note([0, 2, 4, 7][(i / 2) % 4], chord, lift) + 12, dur: s16 * 1.5 });
+      // lead melody
+      const motif = sec === 'chorus' ? song.B : sec === 'verse' ? song.A : null;
+      if (motif) for (const [st, deg, len] of motif) if (Math.floor(st / 16) === b % 2) add('lead', st % 16, { midi: note(deg, chord, lift), dur: len * s16, deg: deg + chord });
+    }
+    lastChorus = sec === 'chorus';
+  });
+  ev.sort((a, b) => a.t - b.t);
+  return { ev, spb, length: bar * 16 * s16 };
+}
+
+// Charts come straight from the music: every note is a real melody note or drum hit.
+function chart(song, music, diff) {
+  const spb = music.spb, notes = [], laneFree = [0, 0, 0, 0];
+  const minGap = { easy: spb, normal: spb / 2, hard: spb / 4 }[diff], holdMin = { easy: spb * 1.5, normal: spb, hard: spb }[diff];
+  const lead = music.ev.filter((e) => e.type === 'lead');
+  const degs = lead.map((e) => e.deg), lo = Math.min(...degs), hi = Math.max(...degs);
+  let last = -9, lastLane = -1;
+  const place = (t, lane, dur = 0) => {
+    if (laneFree[lane] > t - 0.02) { const alt = [0, 1, 2, 3].filter((l) => laneFree[l] <= t - 0.02).sort((a, b) => Math.abs(a - lane) - Math.abs(b - lane))[0]; if (alt === undefined) return; lane = alt; }
+    notes.push({ t, lane, dur }); laneFree[lane] = t + dur + 0.05; lastLane = lane;
+  };
+  const cand = [];
+  for (const e of lead) cand.push({ t: e.t, lane: Math.min(3, Math.floor((e.deg - lo) / (hi - lo + 1) * 4)), dur: e.dur, pri: 2, sec: e.sec });
+  if (diff !== 'easy') for (const e of music.ev) if (e.type === 'snare' && !e.roll && e.sec === 'chorus' || e.type === 'snare' && e.roll && diff === 'hard') cand.push({ t: e.t, lane: -1, dur: 0, pri: 1 });
+  if (diff === 'hard') for (const e of music.ev) if (e.type === 'arp' && e.sec === 'chorus') cand.push({ t: e.t, lane: -2, dur: 0, pri: 0 });
+  for (const e of music.ev) if (e.type === 'kick' && (e.sec === 'intro' || e.sec === 'outro' || e.sec === 'build') && Math.round(e.t / spb) % (diff === 'easy' ? 2 : 1) === 0) cand.push({ t: e.t, lane: -3, dur: 0, pri: 1 });
+  cand.sort((a, b) => a.t - b.t || b.pri - a.pri);
+  for (const c of cand) {
+    if (c.t - last < minGap - 0.001) continue;
+    let lane = c.lane;
+    if (lane === -1) lane = lastLane === 0 ? 3 : 0;
+    if (lane === -2) lane = (lastLane + 1 + (Math.round(c.t / (spb / 2)) % 2)) % 4;
+    if (lane === -3) lane = Math.round(c.t / spb) % 2 ? 2 : 1;
+    const hold = c.dur >= holdMin - 0.001 && c.pri === 2;
+    place(c.t, lane, hold ? c.dur * 0.85 : 0);
+    // chords: two notes at once on strong chorus downbeats (normal/hard)
+    if (c.pri === 2 && diff !== 'easy' && c.sec === 'chorus' && Math.round(c.t / spb) % (diff === 'hard' ? 2 : 4) === 0 && !hold) place(c.t, 3 - lane);
+    last = c.t;
+  }
+  return notes.sort((a, b) => a.t - b.t);
+}
+
+// ---------- audio engine ----------
+let ac, master, verb, delay, analyser, noiseBuf;
+function initAudio() {
+  if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
+  ac = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+  const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
+  master = ac.createGain(); master.gain.value = 0.8;
+  analyser = ac.createAnalyser(); analyser.fftSize = 256;
+  master.connect(comp).connect(analyser).connect(ac.destination);
+  // reverb: generated impulse response (decaying noise)
+  verb = ac.createConvolver(); const len = ac.sampleRate * 2.2, ir = ac.createBuffer(2, len, ac.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 3; }
+  verb.buffer = ir; const vg = ac.createGain(); vg.gain.value = 0.28; verb.connect(vg).connect(master);
+  // dotted-eighth echo for the lead
+  delay = ac.createDelay(1); const fb = ac.createGain(), dg = ac.createGain(); fb.gain.value = 0.32; dg.gain.value = 0.22;
+  delay.connect(fb).connect(delay); delay.connect(dg).connect(master);
+  noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const nd = noiseBuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+}
+const hz = (m) => 440 * 2 ** ((m - 69) / 12);
+function env(g, t, a, peak, d) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
+function voice(type, freq, t, a, peak, d, cutoff, dest = master, detune = 0) {
+  const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.value = freq; o.detune.value = detune;
+  let out = o;
+  if (cutoff) { const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = cutoff; o.connect(f); out = f; }
+  env(g, t, a, peak, d); out.connect(g).connect(dest); o.start(t); o.stop(t + a + d + 0.05); return g;
+}
+function noiseHit(t, type, freq, peak, d, q = 1, dest = master) {
+  const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+  s.buffer = noiseBuf; f.type = type; f.frequency.value = freq; f.Q.value = q; env(g, t, 0.002, peak, d);
+  s.connect(f).connect(g).connect(dest); s.start(t, Math.random() * 0.5); s.stop(t + d + 0.05);
+}
+function play(e, t, spb) {
+  switch (e.type) {
+    case 'kick': { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.12); env(g, t, 0.003, 0.9, 0.35); o.connect(g).connect(master); o.start(t); o.stop(t + 0.45); break; }
+    case 'snare': noiseHit(t, 'bandpass', 1900, e.roll ? 0.18 : 0.35, 0.18, 0.8); noiseHit(t, 'bandpass', 1900, 0.08, 0.3, 0.8, verb); if (!e.roll) voice('triangle', 185, t, 0.002, 0.25, 0.08); break;
+    case 'hat': noiseHit(t, 'highpass', 7500, e.open ? 0.12 : 0.08, e.open ? 0.18 : 0.04); break;
+    case 'crash': noiseHit(t, 'highpass', 5000, 0.2, 1.4, 0.5); noiseHit(t, 'highpass', 5000, 0.1, 1.6, 0.5, verb); break;
+    case 'bass': voice('sawtooth', hz(e.midi), t, 0.005, 0.28, e.dur, 520); voice('sine', hz(e.midi), t, 0.005, 0.3, e.dur); break;
+    case 'pad': for (const m of e.midis) for (const dt of [-8, 8]) { voice('sawtooth', hz(m), t, 0.6, 0.025, e.dur, 1100, master, dt); voice('sawtooth', hz(m), t, 0.6, 0.02, e.dur, 1100, verb, dt); } break;
+    case 'arp': voice('square', hz(e.midi), t, 0.004, 0.045, e.dur, 2600); voice('square', hz(e.midi), t, 0.004, 0.03, e.dur, 2600, delay); break;
+    case 'lead': for (const [w, p, dt] of [['square', 0.07, -6], ['sawtooth', 0.05, 6], ['triangle', 0.08, 0]]) voice(w, hz(e.midi), t, 0.01, p, Math.max(0.12, e.dur), 3400, master, dt);
+      voice('triangle', hz(e.midi), t, 0.01, 0.06, Math.max(0.12, e.dur), 3000, delay); voice('triangle', hz(e.midi), t, 0.01, 0.05, Math.max(0.12, e.dur), 3000, verb); break;
+  }
+}
+function previewSong(song) { // short melody snippet on hover/tap in the menu
+  initAudio(); const m = compose(song), t0 = ac.currentTime + 0.05, from = m.ev.find((e) => e.sec === 'chorus').t;
+  for (const e of m.ev) if (e.t >= from && e.t < from + m.spb * 4 && ['lead', 'kick', 'snare', 'hat', 'bass'].includes(e.type)) play(e, t0 + e.t - from, m.spb);
+}
+
+// ---------- save ----------
+let save = { best: {}, speed: 4, offset: 0 };
+try { Object.assign(save, JSON.parse(localStorage.getItem('beatbloom-save')) || {}); } catch {}
+const persist = () => { try { localStorage.setItem('beatbloom-save', JSON.stringify(save)); } catch {} };
+const gradeOf = (s) => (s >= 950000 ? 'S' : s >= 900000 ? 'A' : s >= 800000 ? 'B' : s >= 700000 ? 'C' : 'D');
+const starsOf = (s) => ({ S: 3, A: 2, B: 1, C: 1, D: 0 })[gradeOf(s)];
+const totalStars = () => Object.values(save.best).reduce((a, v) => a + starsOf(v), 0);
+const totalScore = () => SONGS.reduce((sum, s) => sum + Math.max(0, ...DIFFS.map((d) => Math.round((save.best[`${s.id}:${d.id}`] || 0) * d.w))), 0);
+const lb = leaderboard($('lb'), 'beat-bloom', (n) => n.toLocaleString());
+
+// ---------- menu ----------
+function cover(c, song) { // generated album art
+  const g = c.getContext('2d'), w = c.width, h = c.height, hue = song.hue;
+  const bg = g.createLinearGradient(0, 0, w, h); bg.addColorStop(0, `hsl(${hue},80%,55%)`); bg.addColorStop(1, `hsl(${hue + 60},70%,22%)`);
+  g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  g.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 7; i++) { g.strokeStyle = `hsla(${hue + i * 20},90%,70%,${0.5 - i * 0.06})`; g.lineWidth = 3; g.beginPath(); g.arc(w * 0.7, h * 0.35, 10 + i * 13, 0, 7); g.stroke(); }
+  g.globalCompositeOperation = 'source-over';
+  const bars = 14; for (let i = 0; i < bars; i++) { const bh = h * (0.12 + 0.4 * Math.abs(Math.sin(i * 1.7 + song.bpm))); g.fillStyle = `hsla(${hue + 180},90%,85%,.75)`; g.fillRect(i * w / bars + 1, h - bh, w / bars - 2, bh); }
+  g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(0, h * 0.62, w, h * 0.38);
+  g.fillStyle = '#fff'; g.font = `900 ${w * 0.13}px system-ui`; g.fillText(song.title.split(' ')[0].toUpperCase(), w * 0.07, h * 0.8);
+  g.font = `700 ${w * 0.09}px system-ui`; g.fillText(`${song.bpm} BPM`, w * 0.07, h * 0.93);
+}
+function renderMenu() {
+  $('starTot').textContent = totalStars(); $('scoreTot').textContent = totalScore().toLocaleString();
+  const box = $('songs'); box.innerHTML = '';
+  const charts = {};
+  for (const s of SONGS) {
+    const el = document.createElement('div'); el.className = 'song card';
+    const c = document.createElement('canvas'); c.width = c.height = 192; cover(c, s); el.append(c);
+    const info = document.createElement('div'); info.className = 'info';
+    const m = compose(s);
+    info.innerHTML = `<div class="ttl">${s.title}</div><div class="meta">${s.bpm} BPM · ${Math.floor(m.length / 60)}:${String(Math.round(m.length % 60)).padStart(2, '0')} · Rank Game Studio</div>`;
+    const dv = document.createElement('div'); dv.className = 'diffs';
+    for (const d of DIFFS) {
+      const best = save.best[`${s.id}:${d.id}`], b = document.createElement('button');
+      const n = chart(s, m, d.id).length;
+      b.innerHTML = `${d.name}<small>${best ? gradeOf(best) + ' ' + Math.round(best / 1000) + 'k' : n + ' notes'}</small>`;
+      b.onclick = () => start(s, d.id);
+      dv.append(b);
+    }
+    info.append(dv); el.append(info);
+    c.onclick = () => previewSong(s); c.title = 'Tap to preview';
+    if (totalStars() < s.need) el.insertAdjacentHTML('beforeend', `<div class="lock">🔒 ${s.need} ⭐ to unlock</div>`);
+    box.append(el);
+  }
+}
+$('speed').value = save.speed; $('offset').value = save.offset;
+const showSettings = () => { $('speedV').textContent = (+save.speed).toFixed(1); $('offsetV').textContent = `${save.offset > 0 ? '+' : ''}${save.offset} ms`; };
+$('speed').oninput = (e) => { save.speed = +e.target.value; persist(); showSettings(); };
+$('offset').oninput = (e) => { save.offset = +e.target.value; persist(); showSettings(); };
+showSettings();
+
+// ---------- gameplay ----------
+const LANES = 4, KEYS = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'], ALTKEYS = ['ArrowLeft', 'ArrowDown', 'ArrowUp', 'ArrowRight'];
+const LANE_COL = ['#ff5fa8', '#ffd36a', '#6ff0ff', '#9d7bff'];
+const JUDGE = [{ name: 'PERFECT', win: 0.045, val: 1, col: '#ffe680' }, { name: 'GREAT', win: 0.09, val: 0.8, col: '#7dffb0' }, { name: 'GOOD', win: 0.14, val: 0.45, col: '#7fc8ff' }];
+const MISS_WIN = 0.16;
+let G = null, state = 'menu';
+function start(song, diff) {
+  initAudio();
+  const music = compose(song), notes = chart(song, music, diff).map((n) => ({ ...n, hit: false, judged: false, holding: false, done: false }));
+  G = { song, diff, music, notes, idx: 0, sched: 0, t0: ac.currentTime + 2.2, score: 0, combo: 0, maxCombo: 0, counts: [0, 0, 0, 0], perNote: 1e6 / notes.length,
+    pops: [], parts: [], press: [0, 0, 0, 0], held: [false, false, false, false], flash: 0, ended: false, bloom: 0, judge: null };
+  state = 'play'; $('menu').hidden = true; $('pauseBtn').hidden = false; $('home').hidden = true;
+}
+const outLat = () => (ac.outputLatency || ac.baseLatency || 0);
+const songTime = (ctxT = ac.currentTime) => ctxT - G.t0 - outLat() - save.offset / 1000; // what the player is hearing now
+function schedule() { // look-ahead scheduler: queue sounds 0.25 s ahead on the audio clock
+  const ev = G.music.ev, until = ac.currentTime + 0.25;
+  while (G.sched < ev.length && G.t0 + ev[G.sched].t < until) { const e = ev[G.sched++]; play(e, Math.max(ac.currentTime, G.t0 + e.t), G.music.spb); }
+}
+function judge(n, err) {
+  const j = JUDGE.findIndex((J) => Math.abs(err) <= J.win);
+  if (j < 0) return miss(n);
+  n.judged = true; n.hit = true; n.holding = n.dur > 0;
+  G.counts[j]++; G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo); G.score += G.perNote * JUDGE[j].val;
+  G.judge = { name: JUDGE[j].name, col: JUDGE[j].col, t: 0.5, early: j > 0 ? (err < 0 ? 'EARLY' : 'LATE') : '' };
+  burst(n.lane, j === 0 ? 22 : 12); G.bloom = Math.min(1, G.bloom + 0.12);
+}
+function miss(n) {
+  n.judged = true; n.done = true; G.counts[3]++; G.combo = 0; G.judge = { name: 'MISS', col: '#ff6b7a', t: 0.5, early: '' }; G.flash = 0.25;
+}
+function laneDown(l, ctxT) {
+  if (state !== 'play' || G.held[l]) return;
+  G.held[l] = true; G.press[l] = 1;
+  const t = songTime(ctxT);
+  let best = null;
+  for (let i = G.idx; i < G.notes.length; i++) { const n = G.notes[i]; if (n.t - t > MISS_WIN) break; if (n.lane === l && !n.judged && Math.abs(n.t - t) <= MISS_WIN) { best = n; break; } }
+  if (best) judge(best, t - best.t);
+}
+function laneUp(l, ctxT) {
+  if (state !== 'play') return;
+  G.held[l] = false;
+  const t = songTime(ctxT);
+  for (const n of G.notes) if (n.lane === l && n.holding) {
+    n.holding = false; n.done = true;
+    if (n.t + n.dur - t > 0.15) { G.combo = 0; G.score -= G.perNote * 0.3; G.judge = { name: 'RELEASED', col: '#ff9a7a', t: 0.5, early: '' }; } // let go too soon
+  }
+}
+// input timestamps are converted to the audio clock, so judgement doesn't depend on frame rate
+const evCtxTime = (e) => { if (!ac) return 0; const ts = ac.getOutputTimestamp?.(); return ts && ts.performanceTime ? ts.contextTime + (e.timeStamp - ts.performanceTime) / 1000 + outLat() : ac.currentTime; };
+addEventListener('keydown', (e) => {
+  if (e.code === 'Escape' || e.code === 'KeyP') { if (state === 'play') pause(); else if (state === 'paused') resume(); return; }
+  let l = KEYS.indexOf(e.code); if (l < 0) l = ALTKEYS.indexOf(e.code);
+  if (l >= 0) { e.preventDefault(); if (!e.repeat) laneDown(l, evCtxTime(e)); }
+});
+addEventListener('keyup', (e) => { let l = KEYS.indexOf(e.code); if (l < 0) l = ALTKEYS.indexOf(e.code); if (l >= 0) laneUp(l, evCtxTime(e)); });
+const touchLane = new Map();
+cv.addEventListener('pointerdown', (e) => { if (state !== 'play') return; const l = laneAtX(e.clientX); if (l < 0) return; touchLane.set(e.pointerId, l); laneDown(l, evCtxTime(e)); });
+const up = (e) => { const l = touchLane.get(e.pointerId); if (l === undefined) return; touchLane.delete(e.pointerId); laneUp(l, evCtxTime(e)); };
+addEventListener('pointerup', up); addEventListener('pointercancel', up);
+function pause() { if (state !== 'play') return; state = 'paused'; ac.suspend(); $('pause').classList.add('on'); }
+function resume() { state = 'play'; $('pause').classList.remove('on'); for (let l = 0; l < 4; l++) G.held[l] = false; ac.resume(); }
+$('pauseBtn').onclick = pause; $('resumeBtn').onclick = resume;
+$('restartBtn').onclick = () => { $('pause').classList.remove('on'); stopAudio(); start(G.song, G.diff); };
+$('quitBtn').onclick = () => { $('pause').classList.remove('on'); stopAudio(); toMenu(); };
+addEventListener('blur', () => { if (state === 'play') pause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') pause(); });
+function stopAudio() { // drop queued sounds by swapping in a fresh output chain
+  try { master.disconnect(); } catch {}
+  ac.close(); ac = null; initAudio();
+}
+function toMenu() { state = 'menu'; G = null; $('menu').hidden = false; $('pauseBtn').hidden = true; $('home').hidden = false; renderMenu(); }
+
+function finish() {
+  state = 'result'; G.ended = true;
+  const score = Math.max(0, Math.round(G.score)), key = `${G.song.id}:${G.diff}`, isBest = score > (save.best[key] || 0);
+  if (isBest) { save.best[key] = score; persist(); }
+  const g = gradeOf(score);
+  $('resSong').textContent = `${G.song.title} · ${DIFFS.find((d) => d.id === G.diff).name}`;
+  $('resGrade').textContent = g; $('resGrade').style.color = { S: '#ffd36a', A: '#ff5fa8', B: '#6ff0ff', C: '#9d7bff', D: '#a9a3c9' }[g];
+  $('resScore').textContent = score.toLocaleString(); $('resBest').hidden = !isBest;
+  $('resCounts').innerHTML = ['Perfect', 'Great', 'Good', 'Miss'].map((n, i) => `<span>${G.counts[i]}<small>${n}</small></span>`).join('') + `<span>${G.maxCombo}<small>Max combo</small></span>`;
+  const full = G.counts[3] === 0;
+  $('resMore').textContent = full ? (G.counts[0] === G.notes.length ? '✨ ALL PERFECT ✨' : '🔥 FULL COMBO 🔥') : `${starsOf(score)} ⭐ · ${totalStars()} stars total`;
+  $('result').classList.add('on');
+  lb.show(totalScore());
+}
+$('againBtn').onclick = () => { $('result').classList.remove('on'); stopAudio(); start(G.song, G.diff); };
+$('backBtn').onclick = () => { $('result').classList.remove('on'); stopAudio(); toMenu(); };
+$('shareBtn').onclick = async (e) => {
+  const text = `I got ${$('resGrade').textContent} (${$('resScore').textContent}) on ${G.song.title} [${G.diff}] in Beat Bloom 🎵 Can you beat it?`, url = 'https://rank-game.com/games/beat-bloom';
+  try { if (navigator.share) await navigator.share({ title: 'Beat Bloom', text, url }); else { await navigator.clipboard.writeText(`${text} ${url}`); e.target.textContent = 'Copied!'; } } catch {}
+};
+for (const el of document.querySelectorAll('#menu, .modal, #pauseBtn')) el.addEventListener('pointerdown', (e) => e.stopPropagation());
+
+function burst(lane, n) {
+  const p = laneScreen(lane, 0);
+  for (let i = 0; i < n; i++) { const a = rand(Math.PI * 1.05, Math.PI * 1.95); G.parts.push({ x: p.x, y: p.y, vx: Math.cos(a) * rand(80, 380), vy: Math.sin(a) * rand(80, 380), t: rand(0.3, 0.6), col: LANE_COL[lane], r: rand(2, 4) }); }
+  G.pops.push({ lane, t: 0.3 });
+}
+
+function update(dt) {
+  if (state !== 'play') return;
+  schedule();
+  const t = songTime();
+  while (G.idx < G.notes.length && G.notes[G.idx].judged && (!G.notes[G.idx].holding)) G.idx++;
+  for (let i = G.idx; i < G.notes.length; i++) {
+    const n = G.notes[i]; if (n.t - t > 1) break;
+    if (!n.judged && t - n.t > MISS_WIN) miss(n);
+    if (n.holding) {
+      if (t >= n.t + n.dur) { n.holding = false; n.done = true; burst(n.lane, 10); }
+      else if (Math.random() < dt * 30) G.parts.push({ ...laneScreen(n.lane, 0), vx: rand(-40, 40), vy: rand(-160, -60), t: 0.35, col: LANE_COL[n.lane], r: 2.5 });
+    }
+  }
+  for (const p of G.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 500 * dt; p.t -= dt; }
+  G.parts = G.parts.filter((p) => p.t > 0);
+  for (const p of G.pops) p.t -= dt; G.pops = G.pops.filter((p) => p.t > 0);
+  for (let l = 0; l < 4; l++) G.press[l] = Math.max(G.held[l] ? 0.6 : 0, G.press[l] - dt * 4);
+  if (G.judge) G.judge.t -= dt;
+  G.flash = Math.max(0, G.flash - dt); G.bloom = Math.max(0, G.bloom - dt * 0.08);
+  if (t > G.music.length + 1.2 && !G.ended) finish();
+}
+
+// ---------- drawing: perspective highway ----------
+let hitY, horizon, roadW;
+function resize() { dpr = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; hitY = H * 0.84; horizon = H * 0.16; roadW = Math.min(W * 0.92, 560); }
+addEventListener('resize', resize); resize();
+const persp = (z) => 1 / (1 + z * 3.2); // z: 0 at the hit line, 1 at the far end
+function laneScreen(lane, z, frac = 0.5) { const s = persp(z), y = horizon + (hitY - horizon) * s, x = W / 2 + ((lane + frac) / LANES - 0.5) * roadW * s; return { x, y, s }; }
+function laneAtX(x) { const l = Math.floor(((x - W / 2) / roadW + 0.5) * LANES); return l >= 0 && l < LANES ? l : -1; }
+const lookahead = () => 3.2 / save.speed; // seconds of notes visible on the road
+
+function drawBg(t, beat, hue, level) {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, `hsl(${hue + 40},70%,${6 + level * 6}%)`); g.addColorStop(0.5, `hsl(${hue},75%,${10 + level * 8}%)`); g.addColorStop(1, `hsl(${hue - 30},60%,5%)`);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // pulsing sun on the horizon
+  const pulse = 1 + 0.08 * Math.exp(-((beat % 1) * 6)) + level * 0.2;
+  const sg = ctx.createRadialGradient(W / 2, horizon, 4, W / 2, horizon, H * 0.35 * pulse);
+  sg.addColorStop(0, `hsla(${hue + 30},100%,72%,.9)`); sg.addColorStop(0.3, `hsla(${hue},100%,60%,.35)`); sg.addColorStop(1, `hsla(${hue},100%,50%,0)`);
+  ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H);
+  // spectrum skyline from the live audio
+  if (analyser && state !== 'menu') {
+    const data = new Uint8Array(analyser.frequencyBinCount); analyser.getByteFrequencyData(data);
+    const n = 64, bw = W / n; // mirrored: bass in the middle, highs to the sides
+    for (let i = 0; i < n; i++) {
+      const k = Math.abs(i - (n - 1) / 2) / (n / 2), v = data[Math.floor(k * 70) + 1] / 255, h2 = v * H * 0.2 * (0.5 + k);
+      const bg = ctx.createLinearGradient(0, horizon - h2, 0, horizon);
+      bg.addColorStop(0, `hsla(${hue + 40 + k * 60},100%,75%,${0.05 + v * 0.3})`); bg.addColorStop(1, `hsla(${hue + k * 60},100%,60%,0)`);
+      ctx.fillStyle = bg; ctx.fillRect(i * bw + bw * 0.2, horizon - h2, bw * 0.6, h2);
+    }
+  }
+  // expanding rings on each beat
+  ctx.strokeStyle = `hsla(${hue + 60},100%,75%,${0.25 * Math.exp(-(beat % 1) * 3)})`; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(W / 2, horizon, (beat % 1) * W * 0.6, (beat % 1) * H * 0.08, 0, 0, 7); ctx.stroke();
+}
+const STARS = Array.from({ length: 140 }, () => ({ a: Math.random() * Math.PI * 2, r: Math.random(), z: Math.random() }));
+function drawWarp(dt, hue, level) { // stars stream out from the horizon; faster with a big combo
+  const sp = 0.25 + level * 1.2;
+  ctx.lineCap = 'round';
+  for (const st of STARS) {
+    st.z -= dt * sp; if (st.z <= 0.22) { st.z = 1; st.a = Math.random() * Math.PI * 2; st.r = Math.random(); }
+    const k = 1 / st.z, d = (0.04 + st.r * 0.5) * Math.min(W, H) * 0.12, x = W / 2 + Math.cos(st.a) * d * k, y = horizon + Math.sin(st.a) * d * k * 0.6;
+    const k2 = 1 / Math.min(1, st.z + 0.04 + level * 0.06), x2 = W / 2 + Math.cos(st.a) * d * k2, y2 = horizon + Math.sin(st.a) * d * k2 * 0.6;
+    ctx.strokeStyle = `hsla(${hue + 50},100%,85%,${(1 - st.z) * (0.25 + level * 0.35)})`; ctx.lineWidth = 0.6 + (1 - st.z) * 1.4;
+    ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x, y); ctx.stroke();
+  }
+}
+function drawPillars(t, hue) { // neon posts on both sides of the road, one per beat, rushing toward you
+  const la = lookahead(), spb = G.music.spb;
+  for (let k = Math.ceil(t / spb); k * spb < t + la * 1.1; k++) {
+    const z = (k * spb - t) / la; if (z < -0.05) continue;
+    const s = persp(z), a = Math.min(1, (1.1 - z) * 2), strong = k % 4 === 0;
+    for (const side of [-1, 1]) {
+      const base = laneScreen(side < 0 ? 0 : 3, z, side < 0 ? 0 : 1), x = base.x + side * 26 * s, h = (strong ? 150 : 90) * s, w = Math.max(1.5, 6 * s);
+      const pg = ctx.createLinearGradient(0, base.y - h, 0, base.y);
+      pg.addColorStop(0, `hsla(${hue + (strong ? 60 : 20)},100%,75%,0)`); pg.addColorStop(1, `hsla(${hue + (strong ? 60 : 20)},100%,70%,${0.85 * a})`);
+      ctx.fillStyle = pg; ctx.fillRect(x - w / 2, base.y - h, w, h);
+      ctx.fillStyle = `hsla(${hue + 60},100%,85%,${0.6 * a})`; ctx.beginPath(); ctx.ellipse(x, base.y, w * 2.2, w * 0.8, 0, 0, 7); ctx.fill();
+    }
+  }
+}
+function drawRoad(t, beat, hue) {
+  // road surface
+  const far = laneScreen(0, 1, 0), farR = laneScreen(3, 1, 1), nearL = laneScreen(0, -0.06, 0), nearR = laneScreen(3, -0.06, 1);
+  const rg = ctx.createLinearGradient(0, horizon, 0, H);
+  rg.addColorStop(0, 'rgba(10,6,24,.2)'); rg.addColorStop(1, 'rgba(10,6,24,.88)');
+  ctx.fillStyle = rg; ctx.beginPath(); ctx.moveTo(far.x, far.y); ctx.lineTo(farR.x, farR.y); ctx.lineTo(nearR.x, nearR.y + 40); ctx.lineTo(nearL.x, nearL.y + 40); ctx.fill();
+  // lane press glow
+  for (let l = 0; l < LANES; l++) if (G.press[l] > 0) {
+    const a = laneScreen(l, 1, 0), b = laneScreen(l, 1, 1), c = laneScreen(l, 0, 1), d = laneScreen(l, 0, 0);
+    const lg = ctx.createLinearGradient(0, hitY, 0, horizon); lg.addColorStop(0, LANE_COL[l] + Math.round(G.press[l] * 90).toString(16).padStart(2, '0')); lg.addColorStop(1, LANE_COL[l] + '00');
+    ctx.fillStyle = lg; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.fill();
+  }
+  // moving cross lines on every beat
+  const la = lookahead(), spb = G.music.spb;
+  ctx.lineWidth = 1;
+  for (let k = Math.ceil(t / spb); k * spb < t + la; k++) {
+    const z = (k * spb - t) / la, l = laneScreen(0, z, 0), r = laneScreen(3, z, 1);
+    ctx.strokeStyle = `hsla(${hue + 40},100%,80%,${(k % 4 === 0 ? 0.35 : 0.12) * (1 - z)})`; ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(r.x, r.y); ctx.stroke();
+  }
+  // lane dividers
+  for (let l = 0; l <= LANES; l++) {
+    const a = laneScreen(Math.min(l, 3), 1, l === 4 ? 1 : 0), b = laneScreen(Math.min(l, 3), -0.06, l === 4 ? 1 : 0);
+    ctx.strokeStyle = l === 0 || l === 4 ? `hsla(${hue + 60},100%,75%,.8)` : 'rgba(255,255,255,.12)'; ctx.lineWidth = l === 0 || l === 4 ? 2.5 : 1;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+  // hit line + receptors
+  const hl = laneScreen(0, 0, 0), hr = laneScreen(3, 0, 1);
+  ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 3; ctx.shadowColor = '#fff'; ctx.shadowBlur = 12;
+  ctx.beginPath(); ctx.moveTo(hl.x, hitY); ctx.lineTo(hr.x, hitY); ctx.stroke(); ctx.shadowBlur = 0;
+  for (let l = 0; l < LANES; l++) {
+    const p = laneScreen(l, 0), w = roadW / LANES * 0.8, pr = G.press[l];
+    ctx.fillStyle = LANE_COL[l] + (pr > 0 ? 'cc' : '33'); ctx.beginPath(); ctx.roundRect(p.x - w / 2, hitY - 9 - pr * 3, w, 18 + pr * 6, 9); ctx.fill();
+    ctx.strokeStyle = LANE_COL[l]; ctx.lineWidth = 2; ctx.stroke();
+    if (W > 700) { ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.font = '800 12px system-ui'; ctx.textAlign = 'center'; ctx.fillText('DFJK'[l], p.x, hitY + 30); }
+  }
+}
+function drawNotes(t) {
+  const la = lookahead();
+  for (let i = G.notes.length - 1; i >= G.idx; i--) {
+    const n = G.notes[i];
+    if (n.done || (n.hit && !n.holding)) continue;
+    const z0 = (n.t - t) / la; if (z0 > 1.05) continue;
+    const col = LANE_COL[n.lane];
+    if (n.dur > 0) { // hold trail
+      const zs = Math.max(0, z0), ze = Math.min(1, (n.t + n.dur - t) / la);
+      if (ze > zs) {
+        const a = laneScreen(n.lane, zs, 0.3), b = laneScreen(n.lane, zs, 0.7), c = laneScreen(n.lane, ze, 0.7), d = laneScreen(n.lane, ze, 0.3);
+        const tg = ctx.createLinearGradient(0, a.y, 0, c.y); tg.addColorStop(0, col + (n.holding ? 'ee' : '99')); tg.addColorStop(1, col + '33');
+        ctx.fillStyle = tg; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.fill();
+      }
+      if (n.holding) continue;
+    }
+    if (z0 < -0.08) continue;
+    const p = laneScreen(n.lane, Math.max(z0, -0.08)), w = roadW / LANES * 0.82 * p.s, h = 16 * p.s + 4;
+    ctx.shadowColor = col; ctx.shadowBlur = 18 * p.s;
+    const ng = ctx.createLinearGradient(0, p.y - h, 0, p.y + h); ng.addColorStop(0, '#ffffff'); ng.addColorStop(0.35, col); ng.addColorStop(1, col);
+    ctx.fillStyle = ng; ctx.beginPath(); ctx.roundRect(p.x - w / 2, p.y - h / 2, w, h, h / 2); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(p.x - w * 0.3, p.y - h * 0.22, w * 0.6, Math.max(1, h * 0.14));
+  }
+}
+function drawHud(t) {
+  // judgement + combo
+  if (G.judge && G.judge.t > 0) {
+    const k = G.judge.t / 0.5, y = hitY - H * 0.24 - (1 - k) * 12;
+    ctx.globalAlpha = Math.min(1, k * 2); ctx.textAlign = 'center';
+    ctx.font = `900 ${Math.round(30 + (1 - k) * 4)}px system-ui`; ctx.fillStyle = G.judge.col; ctx.shadowColor = G.judge.col; ctx.shadowBlur = 16;
+    ctx.fillText(G.judge.name, W / 2, y); ctx.shadowBlur = 0;
+    if (G.judge.early) { ctx.font = '800 12px system-ui'; ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillText(G.judge.early, W / 2, y + 20); }
+    ctx.globalAlpha = 1;
+  }
+  if (G.combo >= 3) {
+    ctx.textAlign = 'center'; ctx.font = `900 ${Math.min(64, 34 + G.combo / 10)}px system-ui`; ctx.fillStyle = 'rgba(255,255,255,.9)';
+    ctx.fillText(G.combo, W / 2, H * 0.42); ctx.font = '800 12px system-ui'; ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillText('COMBO', W / 2, H * 0.42 + 18);
+  }
+  // score + progress
+  ctx.textAlign = 'right'; ctx.font = '900 22px system-ui'; ctx.fillStyle = '#fff';
+  ctx.fillText(Math.max(0, Math.round(G.score)).toLocaleString().padStart(7, ' '), W - 64, 32);
+  ctx.textAlign = 'left'; ctx.font = '800 13px system-ui'; ctx.fillStyle = 'rgba(255,255,255,.75)';
+  ctx.fillText(`${G.song.title} · ${DIFFS.find((d) => d.id === G.diff).name}`, 14, 30);
+  const prog = clamp(t / G.music.length, 0, 1);
+  ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(0, 0, W, 4); ctx.fillStyle = LANE_COL[0]; ctx.fillRect(0, 0, W * prog, 4);
+  if (t < 0) { ctx.textAlign = 'center'; ctx.font = '900 46px system-ui'; ctx.fillStyle = '#fff'; ctx.fillText(Math.ceil(-t) > 2 ? 'READY' : Math.ceil(-t), W / 2, H * 0.4); }
+}
+function draw(now) {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (state === 'menu' || !G) { drawBg(now / 1000, now / 1000 * 1.9, 290, 0); return; }
+  const t = state === 'result' ? G.music.length : songTime(), beat = Math.max(0, t) / G.music.spb;
+  const level = G.bloom * 0.6 + Math.min(1, G.combo / 80) * 0.4;
+  drawBg(now / 1000, beat, G.song.hue, level);
+  ctx.globalCompositeOperation = 'lighter'; drawWarp(state === 'play' ? 1 / 60 : 0, G.song.hue, level); ctx.globalCompositeOperation = 'source-over';
+  drawRoad(t, beat, G.song.hue);
+  ctx.globalCompositeOperation = 'lighter'; drawPillars(t, G.song.hue); ctx.globalCompositeOperation = 'source-over';
+  drawNotes(t);
+  for (const p of G.pops) { const q = laneScreen(p.lane, 0), k = p.t / 0.3; ctx.strokeStyle = LANE_COL[p.lane]; ctx.globalAlpha = k; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(q.x, hitY, roadW / LANES * (0.6 - k * 0.2), 22 * (1.4 - k), 0, 0, 7); ctx.stroke(); }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'lighter';
+  for (const p of G.parts) { ctx.globalAlpha = Math.min(1, p.t * 3); ctx.fillStyle = p.col; ctx.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r); }
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  if (G.flash > 0) { ctx.fillStyle = `rgba(255,60,90,${G.flash * 0.5})`; ctx.fillRect(0, 0, W, H); }
+  drawHud(t);
+}
+
+renderMenu();
+let last = performance.now();
+function frame(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now; update(dt); draw(now); requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
