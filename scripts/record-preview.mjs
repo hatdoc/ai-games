@@ -95,6 +95,21 @@ const BOTS = {
       if (state === 'fight') { if (T > 0.8 && down) release(); else if (T < 0.6 && !down) press(); }
     }, 30));
   } },
+  'petal-grove': { skip: 2, len: 8, poster: 3, async play(page) { // a lush spring garden with visitors; tap a few blooms for petals
+    await page.mouse.click(480, 270);
+    await page.evaluate(() => {
+      const fl = ['daisy', 'tulip', 'poppy', 'lavender', 'sunflower', 'bluebell', 'rose', 'lily', 'peony', 'cherry', 'moonflower', 'snowdrop', 'lotus', 'goldlotus'];
+      const decos = { 1: 'lantern', 4: 'birdbath', 8: 'pond', 13: 'bench', 22: 'gnome', 16: 'chime' };
+      garden = Array.from({ length: 24 }, (_, i) => decos[i] ? { d: decos[i] } : { f: fl[i % fl.length], g: 1, w: 1, y: Math.random() });
+      Object.assign(save, { petals: 4820, open: 24, seeds: fl, day: 0, music: false });
+      clock = 0.24; updateHud();
+      visitT = 0; for (let k = 0; k < 50; k++) updateVisitors(0.5); for (const a of visitors) a.t = 2;
+    });
+    for (let k = 0; k < 6; k++) {
+      await page.waitForTimeout(1300);
+      await page.evaluate(() => { const i = garden.findIndex((p) => p?.f && Math.random() < 0.2); if (i >= 0) collect(i, true); });
+    }
+  } },
   'demolition-rush': { skip: 2, len: 7, poster: 0.5, async play(page) {
     await page.click('#playBtn');
     await page.evaluate(() => setInterval(() => { // smash the leftmost columns, take the first upgrade card
