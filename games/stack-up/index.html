@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Stack Up</title>
-<script src="../cloudsave.js" data-game="stack-up" data-keys="stackup-best"></script>
+<script src="../cloudsave.js" data-game="stack-up" data-keys="stackup-best stackup-floors"></script>
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #111; color: #fff; font: 16px system-ui, sans-serif;
     user-select: none; -webkit-user-select: none; touch-action: none; }
@@ -30,8 +30,9 @@
 <a id="home" href="https://rank-game.com/">← Home</a>
 <script>if (top !== self) home.remove();</script>
 <div id="over" hidden>
-  <h2>TOWER HEIGHT</h2>
+  <h2>SCORE</h2>
   <div id="final">0</div>
+  <div id="floorsTxt" style="opacity:.7;font-weight:700"></div>
   <div id="newBest" hidden>★ NEW BEST! ★</div>
   <div id="bestTxt"></div>
   <div id="lb"></div>
@@ -54,10 +55,13 @@ addEventListener('resize', resize); resize();
 
 const BH = 26, PERFECT = 5, lb = leaderboard(document.getElementById('lb'), 'stack-up');
 let best = 0;
-try { best = +localStorage.getItem('stackup-best') || 0; } catch {}
-let stack, cur, falling, parts, popups, combo, state = 'ready', cam, zoom, baseW, hue0, overAt;
+let bestFloors = 0; // the dashed BEST line marks your highest tower
+try { best = +localStorage.getItem('stackup-best') || 0; bestFloors = +localStorage.getItem('stackup-floors') || 0; } catch {}
+let stack, cur, falling, parts, popups, combo, points, state = 'ready', cam, zoom, baseW, hue0, overAt;
 
-const score = () => stack.length - 1;
+const floors = () => stack.length - 1;
+// points: +1 per block; a perfect drop adds the combo on top (+2, +3, +4… capped at +11)
+const gain = () => 1 + Math.min(combo, 10);
 const hue = (i) => (hue0 + i * 4) % 360;
 const groundY = () => H - 60;
 const sy = (bottom) => groundY() - bottom - BH + cam; // screen y of a block's top edge
@@ -66,7 +70,7 @@ function reset() {
   baseW = Math.min(W * 0.55, 260);
   hue0 = Math.random() * 360;
   stack = [{ x: (W - baseW) / 2, w: baseW }];
-  combo = 0; falling = []; parts = []; popups = []; cam = 0; zoom = 1;
+  combo = 0; points = 0; falling = []; parts = []; popups = []; cam = 0; zoom = 1;
   spawn();
 }
 
@@ -83,20 +87,21 @@ function drop() {
     if (combo >= 3 && w < baseW) { const g = Math.min(12, baseW - w); w += g; x -= g / 2; } // streak regrows the block
     stack.push({ x, w, flash: 1 });
     burst(x, w, lvl);
-    popup(combo > 1 ? `PERFECT ×${combo}` : 'PERFECT');
+    points += gain();
+    popup(combo > 1 ? `PERFECT ×${combo}  +${gain()}` : `PERFECT  +${gain()}`);
     tone(440 * 2 ** ([0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24][Math.min(combo - 1, 10)] / 12), 0.25, 'sine', 0.2);
     navigator.vibrate?.(15);
   } else {
     const L = Math.max(cur.x, top.x), R = Math.min(cur.x + cur.w, top.x + top.w);
     if (R <= L) { falling.push(piece(cur.x, cur.w, lvl, cur.dir)); return gameOver(); }
-    combo = 0;
+    combo = 0; points += 1;
     if (cur.x < top.x) falling.push(piece(cur.x, top.x - cur.x, lvl, -1));
     else falling.push(piece(R, cur.x + cur.w - R, lvl, 1));
     stack.push({ x: L, w: R - L });
     tone(130, 0.08, 'square', 0.05);
   }
-  if (score() === best + 1 && best > 0) popup('NEW RECORD!');
-  else if (score() % 25 === 0) popup(`${score()} 🔥`);
+  if (best > 0 && points > best && points - gain() <= best) popup('NEW RECORD!');
+  else if (floors() % 25 === 0) popup(`${floors()} floors 🔥`);
   spawn();
 }
 
@@ -113,12 +118,14 @@ const popup = (text) => popups.push({ text, t: 1 });
 function gameOver() {
   state = 'over'; overAt = performance.now();
   tone(196, 0.5, 'sawtooth', 0.08);
-  const s = score(), isBest = s > best;
+  const s = points, isBest = s > best;
   if (isBest) { best = s; try { localStorage.setItem('stackup-best', s); } catch {} }
+  if (floors() > bestFloors) { bestFloors = floors(); try { localStorage.setItem('stackup-floors', bestFloors); } catch {} }
   setTimeout(() => {
     document.getElementById('final').textContent = s;
+    document.getElementById('floorsTxt').textContent = `${floors()} floors`;
     document.getElementById('newBest').hidden = !isBest;
-    document.getElementById('bestTxt').textContent = `Best: ${best}`;
+    document.getElementById('bestTxt').textContent = `Best: ${best} points`;
     document.getElementById('over').hidden = false;
     lb.show(s);
   }, 900);
@@ -145,7 +152,7 @@ cv.addEventListener('pointerdown', act);
 addEventListener('keydown', (e) => { if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); act(); } });
 document.getElementById('retry').onclick = retry;
 document.getElementById('share').onclick = async (e) => {
-  const text = `I stacked ${score()} blocks in Stack Up! Can you beat me?`, url = 'https://rank-game.com/games/stack-up';
+  const text = `I scored ${points} points (${floors()} floors) in Stack Up! Can you beat me?`, url = 'https://rank-game.com/games/stack-up';
   try {
     if (navigator.share) await navigator.share({ title: 'Stack Up', text, url });
     else { await navigator.clipboard.writeText(`${text} ${url}`); e.target.textContent = 'Copied!'; }
@@ -154,7 +161,7 @@ document.getElementById('share').onclick = async (e) => {
 
 function update(dt) {
   if (state === 'play') {
-    const speed = Math.min(170 + score() * 6, 480);
+    const speed = Math.min(170 + floors() * 6, 480);
     cur.x += cur.dir * speed * dt;
     if (cur.x > cur.max) { cur.x = cur.max; cur.dir = -1; }
     if (cur.x < cur.min) { cur.x = cur.min; cur.dir = 1; }
@@ -182,7 +189,7 @@ function block(x, y, w, h, alpha = 1) {
 }
 
 function draw() {
-  const h = hue(score());
+  const h = hue(floors());
   const bg = ctx.createLinearGradient(0, 0, 0, H);
   bg.addColorStop(0, `hsl(${(h + 180) % 360},45%,22%)`);
   bg.addColorStop(1, `hsl(${(h + 200) % 360},35%,8%)`);
@@ -193,12 +200,12 @@ function draw() {
 
   ctx.fillStyle = '#0006'; ctx.fillRect(-W * 4, groundY() + cam, W * 9, H * 4); // ground
 
-  if (best > 0) {
-    const y = sy(best * BH);
+  if (bestFloors > 0) {
+    const y = sy(bestFloors * BH);
     ctx.strokeStyle = '#ffd84a'; ctx.setLineDash([8, 8]); ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(-W * 4, y); ctx.lineTo(W * 5, y); ctx.stroke(); ctx.setLineDash([]);
     ctx.fillStyle = '#ffd84a'; ctx.font = '700 12px system-ui'; ctx.textAlign = 'right';
-    ctx.fillText(`BEST ${best}`, W - 12, y - 6);
+    ctx.fillText(`BEST ${bestFloors} floors`, W - 12, y - 6);
   }
 
   stack.forEach((b, i) => {
@@ -222,9 +229,12 @@ function draw() {
     ctx.font = '600 16px system-ui'; ctx.globalAlpha = 0.6 + 0.4 * Math.sin(performance.now() / 300);
     ctx.fillText('Tap or press Space to drop', W / 2, H * 0.28 + 36);
     ctx.globalAlpha = 1;
-    if (best) { ctx.font = '600 14px system-ui'; ctx.fillText(`Best: ${best}`, W / 2, H * 0.28 + 64); }
+    if (best) { ctx.font = '600 14px system-ui'; ctx.fillText(`Best: ${best} points`, W / 2, H * 0.28 + 64); }
   } else if (state === 'play') {
-    ctx.font = '900 56px system-ui'; ctx.globalAlpha = 0.9; ctx.fillText(score(), W / 2, 80); ctx.globalAlpha = 1;
+    ctx.font = '900 56px system-ui'; ctx.globalAlpha = 0.9; ctx.fillText(points, W / 2, 80);
+    ctx.font = '700 14px system-ui'; ctx.globalAlpha = 0.65; ctx.fillText(`${floors()} floors`, W / 2, 102);
+    if (combo >= 2) { ctx.globalAlpha = 1; ctx.fillStyle = '#ffd84a'; ctx.font = '900 18px system-ui'; ctx.fillText(`COMBO ×${combo}`, W / 2, 128); ctx.fillStyle = '#fff'; }
+    ctx.globalAlpha = 1;
   }
   popups.forEach((p, i) => {
     ctx.globalAlpha = Math.min(1, p.t * 2);
