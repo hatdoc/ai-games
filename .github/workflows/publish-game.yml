@@ -31,7 +31,7 @@ jobs:
         run: |
           missing=$(for d in games/*/; do if [ -f "$d/index.html" ] && [ ! -f "$d/preview.webm" ]; then echo "$d"; fi; done)
           [ -z "$missing" ] && exit 0
-          npm i --no-save playwright
+          npm i --no-save playwright@1.63.0 # pinned: CI installs no lockfile
           npx playwright install --with-deps chromium ffmpeg
           node scripts/record-preview.mjs
           git config user.name "github-actions[bot]"
