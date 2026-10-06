@@ -1,6 +1,12 @@
 {
   "title": "Line Mafia",
-  "description": "A drawing liar game for 3–10 players. Everyone gets the secret word except the mafia, who only knows the category. Take turns adding one line each to a shared drawing, then vote on who was faking it. Catch the mafia and the town wins, unless the mafia guesses the word. Play with friends using a room code, or hit Quick Play to join players from around the world.",
-  "tags": ["multiplayer", "party", "drawing", "social deduction", "online"],
+  "description": "A drawing liar game for 3–10 players. Everyone gets the secret word except the mafia, who only knows the category. Take turns adding one line each to a shared drawing, then vote on who was faking it. Catch the mafia and the town wins, unless the mafia guesses the word. Play with friends using a room code, hit Quick Play to join players from around the world, or practice alone against computer players who draw from real doodles.",
+  "tags": [
+    "multiplayer",
+    "party",
+    "drawing",
+    "social deduction",
+    "online"
+  ],
   "emoji": "🕵️"
 }
