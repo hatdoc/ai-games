@@ -76,7 +76,9 @@ ${html.slice(0, 40000)}`;
 }
 
 for (const slug of newSlugs) {
-  const meta = await describe(slug, fs.readFileSync(`games/${slug}/index.html`, 'utf8'));
+  // games/<slug>/meta.json (title, description, tags, emoji) wins; Gemini only writes listings for games without one
+  const own = `games/${slug}/meta.json`;
+  const meta = fs.existsSync(own) ? JSON.parse(fs.readFileSync(own, 'utf8')) : await describe(slug, fs.readFileSync(`games/${slug}/index.html`, 'utf8'));
   games.unshift({
     slug,
     ...meta,
