@@ -383,7 +383,15 @@ const gradeOf = (s) => (s >= 950000 ? 'S' : s >= 900000 ? 'A' : s >= 800000 ? 'B
 const starsOf = (s) => ({ S: 3, A: 2, B: 1, C: 1, D: 0 })[gradeOf(s)];
 const totalStars = () => Object.values(save.best).reduce((a, v) => a + starsOf(v), 0);
 const totalScore = () => SONGS.reduce((sum, s) => sum + Math.max(0, ...DIFFS.map((d) => Math.round((save.best[`${s.id}:${d.id}`] || 0) * d.w))), 0);
-const lb = leaderboard($('lb'), 'beat-bloom', (n) => n.toLocaleString());
+// one leaderboard per song and difficulty (games/beat-bloom_<song>_<diff>), so everyone on a board played the same chart
+const boardFor = (song, diff) => {
+  const b = leaderboard($('lb'), `beat-bloom_${song.id}_${diff}`, (n) => n.toLocaleString());
+  $('lb').querySelector('h3').textContent = `🏆 TOP 10 · ${DIFFS.find((d) => d.id === diff).name}`;
+  return b;
+};
+// energy: right notes refill it, misses, early releases and taps on empty lanes drain it; at 0 the song ends
+const HP_GAIN = [2, 1.5, 0.5], HP_LOSS = { miss: 6, release: 5, ghost: 3 }, HP_SCALE = { easy: 0.6, normal: 1, hard: 1.2, extreme: 1.5 };
+const hurt = (kind) => { G.hp = Math.max(0, G.hp - HP_LOSS[kind] * HP_SCALE[G.diff]); };
 
 // ---------- menu ----------
 function cover(c, song) { // generated album art
@@ -448,7 +456,7 @@ function start(song, diff) {
   initAudio();
   setLanes(lanesFor(diff));
   const music = compose(song), notes = chart(song, music, diff).map((n) => ({ ...n, hit: false, judged: false, holding: false, done: false }));
-  G = { song, diff, music, notes, idx: 0, sched: 0, t0: ac.currentTime + 2.2, score: 0, combo: 0, maxCombo: 0, counts: [0, 0, 0, 0], perNote: 1e6 / notes.length,
+  G = { song, diff, music, notes, idx: 0, sched: 0, t0: ac.currentTime + 2.2, score: 0, combo: 0, maxCombo: 0, counts: [0, 0, 0, 0], perNote: 1e6 / notes.length, hp: 100,
     pops: [], parts: [], press: Array(LANES).fill(0), held: Array(LANES).fill(false), flash: 0, ended: false, bloom: 0, judge: null };
   state = 'play'; $('menu').hidden = true; $('pauseBtn').hidden = false; $('home').hidden = true;
 }
@@ -462,12 +470,12 @@ function judge(n, err) {
   const j = JUDGE.findIndex((J) => Math.abs(err) <= J.win);
   if (j < 0) return miss(n);
   n.judged = true; n.hit = true; n.holding = n.dur > 0;
-  G.counts[j]++; G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo); G.score += G.perNote * JUDGE[j].val;
+  G.counts[j]++; G.combo++; G.hp = Math.min(100, G.hp + HP_GAIN[j]); G.maxCombo = Math.max(G.maxCombo, G.combo); G.score += G.perNote * JUDGE[j].val;
   G.judge = { name: JUDGE[j].name, col: JUDGE[j].col, t: 0.5, early: j > 0 ? (err < 0 ? 'EARLY' : 'LATE') : '' };
   burst(n.lane, j === 0 ? 22 : 12); G.bloom = Math.min(1, G.bloom + 0.12);
 }
 function miss(n) {
-  n.judged = true; n.done = true; G.counts[3]++; G.combo = 0; G.judge = { name: 'MISS', col: '#ff6b7a', t: 0.5, early: '' }; G.flash = 0.25;
+  n.judged = true; n.done = true; G.counts[3]++; G.combo = 0; hurt('miss'); G.judge = { name: 'MISS', col: '#ff6b7a', t: 0.5, early: '' }; G.flash = 0.25;
 }
 function laneDown(l, ctxT) {
   if (state !== 'play' || G.held[l]) return;
@@ -476,6 +484,7 @@ function laneDown(l, ctxT) {
   let best = null;
   for (let i = G.idx; i < G.notes.length; i++) { const n = G.notes[i]; if (n.t - t > MISS_WIN) break; if (n.lane === l && !n.judged && Math.abs(n.t - t) <= MISS_WIN) { best = n; break; } }
   if (best) judge(best, t - best.t);
+  else hurt('ghost'); // tapped a lane with no note
 }
 function laneUp(l, ctxT) {
   if (state !== 'play') return;
@@ -483,7 +492,7 @@ function laneUp(l, ctxT) {
   const t = songTime(ctxT);
   for (const n of G.notes) if (n.lane === l && n.holding) {
     n.holding = false; n.done = true;
-    if (n.t + n.dur - t > 0.15) { G.combo = 0; G.score -= G.perNote * 0.3; G.judge = { name: 'RELEASED', col: '#ff9a7a', t: 0.5, early: '' }; } // let go too soon
+    if (n.t + n.dur - t > 0.15) { G.combo = 0; G.score -= G.perNote * 0.3; G.judge = { name: 'RELEASED', col: '#ff9a7a', t: 0.5, early: '' }; hurt('release'); } // let go too soon
   }
 }
 // input timestamps are converted to the audio clock, so judgement doesn't depend on frame rate
@@ -529,7 +538,18 @@ function finish() {
   const full = G.counts[3] === 0;
   $('resMore').textContent = full ? (G.counts[0] === G.notes.length ? '✨ ALL PERFECT ✨' : '🔥 FULL COMBO 🔥') : `${starsOf(score)} ⭐ · ${totalStars()} stars total`;
   $('result').classList.add('on');
-  lb.show(totalScore());
+  $('lb').hidden = false; boardFor(G.song, G.diff).show(score);
+}
+function fail() { // out of energy: stop the song, no best score or leaderboard entry
+  const cleared = Math.round(clamp(songTime() / G.music.length, 0, 1) * 100); // before stopAudio resets the clock
+  state = 'result'; G.ended = true; stopAudio();
+  $('resSong').textContent = `${G.song.title} · ${DIFFS.find((d) => d.id === G.diff).name}`;
+  $('resGrade').textContent = 'F'; $('resGrade').style.color = '#ff6b7a';
+  $('resScore').textContent = Math.max(0, Math.round(G.score)).toLocaleString(); $('resBest').hidden = true;
+  $('resCounts').innerHTML = ['Perfect', 'Great', 'Good', 'Miss'].map((n, i) => `<span>${G.counts[i]}<small>${n}</small></span>`).join('') + `<span>${cleared}%<small>Cleared</small></span>`;
+  $('resMore').textContent = '💔 Out of energy! Hit the notes to refill the bar.';
+  $('lb').hidden = true;
+  $('result').classList.add('on');
 }
 $('againBtn').onclick = () => { $('result').classList.remove('on'); stopAudio(); start(G.song, G.diff); };
 $('backBtn').onclick = () => { $('result').classList.remove('on'); stopAudio(); toMenu(); };
@@ -564,6 +584,7 @@ function update(dt) {
   for (let l = 0; l < LANES; l++) G.press[l] = Math.max(G.held[l] ? 0.6 : 0, G.press[l] - dt * 4);
   if (G.judge) G.judge.t -= dt;
   G.flash = Math.max(0, G.flash - dt); G.bloom = Math.max(0, G.bloom - dt * 0.08);
+  if (G.hp <= 0 && !G.ended) return fail();
   if (t > G.music.length + 1.2 && !G.ended) finish();
 }
 
@@ -705,6 +726,11 @@ function drawHud(t) {
   ctx.fillText(Math.max(0, Math.round(G.score)).toLocaleString().padStart(7, ' '), W - 64, 32);
   ctx.textAlign = 'left'; ctx.font = '800 13px system-ui'; ctx.fillStyle = 'rgba(255,255,255,.75)';
   ctx.fillText(`${G.song.title} · ${DIFFS.find((d) => d.id === G.diff).name}`, 14, 30);
+  const bw = Math.min(180, W * 0.4), hp = G.hp / 100, low = hp < 0.3 && Math.sin(performance.now() / 90) > 0; // blinks when low
+  ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.beginPath(); ctx.roundRect(14, 40, bw, 8, 4); ctx.fill();
+  ctx.fillStyle = low ? '#fff' : hp > 0.5 ? '#7dffb0' : hp > 0.3 ? '#ffd36a' : '#ff6b7a';
+  ctx.beginPath(); ctx.roundRect(14, 40, Math.max(4, bw * hp), 8, 4); ctx.fill();
+  ctx.font = '800 10px system-ui'; ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillText('ENERGY', 18 + bw, 48);
   const prog = clamp(t / G.music.length, 0, 1);
   ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(0, 0, W, 4); ctx.fillStyle = LANE_COL[0]; ctx.fillRect(0, 0, W * prog, 4);
   if (t < 0) { ctx.textAlign = 'center'; ctx.font = '900 46px system-ui'; ctx.fillStyle = '#fff'; ctx.fillText(Math.ceil(-t) > 2 ? 'READY' : Math.ceil(-t), W / 2, H * 0.4); }
