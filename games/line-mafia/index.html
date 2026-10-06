@@ -504,7 +504,7 @@ $('quickBtn').onclick = () => quickPlay();
 $('createBtn').onclick = () => createRoom(false);
 $('practiceBtn').onclick = () => startPractice();
 $('joinBtn').onclick = () => joinCode($('codeIn').value);
-$('codeIn').onkeydown = (e) => e.key === 'Enter' && joinCode($('codeIn').value);
+$('codeIn').onkeydown = (e) => { if (e.key === 'Enter') joinCode($('codeIn').value); }; // a handler returning false would cancel every keypress
 $('leaveBtn').onclick = $('leave2Btn').onclick = () => leaveRoom();
 $('startBtn').onclick = () => mutate((r) => (r.phase === 'lobby' && r.host === me.id ? startRound(r) : null));
 $('nextBtn').onclick = () => mutate((r) => (r.phase === 'reveal' ? startRound(r) : null));
