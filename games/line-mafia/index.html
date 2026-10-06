@@ -100,6 +100,7 @@
     <input id="name" maxlength="12" placeholder="Your name" autocomplete="off">
     <button class="cta" id="quickBtn">⚡ Quick Play: join random players</button>
     <button id="createBtn">🔒 Create private room</button>
+    <button id="practiceBtn">🤖 Practice vs computer</button>
     <div class="or">or join friends with a code</div>
     <div class="row"><input id="codeIn" maxlength="5" placeholder="CODE" autocomplete="off" style="text-transform:uppercase;letter-spacing:3px;text-align:center"><button id="joinBtn">Join</button></div>
   </div>
@@ -109,7 +110,8 @@
     ✏️ Take turns drawing <b>one line</b> each on a shared page, a few laps around the table.<br>
     🕵️ The <b>mafia</b> has to fake it: draw something that fits without giving themselves away.<br>
     🗳️ Then vote. Catch the mafia and the town wins, unless the mafia <b>guesses the word</b>.<br>
-    👥 3–10 players. Share the room code with friends, or hit Quick Play.
+    👥 3–10 players. Share the room code with friends, hit Quick Play, or practice against 4 computer players.
+    <div style="margin-top:8px;font-size:11px">Practice doodles: <a href="https://quickdraw.withgoogle.com/data" target="_blank" rel="noopener" style="color:var(--mut)">Quick, Draw!</a> by Google, CC BY 4.0</div>
   </div>
 </div>
 
@@ -216,7 +218,7 @@ function sys(r, t) { r.chat = [...r.chat, { p: '', t, a: now() }].slice(-30); }
 function startRound(r) {
   const people = ids(r);
   if (people.length < MINP) { r.phase = 'lobby'; r.ends = 0; return r; }
-  const cat = pick(Object.keys(CATS)), word = pick(CATS[cat].filter((w) => w !== r.last));
+  const bank = r.practice ? PRACTICE : CATS, cat = pick(Object.keys(bank)), word = pick(bank[cat].filter((w) => w !== r.last));
   const mafia = shuffle(people).slice(0, people.length >= 7 ? 2 : 1);
   Object.assign(r, { phase: 'draw', round: r.round + 1, cat, secret: enc({ w: word, m: mafia }), last: word, order: shuffle(people), turn: 0,
     strokes: [], votes: {}, result: null, ends: now() + TURN_MS });
@@ -282,14 +284,14 @@ function prune(r) { // drop players whose tab has been gone a while
   return r;
 }
 
-// ---------- sync: Firestore online, or a local room for the preview demo ----------
+// ---------- sync: Firestore online, or a local room (practice vs computer, preview demo) ----------
 const fb = initializeApp({ apiKey: 'AIzaSyDz5J34ahi7fP48CU2cPrp1FNmqK-20D5E', authDomain: 'hatdoc-blog-1048.firebaseapp.com', projectId: 'hatdoc-blog-1048' });
 const db = getFirestore(fb);
 const ROOMS = 'lineMafia';
-let room = null, code = '', unsub = null, demo = false, busy = false;
+let room = null, code = '', unsub = null, local = false, demo = false, busy = false;
 
 async function mutate(fn) {
-  if (demo) { const r = fn(structuredClone(room)); if (r) { room = r; render(); } return; }
+  if (local) { const r = fn(structuredClone(room)); if (r) { room = r; render(); } return; }
   if (!code) return;
   try {
     await runTransaction(db, async (t) => {
@@ -341,19 +343,20 @@ async function quickPlay() { // join the busiest open public room, else open a n
   await createRoom(true);
 }
 function exitRoom() {
-  unsub?.(); unsub = null; room = null; code = ''; demo = false;
+  unsub?.(); unsub = null; room = null; code = ''; local = demo = false;
   history.replaceState(null, '', location.pathname + location.search);
   render();
 }
-async function leaveRoom() { const c = code; if (c && !demo) await mutate(leave); if (code === c) exitRoom(); }
+async function leaveRoom() { const c = code; if (c && !local) await mutate(leave); if (code === c) exitRoom(); }
 
 // heartbeat + deadlines: the host acts right away, anyone else steps in if the host has gone quiet
 setInterval(() => {
   renderTimer();
   if (!room || busy || demo) return;
+  if (room.practice) botTurn();
   const late = now() - room.ends, isHost = room.host === me.id;
   const job = room.ends && late > (isHost ? 0 : 4000) ? tick
-    : now() - (room.players[me.id]?.t || 0) > 20000 && !document.hidden ? (r) => { // heartbeat; the host (or anyone, once the host is gone) drops dead players
+    : !local && now() - (room.players[me.id]?.t || 0) > 20000 && !document.hidden ? (r) => { // heartbeat; the host (or anyone, once the host is gone) drops dead players
         if (!r.players[me.id]) return null;
         r.players[me.id].t = now();
         return isHost || !r.players[r.host] || now() - r.players[r.host].t > GONE_MS ? prune(r) || r : r;
@@ -361,7 +364,7 @@ setInterval(() => {
     : null;
   if (job) { busy = true; mutate(job).finally(() => (busy = false)); }
 }, 500);
-addEventListener('pagehide', () => { if (code && !demo) mutate(leave); });
+addEventListener('pagehide', () => { if (code && !local) mutate(leave); });
 
 // ---------- drawing ----------
 const cv = $('paper'), ctx = cv.getContext('2d');
@@ -408,7 +411,7 @@ const endStroke = () => {
   if (!live) return;
   const pts = live; live = null;
   if (pts.length < 2) return;
-  if (!demo) { shown = room.strokes.length + 1; room.strokes = [...room.strokes, { p: me.id, d: packPts(pts) }]; } // show it now, before the round trip
+  if (!local) { shown = room.strokes.length + 1; room.strokes = [...room.strokes, { p: me.id, d: packPts(pts) }]; } // show it now, before the round trip
   mutate((r) => addStroke(r, packPts(pts)));
 };
 cv.addEventListener('pointerup', endStroke); cv.addEventListener('pointercancel', endStroke);
@@ -499,6 +502,7 @@ function renderTimer() {
 // ---------- events ----------
 $('quickBtn').onclick = () => quickPlay();
 $('createBtn').onclick = () => createRoom(false);
+$('practiceBtn').onclick = () => startPractice();
 $('joinBtn').onclick = () => joinCode($('codeIn').value);
 $('codeIn').onkeydown = (e) => e.key === 'Enter' && joinCode($('codeIn').value);
 $('leaveBtn').onclick = $('leave2Btn').onclick = () => leaveRoom();
@@ -522,13 +526,76 @@ $('chatForm').onsubmit = (e) => {
 $('guessForm').onsubmit = (e) => { e.preventDefault(); const g = $('guessIn').value.trim().slice(0, 30); $('guessIn').value = ''; if (g) mutate((r) => guessWord(r, g)); };
 for (const el of [$('name'), $('codeIn')]) el.addEventListener('keydown', (e) => e.stopPropagation());
 
+// ---------- practice vs computer: bots build a shared drawing from real Quick, Draw! doodles of the word ----------
+let SK = null, plan = new Set(), ref = { key: '', strokes: [], i: 0 };
+const PRACTICE = {}; // category -> words that have doodles (filled when sketches.json loads)
+const BOTS = ['Ava', 'Leo', 'Mina', 'Sam', 'Jun'];
+const CHATTER = ['hmm 🤔', 'who drew that last one?', 'I know exactly what this is', 'that line was weird', 'sus 👀', 'ok this is easy', 'wait what are we drawing', 'nice line!'];
+async function startPractice() {
+  try { SK ||= await (await fetch('sketches.json')).json(); } catch { return toast('Could not load practice drawings'); }
+  for (const [c, ws] of Object.entries(SK)) PRACTICE[c] = Object.keys(ws);
+  me.name = clean($('name').value.trim().slice(0, 12)) || 'You'; store.set('lm-name', me.name);
+  local = true; code = ''; plan = new Set();
+  const t = now(); room = { ...newRoom('PRACT', false), practice: true };
+  room.players[me.id] = { n: me.name, c: 0, s: 0, j: t, t };
+  BOTS.slice(0, 4).forEach((n, i) => (room.players['bot' + i] = { n: n + ' 🤖', c: i + 1, s: 0, j: t + i + 1, t }));
+  room = startRound(room); render();
+}
+const botIds = (r) => ids(r).filter((id) => id.startsWith('bot'));
+const later = (key, ms, fn) => { if (plan.has(key)) return; plan.add(key); setTimeout(() => room?.practice && mutate(fn), ms); };
+function refStrokes(r) { // the town's shared picture: one doodle of the word (more only if it runs short), stroke by stroke in drawing order
+  const key = r.round + r.last, { m } = secret(r);
+  if (ref.key !== key) {
+    const need = r.order.filter((o) => o.startsWith('bot') && !m.includes(o)).length * r.set.lines, strokes = [];
+    for (const d of shuffle(SK[r.cat][r.last])) if (strokes.length < need) strokes.push(...d);
+    ref = { key, strokes, i: 0 };
+  }
+  return ref;
+}
+function fakeStroke(r) { // the mafia doesn't know the word: borrow a line from a doodle of another word in the category
+  const other = pick(PRACTICE[r.cat].filter((w) => w !== r.last)), d = pick(SK[r.cat][other]);
+  return [...d].sort((a, b) => b.length - a.length)[Math.random() * Math.min(3, d.length) | 0];
+}
+function botTurn() { // runs every 500 ms in practice; schedules each bot action once
+  const r = room, { m, w } = secret(r);
+  if (r.phase === 'draw') {
+    const id = drawer(r);
+    if (id.startsWith('bot')) later(`d${r.round}:${r.turn}`, 900 + Math.random() * 1600, (x) => {
+      if (x.phase !== 'draw' || drawer(x) !== id) return null;
+      const R = refStrokes(x), d = m.includes(id) ? fakeStroke(x) : R.strokes[R.i++ % R.strokes.length];
+      x.strokes = [...x.strokes, { p: id, d }]; x.turn++; x.ends = now() + TURN_MS;
+      return settle(x);
+    });
+  }
+  if (r.phase === 'vote') {
+    const sus = botIds(r)[Math.random() * 4 | 0];
+    later(`c${r.round}`, 1500, (x) => { x.chat = [...x.chat, { p: sus, t: pick(CHATTER), a: now() }].slice(-30); return x; });
+    for (const id of botIds(r)) later(`v${r.round}:${id}`, 2500 + Math.random() * 7000, (x) => {
+      if (x.phase !== 'vote' || x.votes[id]) return null;
+      const others = x.order.filter((o) => o !== id && x.players[o]);
+      // town bots spot the mafia 45% of the time; the mafia bot just blends in
+      x.votes[id] = !m.includes(id) && Math.random() < 0.45 ? m.find((o) => o !== id) : pick(others.filter((o) => !m.includes(id) || !m.includes(o)));
+      return settle(x);
+    });
+  }
+  if (r.phase === 'guess') {
+    const id = m.find((o) => o.startsWith('bot'));
+    if (id) later(`g${r.round}`, 3500, (x) => {
+      if (x.phase !== 'guess') return null;
+      const g = Math.random() < 0.3 ? w : pick(PRACTICE[x.cat].filter((o) => o !== w));
+      x.chat = [...x.chat, { p: id, t: `is it… ${g}?`, a: now() }].slice(-30);
+      return finish(x, isRight(g, w) ? 'mafia' : 'town', g);
+    });
+  }
+}
+
 // ---------- preview demo: a local room with bots drawing a cat (used for the gameplay clip) ----------
 const arc = (cx, cy, rx, ry, a0, a1, n = 18) => Array.from({ length: n + 1 }, (_, i) => { const a = a0 + (a1 - a0) * i / n; return [cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]; });
 const CAT = [arc(500, 430, 190, 170, Math.PI * 0.95, Math.PI * 2.05), [[340, 330], [360, 170], [450, 270]], [[550, 270], [640, 170], [660, 330]], arc(500, 430, 190, 170, 0.05, Math.PI * 0.95),
   arc(430, 410, 22, 30, 0, Math.PI * 2, 10), arc(570, 410, 22, 30, 0, Math.PI * 2, 10), [[480, 480], [520, 480], [500, 505], [480, 480]], [[300, 470], [430, 495]], [[700, 470], [570, 495]],
   arc(500, 760, 230, 160, Math.PI * 1.2, Math.PI * 1.8 + Math.PI * 1.2, 24), [[720, 800], [820, 700], [800, 560]], [[480, 540], [500, 560], [520, 540]]];
 window.startDemo = () => {
-  demo = true; code = 'DEMO1';
+  local = demo = true; code = 'DEMO1';
   const bots = [['Ava', 0], ['Leo', 1], ['Mina', 2], ['Sam', 3], ['Jun', 4]], t = now();
   room = newRoom('DEMO1', false);
   bots.forEach(([n, c], i) => (room.players['b' + i] = { n, c, s: [2, 1, 3, 0, 1][i], j: t + i, t }));
