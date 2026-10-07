@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Dojo Duel</title>
+<style>
+  :root { --bg: #120d22; --ink: #fff7ec; --mut: #b6a9d4; --panel: rgba(30, 22, 54, .95); --line: rgba(255, 255, 255, .14); --acc: #ff3d5a; --gold: #ffd43b; }
+  [hidden] { display: none !important; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; touch-action: none;
+    font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; -webkit-user-select: none; user-select: none; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 1px solid var(--line); background: rgba(255, 255, 255, .08); border-radius: 12px; padding: 10px 14px; font-weight: 800; }
+  button:disabled { opacity: .4; cursor: default; }
+  button.cta { background: linear-gradient(90deg, #ff3d5a, #ff922b); border: 0; color: #fff; }
+  input { width: 100%; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, .35); font-weight: 700; -webkit-user-select: text; user-select: text; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; }
+  #home { position: fixed; top: 10px; left: 10px; color: var(--ink); text-decoration: none; font-weight: 800; font-size: 13px; padding: 6px 10px; z-index: 40; }
+  .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; overflow-y: auto; padding: 16px 12px 30px; z-index: 20;
+    background: radial-gradient(circle at 50% -10%, #4a1f3f, var(--bg) 65%); touch-action: pan-y; }
+  .screen > * { flex-shrink: 0; }
+  h1 { margin: 22px 0 0; font-size: clamp(46px, 12vw, 80px); font-weight: 900; font-style: italic; letter-spacing: -2px; line-height: 1; text-shadow: 0 5px 0 #0008; }
+  h1 span { color: var(--acc); }
+  h2 { margin: 18px 0 10px; font-style: italic; font-size: 28px; }
+  .tag { color: var(--mut); text-align: center; margin: 8px 0 16px; font-weight: 600; max-width: 460px; }
+  .box { width: min(460px, 100%); padding: 16px; display: grid; gap: 10px; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .or { text-align: center; color: var(--mut); font-size: 12px; font-weight: 700; }
+  .how { width: min(460px, 100%); margin-top: 14px; padding: 14px 16px; color: var(--mut); font-size: 13px; line-height: 1.6; }
+  .how b { color: var(--ink); }
+  kbd { background: #ffffff22; border-radius: 5px; padding: 1px 6px; font: 700 12px ui-monospace, monospace; color: var(--ink); }
+  .chars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; width: min(760px, 100%); }
+  @media (max-width: 600px) { .chars { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .char { padding: 8px; display: grid; gap: 4px; text-align: center; border: 2px solid var(--line); border-radius: 16px; background: rgba(0, 0, 0, .25); cursor: pointer; }
+  .char.sel { border-color: var(--gold); background: rgba(255, 212, 59, .12); }
+  .char.p2 { border-color: #4dabf7; }
+  .char canvas { width: 100%; aspect-ratio: 1; }
+  .char b { font-size: 18px; font-style: italic; }
+  .char small { color: var(--mut); font-weight: 700; }
+  .bars { display: grid; gap: 3px; font-size: 11px; color: var(--mut); text-align: left; }
+  .bars i { display: block; height: 5px; border-radius: 3px; background: linear-gradient(90deg, var(--acc), var(--gold)); }
+  .hint { color: var(--mut); text-align: center; font-size: 13px; font-weight: 600; }
+  .code { font: 900 34px ui-monospace, monospace; letter-spacing: 6px; text-align: center; color: var(--gold); }
+  .diff { display: flex; gap: 6px; }
+  .diff button.on { background: var(--gold); color: #1b1200; border-color: var(--gold); }
+  #toast { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); background: #000c; padding: 10px 16px; border-radius: 12px; font-weight: 700; z-index: 60; max-width: 90vw; text-align: center; }
+
+  #game { position: fixed; inset: 0; }
+  #cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #pad { position: absolute; left: 0; right: 0; bottom: 0; display: none; justify-content: space-between; align-items: flex-end; padding: 12px; z-index: 5; pointer-events: none; }
+  body.touch #pad { display: flex; }
+  #dpad { width: 150px; height: 150px; border-radius: 50%; background: #ffffff14; border: 2px solid #ffffff30; position: relative; pointer-events: auto; touch-action: none; }
+  #dpad i { position: absolute; color: #fff8; font-style: normal; font-weight: 900; font-size: 20px; }
+  #dknob { position: absolute; width: 56px; height: 56px; border-radius: 50%; background: #ffffff40; left: 47px; top: 47px; }
+  #btns { display: grid; grid-template-columns: 70px 70px; gap: 10px; pointer-events: auto; }
+  #btns button { width: 70px; height: 70px; border-radius: 50%; font-size: 12px; background: #ffffff1c; border: 2px solid #ffffff40; touch-action: none; }
+  #btns button.on { background: #ffffff55; }
+  #bS { grid-column: span 2; width: 150px !important; border-radius: 35px !important; background: #ff3d5a44 !important; }
+  #pauseBtn { position: absolute; top: 10px; right: 10px; z-index: 6; padding: 6px 10px; font-size: 13px; background: #0007; }
+  .overlay { position: absolute; inset: 0; background: #0b0718cc; display: flex; align-items: center; justify-content: center; z-index: 8; padding: 12px; }
+  .result { width: min(440px, 100%); padding: 18px; display: grid; gap: 10px; text-align: center; max-height: 100%; overflow-y: auto; }
+  .result h2 { margin: 0; font-size: 36px; }
+  #lb { margin: 0 auto; }
+  @media (max-height: 460px) { #dpad { width: 120px; height: 120px; } #dknob { left: 34px; top: 34px; width: 50px; height: 50px; } #btns { grid-template-columns: 58px 58px; } #btns button { width: 58px; height: 58px; } #bS { width: 126px !important; } }
+</style>
+</head>
+<body>
+<a id="home" href="https://rank-game.com/">← Home</a>
+<script>if (top !== self) home.remove(); if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');</script>
+
+<div class="screen" id="titleScr">
+  <h1>DOJO <span>DUEL</span></h1>
+  <div class="tag">A 1v1 fighting game. Punch, kick, combo, juggle and land your special. Fight the CPU, a friend on the same screen, or anyone online.</div>
+  <div class="card box">
+    <input id="name" maxlength="12" placeholder="Your name" autocomplete="off">
+    <button class="cta" id="arcadeBtn">🏆 Arcade (beat 4 fighters)</button>
+    <div class="row"><button id="cpuBtn">🤖 vs CPU</button><button id="localBtn">🎮 2 Players (same screen)</button></div>
+    <div class="or" id="onlineHead">online 1v1</div>
+    <div class="row" id="onlineRow"><button id="quickBtn">⚡ Quick Match</button><button id="createBtn">🔒 Create room</button></div>
+    <div class="row" id="joinRow"><input id="codeIn" maxlength="5" placeholder="Room code" style="text-transform:uppercase"><button id="joinBtn" style="flex:.6">Join</button></div>
+    <a id="onlineLink" class="hint" href="https://rank-game.com/games/dojo-duel" target="_blank" hidden>🌐 Online matches are on <b style="color:var(--gold)">rank-game.com</b></a>
+  </div>
+  <div class="card how">
+    <b>Controls</b><br>
+    <kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd> move · <b>hold back to block</b> · <kbd>↑</kbd>/<kbd>W</kbd> jump · <kbd>↓</kbd>/<kbd>S</kbd> crouch (hold back + down to block lows)<br>
+    <kbd>J</kbd> punch · <kbd>K</kbd> kick · <kbd>L</kbd> special (when the meter is full enough) · <kbd>J</kbd>+<kbd>K</kbd> throw<br>
+    <b>Combos:</b> <kbd>J J K</kbd> · <kbd>K K</kbd> · forward+<kbd>K</kbd> launches them into the air, then keep hitting!<br>
+    forward+<kbd>J</kbd> power punch · down+<kbd>K</kbd> sweep · Gamepads work too. On phones, use the on-screen pad.
+  </div>
+</div>
+
+<div class="screen" id="selectScr" hidden>
+  <h2 id="selectTitle">CHOOSE YOUR FIGHTER</h2>
+  <div class="chars" id="chars"></div>
+  <div class="diff" id="diffRow" style="margin-top:14px"><button data-d="0">Easy</button><button data-d="1" class="on">Normal</button><button data-d="2">Hard</button></div>
+  <div class="hint" id="selectHint" style="margin-top:10px"></div>
+  <div class="row" style="width:min(460px,100%);margin-top:12px"><button id="selBack">Back</button><button class="cta" id="selGo">FIGHT!</button></div>
+</div>
+
+<div class="screen" id="lobbyScr" hidden>
+  <h2>ONLINE ROOM</h2>
+  <div class="card box">
+    <div class="hint" id="lobbyKind"></div>
+    <div class="code" id="lobbyCode"></div>
+    <button id="inviteBtn">🔗 Copy invite link</button>
+    <div class="hint" id="lobbyStatus"></div>
+    <button id="leaveBtn">Leave</button>
+  </div>
+</div>
+
+<div id="game" hidden>
+  <canvas id="cv"></canvas>
+  <button id="pauseBtn">⏸</button>
+  <div id="pad">
+    <div id="dpad"><i style="left:66px;top:4px">▲</i><i style="left:66px;bottom:4px">▼</i><i style="left:8px;top:62px">◀</i><i style="right:8px;top:62px">▶</i><div id="dknob"></div></div>
+    <div id="btns"><button id="bP">PUNCH</button><button id="bK">KICK</button><button id="bS">SPECIAL</button></div>
+  </div>
+  <div class="overlay" id="endOv" hidden><div class="card result">
+    <h2 id="endTitle"></h2><div id="endSub" class="hint" style="font-size:16px"></div>
+    <div id="lb"></div>
+    <button class="cta" id="againBtn"></button>
+    <div class="row"><button id="changeBtn">Change fighter</button><button id="menuBtn">Menu</button></div>
+    <button id="shareBtn">📤 Share</button>
+  </div></div>
+  <div class="overlay" id="pauseOv" hidden><div class="card result">
+    <h2>PAUSED</h2><button class="cta" id="resumeBtn">Resume</button><button id="quitBtn">Quit to menu</button>
+  </div></div>
+</div>
+<div id="toast" hidden></div>
+
+<script src="fight.js"></script>
+<script src="render.js"></script>
+<script src="../cloudsave.js" data-game="dojo-duel" data-keys="dojoduel-best"></script>
+<script src="../leaderboard.js"></script>
+<script type="module">
+// Dojo Duel. Local modes run the fight engine here. Online: Firestore holds the room (who's in + the WebRTC handshake);
+// then player 1's browser runs the fight and streams it to player 2 over a direct WebRTC connection.
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import { getFirestore, doc, onSnapshot, runTransaction, collection, query, where, limit, getDocs } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+
+const $ = (id) => document.getElementById(id);
+const IDS = Object.keys(FD.CHARS);
+const store = { get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const rid = (n, a = ALPHA) => Array.from(crypto.getRandomValues(new Uint32Array(n)), (x) => a[x % a.length]).join('');
+const pick = (a) => a[Math.random() * a.length | 0];
+const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const BAD = /f+u+c+k|sh[i1]t|b[i1]tch|cunt|n[i1]gg|fag|dick|pussy|씨발|시발|병신|좆|썅|개새/i;
+const me = { id: store.get('dd-id', null) || rid(10, 'abcdefghijklmnopqrstuvwxyz0123456789') }; store.set('dd-id', me.id);
+$('name').value = store.get('dd-name', '');
+addEventListener('rg-auth', () => { if (window.rgAuth?.user?.nick && !$('name').value) $('name').value = rgAuth.user.nick.slice(0, 12); });
+const myName = () => { const n = ($('name').value.trim() || 'Player').slice(0, 12); const v = BAD.test(n) ? 'Fighter' : n; store.set('dd-name', v); return v; };
+let toastT; const toast = (t, ms = 2600) => { $('toast').textContent = t; $('toast').hidden = false; clearTimeout(toastT); toastT = setTimeout(() => ($('toast').hidden = true), ms); };
+const screen = (id) => { for (const s of ['titleScr', 'selectScr', 'lobbyScr', 'game']) $(s).hidden = s !== id; };
+
+// ---------- sound (synth) ----------
+let ac = null;
+function tone(f0, f1, dur, type = 'sine', vol = 0.2, delay = 0) {
+  try { ac ||= new AudioContext(); } catch { return; }
+  const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+function noise(dur, vol = 0.25, hp = 800) {
+  try { ac ||= new AudioContext(); } catch { return; }
+  const b = ac.createBuffer(1, ac.sampleRate * dur, ac.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) ** 3;
+  const s = ac.createBufferSource(), g = ac.createGain(), f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp;
+  s.buffer = b; g.gain.value = vol; s.connect(f).connect(g).connect(ac.destination); s.start();
+}
+const SFX = {
+  hit: (heavy) => { noise(heavy ? 0.22 : 0.12, heavy ? 0.5 : 0.35, heavy ? 200 : 600); tone(heavy ? 160 : 260, 50, heavy ? 0.25 : 0.12, 'sine', 0.4); },
+  block: () => { noise(0.07, 0.25, 2500); tone(900, 700, 0.06, 'square', 0.06); },
+  whoosh: () => noise(0.1, 0.08, 3000),
+  throw: () => { tone(120, 40, 0.4, 'sine', 0.5); noise(0.3, 0.3, 150); },
+  special: () => { tone(300, 1200, 0.25, 'sawtooth', 0.08); tone(600, 1800, 0.25, 'square', 0.04, 0.05); },
+  land: () => tone(90, 40, 0.15, 'sine', 0.3),
+  quake: () => { noise(0.6, 0.5, 60); tone(70, 30, 0.6, 'sine', 0.5); },
+  round: () => [392, 523].forEach((f, i) => tone(f, f, 0.15, 'square', 0.08, i * 0.15)),
+  fight: () => { tone(220, 880, 0.3, 'sawtooth', 0.12); noise(0.3, 0.2, 1000); },
+  ko: () => { tone(400, 60, 1.2, 'sawtooth', 0.15); noise(0.8, 0.3, 300); },
+  win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, f, 0.22, 'triangle', 0.16, i * 0.14)),
+};
+
+// ---------- character cards ----------
+function portrait(cv, id, frame = 0) {
+  const c = cv.getContext('2d'), w = cv.width = 200, h = cv.height = 200;
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, w, h);
+  c.setTransform(0.95, 0, 0, -0.95, 100, 192);
+  FR.drawFighter(c, { id, x: 0, y: 0, face: 1, state: 'idle', vx: 0, vy: 0, t: 0 }, frame);
+}
+let sel = { p1: store.get('dd-p1', 'kenji'), p2: 'vex', step: 1, mode: 'cpu', diff: store.get('dd-diff', 1) };
+function renderChars() {
+  $('chars').innerHTML = IDS.map((id) => { const c = FD.CHARS[id], S = FD.SPECIALS[c.special];
+    const bar = (label, v) => `<div>${label}<i style="width:${Math.round(v * 100)}%"></i></div>`;
+    return `<div class="char ${sel.p1 === id ? 'sel' : ''} ${sel.mode === 'local' && sel.step === 2 && sel.p2 === id ? 'p2' : ''}" data-id="${id}"><canvas></canvas><b>${c.name}</b><small>${c.style} · ${S.name}</small>
+      <div class="bars">${bar('Power', c.dmg / 1.2)}${bar('Speed', c.speed / 1.3)}${bar('Health', c.hp / 160)}</div></div>`; }).join('');
+  document.querySelectorAll('.char').forEach((el) => portrait(el.querySelector('canvas'), el.dataset.id));
+}
+$('chars').onclick = (e) => {
+  const el = e.target.closest('.char'); if (!el) return;
+  if (sel.mode === 'local' && sel.step === 2) sel.p2 = el.dataset.id; else sel.p1 = el.dataset.id;
+  renderChars();
+};
+document.querySelectorAll('#diffRow button').forEach((b) => (b.onclick = () => { sel.diff = +b.dataset.d; store.set('dd-diff', sel.diff); document.querySelectorAll('#diffRow button').forEach((x) => x.classList.toggle('on', x === b)); }));
+function openSelect(mode) {
+  sel.mode = mode; sel.step = 1;
+  $('diffRow').hidden = mode !== 'cpu';
+  document.querySelectorAll('#diffRow button').forEach((x) => x.classList.toggle('on', +x.dataset.d === sel.diff));
+  $('selectTitle').textContent = mode === 'local' ? 'PLAYER 1: CHOOSE' : 'CHOOSE YOUR FIGHTER';
+  $('selectHint').textContent = mode === 'arcade' ? 'Beat all four fighters in a row. The last one fights hard!' : mode === 'online' ? 'Pick your fighter, then wait for your opponent' : '';
+  $('selGo').textContent = mode === 'local' ? 'NEXT ▶' : mode === 'online' ? 'READY' : 'FIGHT!';
+  screen('selectScr'); renderChars();
+}
+$('selBack').onclick = () => { if (sel.mode === 'online') leaveRoom(); else screen('titleScr'); };
+$('selGo').onclick = () => {
+  store.set('dd-p1', sel.p1);
+  if (sel.mode === 'local' && sel.step === 1) { sel.step = 2; sel.p2 = pick(IDS); $('selectTitle').textContent = 'PLAYER 2: CHOOSE'; $('selGo').textContent = 'FIGHT!'; renderChars(); return; }
+  if (sel.mode === 'cpu') return startMatch({ mode: 'cpu', p1: sel.p1, p2: pick(IDS.filter((x) => x !== sel.p1)), cpu: sel.diff });
+  if (sel.mode === 'local') return startMatch({ mode: 'local', p1: sel.p1, p2: sel.p2 });
+  if (sel.mode === 'arcade') { arcade = { order: [...shuffle(IDS.filter((x) => x !== sel.p1)), sel.p1], stage: 0, score: 0 }; return arcadeNext(); }
+  if (sel.mode === 'online') return onlineReady(sel.p1);
+};
+
+// ---------- the match ----------
+let G = null; // { s, mode, cpu, mem, names, local side, ... }
+Object.defineProperty(window, 'ddGame', { get: () => G }); // for debugging in the console
+let arcade = null;
+const ARCADE_DIFF = [0, 1, 1, 2];
+function arcadeNext() {
+  const opp = arcade.order[arcade.stage];
+  startMatch({ mode: 'arcade', p1: sel.p1, p2: opp, cpu: ARCADE_DIFF[arcade.stage], names: [myName(), (arcade.stage === 3 ? 'Shadow ' : '') + FD.CHARS[opp].name] });
+}
+function startMatch(o) {
+  G = { mode: o.mode, cpu: o.cpu ?? 1, mem: [{}, {}], names: o.names || [o.mode === 'local' ? 'Player 1' : myName(), o.mode === 'local' ? 'Player 2' : 'CPU'],
+    s: FD.create({ p1: o.p1, p2: o.p2 }), acc: 0, last: performance.now(), paused: false, fx: [], shake: 0, trail: [0, 0], side: o.side ?? 0, roundsLog: [] };
+  G.trail = G.s.p.map((f) => f.hp);
+  $('endOv').hidden = $('pauseOv').hidden = true;
+  $('pauseBtn').hidden = o.mode === 'online' || o.mode === 'guest' || o.mode === 'demo';
+  screen('game'); handleEvents(G.s.events);
+}
+
+// ---------- input ----------
+const held = new Set();
+const KEYS1 = { KeyA: 'l', KeyD: 'r', KeyW: 'u', KeyS: 'd', KeyF: 'p', KeyG: 'k', KeyH: 's' };
+const KEYS2 = { ArrowLeft: 'l', ArrowRight: 'r', ArrowUp: 'u', ArrowDown: 'd', Numpad1: 'p', Numpad2: 'k', Numpad3: 's', Comma: 'p', Period: 'k', Slash: 's' };
+const KEYS_SOLO = { ArrowLeft: 'l', ArrowRight: 'r', ArrowUp: 'u', ArrowDown: 'd', KeyA: 'l', KeyD: 'r', KeyW: 'u', KeyS: 'd', KeyJ: 'p', KeyZ: 'p', KeyK: 'k', KeyX: 'k', KeyL: 's', KeyC: 's', Space: 'u' };
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  if (!$('game').hidden && (e.code.startsWith('Arrow') || e.code === 'Space')) e.preventDefault();
+  if (e.code === 'Escape' || e.code === 'KeyP') { if (!$('game').hidden && !$('pauseBtn').hidden) togglePause(); return; }
+  held.add(e.code);
+});
+addEventListener('keyup', (e) => held.delete(e.code));
+addEventListener('blur', () => held.clear());
+const touch = { l: false, r: false, u: false, d: false, p: false, k: false, s: false };
+function keyInput(map) { const o = { l: false, r: false, u: false, d: false, p: false, k: false, s: false }; for (const c of held) if (map[c]) o[map[c]] = true; return o; }
+function padInput(i) {
+  const gp = navigator.getGamepads?.()[i]; const o = {};
+  if (!gp) return o;
+  const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0, b = (n) => gp.buttons[n]?.pressed;
+  o.l = ax < -0.4 || b(14); o.r = ax > 0.4 || b(15); o.u = ay < -0.5 || b(12); o.d = ay > 0.5 || b(13);
+  o.p = b(2) || b(4); o.k = b(0) || b(5); o.s = b(1) || b(3) || b(7);
+  return o;
+}
+const or = (...xs) => { const o = {}; for (const k of ['l', 'r', 'u', 'd', 'p', 'k', 's']) o[k] = xs.some((x) => x[k]); return o; };
+function localInputs() {
+  if (G.mode === 'local') return [or(keyInput(KEYS1), padInput(0), touch), or(keyInput(KEYS2), padInput(1))];
+  return [or(keyInput(KEYS_SOLO), padInput(0), padInput(1), touch), {}];
+}
+// touch: a joystick pad on the left, buttons on the right
+(() => {
+  const pad = $('dpad'), knob = $('dknob');
+  const set = (e) => {
+    const r = pad.getBoundingClientRect(), x = e.clientX - r.left - r.width / 2, y = e.clientY - r.top - r.height / 2, d = r.width * 0.16;
+    touch.l = x < -d; touch.r = x > d; touch.u = y < -d * 1.3; touch.d = y > d * 1.3;
+    const m = Math.min(1, Math.hypot(x, y) / (r.width / 2)), a = Math.atan2(y, x);
+    knob.style.transform = `translate(${Math.cos(a) * m * r.width * 0.3}px, ${Math.sin(a) * m * r.width * 0.3}px)`;
+  };
+  const clear = () => { touch.l = touch.r = touch.u = touch.d = false; knob.style.transform = ''; };
+  let active = null;
+  pad.addEventListener('pointerdown', (e) => { active = e.pointerId; try { pad.setPointerCapture(e.pointerId); } catch {} set(e); });
+  pad.addEventListener('pointermove', (e) => { if (e.pointerId === active) set(e); });
+  for (const ev of ['pointerup', 'pointercancel']) pad.addEventListener(ev, (e) => { if (e.pointerId === active) { active = null; clear(); } });
+  for (const [id, k] of [['bP', 'p'], ['bK', 'k'], ['bS', 's']]) {
+    const b = $(id);
+    b.addEventListener('pointerdown', (e) => { e.preventDefault(); touch[k] = true; b.classList.add('on'); });
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(ev, () => { touch[k] = false; b.classList.remove('on'); });
+  }
+  addEventListener('touchstart', () => document.body.classList.add('touch'), { once: true, passive: true });
+})();
+
+// ---------- loop ----------
+function tick() {
+  requestAnimationFrame(tick);
+  if (!G || $('game').hidden) return;
+  const now = performance.now(); let dt = Math.min(100, now - G.last); G.last = now;
+  if (G.mode !== 'guest' && !G.paused) {
+    G.acc += dt;
+    while (G.acc >= 1000 / 60) {
+      G.acc -= 1000 / 60;
+      let [i1, i2] = G.mode === 'online' ? [or(keyInput(KEYS_SOLO), padInput(0), touch), net.guestIn] : localInputs();
+      if (G.mode === 'cpu' || G.mode === 'arcade') i2 = FD.cpu(G.s, 1, G.mem[1], G.cpu);
+      if (G.mode === 'demo') { i1 = FD.cpu(G.s, 0, G.mem[0], 2); i2 = FD.cpu(G.s, 1, G.mem[1], 2); }
+      FD.step(G.s, i1, i2);
+      handleEvents(G.s.events);
+      if (G.mode === 'online') net.sendState(G.s);
+    }
+  }
+  if (G.mode === 'guest') net.sendInput(or(keyInput(KEYS_SOLO), padInput(0), touch));
+  draw();
+}
+
+// ---------- events -> effects, sounds, announcer ----------
+let banner = null;
+const say = (text, ms = 1100, color = '#fff', size = 1) => (banner = { text, until: performance.now() + ms, color, size, start: performance.now() });
+function handleEvents(evs) {
+  for (const e of evs) {
+    const p = G.s.p;
+    if (e.e === 'hit') { SFX.hit(e.heavy); spark(e.x, e.y, e.heavy ? '#ffd43b' : '#fff', e.heavy ? 22 : 12); if (e.heavy) G.shake = 10; if (e.combo >= 2) G.comboShow = { n: e.combo, who: 1 - e.who, until: performance.now() + 1200 }; }
+    if (e.e === 'block') { SFX.block(); spark(e.x, e.y, '#74c0fc', 8); }
+    if (e.e === 'throw') { SFX.throw(); G.shake = 14; spark(e.x, e.y, '#ff6b6b', 18); }
+    if (e.e === 'special') { SFX.special(); G.superFlash = { who: e.who, until: performance.now() + 450, name: e.name }; }
+    if (e.e === 'quake') { SFX.quake(); G.shake = 18; }
+    if (e.e === 'land' && e.heavy) { SFX.land(); dust(e.x); G.shake = Math.max(G.shake, 6); }
+    if (e.e === 'jump') SFX.whoosh();
+    if (e.e === 'round') { say(e.n === 3 ? 'FINAL ROUND' : `ROUND ${e.n}`, 1500); SFX.round(); }
+    if (e.e === 'fight') { say('FIGHT!', 800, '#ff3d5a', 1.3); SFX.fight(); }
+    if (e.e === 'ko') {
+      SFX.ko(); G.slowmo = performance.now() + 1000;
+      say(e.why === 'time' ? 'TIME!' : e.perfect ? 'PERFECT!' : 'K.O.', 2200, e.perfect ? '#ffd43b' : '#ff3d5a', 1.5);
+      G.roundsLog.push({ winner: e.winner, hp: e.winner >= 0 ? p[e.winner].hp / p[e.winner].max : 0, time: G.s.timer, perfect: e.perfect });
+    }
+    if (e.e === 'match') setTimeout(() => matchOver(e.winner), 900);
+  }
+}
+function spark(x, y, col, n) { for (let i = 0; i < n; i++) { const a = Math.random() * 7, v = 3 + Math.random() * 7; G.fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, col, k: 'spark' }); } G.fx.push({ x, y, life: 1, k: 'ring', col }); }
+function dust(x) { for (let i = 0; i < 12; i++) G.fx.push({ x: x + (Math.random() - 0.5) * 60, y: 6, vx: (Math.random() - 0.5) * 4, vy: Math.random() * 2, life: 1, col: '#c9a27a', k: 'dust' }); }
+
+// ---------- drawing ----------
+const cv = $('cv'), ctx = cv.getContext('2d');
+function resize() { const d = Math.min(2, devicePixelRatio || 1); cv.width = innerWidth * d; cv.height = innerHeight * d; }
+addEventListener('resize', resize); resize();
+const cam = { x: 700, zoom: 1 };
+function draw() {
+  const s = G.s, W = cv.width, H = cv.height, d = Math.min(2, devicePixelRatio || 1), T = performance.now() / 1000;
+  const [a, b] = s.p, mid = (a.x + b.x) / 2, span = Math.abs(a.x - b.x) + 420;
+  const viewW = Math.max(820, Math.min(1400, span)), scale = Math.min(W / viewW, H / 640);
+  cam.x += (Math.max(viewW / 2, Math.min(FD.W - viewW / 2, mid)) - cam.x) * 0.15;
+  G.shake *= 0.85;
+  const shx = (Math.random() - 0.5) * G.shake * d, shy = (Math.random() - 0.5) * G.shake * d;
+  // sky
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#120a2e'); g.addColorStop(0.7, '#43204d'); g.addColorStop(1, '#2a1630');
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  const groundY = H * 0.8;
+  ctx.setTransform(scale, 0, 0, -scale, W / 2 - cam.x * scale + shx, groundY + shy);
+  FR.drawStage(ctx, cam.x - 700, T);
+  // shockwaves
+  for (const w of s.waves) { ctx.fillStyle = '#ffd43b'; for (let i = 0; i < 4; i++) { ctx.globalAlpha = 0.8 - i * 0.18; ctx.beginPath(); ctx.moveTo(w.x - w.dir * i * 22, 0); ctx.lineTo(w.x - w.dir * i * 22 + 14, 30 - i * 6 + Math.sin(T * 40 + i) * 6); ctx.lineTo(w.x - w.dir * i * 22 + 28, 0); ctx.fill(); } ctx.globalAlpha = 1; }
+  for (const f of s.p) FR.drawShadow(ctx, f);
+  // super flash: darken everything but the fighter doing the special
+  const sf = G.superFlash && performance.now() < G.superFlash.until ? G.superFlash : null;
+  const order = s.p[0].state === 'attack' ? [1, 0] : [0, 1];
+  for (const i of order) {
+    const f = s.p[i];
+    if (f.inv > 0 && f.state === 'getup' && Math.floor(T * 20) % 2) ctx.globalAlpha = 0.6;
+    const flash = f.state === 'hstun' && f.t > (f.move ? 0 : 10) ? '#ffffff55' : sf && sf.who === i ? '#ffd43b44' : null;
+    FR.drawFighter(ctx, f, s.frame, s, flash);
+    ctx.globalAlpha = 1;
+  }
+  // effects
+  G.fx = G.fx.filter((p) => (p.life -= p.k === 'ring' ? 0.08 : 0.035) > 0);
+  for (const p of G.fx) {
+    if (p.k === 'ring') { ctx.strokeStyle = p.col; ctx.globalAlpha = p.life; ctx.lineWidth = 6 * p.life; ctx.beginPath(); ctx.arc(p.x, p.y, (1 - p.life) * 70 + 8, 0, 7); ctx.stroke(); continue; }
+    p.x += p.vx; p.y += p.vy; p.vy -= p.k === 'dust' ? 0.05 : 0.3;
+    ctx.globalAlpha = p.life; ctx.fillStyle = p.col;
+    if (p.k === 'spark') { ctx.strokeStyle = p.col; ctx.lineWidth = 4 * p.life; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 2.5, p.y - p.vy * 2.5); ctx.stroke(); }
+    else { ctx.beginPath(); ctx.arc(p.x, p.y, 10 * (1.4 - p.life), 0, 7); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+  if (sf) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#0006'; ctx.fillRect(0, 0, W, H); ctx.setTransform(scale, 0, 0, -scale, W / 2 - cam.x * scale, groundY); FR.drawFighter(ctx, s.p[sf.who], s.frame, s, '#ffd43b44'); }
+  hud(W, H, d, T, sf);
+}
+function hud(W, H, d, T, sf) {
+  const s = G.s; ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const pad = 14 * d, top = (window.top === window.self ? 46 : 14) * d, barW = Math.min(W * 0.38, 460 * d), barH = 20 * d;
+  s.p.forEach((f, i) => {
+    const x = i ? W - pad - barW : pad, pct = f.hp / f.max;
+    G.trail[i] += (f.hp - G.trail[i]) * (G.trail[i] > f.hp ? 0.04 : 1);
+    ctx.fillStyle = '#000a'; ctx.fillRect(x - 3 * d, top - 3 * d, barW + 6 * d, barH + 6 * d);
+    ctx.fillStyle = '#5a1020'; ctx.fillRect(x, top, barW, barH);
+    const tw = barW * G.trail[i] / f.max, hw = barW * pct;
+    ctx.fillStyle = '#ff8787'; ctx.fillRect(i ? x + barW - tw : x, top, tw, barH);
+    const hg = ctx.createLinearGradient(0, top, 0, top + barH); hg.addColorStop(0, pct < 0.3 ? '#ff6b6b' : '#ffe066'); hg.addColorStop(1, pct < 0.3 ? '#c92a2a' : '#f59f00');
+    ctx.fillStyle = hg; ctx.fillRect(i ? x + barW - hw : x, top, hw, barH);
+    ctx.font = `900 italic ${15 * d}px system-ui, sans-serif`; ctx.textAlign = i ? 'right' : 'left'; ctx.fillStyle = '#fff';
+    ctx.fillText(`${G.names[i]} · ${FD.CHARS[f.id].name}`, i ? x + barW : x, top + barH + 18 * d);
+    for (let r = 0; r < 2; r++) { ctx.fillStyle = f.wins > r ? '#ffd43b' : '#ffffff33'; ctx.beginPath(); ctx.arc(i ? x + barW - 10 * d - r * 20 * d : x + 10 * d + r * 20 * d, top + barH + 32 * d, 6 * d, 0, 7); ctx.fill(); }
+    // meter at the bottom
+    const mw = Math.min(W * 0.3, 300 * d), mx = i ? W - pad - mw : pad, my = H - (document.body.classList.contains('touch') ? 190 : 30) * d;
+    ctx.fillStyle = '#000a'; ctx.fillRect(mx - 2 * d, my - 2 * d, mw + 4 * d, 14 * d);
+    const ready = f.meter >= 50;
+    ctx.fillStyle = ready ? (Math.floor(T * 6) % 2 ? '#ffd43b' : '#ff922b') : '#4dabf7';
+    const mwF = mw * f.meter / 100; ctx.fillRect(i ? mx + mw - mwF : mx, my, mwF, 10 * d);
+    ctx.fillStyle = '#fff6'; ctx.fillRect(mx + mw / 2, my - 2 * d, 2 * d, 14 * d);
+    ctx.font = `800 ${11 * d}px system-ui`; ctx.fillStyle = ready ? '#ffd43b' : '#fff9';
+    ctx.fillText(ready ? `★ ${FD.SPECIALS[FD.CHARS[f.id].special].name.toUpperCase()} READY` : 'SPECIAL', i ? mx + mw : mx, my - 6 * d);
+  });
+  // timer
+  ctx.textAlign = 'center'; ctx.font = `900 ${30 * d}px system-ui`; ctx.fillStyle = s.timer < 600 ? '#ff6b6b' : '#fff';
+  ctx.fillText(String(Math.ceil(s.timer / 60)), W / 2, top + barH);
+  // combo counter
+  const cs = G.comboShow;
+  if (cs && performance.now() < cs.until) {
+    ctx.font = `900 italic ${(30 + Math.min(cs.n, 8) * 3) * d}px system-ui`; ctx.textAlign = cs.who ? 'right' : 'left'; ctx.fillStyle = '#ffd43b';
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 6 * d; const x = cs.who ? W - pad : pad, y = H * 0.38;
+    ctx.strokeText(`${cs.n} HITS!`, x, y); ctx.fillText(`${cs.n} HITS!`, x, y);
+  }
+  if (sf) { ctx.textAlign = 'center'; ctx.font = `900 italic ${34 * d}px system-ui`; ctx.fillStyle = '#ffd43b'; ctx.strokeStyle = '#000'; ctx.lineWidth = 6 * d; ctx.strokeText(sf.name.toUpperCase() + '!', W / 2, H * 0.3); ctx.fillText(sf.name.toUpperCase() + '!', W / 2, H * 0.3); }
+  if (banner && performance.now() < banner.until) {
+    const k = Math.min(1, (performance.now() - banner.start) / 150);
+    ctx.save(); ctx.translate(W / 2, H * 0.45); ctx.scale(0.6 + k * 0.4, 0.6 + k * 0.4);
+    ctx.font = `900 italic ${64 * banner.size * d}px system-ui`; ctx.textAlign = 'center'; ctx.lineWidth = 10 * d; ctx.strokeStyle = '#000';
+    ctx.strokeText(banner.text, 0, 0); ctx.fillStyle = banner.color; ctx.fillText(banner.text, 0, 0); ctx.restore();
+  }
+  if (G.mode === 'guest' && net.lag > 1500) { ctx.textAlign = 'center'; ctx.font = `800 ${14 * d}px system-ui`; ctx.fillStyle = '#ff6b6b'; ctx.fillText('connection lagging…', W / 2, H * 0.2); }
+}
+requestAnimationFrame(tick);
+
+// ---------- end of match ----------
+const lb = leaderboard($('lb'), 'dojo-duel');
+function matchOver(w) {
+  if (!G) return;
+  const mine = G.mode === 'guest' ? 1 : 0, won = G.mode === 'local' ? null : w === mine;
+  (won === false ? () => tone(300, 100, 0.8, 'sawtooth', 0.1) : SFX.win)();
+  $('lb').hidden = true; $('changeBtn').hidden = G.mode === 'online' || G.mode === 'guest';
+  if (G.mode === 'local') { $('endTitle').textContent = `PLAYER ${w + 1} WINS!`; $('endSub').textContent = `${FD.CHARS[G.s.p[w].id].name} takes it.`; $('againBtn').textContent = '↻ Rematch'; }
+  else if (G.mode === 'arcade') {
+    if (won) {
+      // score: 1000 per stage, plus per round won: health left, time left, perfect bonus
+      const pts = 1000 * (arcade.stage + 1) + G.roundsLog.filter((r) => r.winner === 0).reduce((t, r) => t + Math.round(r.hp * 500) + Math.round(r.time / 6) + (r.perfect ? 1000 : 0), 0);
+      arcade.score += pts; arcade.stage++;
+      if (arcade.stage >= 4) { $('endTitle').textContent = '🏆 CHAMPION!'; $('endSub').textContent = `You beat all four! Score ${arcade.score.toLocaleString()}`; finishArcade(); $('againBtn').textContent = '↻ New run'; }
+      else { $('endTitle').textContent = 'YOU WIN!'; $('endSub').textContent = `+${pts.toLocaleString()} points · total ${arcade.score.toLocaleString()} · next: ${FD.CHARS[arcade.order[arcade.stage]].name}`; $('againBtn').textContent = `▶ Next fight (${arcade.stage + 1}/4)`; }
+    } else { $('endTitle').textContent = 'GAME OVER'; $('endSub').textContent = `You reached fight ${arcade.stage + 1}/4 · score ${arcade.score.toLocaleString()}`; finishArcade(); $('againBtn').textContent = '↻ New run'; }
+  } else {
+    $('endTitle').textContent = won ? 'YOU WIN!' : 'YOU LOSE'; $('endSub').textContent = `${G.names[w]} (${FD.CHARS[G.s.p[w].id].name}) wins ${G.s.p[w].wins}–${G.s.p[1 - w].wins}`;
+    $('againBtn').textContent = G.mode === 'online' || G.mode === 'guest' ? '↻ Rematch' : '↻ Rematch';
+  }
+  $('endOv').hidden = false;
+}
+function finishArcade() {
+  $('lb').hidden = false; lb.show(arcade.score);
+  if (arcade.score > store.get('dojoduel-best', 0)) store.set('dojoduel-best', arcade.score);
+  arcade.done = true;
+}
+$('againBtn').onclick = () => {
+  $('endOv').hidden = true;
+  if (G.mode === 'arcade') { if (arcade.done) { arcade = { order: [...shuffle(IDS.filter((x) => x !== sel.p1)), sel.p1], stage: 0, score: 0 }; } return arcadeNext(); }
+  if (G.mode === 'online' || G.mode === 'guest') return net.rematch();
+  startMatch({ mode: G.mode, p1: G.s.p[0].id, p2: G.s.p[1].id, cpu: G.cpu, names: G.names });
+};
+$('changeBtn').onclick = () => { $('endOv').hidden = true; openSelect(G.mode === 'arcade' ? 'arcade' : G.mode); };
+$('menuBtn').onclick = () => { $('endOv').hidden = true; if (net.on) leaveRoom(); G = null; screen('titleScr'); };
+$('shareBtn').onclick = async () => {
+  const text = G?.mode === 'arcade' ? `I scored ${arcade.score.toLocaleString()} in Dojo Duel's arcade 🥋 Can you beat it?` : 'Fight me in Dojo Duel 🥋👊', url = 'https://rank-game.com/games/dojo-duel';
+  try { if (navigator.share) return await navigator.share({ title: 'Dojo Duel', text, url }); } catch { return; }
+  try { await navigator.clipboard.writeText(`${text} ${url}`); toast('Copied! 📋'); } catch { toast(url, 5000); }
+};
+function togglePause() { if (!G) return; G.paused = !G.paused; $('pauseOv').hidden = !G.paused; G.last = performance.now(); }
+$('pauseBtn').onclick = togglePause; $('resumeBtn').onclick = togglePause;
+$('quitBtn').onclick = () => { $('pauseOv').hidden = true; G = null; screen('titleScr'); };
+
+// ======================================================================
+// ONLINE: Firestore room (lobby + WebRTC handshake), then a direct connection
+// ======================================================================
+const ICE = { iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }] };
+const fb = initializeApp({ apiKey: 'AIzaSyDz5J34ahi7fP48CU2cPrp1FNmqK-20D5E', authDomain: 'hatdoc-blog-1048.firebaseapp.com', projectId: 'hatdoc-blog-1048' });
+const db = getFirestore(fb);
+const ROOMS = 'dojoDuel';
+const net = { on: false, host: false, code: '', room: null, unsub: null, peer: null, guestIn: {}, picks: {}, names: {}, lastIn: '', lag: 0, lastRecv: 0, sendT: 0, rematchVotes: new Set() };
+const gathered = (pc) => new Promise((res) => { if (pc.iceGatheringState === 'complete') return res(); const t = setTimeout(res, 3000); pc.addEventListener('icegatheringstatechange', () => pc.iceGatheringState === 'complete' && (clearTimeout(t), res())); });
+const sendOn = (m) => { const p = net.peer; const ch = m.k === 's' ? p?.u : p?.r; if (ch?.readyState === 'open') ch.send(JSON.stringify(m)); };
+function wire(peer) {
+  for (const ch of [peer.r, peer.u]) ch.onmessage = (e) => { try { onNet(JSON.parse(e.data)); } catch {} };
+  let closed = false; const close = () => { if (!closed && net.on) { closed = true; toast('Your opponent left'); leaveRoom(); } };
+  peer.pc.onconnectionstatechange = () => { if (['failed', 'closed', 'disconnected'].includes(peer.pc.connectionState)) close(); };
+  peer.r.onclose = close;
+  peer.r.onopen = () => { sendOn({ k: 'hi', name: myName() }); lobbyStatus(); };
+  if (peer.r.readyState === 'open') peer.r.onopen(); // the host's channel can already be open when it arrives
+}
+async function mutate(fn) {
+  try { await runTransaction(db, async (t) => { const ref = doc(db, ROOMS, net.code), s = await t.get(ref); if (!s.exists()) return; const r = fn(s.data()); if (r) t.set(ref, r); }); } catch (e) { console.warn(e); }
+}
+async function createRoom(pub) {
+  await leaveRoom(true); myName();
+  for (let i = 0; i < 5; i++) {
+    const c = rid(5), ref = doc(db, ROOMS, c);
+    try {
+      let ok = false;
+      await runTransaction(db, async (t) => { const s = await t.get(ref); if (s.exists() && Date.now() - s.data().created < 7200e3) return; t.set(ref, { code: c, pub, created: Date.now(), host: me.id, phase: 'lobby', players: { [me.id]: { n: myName() } }, sig: {} }); ok = true; });
+      if (!ok) continue;
+      Object.assign(net, { on: true, host: true, pub, code: c, picks: {}, names: { [me.id]: myName() } }); location.hash = c;
+      net.unsub = onSnapshot(ref, (s) => { net.room = s.data(); hostSignal(); lobbyStatus(); });
+      showLobby(); return true;
+    } catch (e) { console.warn(e); toast('Could not create a room. Check your internet.'); return false; }
+  }
+}
+let answering = false;
+async function hostSignal() {
+  const r = net.room; if (!r || net.peer || answering) return;
+  const [pid, s] = Object.entries(r.sig || {}).find(([, v]) => v.o && !v.a) || []; if (!pid) return;
+  answering = true;
+  const pc = new RTCPeerConnection(ICE), peer = { pc };
+  pc.ondatachannel = (e) => { peer[e.channel.label] = e.channel; if (peer.r && peer.u) wire(peer); };
+  await pc.setRemoteDescription({ type: 'offer', sdp: s.o }); await pc.setLocalDescription(await pc.createAnswer()); await gathered(pc);
+  net.peer = peer; net.guest = pid;
+  await mutate((r) => { if (!r.sig[pid]) return null; r.sig[pid].a = pc.localDescription.sdp; r.phase = 'play'; return r; }); // full: hide from Quick Match
+  answering = false;
+}
+async function joinRoom(c) {
+  await leaveRoom(true); myName();
+  const ref = doc(db, ROOMS, c), pc = new RTCPeerConnection(ICE);
+  const peer = { pc, r: pc.createDataChannel('r'), u: pc.createDataChannel('u', { ordered: false, maxRetransmits: 0 }) };
+  await pc.setLocalDescription(await pc.createOffer()); await gathered(pc);
+  let ok = false, why = 'Room not found';
+  try {
+    await runTransaction(db, async (t) => {
+      const s = await t.get(ref), r = s.exists() ? s.data() : null;
+      if (!r || Date.now() - r.created > 7200e3) return;
+      if (Object.keys(r.players).length >= 2 || r.phase !== 'lobby') { why = 'That room is full'; return; }
+      r.players[me.id] = { n: myName() }; r.sig[me.id] = { o: pc.localDescription.sdp }; t.set(ref, r); ok = true;
+    });
+  } catch (e) { console.warn(e); why = 'Could not connect. Check your internet.'; }
+  if (!ok) { pc.close(); toast(why); return false; }
+  Object.assign(net, { on: true, host: false, pub: false, code: c, peer, picks: {} }); location.hash = c;
+  wire(peer);
+  net.unsub = onSnapshot(ref, async (s) => {
+    net.room = s.data(); if (!net.room) return;
+    const a = net.room.sig?.[me.id]?.a; if (a && !pc.remoteDescription) await pc.setRemoteDescription({ type: 'answer', sdp: a });
+    if (!net.room.players[net.room.host]) { toast('The host left'); leaveRoom(); }
+    lobbyStatus();
+  });
+  setTimeout(() => { if (net.on && net.code === c && peer.r.readyState !== 'open') { toast("Couldn't connect to that player (some networks block direct connections). Try again or use Wi-Fi.", 5000); leaveRoom(); } }, 16000);
+  showLobby(); return true;
+}
+async function quickMatch() {
+  myName();
+  try {
+    const snap = await getDocs(query(collection(db, ROOMS), where('pub', '==', true), where('phase', '==', 'lobby'), limit(15)));
+    const open = snap.docs.map((d) => d.data()).filter((r) => Date.now() - r.created < 20 * 60e3 && Object.keys(r.players).length === 1 && !r.players[me.id]);
+    for (const r of shuffle(open)) if (await joinRoom(r.code)) return;
+  } catch (e) { console.warn(e); }
+  await createRoom(true);
+}
+function showLobby() { screen('lobbyScr'); lobbyStatus(); }
+function lobbyStatus() {
+  if (!net.on || $('lobbyScr').hidden) return;
+  const open = net.peer?.r?.readyState === 'open';
+  $('lobbyKind').textContent = (net.room?.pub ?? net.pub) ? 'Quick Match · waiting for anyone online' : 'Private room · send the code to a friend';
+  $('lobbyCode').textContent = net.code;
+  $('lobbyStatus').textContent = open ? 'Opponent connected!' : net.host ? 'Waiting for an opponent… (you can leave this open)' : 'Connecting…';
+  if (open) openSelect('online');
+}
+function onlineReady(id) {
+  net.picks[net.host ? 'h' : 'g'] = id;
+  $('selectHint').textContent = 'Waiting for your opponent to pick…'; $('selGo').disabled = true;
+  sendOn({ k: 'pick', id, name: myName() });
+  maybeStart();
+}
+function maybeStart() {
+  if (!net.host || !net.picks.h || !net.picks.g) return;
+  const m = { k: 'start', p1: net.picks.h, p2: net.picks.g, names: [myName(), net.names.guest || 'Opponent'] };
+  sendOn(m); $('selGo').disabled = false;
+  startMatch({ mode: 'online', p1: m.p1, p2: m.p2, names: m.names });
+}
+function onNet(m) {
+  net.lastRecv = performance.now();
+  if (m.k === 'hi') { net.names.guest = net.host ? m.name : net.names.guest; if (!net.host) net.names.host = m.name; return; }
+  if (m.k === 'pick') { if (net.host) { net.picks.g = m.id; net.names.guest = m.name; maybeStart(); } return; }
+  if (m.k === 'in' && net.host) { net.guestIn = m.i; return; }
+  if (m.k === 'start' && !net.host) { $('selGo').disabled = false; net.picks = {}; startMatch({ mode: 'guest', p1: m.p1, p2: m.p2, names: m.names, side: 1 }); return; }
+  if (m.k === 's' && !net.host && G?.mode === 'guest') { applyState(m); return; }
+  if (m.k === 'rematch') { net.rematchVotes.add(net.host ? 'g' : 'h'); tryRematch(); }
+}
+// host → guest: the whole fight state, 60 times a second (small: two fighters + a few numbers)
+net.sendState = (s) => {
+  const f = (p) => [Math.round(p.x), Math.round(p.y), p.face, p.state, p.mname || '', p.mt, Math.round(p.hp * 10) / 10, Math.round(p.meter), p.wins, p.combo, p.inv, p.t, Math.round(p.vy), Math.round(p.vx * 10) / 10];
+  sendOn({ k: 's', p: s.p.map(f), ids: s.p.map((p) => p.id), ph: s.phase, pt: s.pt, tm: s.timer, rd: s.round, w: s.waves.map((w) => [Math.round(w.x), w.dir]), fr: s.frame, win: s.winner, ev: s.events.length ? s.events : undefined });
+};
+function applyState(m) {
+  const s = G.s;
+  m.p.forEach((a, i) => {
+    const p = s.p[i]; p.id = m.ids[i];
+    [p.x, p.y, p.face, p.state, p.mname, p.mt, p.hp, p.meter, p.wins, p.combo, p.inv, p.t, p.vy, p.vx] = a;
+    p.move = p.mname ? (p.mname === 'special' ? FD.SPECIALS[FD.CHARS[p.id].special] : FD.M[p.mname]) : null;
+    p.max = FD.CHARS[p.id].hp;
+  });
+  Object.assign(s, { phase: m.ph, pt: m.pt, timer: m.tm, round: m.rd, frame: m.fr, winner: m.win, waves: m.w.map(([x, dir]) => ({ x, dir })) });
+  if (m.ev) handleEvents(m.ev);
+}
+net.sendInput = (i) => { const k = JSON.stringify(i); if (k !== net.lastIn || performance.now() - net.sendT > 200) { net.lastIn = k; net.sendT = performance.now(); sendOn({ k: 'in', i }); } net.lag = performance.now() - net.lastRecv; };
+net.rematch = () => { net.rematchVotes.add(net.host ? 'h' : 'g'); sendOn({ k: 'rematch' }); $('endSub').textContent = 'Waiting for your opponent…'; $('endOv').hidden = false; tryRematch(); };
+function tryRematch() {
+  if (!net.rematchVotes.has('h') || !net.rematchVotes.has('g')) { if (!$('endOv').hidden) $('againBtn').textContent = net.rematchVotes.size ? '↻ Rematch (opponent wants one!)' : '↻ Rematch'; return; }
+  net.rematchVotes.clear(); $('endOv').hidden = true;
+  if (net.host) { const s = G.s; startMatch({ mode: 'online', p1: s.p[0].id, p2: s.p[1].id, names: G.names }); sendOn({ k: 'start', p1: s.p[0].id, p2: s.p[1].id, names: G.names }); }
+}
+async function leaveRoom(quiet) {
+  if (!net.on) return;
+  const c = net.code, host = net.host;
+  net.on = false; net.unsub?.(); net.unsub = null;
+  try { net.peer?.pc.close(); } catch {}
+  net.peer = null; net.room = null; net.code = ''; net.picks = {}; net.rematchVotes.clear();
+  if (c) { net.code = c; await mutate((r) => { delete r.players[me.id]; delete r.sig[me.id]; if (host) r.phase = 'play'; return r; }); net.code = ''; } // a room its host left never shows up in Quick Match
+  history.replaceState(null, '', location.pathname + location.search);
+  if (!quiet) { G = null; screen('titleScr'); }
+}
+
+// ---------- buttons ----------
+$('arcadeBtn').onclick = () => { myName(); openSelect('arcade'); };
+$('cpuBtn').onclick = () => { myName(); openSelect('cpu'); };
+$('localBtn').onclick = () => { openSelect('local'); toast('Player 1: WASD + F G H · Player 2: arrows + 1 2 3 (or , . /) · gamepads work too', 5000); };
+$('quickBtn').onclick = () => quickMatch();
+$('createBtn').onclick = () => createRoom(false);
+$('joinBtn').onclick = () => { const c = $('codeIn').value.toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length !== 5) return toast('Room codes have 5 characters'); joinRoom(c); };
+$('codeIn').onkeydown = (e) => { if (e.key === 'Enter') $('joinBtn').click(); };
+$('leaveBtn').onclick = () => leaveRoom();
+$('inviteBtn').onclick = async () => { const u = `https://rank-game.com/games/dojo-duel#${net.code}`; try { await navigator.clipboard.writeText(u); toast('Invite link copied! 📋'); } catch { toast(u, 6000); } };
+addEventListener('pagehide', () => { if (net.on) leaveRoom(true); });
+// builds for other sites (itch.io) can't reach the room database
+if (window.DD_OFFLINE) { for (const id of ['onlineHead', 'onlineRow', 'joinRow']) $(id).hidden = true; $('onlineLink').hidden = false; }
+window.startDemo = () => startMatch({ mode: 'demo', p1: 'kenji', p2: 'lin', names: ['CPU', 'CPU'] }); // the preview recorder
+if (location.hash === '#demo') startDemo();
+else if (/^#[A-Z0-9]{5}$/i.test(location.hash) && !window.DD_OFFLINE) setTimeout(() => joinRoom(location.hash.slice(1).toUpperCase()), 300);
+</script>
+</body>
+</html>
