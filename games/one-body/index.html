@@ -53,7 +53,16 @@
   #controls > div { display: flex; gap: 10px; pointer-events: auto; }
   .big { width: 84px; height: 84px; border-radius: 50%; font-size: 30px; background: #ffffff22; border: 2px solid #ffffff44; touch-action: none; }
   .big.on { background: #ffffff55; }
-  #actBtn { width: auto; min-width: 110px; border-radius: 42px; font-size: 18px; }
+  #actBtn, #act2Btn { width: auto; min-width: 110px; border-radius: 42px; font-size: 18px; }
+  .pad { position: relative; }
+  .padLabel, #pad2 { display: none; }
+  body.solo #pad2 { display: flex; }
+  body.solo .padLabel { display: block; position: absolute; top: -18px; left: 0; right: 0; text-align: center; font-size: 11px; font-weight: 800; color: #fff; text-shadow: 0 1px 2px #000; }
+  body.solo [data-emote] { display: none; }
+  body.solo #meetBtn { position: fixed; top: 40px; left: 8px; font-size: 12px; padding: 6px 10px; }
+  body.solo #actBtn, body.solo #act2Btn { min-width: 76px; font-size: 14px; }
+  @media (max-width: 620px) { body.solo .big { width: 46px; height: 46px; font-size: 16px; } body.solo #actBtn, body.solo #act2Btn { min-width: 52px; font-size: 11px; }
+    body.solo #controls { gap: 4px; padding: 8px 4px; } body.solo #controls > div { gap: 4px; } body.solo #meetBtn { font-size: 11px; padding: 6px; } }
   .side { display: flex; flex-direction: column; gap: 6px; }
   .side button { padding: 7px 10px; font-size: 13px; background: #0007; }
   #meetBtn { background: #c0263dcc; border-color: #ff8a9a; }
@@ -77,8 +86,8 @@
   .stats b { display: block; font-size: 22px; color: var(--ink); }
   #lb { margin: 0 auto; }
   #mute { position: absolute; bottom: 104px; right: 10px; z-index: 5; padding: 6px 10px; background: #0007; }
-  @media (max-width: 760px) { #role { top: auto; bottom: 108px; max-width: 94vw; } #legend { font-size: 11px; } }
-  @media (max-height: 520px) { .big { width: 64px; height: 64px; font-size: 24px; } #actBtn { min-width: 90px; font-size: 15px; } #mute { bottom: 82px; } }
+  @media (max-width: 760px) { #role { top: auto; bottom: 108px; max-width: 94vw; } #legend { font-size: 11px; top: 48px; } }
+  @media (max-height: 520px) { .big { width: 64px; height: 64px; font-size: 24px; } #actBtn, #act2Btn { min-width: 90px; font-size: 15px; } #mute { bottom: 82px; } }
   @media (hover: hover) and (pointer: fine) { .big { width: 64px; height: 64px; font-size: 22px; opacity: .8; } }
 </style>
 </head>
@@ -90,18 +99,18 @@
 <div class="screen" id="startScr">
   <h1>ONE <span>BODY</span></h1>
   <svg id="mascot" viewBox="-3 -3.2 6 4.6"></svg>
-  <div class="tag">Six players. One wobbly creature. Each of you controls one limb, and one of you is secretly trying to make it fall over.</div>
+  <div class="tag">1–6 players. One wobbly creature. Each of you controls a limb (bots run the rest), and one limb is secretly trying to make it fall over.</div>
   <div class="card box">
     <input id="name" maxlength="12" placeholder="Your name" autocomplete="off">
     <button class="cta" id="quickBtn">⚡ Quick Play (online)</button>
-    <div class="row"><button id="createBtn">🔒 Create room</button><button id="practiceBtn">🤖 Practice with bots</button></div>
+    <div class="row"><button id="createBtn">🔒 Create room</button><button id="practiceBtn">🦵 Play solo (both legs)</button></div>
     <div class="or">or join a friend</div>
     <div class="row"><input id="codeIn" maxlength="5" placeholder="Room code" style="text-transform:uppercase"><button id="joinBtn" style="flex:.6">Join</button></div>
     <a id="onlineLink" class="hint" href="https://rank-game.com/games/one-body" target="_blank" hidden>🌐 Online rooms and Quick Play are on <b style="color:var(--gold)">rank-game.com</b>. Play with friends there!</a>
   </div>
   <div class="card how">
     <b>How to play</b><br>
-    🦵 Everyone controls <b>one limb</b> of the same creature: a leg, an arm, the head or the tail.<br>
+    🦵 Everyone controls <b>one limb</b> of the same creature: a leg, an arm, the head or the tail. Bots fill the rest, and playing <b>solo</b> you get both legs.<br>
     ⬅️ ➡️ swing your limb · <b>Space</b> does its move (legs <b>stomp</b>, arms <b>grab</b>, tail <b>boings</b>, head <b>honks</b>).<br>
     🎂 Walk the creature to the <b>cake</b> before time runs out.<br>
     😈 One limb is the <b>traitor</b>. It can fake hiccups and give other limbs cramps. After every fall, watch the <b>instant replay</b> to see who moved.<br>
@@ -137,7 +146,8 @@
     <div class="side">
       <button data-emote="0">⬅️ LEFT!</button><button data-emote="1">✋ WAIT!</button><button data-emote="2">😇 Not me</button><button data-emote="3">👀 Sus</button>
     </div>
-    <div><button class="big" id="lBtn">◀</button><button class="big" id="actBtn">STOMP</button><button class="big" id="rBtn">▶</button></div>
+    <div class="pad"><span class="padLabel">LEFT LEG</span><button class="big" id="lBtn">◀</button><button class="big" id="actBtn">STOMP</button><button class="big" id="rBtn">▶</button></div>
+    <div class="pad" id="pad2"><span class="padLabel">RIGHT LEG</span><button class="big" id="l2Btn">◀</button><button class="big" id="act2Btn">STOMP</button><button class="big" id="r2Btn">▶</button></div>
     <div class="side">
       <button id="meetBtn">🚨 Meeting</button>
       <div class="side powers" id="powers" hidden><button id="fartBtn">🤧 Fake hiccup</button><button id="crampBtn">⚡ Cramp a limb</button></div>
@@ -247,11 +257,17 @@ function hostStart({ players, practice, demo }) {
   const seed = (Math.random() * 1e9) | 0;
   const sim = OB.create({ seed });
   const humans = Object.keys(players);
-  const order = practice && practice !== 'any' ? [practice, ...shuffle(LIMBS.filter((l) => l !== practice))] : shuffle(LIMBS);
+  // humans get the limbs that matter most first: the legs, then the tail, arms and head. Playing alone = both legs.
+  const order = [...shuffle(['ll', 'rl']), 'tl', ...shuffle(['la', 'ra']), 'hd'];
   const limbs = {}; // limb -> { pid | null (bot), name }
   const botNames = shuffle(BOTS);
-  order.forEach((l, i) => { const pid = humans[i]; limbs[l] = pid ? { pid, name: players[pid].name } : { pid: null, name: '🤖 ' + botNames.pop() }; if (pid) players[pid].limb = l; });
-  const traitor = demo ? null : pick(LIMBS);
+  for (const l of LIMBS) limbs[l] = { pid: null, name: '🤖 ' + botNames.pop() };
+  if (humans.length === 1 && !demo) { const pid = humans[0]; players[pid].limbs = ['ll', 'rl']; }
+  else humans.forEach((pid, i) => (players[pid].limbs = [order[i]]));
+  for (const pid of humans) for (const l of players[pid].limbs || []) limbs[l] = { pid, name: players[pid].name };
+  for (const pid of humans) players[pid].limb = players[pid].limbs?.[0];
+  // the traitor can be anyone, but never one of a solo player's own legs
+  const traitor = demo ? null : pick(LIMBS.filter((l) => humans.length > 1 || !limbs[l].pid));
   H = {
     sim, players, limbs, traitor, practice: !!practice, demo: !!demo, mem: Object.fromEntries(LIMBS.map((l) => [l, {}])),
     name: pick(NAMES), hat: pick(HATS), t0: now(), left: GAME_MS, last: performance.now(), acc: 0, phase: 'play',
@@ -259,7 +275,7 @@ function hostStart({ players, practice, demo }) {
     cool: { fart: 0, cramp: 0 }, botPower: now() + 20000 + Math.random() * 20000, sendT: 0, press: {}, emoteT: {}, botMeet: false,
   };
   H.cool.fart = H.cool.cramp = now() + 10000;
-  for (const pid of humans) players[pid].send({ k: 'start', you: players[pid].limb, traitor: players[pid].limb === traitor, limbs, name: H.name, hat: H.hat, practice: H.practice, demo: H.demo });
+  for (const pid of humans) players[pid].send({ k: 'start', you: players[pid].limb, you2: players[pid].limbs?.[1] || null, traitor: players[pid].limb === traitor, limbs, name: H.name, hat: H.hat, practice: H.practice, demo: H.demo });
   clearInterval(H.iv); H.iv = setInterval(hostTick, 1000 / 60);
 }
 const broadcast = (m) => { if (H) for (const p of Object.values(H.players)) p.send(m); };
@@ -315,6 +331,7 @@ function hostMsg(pid, m) {
   const h = H; if (!h) return;
   const p = h.players[pid], l = p?.limb; if (!p) return;
   if (m.k === 'in' && l && !h.sim.gone[l]) h.sim.input[l] = { dir: Math.sign(m.dir) || 0, act: !!m.act };
+  const l2 = p.limbs?.[1]; if (m.k === 'in' && l2 && !h.sim.gone[l2]) h.sim.input[l2] = { dir: Math.sign(m.dir2) || 0, act: !!m.act2 };
   if (m.k === 'emote' && l && now() - (h.emoteT[pid] || 0) > 900) { h.emoteT[pid] = now(); broadcast({ k: 'emote', l, i: m.i | 0 }); }
   if (m.k === 'meet' && h.phase === 'play' && h.meetings[pid] > 0 && !h.sim.gone[l]) { h.meetings[pid]--; hostMeeting(l); }
   if (m.k === 'vote' && h.phase === 'vote' && !h.sim.gone[l] && (m.l === 'skip' || (LIMBS.includes(m.l) && !h.sim.gone[m.l]))) { h.votes[l] = m.l; broadcast({ k: 'votes', votes: h.votes }); if (allVoted()) h.voteEnds = Math.min(h.voteEnds, now() + 1200); }
@@ -385,22 +402,24 @@ function onMsg(m) {
 }
 function clientStart(m) {
   $('endOv').hidden = $('voteOv').hidden = true;
-  C = { you: m.you, traitor: m.traitor, limbs: m.limbs, name: m.name, hat: m.hat, practice: m.practice, demo: m.demo, prev: null, cur: null, frames: [], gone: new Set(), cramped: new Set(),
+  C = { you: m.you, you2: m.you2, traitor: m.traitor, limbs: m.limbs, name: m.name, hat: m.hat, practice: m.practice, demo: m.demo, prev: null, cur: null, frames: [], gone: new Set(), cramped: new Set(),
     bubbles: {}, parts: [], quip: null, banner: null, replay: null, cool: { fart: 0, cramp: 0 }, votes: {}, eyes: { x: 0, y: 0, vx: 0, vy: 0 } };
   screen('game');
   $('actBtn').textContent = (ACTION[m.you] || '').toUpperCase();
+  document.body.classList.toggle('solo', !!m.you2);
   $('controls').hidden = !!m.demo; $('mute').hidden = !!m.demo; $('role').hidden = false;
   $('role').className = m.traitor ? 'traitor' : '';
   $('role').innerHTML = m.demo ? `🎂 Get <b>${esc(m.name)}</b> to the cake!`
     : m.traitor ? `😈 You are the <b>TRAITOR</b> (${ICON[m.you]} ${LIMB_NAME[m.you]}). Make <b>${esc(m.name)}</b> fall, but don't get caught!`
+    : m.you2 ? `You control <b>both legs</b> of <b>${esc(m.name)}</b>: <b>A/D</b> (left leg) and <b>←/→</b> (right leg), stomp with <b>W/↑</b>. Take turns! One bot limb is a traitor…`
     : `You are the ${ICON[m.you]} <b>${LIMB_NAME[m.you]}</b> of <b>${esc(m.name)}</b>. Get to the cake! One limb is a traitor…`;
   $('powers').hidden = !m.traitor;
   legend();
   banner(m.traitor ? '😈 TRAITOR' : '🎂 GO!', 1600);
-  setTimeout(() => { if (C && !C.demo) $('role').hidden = true; }, 9000);
+  setTimeout(() => { if (C && !C.demo) $('role').hidden = true; }, m.you2 ? 14000 : 9000);
 }
 function legend() {
-  $('legend').innerHTML = LIMBS.map((l) => `<div class="${C.gone.has(l) ? 'gone' : ''}"><span class="dot" style="background:${COL[l]}"></span>${ICON[l]} ${esc(C.limbs[l].name)}${l === C.you ? ' (you)' : ''}</div>`).join('');
+  $('legend').innerHTML = LIMBS.map((l) => `<div class="${C.gone.has(l) ? 'gone' : ''}"><span class="dot" style="background:${COL[l]}"></span>${ICON[l]} ${esc(C.limbs[l].name)}${l === C.you || l === C.you2 ? ' (you)' : ''}</div>`).join('');
 }
 function hud() {
   const c = C.cur;
@@ -485,27 +504,31 @@ function showEnd(m) {
 const lb = leaderboard($('lb'), 'one-body', (s) => { const ms = 600000 - s; return `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}.${Math.floor(ms / 100) % 10}`; });
 
 // ---------- controls ----------
-const keys = { l: false, r: false, a: false };
+const keys = { l: false, r: false, a: false, l2: false, r2: false, a2: false };
 let lastSent = '';
 function pushInput() {
   if (!C || C.demo) return;
-  const dir = (keys.r ? 1 : 0) - (keys.l ? 1 : 0), m = { k: 'in', dir, act: keys.a }, s = JSON.stringify(m);
+  const dir = (keys.r ? 1 : 0) - (keys.l ? 1 : 0), dir2 = (keys.r2 ? 1 : 0) - (keys.l2 ? 1 : 0);
+  const m = { k: 'in', dir, act: keys.a, dir2, act2: keys.a2 }, s = JSON.stringify(m);
   if (s !== lastSent) { lastSent = s; send(m); }
 }
 setInterval(() => { lastSent = ''; pushInput(); }, 1000); // resend in case a packet was lost
 const KEYMAP = { ArrowLeft: 'l', KeyA: 'l', ArrowRight: 'r', KeyD: 'r', Space: 'a', ArrowUp: 'a', KeyW: 'a' };
+// both legs (playing alone): A/D/W left leg, arrows right leg, Space stomps with both
+const KEYMAP2 = { KeyA: 'l', KeyD: 'r', KeyW: 'a', ArrowLeft: 'l2', ArrowRight: 'r2', ArrowUp: 'a2', Space: 'a a2' };
+const keyOf = (e) => (C?.you2 ? KEYMAP2 : KEYMAP)[e.code];
 addEventListener('keydown', (e) => {
   if (!C || $('game').hidden || e.target.tagName === 'INPUT') return;
-  const k = KEYMAP[e.code];
-  if (k) { e.preventDefault(); keys[k] = true; pushInput(); return; }
+  const k = keyOf(e);
+  if (k) { e.preventDefault(); for (const x of k.split(' ')) keys[x] = true; pushInput(); return; }
   if (e.repeat) return;
   if (/^Digit[1-4]$/.test(e.code)) send({ k: 'emote', i: +e.code.slice(5) - 1 });
   if (e.code === 'KeyQ' && C.traitor) $('fartBtn').click();
   if (e.code === 'KeyE' && C.traitor) $('crampBtn').click();
 });
-addEventListener('keyup', (e) => { const k = KEYMAP[e.code]; if (k) { keys[k] = false; pushInput(); } });
-addEventListener('blur', () => { keys.l = keys.r = keys.a = false; pushInput(); });
-for (const [id, k] of [['lBtn', 'l'], ['rBtn', 'r'], ['actBtn', 'a']]) {
+addEventListener('keyup', (e) => { const k = keyOf(e); if (k) { for (const x of k.split(' ')) keys[x] = false; pushInput(); } });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; pushInput(); });
+for (const [id, k] of [['lBtn', 'l'], ['rBtn', 'r'], ['actBtn', 'a'], ['l2Btn', 'l2'], ['r2Btn', 'r2'], ['act2Btn', 'a2']]) {
   const b = $(id);
   const on = (e) => { e.preventDefault(); keys[k] = true; b.classList.add('on'); pushInput(); };
   const off = (e) => { e.preventDefault(); keys[k] = false; b.classList.remove('on'); pushInput(); };
@@ -586,8 +609,10 @@ function draw() {
     ctx.fillStyle = '#222'; ctx.fillText(b.text, x, y + 4 * d);
   }
   if (!C.demo && !C.replay) { // "you" arrow
-    const p = body(idx[C.you]);
-    if (!C.gone.has(C.you)) { ctx.fillStyle = C.traitor ? '#ff5d8f' : '#fff'; ctx.fillText('▼ you', sx(p.x), sy(p.y) - 30 * d); }
+    for (const [l, label, dx] of C.you2 ? [[C.you, 'A D', -26], [C.you2, '← →', 26]] : [[C.you, '▼ you', 0]]) { // playing alone: which keys move which leg
+      const p = body(idx[l]), x = sx(p.x) + dx * d, y = sy(p.y) + 62 * d;
+      if (!C.gone.has(l)) { ctx.fillStyle = C.traitor ? '#ff5d8f' : COL[l]; ctx.strokeStyle = '#000a'; ctx.lineWidth = 3 * d; ctx.strokeText(label, x, y); ctx.fillText(label, x, y); }
+    }
   }
   if (C.cur?.gust && tor.x > 49 && tor.x < 57) { ctx.fillStyle = '#fff'; ctx.fillText('💨 GUST!', W / 2, Hh * 0.2); }
 }
@@ -607,7 +632,7 @@ function drawCourse(T, body) {
     ctx.fillStyle = got ? '#5ee08f' : '#ff5d8f'; ctx.beginPath(); ctx.moveTo(x + 0.04, y + 1.6); ctx.lineTo(x + 0.7, y + 1.35 + Math.sin(T * 4) * 0.05); ctx.lineTo(x + 0.04, y + 1.1); ctx.fill();
   });
   // banana peels
-  for (const x of [21.5, 23.5]) { ctx.fillStyle = '#ffe14d'; ctx.beginPath(); ctx.ellipse(x, 0.6, 0.45, 0.07, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#c9a400'; ctx.fillRect(x + 0.35, 0.6, 0.12, 0.06); }
+  for (const x of OB.BANANAS) { ctx.fillStyle = '#ffe14d'; ctx.beginPath(); ctx.ellipse(x, 0.6, 0.45, 0.07, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#c9a400'; ctx.fillRect(x + 0.35, 0.6, 0.12, 0.06); }
   // mushroom in the pit
   ctx.save(); ctx.translate(44.6, -1.0); ctx.rotate(-0.35);
   ctx.fillStyle = '#e03131'; ctx.beginPath(); ctx.ellipse(0, 0.05, 0.6, 0.22, 0, 0, Math.PI); ctx.fill();
@@ -638,6 +663,24 @@ function drawCourse(T, body) {
   ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0.34, 0.6, 0.03, 0, 7); ctx.fill();
   ctx.restore();
   if (Math.sin(T * 9) > 0.97 && Math.abs(gs.x - cam.x) < 6) SFX.goose();
+  // spinning bar on a post
+  const pd = body(16), PD = OB.PADDLE;
+  ctx.fillStyle = '#6c757d'; ctx.fillRect(PD.x - 0.07, 0, 0.14, PD.y);
+  ctx.save(); ctx.translate(pd.x, pd.y); ctx.rotate(pd.a);
+  ctx.fillStyle = '#ff6b6b'; ctx.beginPath(); ctx.roundRect(-PD.len, -0.12, PD.len * 2, 0.24, 0.12); ctx.fill();
+  ctx.fillStyle = '#fff'; for (const dx of [-0.9, -0.3, 0.3, 0.9]) ctx.fillRect(dx - 0.1, -0.12, 0.2, 0.24);
+  ctx.restore(); ctx.fillStyle = '#343a40'; ctx.beginPath(); ctx.arc(PD.x, PD.y, 0.14, 0, 7); ctx.fill();
+  // conveyor belt (stripes run backwards)
+  const CV = OB.CONVEYOR; ctx.fillStyle = '#495057'; ctx.fillRect(CV.x - CV.half, 0, CV.half * 2, 0.12);
+  ctx.fillStyle = '#ffd43b'; const off = (T * CV.speed) % 0.6;
+  for (let x = CV.x - CV.half + 0.6 - off; x < CV.x + CV.half - 0.2; x += 0.6) { ctx.beginPath(); ctx.moveTo(x, 0.02); ctx.lineTo(x + 0.2, 0.06); ctx.lineTo(x, 0.1); ctx.fill(); }
+  ctx.save(); ctx.scale(1, -1); ctx.font = '800 0.28px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#495057'; ctx.fillText('◀◀ CONVEYOR', CV.x, -0.3); ctx.restore();
+  // boulders
+  for (let i = 14; i < 16; i++) {
+    const b = body(i); ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.a);
+    ctx.fillStyle = '#868e96'; ctx.strokeStyle = '#495057'; ctx.lineWidth = 0.05; ctx.beginPath(); ctx.arc(0, 0, 0.42, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#adb5bd'; ctx.beginPath(); ctx.arc(-0.12, 0.12, 0.1, 0, 7); ctx.arc(0.15, -0.1, 0.07, 0, 7); ctx.fill(); ctx.restore();
+  }
   // ducks
   for (let i = 0; i < 4; i++) {
     const d = body(10 + i); ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.a);
@@ -652,12 +695,12 @@ function drawCourse(T, body) {
   for (const dx of [-0.3, 0, 0.3]) { ctx.fillStyle = '#74c0fc'; ctx.fillRect(cx + dx - 0.03, cy + 0.9, 0.06, 0.3); ctx.fillStyle = Math.sin(T * 20 + dx * 9) > 0 ? '#ffd43b' : '#ff922b'; ctx.beginPath(); ctx.ellipse(cx + dx, cy + 1.27, 0.05, 0.09, 0, 0, 7); ctx.fill(); }
   ctx.save(); ctx.scale(1, -1); ctx.font = '800 0.35px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#c2255c'; ctx.fillText('🎂 FINISH', cx, -1.8); ctx.restore();
 }
-const coursePts = [[-10, 0], [16, 0], [16, 0.18], [17.3, 0.18], [17.3, 0.36], [18.6, 0.36], [18.6, 0.54], [26, 0.54], [31, 0], [36, 0], [44, 0], [44, -1.1], [45.2, -1.1], [45.2, 0], [61, 0], [67, 0.9], [73, 0], [100, 0], [100, 12]];
+const coursePts = OB.GROUND;
 function gy(x) { const p = coursePts; for (let i = 0; i < p.length - 1; i++) if (x >= p[i][0] && x <= p[i + 1][0] && p[i + 1][0] > p[i][0]) return p[i][1] + (p[i + 1][1] - p[i][1]) * (x - p[i][0]) / (p[i + 1][0] - p[i][0]); return 0; }
 
 function drawCreature(body, pressed, T) {
   const P = { ll: body(1), rl: body(2), la: body(3), ra: body(4), hd: body(5), tl: body(6) }, tor = body(0);
-  const glow = (l) => (C.replay ? pressed.has(l) : l === C.you && (keys.l || keys.r || keys.a));
+  const glow = (l) => (C.replay ? pressed.has(l) : (l === C.you && (keys.l || keys.r || keys.a)) || (l === C.you2 && (keys.l2 || keys.r2 || keys.a2)));
   const limbShape = (p, l, hw, hl, foot) => {
     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a);
     if (glow(l)) { ctx.shadowColor = '#fff'; ctx.shadowBlur = 25; }
@@ -670,8 +713,8 @@ function drawCreature(body, pressed, T) {
   };
   // back limbs first; your own limb is drawn last so you can always see it
   const SZ = { ll: [0.11, 0.55, 0.14], rl: [0.11, 0.55, 0.14], la: [0.09, 0.425, 0.12], ra: [0.09, 0.425, 0.12] };
-  const mine = !C.replay && SZ[C.you] ? C.you : null;
-  const limb = (l) => l !== mine && limbShape(P[l], l, ...SZ[l]);
+  const mine = !C.replay && SZ[C.you] ? C.you : null, mine2 = !C.replay && SZ[C.you2] ? C.you2 : null;
+  const limb = (l) => l !== mine && l !== mine2 && limbShape(P[l], l, ...SZ[l]);
   limb('la'); limb('ll');
   // tail
   ctx.save(); ctx.translate(P.tl.x, P.tl.y); ctx.rotate(P.tl.a);
@@ -708,6 +751,7 @@ function drawCreature(body, pressed, T) {
   ctx.restore();
   limb('ra');
   if (mine) limbShape(P[mine], mine, ...SZ[mine]);
+  if (mine2) limbShape(P[mine2], mine2, ...SZ[mine2]);
 }
 function drawHat(h) {
   ctx.save(); ctx.translate(0, 0.33);
@@ -869,9 +913,9 @@ function renderLobby() {
   $('lobbyPlayers').innerHTML = ps.map(([pid, p], i) => `<div class="player"><span class="dot" style="background:${Object.values(COL)[i]}"></span>${esc(p.n)}${pid === room.host ? ' 👑' : ''}${pid === me.id ? ' (you)' : ''}<span style="margin-left:auto;font-size:12px;color:var(--mut)">${ready(pid) ? '✓' : 'connecting…'}</span></div>`).join('')
     + Array.from({ length: MAXP - ps.length }, () => '<div class="player" style="opacity:.4">🤖 bot (until someone joins)</div>').join('');
   const n = ps.filter(([pid]) => ready(pid)).length;
-  $('lobbyHint').textContent = isHost ? (n < 2 ? 'Waiting for friends… (or start now with bots)' : `${n} players ready!`) : 'Waiting for the host to start…';
+  $('lobbyHint').textContent = isHost ? (n < 2 ? 'Waiting for friends… or start now: alone you control both legs, bots do the rest' : `${n} players ready! Players get the legs first, bots fill the rest.`) : 'Waiting for the host to start…';
   $('startBtn').hidden = !isHost;
-  if (room.pub && isHost && n >= 3 && !renderLobby.auto) { renderLobby.auto = setTimeout(() => { renderLobby.auto = null; if (net.isHost && room?.phase === 'lobby') startOnline(); }, 12000); $('lobbyHint').textContent += ' Starting in 12s…'; }
+  if (room.pub && isHost && n >= 2 && !renderLobby.auto) { renderLobby.auto = setTimeout(() => { renderLobby.auto = null; if (net.isHost && room?.phase === 'lobby') startOnline(); }, 12000); $('lobbyHint').textContent += ' Starting in 12s…'; }
 }
 async function startOnline() {
   const players = { [me.id]: { name: me.name, send: (m) => onMsg(m) } };

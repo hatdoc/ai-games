@@ -6,15 +6,21 @@
   const LIMBS = ['ll', 'rl', 'la', 'ra', 'hd', 'tl'];
   const LIMB_NAME = { ll: 'Left Leg', rl: 'Right Leg', la: 'Left Arm', ra: 'Right Arm', hd: 'Head', tl: 'Tail' };
   const ACTION = { ll: 'Stomp', rl: 'Stomp', la: 'Grab', ra: 'Grab', hd: 'Honk', tl: 'Boing' };
-  const TURN = 3.2;
-  const P = { reach: 0.5, back: 0.4, tilt: 0.5, assist: 60 }; // tuning // rad/s a limb turns while its button is held
+  const TURN = 4.2; // rad/s a limb turns while its button is held
+  const P = { reach: 0.5, back: 0.4, tilt: 0.5, assist: 110, push: 14 }; // tuning
   const FINISH = 92, CHECKPOINTS = [0, 17, 35, 50, 64, 78];
+  // ground outline (shared with the drawing code)
+  const GROUND = [[-10, 0], [16, 0], [16, 0.18], [17.3, 0.18], [17.3, 0.36], [18.6, 0.36], [18.6, 0.54], [26, 0.54], [30, 0],
+    [44, 0], [44, -1.1], [45.2, -1.1], [45.2, 0], [61, 0], [67, 0.9], [73, 0], [100, 0], [100, 12]];
+  const BANANAS = [20, 21.6, 23.2, 24.8];
+  const PADDLE = { x: 33.5, y: 2.95, len: 1.35, spin: 0.9 }; // spinning bar after the slope
+  const HILLTOP = 67.2;
+  const CONVEYOR = { x: 76.6, half: 2.4, speed: 2.2 };
 
   // ---------- course: [x, y] ground outline plus props ----------
   function buildCourse(world) {
     const ground = world.createBody();
-    const pts = [[-10, 0], [16, 0], [16, 0.18], [17.3, 0.18], [17.3, 0.36], [18.6, 0.36], [18.6, 0.54], [26, 0.54], [31, 0], [36, 0],
-      [44, 0], [44, -1.1], [45.2, -1.1], [45.2, 0], [61, 0], [67, 0.9], [73, 0], [100, 0], [100, 12]];
+    const pts = GROUND;
     const fix = (f, o = {}) => ground.createFixture(f, { friction: 0.9, ...o });
     for (let i = 0; i < pts.length - 1; i++) fix(pl.Edge(V(...pts[i]), V(...pts[i + 1])));
     fix(pl.Edge(V(-10, 0), V(-10, 12)));
@@ -22,8 +28,13 @@
     // rubber ducks to kick around
     const ducks = [5, 7.5, 10, 12].map((x) => { const d = world.createBody({ type: 'dynamic', position: V(x, 0.3) }); d.createFixture(pl.Circle(0.26), { density: 0.25, friction: 0.6, restitution: 0.5 }); return d; });
     // banana peels: almost no friction
-    const bananas = [21.5, 23.5];
+    const bananas = BANANAS;
     for (const x of bananas) fix(pl.Box(0.45, 0.04, V(x, 0.58), 0), { friction: 0.01, userData: 'banana' });
+    // spinning bar and boulders rolling down the hill
+    const paddle = world.createBody({ type: 'kinematic', position: V(PADDLE.x, PADDLE.y) });
+    paddle.createFixture(pl.Box(PADDLE.len, 0.12), { friction: 0.4 });
+    paddle.setAngularVelocity(PADDLE.spin);
+    const boulders = [0, 1].map((i) => { const b = world.createBody({ type: 'dynamic', position: V(HILLTOP + i * 3, 1.6), angularDamping: 0.2 }); b.createFixture(pl.Circle(0.42), { density: 0.35, friction: 0.8 }); return b; });
     // seesaw
     // seesaw: pivot a bit right of centre so the near end rests on the ground until you cross the middle
     const seesaw = world.createBody({ type: 'dynamic', position: V(40, 0.42) });
@@ -39,9 +50,11 @@
     world.createJoint(pl.RevoluteJoint({}, ground, bag, V(57, 7)));
     const goose = world.createBody({ type: 'kinematic', position: V(80, 0.55) });
     goose.createFixture(pl.Box(0.45, 0.55), { friction: 0.3, userData: 'goose' });
+    // conveyor belt running backwards
+    fix(pl.Box(CONVEYOR.half, 0.06, V(CONVEYOR.x, 0.06), 0), { friction: 1, userData: 'conveyor' });
     const cake = world.createBody({ position: V(FINISH, 0.5) });
     cake.createFixture(pl.Box(0.8, 0.5), { isSensor: true, userData: 'cake' });
-    return { pts, bananas, seesaw, bag, goose, ducks, wind: [50.5, 56.5] };
+    return { pts, bananas, seesaw, bag, goose, ducks, paddle, boulders, wind: [50.5, 56.5] };
   }
 
   // ---------- the creature ----------
@@ -91,6 +104,8 @@
     });
     // a leg swinging forward lifts its foot (slides); pushing back grips
     world.on('pre-solve', (c) => {
+      const ca = c.getFixtureA().getUserData() === 'conveyor', cb = c.getFixtureB().getUserData() === 'conveyor';
+      if (ca || cb) c.setTangentSpeed(ca ? -CONVEYOR.speed : CONVEYOR.speed); // pushes things backwards
       for (const f of [c.getFixtureA(), c.getFixtureB()]) {
         const l = f.getUserData(); if (l !== 'll' && l !== 'rl') continue;
         const d = s.input[l].dir; c.setFriction(d > 0 ? 0.03 : d < 0 ? 2 : 1.2);
@@ -142,11 +157,18 @@
       }
       // a little balance help so it wobbles rather than face-plants every second
       tor.applyTorque(-ang * P.assist - tor.getAngularVelocity() * P.assist * 0.2);
+      // a planted leg pushing back drives the body forward (makes walking much easier to learn)
+      for (const l of ['ll', 'rl']) if (!s.gone[l] && s.input[l].dir < 0 && touching(cr.parts[l]).length) tor.applyForceToCenter(V(P.push * Math.cos(ang), 0));
       // props
       const bg = course.bag, ba = bg.getAngle(), bw = bg.getAngularVelocity();
       if (0.5 * bw * bw + 2.7 * (1 - Math.cos(ba)) < 0.25 && Math.abs(ba) < 0.3) bg.applyTorque((bw >= 0 ? 1 : -1) * 6); // pump it back to ~0.4 rad swings
       for (const d of course.ducks) if (d.getPosition().x > 15.4 && d.isActive()) { s.events.push({ e: 'duck', x: d.getPosition().x, y: d.getPosition().y }); d.setTransform(V(-200, -50), 0); d.setActive(false); } // kicked far enough: poof
-      const gx = 80 + Math.sin(s.t * 0.7) * 3.5;
+      // a boulder rolls down from the hill top every few seconds
+      if (s.t > (s.rollAt ?? 3)) {
+        s.rollAt = s.t + 4 + s.rand() * 2; const b = course.boulders[(s.rolls = (s.rolls || 0) + 1) % 2];
+        b.setTransform(V(HILLTOP, 1.5), 0); b.setLinearVelocity(V(-2.6, 0)); b.setAngularVelocity(4);
+      }
+      const gx = 80 + Math.sin(s.t * 1.1) * 4.5;
       course.goose.setLinearVelocity(V((gx - course.goose.getPosition().x) * 60, 0));
       s.gust = Math.sin(s.t * 1.1) > 0.2; // the fan blows in gusts
       if (s.gust && pos.x > course.wind[0] && pos.x < course.wind[1] && pos.y < 5) tor.applyForceToCenter(V(-13, 0));
@@ -159,9 +181,9 @@
       if (s.finish) { s.done = true; s.events.push({ e: 'finish' }); return; }
       // fallen over: head on the ground, upside down for a while, or into the pit/off the world
       const headDown = touching(cr.parts.hd).length > 0 && !s.gone.hd;
-      s.down = Math.abs(ang) > 1.5 || headDown ? s.down + dt : 0;
+      s.down = Math.abs(ang) > 1.7 || headDown ? s.down + dt : 0;
       s.pit = pos.x > 43.8 && pos.x < 45.4 && pos.y < 0.9 ? (s.pit || 0) + dt : 0; // stuck in the pit
-      if (s.down > 0.6 || s.pit > 2 || pos.y < -6) {
+      if (s.down > 0.9 || s.pit > 2 || pos.y < -6) {
         s.pit = 0;
         s.falls++; s.down = 0;
         s.events.push({ e: 'splat', x: pos.x, y: pos.y });
@@ -192,7 +214,7 @@
     // snapshot for drawing / sending: creature parts + moving props, rounded
     s.snapshot = () => {
       const r = (v) => Math.round(v * 100) / 100, cr = s.cr, o = [];
-      for (const b of [cr.torso, cr.parts.ll, cr.parts.rl, cr.parts.la, cr.parts.ra, cr.parts.hd, cr.parts.tl, course.seesaw, course.bag, course.goose, ...course.ducks]) {
+      for (const b of [cr.torso, cr.parts.ll, cr.parts.rl, cr.parts.la, cr.parts.ra, cr.parts.hd, cr.parts.tl, course.seesaw, course.bag, course.goose, ...course.ducks, ...course.boulders, course.paddle]) {
         const p = b.getPosition(); o.push(r(p.x), r(p.y), r(b.getAngle()));
       }
       return o;
@@ -227,6 +249,11 @@
     const stuck = t - mem.bt > 1.1 || (x > 43 && x < 44);
     if (stuck && l === 'tl') act = true;
     if (stuck && (l === 'll' || l === 'rl') && mem.mode === 'stance') act = true;
+    // spinning bar: wait while an end is sweeping low in front of us
+    const sa = Math.abs(Math.sin(t * PADDLE.spin));
+    if ((l === 'll' || l === 'rl') && x > 30.3 && x < 32.4 && sa > 0.55) want = -ang * P.tilt;
+    // boulder rolling at us: boing over it
+    if (l === 'tl' && s.course.boulders.some((b) => { const d = b.getPosition().x - x; return d > 0.4 && d < 1.8 && b.getLinearVelocity().x < -0.5; })) act = true;
     if (sneaky) {
       if (t > mem.next) { mem.bad = t + 0.9 + s.rand() * 0.8; mem.next = t + 7 + s.rand() * 10; }
       if (t < mem.bad) { want = -want * 2 + (l === 'tl' || l === 'hd' ? Math.sign(ang || 1) * 1.2 : 0); act = l === 'la' || l === 'ra'; }
@@ -235,5 +262,5 @@
     return { dir: Math.abs(d) < 0.06 ? 0 : Math.sign(d), act };
   }
 
-  globalThis.OB = { P, create, bot, LIMBS, LIMB_NAME, ACTION, FINISH, CHECKPOINTS };
+  globalThis.OB = { P, create, bot, LIMBS, LIMB_NAME, ACTION, FINISH, CHECKPOINTS, GROUND, BANANAS, PADDLE, CONVEYOR };
 })();
