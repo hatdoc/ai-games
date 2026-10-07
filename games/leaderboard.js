@@ -27,6 +27,8 @@
     .lb .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lb .sc { font-weight: 800; font-variant-numeric: tabular-nums; }
     .lb .muted { justify-content: center; opacity: .6; background: none !important; }
+    .lb .note { text-align: center; font-size: 13px; opacity: .8; margin: -2px 0 8px; }
+    .lb .note[hidden] { display: none; }
   </style>`);
 
   // Top scores of a board, highest first (for showing a live rank while playing)
@@ -39,14 +41,17 @@
     return (await res.json()).filter((r) => r.document).map((r) => +r.document.fields.score.integerValue);
   };
 
+  // One entry per name per board: the doc id is the lowercased name, hex-encoded (rules only let a higher score replace it)
+  const idFor = (name) => [...new TextEncoder().encode(name.trim().toLowerCase())].map((b) => b.toString(16).padStart(2, '0')).join('');
+
   window.leaderboard = (root, game, fmt = String) => {
     const path = `${FS}/games/${game}/scores`;
     const myIds = new Set(get(`lb-ids-${game}`, []));
     root.classList.add('lb');
     root.innerHTML = `<h3>🏆 TOP 10</h3>
-      <form><input maxlength="14" placeholder="Your name" autocomplete="off"><button>Submit</button></form><ol></ol>`;
+      <form><input maxlength="14" placeholder="Your name" autocomplete="off"><button>Submit</button></form><div class="note" hidden></div><ol></ol>`;
     const form = root.querySelector('form'), input = form.querySelector('input'), btn = form.querySelector('button');
-    const list = root.querySelector('ol');
+    const list = root.querySelector('ol'), note = root.querySelector('.note');
     let score = 0;
     // Keep game keyboard/touch handlers from reacting to typing or taps in the panel.
     for (const ev of ['keydown', 'pointerdown', 'touchstart', 'touchend']) root.addEventListener(ev, (e) => e.stopPropagation());
@@ -83,12 +88,20 @@
       set('lb-name', name);
       btn.disabled = true; btn.textContent = '…';
       try {
-        const res = await fetch(`${path}?key=${FKEY}`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fields: { name: { stringValue: name }, score: { integerValue: String(score) } } }),
-        });
-        if (!res.ok) throw 0;
-        myIds.add((await res.json()).name); set(`lb-ids-${game}`, [...myIds]);
+        const url = `${path}/${idFor(name)}?key=${FKEY}`;
+        const cur = await fetch(url), old = cur.ok ? await cur.json() : null, best = old ? +old.fields.score.integerValue : -1;
+        if (best >= score) { // this name already has a better (or equal) score here: keep it
+          myIds.add(old.name); set(`lb-ids-${game}`, [...myIds]);
+          note.textContent = `${old.fields.name.stringValue}'s best here is ${fmt(best)}, so it stays.`; note.hidden = false;
+        } else {
+          const res = await fetch(url, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fields: { name: { stringValue: name }, score: { integerValue: String(score) } } }),
+          });
+          if (!res.ok) throw 0;
+          myIds.add((await res.json()).name); set(`lb-ids-${game}`, [...myIds]);
+          if (old) { note.textContent = `New best for ${name}! (was ${fmt(best)})`; note.hidden = false; }
+        }
         form.hidden = true;
         load();
       } catch { btn.disabled = false; btn.textContent = 'Retry'; }
@@ -99,7 +112,7 @@
         score = Math.floor(s);
         input.value = get('lb-name', '');
         btn.disabled = false; btn.textContent = 'Submit';
-        form.hidden = score <= 0;
+        form.hidden = score <= 0; note.hidden = true;
         load();
       },
     };
