@@ -26,6 +26,9 @@
     return a;
   };
   const parse = (s) => { try { return JSON.parse(s); } catch { return undefined; } };
+  // compare saves by content, so the same data saved with keys in another order isn't "changed"
+  const canon = (v) => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort()) : x));
+  const same = (a, b) => a === b || (a != null && b != null && parse(a) !== undefined && canon(parse(a)) === canon(parse(b)));
   const mergeVal = (l, c) => { // localStorage strings
     if (l == null) return c; if (c == null) return l;
     const L = parse(l), C = parse(c);
@@ -52,7 +55,9 @@
   Storage.prototype.removeItem = function (k) { del.call(this, k); if (this === ls && tracked(k)) schedule(); };
   addEventListener('pagehide', () => { if (timer) { clearTimeout(timer); push(); } });
 
-  async function signIn() { // first token for this user: merge cloud + local, reload the game if its save changed
+  // First token for this user: merge cloud + local. If that changed the save, a game that defines
+  // window.cloudSaveChanged() reloads its save in place; other games are reloaded (they read their save at start).
+  async function signIn() {
     ready = false;
     const res = await fetch(docUrl(), { headers: auth() }).catch(() => null);
     if (!res || (!res.ok && res.status !== 404)) return parent.postMessage({ type: 'rg-cloud-status', game, ok: false }, SITE);
@@ -61,12 +66,12 @@
     let changed = false;
     for (const k of new Set([...Object.keys(local), ...Object.keys(cloud)])) {
       const v = mergeVal(local[k], cloud[k]);
-      if (v !== local[k]) { set.call(ls, k, v); changed = true; }
+      if (!same(v, local[k])) { set.call(ls, k, v); changed = true; }
     }
     ready = true;
-    if (JSON.stringify(snapshot()) !== JSON.stringify(cloud)) await push();
+    if (Object.keys(snapshot()).some((k) => !same(snapshot()[k], cloud[k]))) await push();
     else parent.postMessage({ type: 'rg-cloud-status', game, ok: true }, SITE);
-    if (changed) location.reload(); // games read their save at start
+    if (changed) typeof window.cloudSaveChanged === 'function' ? window.cloudSaveChanged() : location.reload();
   }
   addEventListener('message', (e) => {
     if (e.origin !== SITE || e.source !== parent) return;
