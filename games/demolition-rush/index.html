@@ -46,7 +46,9 @@
   .final { font-size: 42px; font-weight: 900; color: #ffcf4a; margin: 2px 0; font-variant-numeric: tabular-nums; }
   .newbest { color: #3ddc84; font-weight: 800; }
   .submit { display: flex; gap: 8px; margin: 10px 0; }
-  .submit input { flex: 1; min-width: 0; font: inherit; font-weight: 700; padding: 10px 12px; border-radius: 10px; border: 2px solid #34405c; background: #11182a; color: #fff; }
+  .submit { justify-content: center; align-items: center; flex-wrap: wrap; font-weight: 700; color: #c9d3ea; }
+  .submit a { color: #ffd84a; }
+  .submit [hidden] { display: none; }
   .tabs { display: flex; gap: 6px; margin: 12px 0 6px; }
   .tabs button { flex: 1; padding: 8px; font-size: 13px; background: #2f3b55; color: #cfd7e8; }
   .tabs button.on { background: #ffb020; color: #1a1200; }
@@ -133,10 +135,7 @@
       <div><b id="stBlocks"></b>blocks</div>
       <div><b id="stCombo"></b>best combo</div>
     </div>
-    <form class="submit" id="submitForm">
-      <input id="nameIn" maxlength="14" placeholder="Your name for the leaderboard" autocomplete="off">
-      <button id="submitBtn">Submit</button>
-    </form>
+    <div class="submit" id="submitForm"><span id="subNote"></span><button id="submitBtn" hidden></button></div>
     <div class="btns">
       <button class="big" id="againBtn">↻ PLAY AGAIN</button>
       <button class="alt" id="shareBtn">📤 Challenge a friend</button>
@@ -535,9 +534,7 @@ function showOver() {
   $('stStage').textContent = run.stage - 1;
   $('stBlocks').textContent = fmt(run.blocks);
   $('stCombo').textContent = run.maxCombo;
-  $('nameIn').value = store.get('name', '');
-  $('submitBtn').disabled = false; $('submitBtn').textContent = 'Submit';
-  $('submitForm').hidden = run.score <= 0;
+  rankUpdate();
   $('over').hidden = false;
   setTab('overBoard', run.mode === 'daily' ? 'daily' : 'all');
 }
@@ -554,19 +551,6 @@ function showMenu() {
 }
 
 // ---------- leaderboard ----------
-// One entry per name per board: the doc id is the lowercased name, hex-encoded; only a higher score replaces it
-async function fsSubmit(path, d) {
-  const int = (n) => ({ integerValue: String(n) });
-  const url = `${FS}/${path}/${[...new TextEncoder().encode(d.name.toLowerCase())].map((b) => b.toString(16).padStart(2, '0')).join('')}?key=${FKEY}`;
-  const cur = await fetch(url), old = cur.ok ? await cur.json() : null, best = old ? +old.fields.score.integerValue : -1;
-  if (best >= d.score) return { id: old.name, best };
-  const res = await fetch(url, {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields: { name: { stringValue: d.name }, score: int(d.score), stage: int(d.stage), combo: int(d.combo) } }),
-  });
-  if (!res.ok) throw new Error('submit ' + res.status);
-  return { id: (await res.json()).name, best: old ? best : null };
-}
 async function fsTop(parent) {
   const res = await fetch(`${FS}${parent}:runQuery?key=${FKEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -577,7 +561,6 @@ async function fsTop(parent) {
     id: d.name, name: d.fields.name.stringValue, score: +d.fields.score.integerValue, stage: +d.fields.stage.integerValue,
   }));
 }
-const myIds = new Set(store.get('myIds', []));
 async function setTab(boardId, tab) {
   const tabs = document.querySelector(`[data-board="${boardId}"]`);
   tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
@@ -591,7 +574,7 @@ async function setTab(boardId, tab) {
     el.textContent = '';
     rows.forEach((r, i) => {
       const li = document.createElement('li');
-      if (myIds.has(r.id)) li.className = 'me';
+      if (window.rgAuth?.user && r.id.endsWith('/' + rgAuth.user.uid)) li.className = 'me';
       for (const [cls, text] of [['rk', ['🥇', '🥈', '🥉'][i] || `${i + 1}`], ['nm', r.name], ['sc', fmt(r.score)], ['st', `B${r.stage}`]]) {
         const s = document.createElement('span'); s.className = cls; s.textContent = text; li.append(s);
       }
@@ -604,29 +587,30 @@ async function setTab(boardId, tab) {
 document.querySelectorAll('.tabs').forEach((tabs) =>
   tabs.addEventListener('click', (e) => e.target.dataset.tab && setTab(tabs.dataset.board, e.target.dataset.tab)));
 
-const BAD = /f+u+c+k|sh[i1]t|b[i1]tch|cunt|n[i1]gg|fag|dick|pussy|씨발|시발|병신|좆|썅|개새/i;
-$('submitForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  if (run.submitted) return;
-  let name = $('nameIn').value.replace(/\s+/g, ' ').trim().slice(0, 14);
-  if (!name) return $('nameIn').focus();
-  if (BAD.test(name)) name = 'Demolisher';
-  store.set('name', name);
-  $('submitBtn').disabled = true; $('submitBtn').textContent = '…';
+// Only players signed in on rank-game.com with a nickname can rank (cloudsave.js rgAuth); saves automatically
+const subNote = (html) => { $('subNote').innerHTML = html; };
+let rankBusy = false;
+async function rankUpdate() {
+  const A = window.rgAuth || {}, btn = $('submitBtn'), esc = (t) => t.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+  btn.hidden = true;
+  $('submitForm').hidden = state !== 'over' || run.score <= 0;
+  if (state !== 'over' || run.submitted || run.score <= 0) return;
+  if (!A.onSite) return subNote('🔒 Play on <a href="https://rank-game.com/games/demolition-rush" target="_blank">rank-game.com</a> and sign in to rank');
+  if (!A.user) { subNote(''); btn.textContent = '🔑 Sign in to save this score'; btn.onclick = A.login; btn.hidden = false; return; }
+  if (!A.user.nick) return subNote('✏️ Pick a nickname under the game to save this score');
+  if (rankBusy) return;
+  rankBusy = true; subNote('Saving…');
+  const r = run, score = Math.floor(r.score);
   try {
-    const { id, best } = await fsSubmit(run.mode === 'daily' ? `daily/${run.day}/scores` : 'scores',
-      { name, score: Math.floor(run.score), stage: run.stage, combo: run.maxCombo });
-    run.submitted = true;
-    myIds.add(id); store.set('myIds', [...myIds].slice(-50));
-    const kept = best !== null && best >= Math.floor(run.score);
-    $('submitBtn').textContent = kept ? '✓ Best kept' : '✓ Saved';
-    toast(kept ? `${name}'s best here is ${fmt(best)}, so it stays.` : best !== null ? `New best for ${name}! 🏆 (was ${fmt(best)})` : 'Score submitted! 🏆');
-    setTab('overBoard', run.mode === 'daily' ? 'daily' : 'all');
-  } catch {
-    $('submitBtn').disabled = false; $('submitBtn').textContent = 'Retry';
-    toast("Couldn't reach the leaderboard. Try again.");
-  }
-});
+    const best = await A.submit(r.mode === 'daily' ? `daily/${r.day}/scores` : 'scores', score, { stage: r.stage, combo: r.maxCombo });
+    r.submitted = true;
+    subNote(best >= score ? `Your best here is ${fmt(best)}, so it stays.`
+      : best !== null ? `🎉 New best for ${esc(A.user.nick)}! (was ${fmt(best)})` : `🏆 Saved as ${esc(A.user.nick)}`);
+    if (r === run) setTab('overBoard', r.mode === 'daily' ? 'daily' : 'all');
+  } catch { subNote("Couldn't save."); btn.textContent = 'Retry'; btn.onclick = rankUpdate; btn.hidden = false; }
+  rankBusy = false;
+}
+addEventListener('rg-auth', rankUpdate);
 
 async function share() {
   const text = `🏗️ I scored ${fmt(run.score)} in Demolition Rush${run.mode === 'daily' ? ` (Daily ${run.day})` : ''} and leveled ${run.stage - 1} buildings! Can you beat me?`;

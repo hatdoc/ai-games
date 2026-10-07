@@ -1,24 +1,20 @@
 // Shared leaderboard for games without their own (Demolition Rush has a custom one).
-// Firestore, public read / create-only; rules live in the blog repo's firebase/ folder:
+// Firestore, public read; only players signed in on rank-game.com with a nickname can rank (via cloudsave.js's
+// rgAuth, so load cloudsave.js first). Rules live in the blog repo's firebase/ folder:
 // a new game needs its slug and max score added to the games/{game}/scores rule there.
 // Usage: const lb = leaderboard(containerEl, 'my-game'); then lb.show(score) at game over.
 // Optional 3rd arg formats the stored integer for display, e.g. (g) => `${(g / 1000).toFixed(2)} kg`.
 (() => {
   const FS = 'https://firestore.googleapis.com/v1/projects/hatdoc-blog-1048/databases/(default)/documents';
   const FKEY = 'AIzaSyDz5J34ahi7fP48CU2cPrp1FNmqK-20D5E';
-  const BAD = /f+u+c+k|sh[i1]t|b[i1]tch|cunt|n[i1]gg|fag|dick|pussy|씨발|시발|병신|좆|썅|개새/i;
-  const get = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
-  const set = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 
   document.head.insertAdjacentHTML('beforeend', `<style>
     .lb { width: min(320px, 90vw); text-align: left; font: 14px system-ui, sans-serif; color: #fff; }
     .lb h3 { margin: 0 0 6px; font-size: 13px; letter-spacing: 1px; opacity: .7; text-align: center; }
-    .lb form { display: flex; gap: 6px; margin-bottom: 8px; }
-    .lb form[hidden] { display: none; }
-    .lb input { flex: 1; min-width: 0; font: 700 15px system-ui, sans-serif; padding: 9px 10px; border-radius: 10px;
-      border: 2px solid #fff4; background: #0006; color: #fff; }
-    .lb form button { font: 700 15px system-ui, sans-serif; padding: 9px 14px; border: 0; border-radius: 10px;
-      background: #ffd84a; color: #111; cursor: pointer; }
+    .lb .act { display: block; margin: 0 auto 8px; font: 700 15px system-ui, sans-serif; padding: 9px 14px; border: 0;
+      border-radius: 10px; background: #ffd84a; color: #111; cursor: pointer; }
+    .lb .act[hidden] { display: none; }
+    .lb .note a { color: #ffd84a; }
     .lb ol { list-style: none; margin: 0; padding: 0; max-height: 34vh; overflow-y: auto; }
     .lb li { display: flex; gap: 8px; padding: 5px 10px; border-radius: 8px; }
     .lb li:nth-child(odd) { background: #ffffff14; }
@@ -41,18 +37,15 @@
     return (await res.json()).filter((r) => r.document).map((r) => +r.document.fields.score.integerValue);
   };
 
-  // One entry per name per board: the doc id is the lowercased name, hex-encoded (rules only let a higher score replace it)
-  const idFor = (name) => [...new TextEncoder().encode(name.trim().toLowerCase())].map((b) => b.toString(16).padStart(2, '0')).join('');
-
   window.leaderboard = (root, game, fmt = String) => {
-    const path = `${FS}/games/${game}/scores`;
-    const myIds = new Set(get(`lb-ids-${game}`, []));
+    const A = window.rgAuth || { onSite: false };
     root.classList.add('lb');
-    root.innerHTML = `<h3>🏆 TOP 10</h3>
-      <form><input maxlength="14" placeholder="Your name" autocomplete="off"><button>Submit</button></form><div class="note" hidden></div><ol></ol>`;
-    const form = root.querySelector('form'), input = form.querySelector('input'), btn = form.querySelector('button');
-    const list = root.querySelector('ol'), note = root.querySelector('.note');
-    let score = 0;
+    root.innerHTML = `<h3>🏆 TOP 10</h3><div class="note" hidden></div><button class="act" hidden></button><ol></ol>`;
+    const btn = root.querySelector('.act'), list = root.querySelector('ol'), note = root.querySelector('.note');
+    let score = 0, done = true, busy = false;
+    const say = (html) => { note.innerHTML = html; note.hidden = !html; };
+    const esc = (t) => t.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+    if (A.onSite) parent.postMessage({ type: 'rg-board' }, 'https://rank-game.com'); // page shows the nickname box
     // Keep game keyboard/touch handlers from reacting to typing or taps in the panel.
     for (const ev of ['keydown', 'pointerdown', 'touchstart', 'touchend']) root.addEventListener(ev, (e) => e.stopPropagation());
 
@@ -71,7 +64,7 @@
         list.innerHTML = '';
         rows.forEach(({ document: d }, i) => {
           const li = document.createElement('li');
-          if (myIds.has(d.name)) li.className = 'me';
+          if (A.user && d.name.endsWith('/' + A.user.uid)) li.className = 'me';
           for (const [cls, text] of [['rk', ['🥇', '🥈', '🥉'][i] || i + 1], ['nm', d.fields.name.stringValue], ['sc', fmt(+d.fields.score.integerValue)]]) {
             const s = document.createElement('span'); s.className = cls; s.textContent = text; li.append(s);
           }
@@ -80,39 +73,30 @@
       } catch { msg('Leaderboard is offline right now.'); }
     }
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      let name = input.value.replace(/\s+/g, ' ').trim().slice(0, 14);
-      if (!name) return input.focus();
-      if (BAD.test(name)) name = 'Player';
-      set('lb-name', name);
-      btn.disabled = true; btn.textContent = '…';
+    // what to show under "TOP 10" after a game, depending on sign-in; signed in with a nickname = save automatically
+    async function update() {
+      btn.hidden = true;
+      if (done || score <= 0) return;
+      if (!A.onSite) return say('🔒 Play on <a href="https://rank-game.com" target="_blank">rank-game.com</a> and sign in to rank');
+      if (!A.user) { say(''); btn.textContent = '🔑 Sign in to save this score'; btn.onclick = A.login; btn.hidden = false; return; }
+      if (!A.user.nick) return say('✏️ Pick a nickname under the game to save this score');
+      if (busy) return;
+      busy = true; say('Saving…');
       try {
-        const url = `${path}/${idFor(name)}?key=${FKEY}`;
-        const cur = await fetch(url), old = cur.ok ? await cur.json() : null, best = old ? +old.fields.score.integerValue : -1;
-        if (best >= score) { // this name already has a better (or equal) score here: keep it
-          myIds.add(old.name); set(`lb-ids-${game}`, [...myIds]);
-          note.textContent = `${old.fields.name.stringValue}'s best here is ${fmt(best)}, so it stays.`; note.hidden = false;
-        } else {
-          const res = await fetch(url, {
-            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fields: { name: { stringValue: name }, score: { integerValue: String(score) } } }),
-          });
-          if (!res.ok) throw 0;
-          myIds.add((await res.json()).name); set(`lb-ids-${game}`, [...myIds]);
-          if (old) { note.textContent = `New best for ${name}! (was ${fmt(best)})`; note.hidden = false; }
-        }
-        form.hidden = true;
+        const best = await A.submit(`games/${game}/scores`, score);
+        done = true;
+        say(best >= score ? `Your best here is ${esc(fmt(best))}, so it stays.`
+          : best !== null ? `🎉 New best for ${esc(A.user.nick)}! (was ${esc(fmt(best))})` : `Saved as ${esc(A.user.nick)}`);
         load();
-      } catch { btn.disabled = false; btn.textContent = 'Retry'; }
-    });
+      } catch { say("Couldn't save."); btn.textContent = 'Retry'; btn.onclick = update; btn.hidden = false; }
+      busy = false;
+    }
+    addEventListener('rg-auth', () => { update(); load(); });
 
     return {
       show(s) {
-        score = Math.floor(s);
-        input.value = get('lb-name', '');
-        btn.disabled = false; btn.textContent = 'Submit';
-        form.hidden = score <= 0; note.hidden = true;
+        score = Math.floor(s); done = false; say('');
+        update();
         load();
       },
     };
