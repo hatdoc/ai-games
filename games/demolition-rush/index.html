@@ -554,14 +554,18 @@ function showMenu() {
 }
 
 // ---------- leaderboard ----------
+// One entry per name per board: the doc id is the lowercased name, hex-encoded; only a higher score replaces it
 async function fsSubmit(path, d) {
   const int = (n) => ({ integerValue: String(n) });
-  const res = await fetch(`${FS}/${path}?key=${FKEY}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+  const url = `${FS}/${path}/${[...new TextEncoder().encode(d.name.toLowerCase())].map((b) => b.toString(16).padStart(2, '0')).join('')}?key=${FKEY}`;
+  const cur = await fetch(url), old = cur.ok ? await cur.json() : null, best = old ? +old.fields.score.integerValue : -1;
+  if (best >= d.score) return { id: old.name, best };
+  const res = await fetch(url, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fields: { name: { stringValue: d.name }, score: int(d.score), stage: int(d.stage), combo: int(d.combo) } }),
   });
   if (!res.ok) throw new Error('submit ' + res.status);
-  return (await res.json()).name;
+  return { id: (await res.json()).name, best: old ? best : null };
 }
 async function fsTop(parent) {
   const res = await fetch(`${FS}${parent}:runQuery?key=${FKEY}`, {
@@ -610,12 +614,13 @@ $('submitForm').addEventListener('submit', async (e) => {
   store.set('name', name);
   $('submitBtn').disabled = true; $('submitBtn').textContent = '…';
   try {
-    const id = await fsSubmit(run.mode === 'daily' ? `daily/${run.day}/scores` : 'scores',
+    const { id, best } = await fsSubmit(run.mode === 'daily' ? `daily/${run.day}/scores` : 'scores',
       { name, score: Math.floor(run.score), stage: run.stage, combo: run.maxCombo });
     run.submitted = true;
     myIds.add(id); store.set('myIds', [...myIds].slice(-50));
-    $('submitBtn').textContent = '✓ Saved';
-    toast('Score submitted! 🏆');
+    const kept = best !== null && best >= Math.floor(run.score);
+    $('submitBtn').textContent = kept ? '✓ Best kept' : '✓ Saved';
+    toast(kept ? `${name}'s best here is ${fmt(best)}, so it stays.` : best !== null ? `New best for ${name}! 🏆 (was ${fmt(best)})` : 'Score submitted! 🏆');
     setTab('overBoard', run.mode === 'daily' ? 'daily' : 'all');
   } catch {
     $('submitBtn').disabled = false; $('submitBtn').textContent = 'Retry';
