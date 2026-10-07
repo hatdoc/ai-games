@@ -7,6 +7,7 @@
   const me = document.currentScript, game = me.dataset.game, patterns = me.dataset.keys.split(/\s+/).filter(Boolean);
   const SITE = 'https://rank-game.com', FS = 'https://firestore.googleapis.com/v1/projects/hatdoc-blog-1048/databases/(default)/documents';
   const KEY = 'AIzaSyDz5J34ahi7fP48CU2cPrp1FNmqK-20D5E';
+  window.rgAuth = { onSite: false, user: null };
   if (top === self) return;
   const tracked = (k) => patterns.some((p) => (p.endsWith('*') ? k.startsWith(p.slice(0, -1)) : k === p));
   const ls = (() => { try { return localStorage; } catch { return null; } })();
@@ -47,6 +48,30 @@
     const res = await fetch(docUrl(), { method: 'PATCH', headers: auth(), body: JSON.stringify(body) }).catch(() => null);
     parent.postMessage({ type: 'rg-cloud-status', game, ok: !!res?.ok }, SITE);
   }
+
+  // Leaderboards (leaderboard.js, Demolition Rush): only signed-in players with a nickname (set under the game on
+  // rank-game.com) can rank. One entry per player per board (doc id = uid); the rules check the name is their nickname.
+  const anc = location.ancestorOrigins;
+  Object.assign(window.rgAuth, {
+    onSite: anc ? anc[anc.length - 1] === SITE : document.referrer.startsWith(SITE),
+    login: () => parent.postMessage({ type: 'rg-login' }, SITE),
+    // collection: e.g. 'games/snake/scores'. Keeps the higher of old and new; returns the previous best (or null)
+    async submit(collection, score, extra = {}) {
+      const { uid, nick } = this.user;
+      if (Date.now() - tokenAt > 45 * 60e3) await waitToken();
+      const url = `${FS}/${collection}/${uid}?key=${KEY}`;
+      const cur = await fetch(url, { headers: auth() }), old = cur.ok ? (await cur.json()).fields : null;
+      if (!cur.ok && cur.status !== 404) throw new Error('board ' + cur.status);
+      const best = old ? +old.score.integerValue : null;
+      if (best >= score && old.name.stringValue === nick) return best;
+      const int = (n) => ({ integerValue: String(n) });
+      const fields = best >= score ? { ...old, name: { stringValue: nick } } // just a nickname change
+        : { name: { stringValue: nick }, score: int(score), ...Object.fromEntries(Object.entries(extra).map(([k, v]) => [k, int(v)])) };
+      const res = await fetch(url, { method: 'PATCH', headers: auth(), body: JSON.stringify({ fields }) });
+      if (!res.ok) throw new Error('submit ' + res.status);
+      return best;
+    },
+  });
   const schedule = () => { if (!ready) return; clearTimeout(timer); timer = setTimeout(push, 3000); };
 
   // watch the game's saves
@@ -77,7 +102,9 @@
     if (e.origin !== SITE || e.source !== parent) return;
     if (e.data?.type === 'rg-cloud-hello') return ask(); // the page loaded after us and missed our first hello
     if (e.data?.type !== 'rg-cloud-auth') return;
-    const { token: t, uid: u } = e.data;
+    const { token: t, uid: u, nick } = e.data;
+    window.rgAuth.user = t && u ? { uid: u, nick: nick || null } : null;
+    setTimeout(() => dispatchEvent(new Event('rg-auth'))); // after the token below is stored
     if (!t || !u) { token = uid = null; ready = false; return; } // signed out: keep playing locally
     const fresh = u !== uid;
     token = t; tokenAt = Date.now();
