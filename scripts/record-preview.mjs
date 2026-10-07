@@ -147,6 +147,9 @@ const BOTS = {
   'line-mafia': { skip: 1.5, len: 9, poster: 7, async play(page) { // multiplayer: play the built-in demo room (bots draw a cat, one is the mafia)
     await page.evaluate(() => startDemo());
   } },
+  'one-body': { skip: 2, len: 9, poster: 5, async play(page) { // all-bot demo: wobble through the rubber ducks, with a hiccup
+    await page.evaluate(() => { startDemo(); setTimeout(() => obHost?.sim.fart(), 5500); });
+  } },
   'demolition-rush': { skip: 2, len: 7, poster: 0.5, async play(page) {
     await page.click('#playBtn');
     await page.evaluate(() => setInterval(() => { // smash the leftmost columns, take the first upgrade card

@@ -1,0 +1,924 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>One Body</title>
+<style>
+  :root { --bg: #1b1530; --ink: #fff8ee; --mut: #b7abd6; --panel: rgba(36, 27, 64, .94); --line: rgba(255, 255, 255, .14); --acc: #ff5d8f; --ok: #5ee08f; --gold: #ffd166; --bad: #ff5050; }
+  [hidden] { display: none !important; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden;
+    font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 1px solid var(--line); background: rgba(255, 255, 255, .08); border-radius: 12px; padding: 10px 14px; font-weight: 800; }
+  button:disabled { opacity: .4; cursor: default; }
+  button.cta { background: linear-gradient(90deg, var(--acc), #ff9d5c); border: 0; color: #fff; }
+  button.ok { background: var(--ok); border: 0; color: #0f2a19; }
+  input, select { width: 100%; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, .3); font-weight: 700; -webkit-user-select: text; user-select: text; }
+  select option { background: #2a2046; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; }
+  #home { position: fixed; top: 10px; left: 10px; color: var(--ink); text-decoration: none; font-weight: 800; font-size: 13px; padding: 6px 10px; z-index: 30; }
+  .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; overflow-y: auto; padding: 16px 12px 30px; z-index: 10;
+    background: radial-gradient(circle at 50% -10%, #3f2a6b, var(--bg) 65%); }
+  h1 { margin: 26px 0 0; font-size: clamp(44px, 11vw, 72px); font-weight: 900; letter-spacing: -1px; line-height: 1; }
+  h1 span { color: var(--acc); }
+  .tag { color: var(--mut); text-align: center; margin: 8px 0 16px; font-weight: 600; max-width: 440px; }
+  .box { width: min(440px, 100%); padding: 16px; display: grid; gap: 10px; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .or { text-align: center; color: var(--mut); font-size: 12px; font-weight: 700; }
+  .how { width: min(440px, 100%); margin-top: 14px; padding: 14px 16px; color: var(--mut); font-size: 13px; line-height: 1.55; }
+  .how b { color: var(--ink); }
+  .screen > * { flex-shrink: 0; }
+  #mascot { width: 150px; height: 120px; margin-top: 4px; }
+  .players { display: grid; gap: 6px; }
+  .player { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .05); font-weight: 700; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  .code { font: 900 34px ui-monospace, monospace; letter-spacing: 6px; text-align: center; color: var(--gold); }
+  .hint { color: var(--mut); text-align: center; font-size: 13px; font-weight: 600; }
+  #toast { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); background: #000c; padding: 10px 16px; border-radius: 12px; font-weight: 700; z-index: 60; max-width: 90vw; text-align: center; }
+
+  /* game */
+  #game { position: fixed; inset: 0; }
+  #cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .hud { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 5; pointer-events: none; }
+  .pill { background: #0008; border-radius: 999px; padding: 6px 12px; font-weight: 800; font-size: 14px; white-space: nowrap; }
+  #role { position: absolute; top: 46px; left: 50%; transform: translateX(-50%); width: max-content; max-width: min(560px, calc(100vw - 380px)); font-weight: 800; font-size: 13px; padding: 6px 12px; border-radius: 10px; background: #0007; z-index: 5; text-align: center; pointer-events: none; max-width: 94vw; }
+  #role.traitor { background: #7a1030d0; }
+  #legend { position: absolute; top: 8px; right: 8px; display: grid; gap: 3px; z-index: 5; font-size: 12px; font-weight: 700; pointer-events: none; }
+  #legend div { display: flex; align-items: center; gap: 6px; background: #0006; padding: 3px 8px; border-radius: 8px; }
+  #legend .gone { opacity: .4; text-decoration: line-through; }
+  #controls { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; align-items: flex-end; padding: 10px; gap: 10px; z-index: 5; pointer-events: none; }
+  #controls > div { display: flex; gap: 10px; pointer-events: auto; }
+  .big { width: 84px; height: 84px; border-radius: 50%; font-size: 30px; background: #ffffff22; border: 2px solid #ffffff44; touch-action: none; }
+  .big.on { background: #ffffff55; }
+  #actBtn { width: auto; min-width: 110px; border-radius: 42px; font-size: 18px; }
+  .side { display: flex; flex-direction: column; gap: 6px; }
+  .side button { padding: 7px 10px; font-size: 13px; background: #0007; }
+  #meetBtn { background: #c0263dcc; border-color: #ff8a9a; }
+  .powers button { background: #5d0f2acc; border-color: #ff5d8f; }
+  #banner { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); font-size: clamp(34px, 9vw, 70px); font-weight: 900; z-index: 6; pointer-events: none;
+    text-shadow: 0 4px 0 #0008; text-align: center; white-space: nowrap; }
+  #quip { position: absolute; left: 50%; top: 24%; transform: translateX(-50%); font-size: 18px; font-weight: 800; z-index: 6; pointer-events: none; background: #000a; padding: 6px 14px; border-radius: 10px; text-align: center; max-width: 90vw; }
+  #replayTag { position: absolute; top: 90px; left: 50%; transform: translateX(-50%); background: #ff5050; color: #fff; padding: 6px 14px; border-radius: 10px; font-weight: 900; z-index: 6; letter-spacing: 1px; pointer-events: none; }
+  .overlay { position: absolute; inset: 0; background: #0b0718cc; display: flex; align-items: center; justify-content: center; z-index: 8; padding: 12px; }
+  .vote { width: min(460px, 100%); padding: 16px; display: grid; gap: 8px; max-height: 100%; overflow-y: auto; }
+  .vote h2 { margin: 0; text-align: center; }
+  .vgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .vgrid button { display: flex; align-items: center; gap: 8px; text-align: left; font-size: 14px; }
+  .vgrid button.picked { outline: 3px solid var(--gold); }
+  .vgrid button small { display: block; color: var(--mut); font-weight: 600; }
+  .tally { color: var(--gold); margin-left: auto; font-size: 13px; }
+  .result { width: min(460px, 100%); padding: 18px; display: grid; gap: 10px; text-align: center; }
+  .result h2 { margin: 0; font-size: 34px; }
+  .stats { display: flex; gap: 8px; }
+  .stats div { flex: 1; background: rgba(255, 255, 255, .06); border-radius: 12px; padding: 8px; color: var(--mut); font-size: 12px; font-weight: 700; }
+  .stats b { display: block; font-size: 22px; color: var(--ink); }
+  #lb { margin: 0 auto; }
+  #mute { position: absolute; bottom: 104px; right: 10px; z-index: 5; padding: 6px 10px; background: #0007; }
+  @media (max-width: 760px) { #role { top: auto; bottom: 108px; max-width: 94vw; } #legend { font-size: 11px; } }
+  @media (max-height: 520px) { .big { width: 64px; height: 64px; font-size: 24px; } #actBtn { min-width: 90px; font-size: 15px; } #mute { bottom: 82px; } }
+  @media (hover: hover) and (pointer: fine) { .big { width: 64px; height: 64px; font-size: 22px; opacity: .8; } }
+</style>
+</head>
+<body>
+<a id="home" href="https://rank-game.com/">← Home</a>
+<script>if (top !== self) home.remove();</script>
+
+<!-- start -->
+<div class="screen" id="startScr">
+  <h1>ONE <span>BODY</span></h1>
+  <svg id="mascot" viewBox="-3 -3.2 6 4.6"></svg>
+  <div class="tag">Six players. One wobbly creature. Each of you controls one limb, and one of you is secretly trying to make it fall over.</div>
+  <div class="card box">
+    <input id="name" maxlength="12" placeholder="Your name" autocomplete="off">
+    <button class="cta" id="quickBtn">⚡ Quick Play (online)</button>
+    <div class="row"><button id="createBtn">🔒 Create room</button><button id="practiceBtn">🤖 Practice with bots</button></div>
+    <div class="or">or join a friend</div>
+    <div class="row"><input id="codeIn" maxlength="5" placeholder="Room code" style="text-transform:uppercase"><button id="joinBtn" style="flex:.6">Join</button></div>
+    <a id="onlineLink" class="hint" href="https://rank-game.com/games/one-body" target="_blank" hidden>🌐 Online rooms and Quick Play are on <b style="color:var(--gold)">rank-game.com</b>. Play with friends there!</a>
+  </div>
+  <div class="card how">
+    <b>How to play</b><br>
+    🦵 Everyone controls <b>one limb</b> of the same creature: a leg, an arm, the head or the tail.<br>
+    ⬅️ ➡️ swing your limb · <b>Space</b> does its move (legs <b>stomp</b>, arms <b>grab</b>, tail <b>boings</b>, head <b>honks</b>).<br>
+    🎂 Walk the creature to the <b>cake</b> before time runs out.<br>
+    😈 One limb is the <b>traitor</b>. It can fake hiccups and give other limbs cramps. After every fall, watch the <b>instant replay</b> to see who moved.<br>
+    🚨 Call a <b>meeting</b> and vote. The limb with the most votes gets <b>pulled off</b>. Pull off the traitor and you win!
+  </div>
+</div>
+
+<!-- lobby -->
+<div class="screen" id="lobbyScr" hidden>
+  <h1 style="font-size:40px">LOBBY</h1>
+  <div class="card box">
+    <div class="hint" id="lobbyKind"></div>
+    <div class="code" id="lobbyCode"></div>
+    <button id="inviteBtn">🔗 Copy invite link</button>
+    <div class="players" id="lobbyPlayers"></div>
+    <div class="hint" id="lobbyHint"></div>
+    <button class="cta" id="startBtn">▶ Start (bots fill empty limbs)</button>
+    <button id="leaveBtn">Leave</button>
+  </div>
+</div>
+
+<!-- game -->
+<div id="game" hidden>
+  <canvas id="cv"></canvas>
+  <div class="hud"><span class="pill" id="timer">5:00</span><span class="pill" id="splats">💥 0</span><span class="pill" id="prog">🎂 0%</span></div>
+  <div id="role"></div>
+  <div id="legend"></div>
+  <div id="banner" hidden></div>
+  <div id="quip" hidden></div>
+  <div id="replayTag" hidden>🔍 INSTANT REPLAY · WHO DID THAT?</div>
+  <button id="mute">🔊</button>
+  <div id="controls">
+    <div class="side">
+      <button data-emote="0">⬅️ LEFT!</button><button data-emote="1">✋ WAIT!</button><button data-emote="2">😇 Not me</button><button data-emote="3">👀 Sus</button>
+    </div>
+    <div><button class="big" id="lBtn">◀</button><button class="big" id="actBtn">STOMP</button><button class="big" id="rBtn">▶</button></div>
+    <div class="side">
+      <button id="meetBtn">🚨 Meeting</button>
+      <div class="side powers" id="powers" hidden><button id="fartBtn">🤧 Fake hiccup</button><button id="crampBtn">⚡ Cramp a limb</button></div>
+    </div>
+  </div>
+  <div class="overlay" id="voteOv" hidden><div class="card vote">
+    <h2>🚨 EMERGENCY MEETING</h2><div class="hint" id="voteWho"></div>
+    <div class="vgrid" id="vgrid"></div>
+    <button id="skipBtn">🤷 Skip vote</button>
+    <div class="hint" id="voteTime"></div>
+  </div></div>
+  <div class="overlay" id="endOv" hidden><div class="card result">
+    <h2 id="endTitle"></h2><div id="endWho" class="hint" style="font-size:16px"></div>
+    <div class="stats" id="endStats"></div>
+    <div id="lb"></div>
+    <div class="row"><button class="cta" id="againBtn">↻ Play again</button><button id="menuBtn">Menu</button></div>
+    <button id="shareBtn">📤 Share</button>
+  </div></div>
+</div>
+<div id="toast" hidden></div>
+
+<script src="planck.min.js"></script>
+<script src="sim.js"></script>
+<script src="../cloudsave.js" data-game="one-body" data-keys="onebody-best"></script>
+<script src="../leaderboard.js"></script>
+<script type="module">
+// One Body. Online: Firestore holds the room (lobby list + WebRTC handshake); once connected, the host runs the
+// physics and talks to everyone directly over WebRTC data channels. Practice and the preview demo run the same
+// host code locally with bots in the empty limbs.
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import { getFirestore, doc, onSnapshot, runTransaction, collection, query, where, limit, getDocs } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+
+const $ = (id) => document.getElementById(id);
+const { LIMBS, LIMB_NAME, ACTION, FINISH } = OB;
+const ICON = { ll: '🦵', rl: '🦵', la: '💪', ra: '💪', hd: '🙂', tl: '〰️' };
+const COL = { ll: '#ff6b6b', rl: '#4dabf7', la: '#ffd43b', ra: '#69db7c', hd: '#da77f2', tl: '#ffa94d' };
+const GAME_MS = 300000, VOTE_MS = 16000, REPLAY_MS = 3200, MAXP = 6, ROOM_TTL = 2 * 3600e3;
+const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const BAD = /f+u+c+k|sh[i1]t|b[i1]tch|cunt|n[i1]gg|fag|dick|pussy|씨발|시발|병신|좆|썅|개새/i;
+const BOTS = ['Ava', 'Leo', 'Mina', 'Sam', 'Jun', 'Kiki', 'Bo']; // 'Zed' is the demo's sixth bot
+const NAMES = ['Sir Wobbleton', 'Captain Noodle', 'Big Steve', 'Lady Flopsalot', 'Professor Jelly', 'Baby Gerald', 'Duke Spaghetti', 'Mr. Bones (no bones)', 'Wiggly Wendy', 'The Unit'];
+const HATS = ['crown', 'party', 'cowboy', 'chef', 'propeller', 'cone'];
+const EMOTES = ['⬅️ LEFT!', '✋ WAIT!', '😇 Not me', '👀 Sus'];
+const QUIPS = {
+  splat: ['OOF.', 'Physics: 1, You: 0', 'That was NOT the plan', 'Somebody did that on purpose…', 'Graceful. Truly.', 'The cake weeps.', 'Ow ow ow', 'Who moved?!'],
+  hic: ['*hic*', '*HIC*', 'Was that a real hiccup? 🤔', '*hic* … sus?'],
+  cp: ['Checkpoint! 🚩', 'Progress! Somehow!', 'Look at you go!'],
+  pop: ['POP! 💥', 'Limb removed. Oops?'],
+};
+const store = { get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const rid = (n, a = ALPHA) => Array.from(crypto.getRandomValues(new Uint32Array(n)), (x) => a[x % a.length]).join('');
+const pick = (a) => a[Math.random() * a.length | 0];
+const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const mmss = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const now = () => Date.now();
+const me = { id: store.get('ob-id', null) || rid(10, 'abcdefghijklmnopqrstuvwxyz0123456789'), name: store.get('ob-name', '') };
+store.set('ob-id', me.id);
+$('name').value = me.name;
+addEventListener('rg-auth', () => { if (window.rgAuth?.user?.nick && !$('name').value) $('name').value = rgAuth.user.nick.slice(0, 12); });
+let toastT; const toast = (t, ms = 2600) => { $('toast').textContent = t; $('toast').hidden = false; clearTimeout(toastT); toastT = setTimeout(() => ($('toast').hidden = true), ms); };
+const screen = (id) => { for (const s of ['startScr', 'lobbyScr', 'game']) $(s).hidden = s !== id; };
+const myName = () => { const n = ($('name').value.trim() || 'Player ' + rid(2, '123456789')).slice(0, 12); me.name = BAD.test(n) ? 'Wobbler' : n; store.set('ob-name', me.name); return me.name; };
+
+// ---------- sound (tiny synth, no files) ----------
+let ac = null, muted = store.get('ob-mute', false);
+$('mute').textContent = muted ? '🔇' : '🔊';
+$('mute').onclick = () => { muted = !muted; store.set('ob-mute', muted); $('mute').textContent = muted ? '🔇' : '🔊'; };
+function tone(f0, f1, dur, type = 'sine', vol = 0.18, delay = 0) {
+  if (muted) return;
+  try { ac ||= new AudioContext(); } catch { return; }
+  const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+function noise(dur, vol = 0.25) {
+  if (muted) return;
+  try { ac ||= new AudioContext(); } catch { return; }
+  const b = ac.createBuffer(1, ac.sampleRate * dur, ac.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) ** 2;
+  const s = ac.createBufferSource(), g = ac.createGain(); s.buffer = b; g.gain.value = vol; s.connect(g).connect(ac.destination); s.start();
+}
+const SFX = {
+  boing: () => tone(180, 720, 0.28, 'sine', 0.22),
+  honk: () => { tone(420, 380, 0.12, 'sawtooth', 0.12); tone(330, 300, 0.16, 'sawtooth', 0.12, 0.13); },
+  stomp: () => tone(120, 60, 0.12, 'triangle', 0.25),
+  grab: () => tone(900, 1200, 0.05, 'square', 0.05),
+  splat: () => { noise(0.35, 0.3); tone(200, 40, 0.4, 'sine', 0.3); tone(900, 200, 0.5, 'square', 0.04); },
+  hic: () => tone(700, 1400, 0.09, 'square', 0.1),
+  cramp: () => { tone(1500, 200, 0.3, 'sawtooth', 0.06); },
+  pop: () => { tone(300, 1500, 0.08, 'sine', 0.3); noise(0.15, 0.2); },
+  cp: () => [523, 659, 784].forEach((f, i) => tone(f, f, 0.14, 'triangle', 0.15, i * 0.09)),
+  win: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, f, 0.2, 'triangle', 0.18, i * 0.13)),
+  lose: () => [392, 370, 349, 294].forEach((f, i) => tone(f, f * 0.97, i === 3 ? 0.7 : 0.3, 'sawtooth', 0.09, i * 0.32)),
+  meet: () => [880, 660, 880, 660].forEach((f, i) => tone(f, f, 0.14, 'square', 0.08, i * 0.16)),
+  emote: () => tone(1200, 1000, 0.06, 'sine', 0.08),
+  goose: () => { tone(600, 500, 0.15, 'sawtooth', 0.08); },
+};
+
+// ======================================================================
+// HOST: runs the physics and the rules. players: pid -> { name, send(msg), limb }
+// ======================================================================
+let H = null;
+Object.defineProperty(window, 'obHost', { get: () => H }); // for debugging in the console
+function hostStart({ players, practice, demo }) {
+  const seed = (Math.random() * 1e9) | 0;
+  const sim = OB.create({ seed });
+  const humans = Object.keys(players);
+  const order = practice && practice !== 'any' ? [practice, ...shuffle(LIMBS.filter((l) => l !== practice))] : shuffle(LIMBS);
+  const limbs = {}; // limb -> { pid | null (bot), name }
+  const botNames = shuffle(BOTS);
+  order.forEach((l, i) => { const pid = humans[i]; limbs[l] = pid ? { pid, name: players[pid].name } : { pid: null, name: '🤖 ' + botNames.pop() }; if (pid) players[pid].limb = l; });
+  const traitor = demo ? null : pick(LIMBS);
+  H = {
+    sim, players, limbs, traitor, practice: !!practice, demo: !!demo, mem: Object.fromEntries(LIMBS.map((l) => [l, {}])),
+    name: pick(NAMES), hat: pick(HATS), t0: now(), left: GAME_MS, last: performance.now(), acc: 0, phase: 'play',
+    pauseUntil: 0, meetings: Object.fromEntries(humans.map((p) => [p, 1])), votes: {}, voteEnds: 0, sus: Object.fromEntries(LIMBS.map((l) => [l, 0])),
+    cool: { fart: 0, cramp: 0 }, botPower: now() + 20000 + Math.random() * 20000, sendT: 0, press: {}, emoteT: {}, botMeet: false,
+  };
+  H.cool.fart = H.cool.cramp = now() + 10000;
+  for (const pid of humans) players[pid].send({ k: 'start', you: players[pid].limb, traitor: players[pid].limb === traitor, limbs, name: H.name, hat: H.hat, practice: H.practice, demo: H.demo });
+  clearInterval(H.iv); H.iv = setInterval(hostTick, 1000 / 60);
+}
+const broadcast = (m) => { if (H) for (const p of Object.values(H.players)) p.send(m); };
+function hostTick() {
+  const h = H; if (!h) return;
+  const t = performance.now(); let dt = Math.min(0.25, (t - h.last) / 1000); h.last = t;
+  if (h.phase === 'play') {
+    h.left -= dt * 1000;
+    if (h.left <= 0) return hostEnd('traitor', 'time');
+    if (now() > h.pauseUntil) {
+      h.acc += dt;
+      while (h.acc >= 1 / 60) {
+        h.acc -= 1 / 60;
+        for (const l of LIMBS) if (!h.limbs[l].pid) h.sim.input[l] = OB.bot(h.sim, l, h.mem[l], l === h.traitor);
+        h.sim.step();
+        for (const l of LIMBS) if (h.sim.input[l].dir || h.sim.input[l].act) h.press[l] = 4; // frames of "was pressing" for the replay
+        for (const e of h.sim.events.splice(0)) hostEvent(e);
+        if (h.phase !== 'play' || now() < h.pauseUntil) break;
+      }
+      botPowers(h); botChat(h);
+    }
+  } else if (h.phase === 'vote' && now() > h.voteEnds) hostTally();
+  if (t - h.sendT > 50) { // 20 snapshots a second
+    h.sendT = t;
+    const p = LIMBS.filter((l) => h.press[l] > 0); for (const l of LIMBS) h.press[l] = Math.max(0, (h.press[l] || 0) - 3);
+    broadcast({ k: 's', f: h.sim.snapshot(), left: h.left, cp: h.sim.cp, falls: h.sim.falls, best: h.sim.best, gust: h.sim.gust, p: p.join(','), cr: Object.keys(h.sim.cramp).filter((l) => h.sim.cramp[l] > h.sim.t).join(','), gone: Object.keys(h.sim.gone).join(',') });
+  }
+}
+function hostEvent(e) {
+  const h = H;
+  if (e.e === 'splat') {
+    h.pauseUntil = now() + REPLAY_MS; botChat(h, true);
+    for (const l of LIMBS) if (h.press[l] > 0 || (h.sim.pressed[l] || -9) > h.sim.t - 1.2) h.sus[l] += l === h.traitor ? 1.5 : 1;
+    if (h.practice && !h.botMeet && h.sim.falls >= 3 && Math.random() < 0.5) { h.botMeet = true; setTimeout(() => H === h && h.phase === 'play' && hostMeeting(null), REPLAY_MS + 400); }
+  }
+  if (e.e === 'finish') return hostEnd('team', 'cake');
+  broadcast({ k: 'ev', e });
+}
+function botChat(h, soon) { // bots say things now and then (and right after a fall)
+  if (soon) { h.chatAt = now() + 600; h.chatBurst = 2; return; }
+  if (now() < (h.chatAt ||= now() + 4000)) return;
+  const bots = LIMBS.filter((l) => !h.limbs[l].pid && !h.sim.gone[l]); if (!bots.length) return;
+  const l = pick(bots), i = h.chatBurst ? pick([2, 2, 3]) : pick([0, 1, 1, 2, 3]);
+  broadcast({ k: 'emote', l, i });
+  if (h.chatBurst) { h.chatBurst--; h.chatAt = now() + 900; } else h.chatAt = now() + 5000 + Math.random() * 9000;
+}
+function botPowers(h) { // a bot traitor uses its powers now and then
+  if (!h.traitor || h.limbs[h.traitor].pid || h.sim.gone[h.traitor] || now() < h.botPower) return;
+  h.botPower = now() + 22000 + Math.random() * 25000;
+  if (Math.random() < 0.6) h.sim.fart(); else h.sim.crampLimb(pick(LIMBS.filter((l) => l !== h.traitor && !h.sim.gone[l])));
+}
+function hostMsg(pid, m) {
+  const h = H; if (!h) return;
+  const p = h.players[pid], l = p?.limb; if (!p) return;
+  if (m.k === 'in' && l && !h.sim.gone[l]) h.sim.input[l] = { dir: Math.sign(m.dir) || 0, act: !!m.act };
+  if (m.k === 'emote' && l && now() - (h.emoteT[pid] || 0) > 900) { h.emoteT[pid] = now(); broadcast({ k: 'emote', l, i: m.i | 0 }); }
+  if (m.k === 'meet' && h.phase === 'play' && h.meetings[pid] > 0 && !h.sim.gone[l]) { h.meetings[pid]--; hostMeeting(l); }
+  if (m.k === 'vote' && h.phase === 'vote' && !h.sim.gone[l] && (m.l === 'skip' || (LIMBS.includes(m.l) && !h.sim.gone[m.l]))) { h.votes[l] = m.l; broadcast({ k: 'votes', votes: h.votes }); if (allVoted()) h.voteEnds = Math.min(h.voteEnds, now() + 1200); }
+  if (m.k === 'power' && l === h.traitor && h.phase === 'play' && !h.sim.gone[l]) {
+    if (m.p === 'fart' && now() > h.cool.fart) { h.cool.fart = now() + 25000; h.sim.fart(); }
+    if (m.p === 'cramp' && now() > h.cool.cramp) { h.cool.cramp = now() + 30000; h.sim.crampLimb(pick(LIMBS.filter((x) => x !== l && !h.sim.gone[x]))); }
+    p.send({ k: 'cool', fart: h.cool.fart - now(), cramp: h.cool.cramp - now() });
+  }
+}
+const alive = () => LIMBS.filter((l) => !H.sim.gone[l]);
+const allVoted = () => alive().filter((l) => H.limbs[l].pid).every((l) => H.votes[l]);
+function hostMeeting(by) {
+  const h = H; h.phase = 'vote'; h.votes = {}; h.voteEnds = now() + VOTE_MS;
+  for (const l of LIMBS) h.sim.input[l] = { dir: 0, act: false };
+  broadcast({ k: 'meet', by, ends: VOTE_MS });
+  // bots vote for whoever looked most suspicious in the replays (the traitor bot picks someone else)
+  for (const l of alive().filter((x) => !h.limbs[x].pid)) {
+    setTimeout(() => {
+      if (H !== h || h.phase !== 'vote') return;
+      const cands = alive().filter((x) => x !== l).sort((a, b) => h.sus[b] - h.sus[a] + (Math.random() - 0.5) * 1.6);
+      let v = cands[0];
+      if (l === h.traitor) v = cands.find((x) => x !== h.traitor) || 'skip';
+      else if (h.sus[v] < 1.5 && Math.random() < 0.6) v = 'skip';
+      h.votes[l] = v; broadcast({ k: 'votes', votes: h.votes });
+    }, 2500 + Math.random() * 8000);
+  }
+}
+function hostTally() {
+  const h = H, n = {};
+  for (const v of Object.values(h.votes)) n[v] = (n[v] || 0) + 1;
+  const top = Object.entries(n).filter(([k]) => k !== 'skip').sort((a, b) => b[1] - a[1]);
+  const out = top.length && top[0][1] > (n.skip || 0) && (top.length < 2 || top[0][1] > top[1][1]) ? top[0][0] : null;
+  broadcast({ k: 'tally', out, votes: h.votes, traitor: out === h.traitor });
+  h.phase = 'result';
+  setTimeout(() => {
+    if (H !== h) return;
+    if (out) h.sim.detach(out);
+    for (const e of h.sim.events.splice(0)) broadcast({ k: 'ev', e });
+    if (out && out === h.traitor) return setTimeout(() => H === h && hostEnd('team', 'caught'), 1800);
+    h.phase = 'play'; h.last = performance.now(); h.acc = 0; broadcast({ k: 'resume' });
+  }, 3500);
+}
+function hostEnd(win, why) {
+  const h = H; if (h.phase === 'end') return;
+  h.phase = 'end'; clearInterval(h.iv);
+  broadcast({ k: 'end', win, why, traitor: h.traitor, ms: Math.min(GAME_MS, GAME_MS - h.left), falls: h.sim.falls, best: h.sim.best, f: h.sim.snapshot() });
+}
+function hostStop() { if (H) clearInterval(H.iv); H = null; }
+
+// ======================================================================
+// CLIENT: draws whatever the host sends and sends the local controls
+// ======================================================================
+let C = null; // current game as seen by this player
+const send = (m) => net.toHost(m);
+function onMsg(m) {
+  if (m.k === 'start') return clientStart(m);
+  if (m.k === 'lobby') { C = null; screen('lobbyScr'); renderLobby(); return; } // the host went back to the lobby
+  if (!C) return;
+  if (m.k === 's') { C.prev = C.cur; C.cur = { ...m, at: performance.now() }; C.frames.push({ f: m.f, p: m.p }); if (C.frames.length > 70) C.frames.shift(); C.gone = new Set(m.gone ? m.gone.split(',') : []); C.cramped = new Set(m.cr ? m.cr.split(',') : []); hud(); }
+  if (m.k === 'ev') clientEvent(m.e);
+  if (m.k === 'emote') { C.bubbles[m.l] = { t: performance.now(), text: EMOTES[m.i] || '' }; SFX.emote(); }
+  if (m.k === 'meet') showVote(m);
+  if (m.k === 'votes') { C.votes = m.votes; renderVote(); }
+  if (m.k === 'tally') showTally(m);
+  if (m.k === 'resume') { $('voteOv').hidden = true; }
+  if (m.k === 'cool') C.cool = { fart: performance.now() + m.fart, cramp: performance.now() + m.cramp };
+  if (m.k === 'end') showEnd(m);
+}
+function clientStart(m) {
+  $('endOv').hidden = $('voteOv').hidden = true;
+  C = { you: m.you, traitor: m.traitor, limbs: m.limbs, name: m.name, hat: m.hat, practice: m.practice, demo: m.demo, prev: null, cur: null, frames: [], gone: new Set(), cramped: new Set(),
+    bubbles: {}, parts: [], quip: null, banner: null, replay: null, cool: { fart: 0, cramp: 0 }, votes: {}, eyes: { x: 0, y: 0, vx: 0, vy: 0 } };
+  screen('game');
+  $('actBtn').textContent = (ACTION[m.you] || '').toUpperCase();
+  $('controls').hidden = !!m.demo; $('mute').hidden = !!m.demo; $('role').hidden = false;
+  $('role').className = m.traitor ? 'traitor' : '';
+  $('role').innerHTML = m.demo ? `🎂 Get <b>${esc(m.name)}</b> to the cake!`
+    : m.traitor ? `😈 You are the <b>TRAITOR</b> (${ICON[m.you]} ${LIMB_NAME[m.you]}). Make <b>${esc(m.name)}</b> fall, but don't get caught!`
+    : `You are the ${ICON[m.you]} <b>${LIMB_NAME[m.you]}</b> of <b>${esc(m.name)}</b>. Get to the cake! One limb is a traitor…`;
+  $('powers').hidden = !m.traitor;
+  legend();
+  banner(m.traitor ? '😈 TRAITOR' : '🎂 GO!', 1600);
+  setTimeout(() => { if (C && !C.demo) $('role').hidden = true; }, 9000);
+}
+function legend() {
+  $('legend').innerHTML = LIMBS.map((l) => `<div class="${C.gone.has(l) ? 'gone' : ''}"><span class="dot" style="background:${COL[l]}"></span>${ICON[l]} ${esc(C.limbs[l].name)}${l === C.you ? ' (you)' : ''}</div>`).join('');
+}
+function hud() {
+  const c = C.cur;
+  $('timer').textContent = '⏱ ' + mmss(c.left);
+  if (!$('voteOv').hidden && C.voteEnd) $('voteTime').textContent = C.voteEnd > tn0() ? `Voting ends in ${Math.ceil((C.voteEnd - tn0()) / 1000)}s` : '';
+  $('timer').style.color = c.left < 30000 ? '#ff7070' : '';
+  $('splats').textContent = '💥 ' + c.falls;
+  $('prog').textContent = '🎂 ' + Math.min(100, Math.round(Math.max(0, c.best) / FINISH * 100)) + '%';
+  if (C.lastGone !== c.gone) { C.lastGone = c.gone; legend(); }
+  const tn = performance.now();
+  $('fartBtn').disabled = tn < C.cool.fart; $('crampBtn').disabled = tn < C.cool.cramp;
+  $('meetBtn').hidden = C.demo || C.gone.has(C.you) || C.usedMeet;
+}
+const tn0 = () => performance.now();
+function banner(text, ms = 1400, color = '') { $('banner').textContent = text; $('banner').style.color = color; $('banner').hidden = false; clearTimeout(banner.t); banner.t = setTimeout(() => ($('banner').hidden = true), ms); }
+function quip(text, ms = 2200) { $('quip').textContent = text; $('quip').hidden = false; clearTimeout(quip.t); quip.t = setTimeout(() => ($('quip').hidden = true), ms); }
+function clientEvent(e) {
+  const pos = C.cur?.f;
+  if (e.e === 'splat') {
+    SFX.splat(); banner('SPLAT!', 1200, '#ff6b6b'); quip(pick(QUIPS.splat));
+    burst(e.x, e.y, ['#ff6b6b', '#ffd43b', '#fff'], 26);
+    C.replay = { frames: C.frames.slice(-50), start: performance.now() }; // the last ~2.5 s, played back slowly
+    $('replayTag').hidden = false; setTimeout(() => { if (C) { C.replay = null; $('replayTag').hidden = true; } }, REPLAY_MS);
+  }
+  if (e.e === 'hic') { SFX.hic(); quip(pick(QUIPS.hic), 1600); if (pos) { burst(pos[0] - 0.6, pos[1], ['#c8f7c5', '#a0e7a0'], 10, 'cloud'); for (const p of parts.slice(-10)) p.vy = Math.random() * 1.5; } }
+  if (e.e === 'boing') SFX.boing();
+  if (e.e === 'duck') { tone(1400, 900, 0.12, 'square', 0.08); tone(1500, 1000, 0.1, 'square', 0.06, 0.12); burst(e.x, e.y, ['#ffd43b', '#fff'], 12); }
+  if (e.e === 'honk') { SFX.honk(); C.honkT = performance.now(); }
+  if (e.e === 'stomp') { SFX.stomp(); }
+  if (e.e === 'grab') SFX.grab();
+  if (e.e === 'cramp') { SFX.cramp(); quip(`⚡ CRAMP! ${LIMB_NAME[e.l]} went numb!`, 2400); if (e.l === C.you) banner('⚡ CRAMP!', 1500, '#ffd43b'); }
+  if (e.e === 'cp') { SFX.cp(); quip(pick(QUIPS.cp)); }
+  if (e.e === 'pop') { SFX.pop(); quip(`${pick(QUIPS.pop)} Bye bye, ${LIMB_NAME[e.l]}!`, 2600); }
+}
+function showVote(m) {
+  SFX.meet();
+  C.votes = {}; C.voteEnd = performance.now() + m.ends;
+  if (m.by === C.you) C.usedMeet = true;
+  $('voteWho').textContent = m.by ? `${ICON[m.by]} ${C.limbs[m.by].name} called a meeting. Who's the traitor?` : '🤖 A bot called a meeting. Who\'s the traitor?';
+  $('voteOv').hidden = false; $('skipBtn').disabled = false;
+  renderVote();
+}
+function renderVote() {
+  if ($('voteOv').hidden || !C) return;
+  const mine = C.votes[C.you], out = C.gone.has(C.you), n = {};
+  for (const v of Object.values(C.votes)) n[v] = (n[v] || 0) + 1;
+  $('vgrid').innerHTML = LIMBS.filter((l) => !C.gone.has(l)).map((l) => `<button data-v="${l}" class="${mine === l ? 'picked' : ''}" ${mine || out || l === C.you ? 'disabled' : ''}>
+    <span class="dot" style="background:${COL[l]}"></span><span>${ICON[l]} ${LIMB_NAME[l]}<small>${esc(C.limbs[l].name)}${l === C.you ? ' (you)' : ''}</small></span>
+    <span class="tally">${C.votes[l] ? '✋' : ''}${n[l] ? ' ' + n[l] : ''}</span></button>`).join('');
+  $('skipBtn').disabled = !!mine || out;
+  $('skipBtn').textContent = `🤷 Skip vote${n.skip ? ' · ' + n.skip : ''}`;
+}
+function showTally(m) {
+  $('vgrid').innerHTML = ''; $('skipBtn').disabled = true;
+  if (!m.out) { $('voteWho').textContent = 'Nobody was pulled off. The traitor is still in there… 😬'; return; }
+  $('voteWho').innerHTML = `<b style="font-size:18px">${ICON[m.out]} ${LIMB_NAME[m.out]} (${esc(C.limbs[m.out].name)}) gets pulled off…</b>`;
+  setTimeout(() => { if (C) $('voteWho').innerHTML += m.traitor ? '<br><b style="color:#5ee08f;font-size:20px">…and it WAS the traitor! 🎉</b>' : '<br><b style="color:#ff6b6b;font-size:20px">…it was NOT the traitor. 😱</b>'; }, 1500);
+  setTimeout(() => { if (C) $('voteOv').hidden = true; }, 3400);
+}
+function showEnd(m) {
+  $('voteOv').hidden = true;
+  const teamWin = m.win === 'team', iWon = teamWin !== C.traitor;
+  (iWon ? SFX.win : SFX.lose)();
+  if (teamWin) for (let i = 0; i < 4; i++) setTimeout(() => C && C.cur && burst(C.cur.f[0], C.cur.f[1] + 1, ['#ff5d8f', '#ffd166', '#5ee08f', '#4dabf7'], 40), i * 300);
+  if (m.f && C.cur) C.cur = { ...C.cur, f: m.f };
+  setTimeout(() => {
+    if (!C) return;
+    $('endTitle').textContent = C.demo ? '🎂 CAKE!' : iWon ? '🎉 YOU WIN!' : '💀 YOU LOSE';
+    const tr = m.traitor;
+    $('endWho').innerHTML = (m.why === 'cake' ? `${esc(C.name)} reached the cake! ` : m.why === 'caught' ? 'The traitor was pulled off! ' : 'Time ran out. ')
+      + (tr ? `<br>The traitor was <b style="color:${COL[tr]}">${ICON[tr]} ${LIMB_NAME[tr]} (${esc(C.limbs[tr].name)})</b>${tr === C.you ? ' (that\'s you 😈)' : ''}` : '');
+    $('endStats').innerHTML = `<div><b>${mmss(m.ms)}</b>time</div><div><b>${m.falls}</b>splats</div><div><b>${Math.min(100, Math.round(m.best / FINISH * 100))}%</b>of the way</div>`;
+    // practice leaderboard: fastest cake delivery while you were on the team
+    const ranked = C.practice && m.why === 'cake' && !C.traitor;
+    $('lb').hidden = !C.practice;
+    if (C.practice) { lb.show(ranked ? 600000 - Math.round(m.ms) : 0); if (ranked && m.ms < store.get('onebody-best', 1e9)) store.set('onebody-best', Math.round(m.ms)); }
+    $('againBtn').hidden = !(C.practice || net.isHost);
+    $('againBtn').textContent = C.practice ? '↻ Play again' : '↻ Back to lobby';
+    $('endOv').hidden = false;
+  }, teamWin ? 1400 : 600);
+}
+const lb = leaderboard($('lb'), 'one-body', (s) => { const ms = 600000 - s; return `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}.${Math.floor(ms / 100) % 10}`; });
+
+// ---------- controls ----------
+const keys = { l: false, r: false, a: false };
+let lastSent = '';
+function pushInput() {
+  if (!C || C.demo) return;
+  const dir = (keys.r ? 1 : 0) - (keys.l ? 1 : 0), m = { k: 'in', dir, act: keys.a }, s = JSON.stringify(m);
+  if (s !== lastSent) { lastSent = s; send(m); }
+}
+setInterval(() => { lastSent = ''; pushInput(); }, 1000); // resend in case a packet was lost
+const KEYMAP = { ArrowLeft: 'l', KeyA: 'l', ArrowRight: 'r', KeyD: 'r', Space: 'a', ArrowUp: 'a', KeyW: 'a' };
+addEventListener('keydown', (e) => {
+  if (!C || $('game').hidden || e.target.tagName === 'INPUT') return;
+  const k = KEYMAP[e.code];
+  if (k) { e.preventDefault(); keys[k] = true; pushInput(); return; }
+  if (e.repeat) return;
+  if (/^Digit[1-4]$/.test(e.code)) send({ k: 'emote', i: +e.code.slice(5) - 1 });
+  if (e.code === 'KeyQ' && C.traitor) $('fartBtn').click();
+  if (e.code === 'KeyE' && C.traitor) $('crampBtn').click();
+});
+addEventListener('keyup', (e) => { const k = KEYMAP[e.code]; if (k) { keys[k] = false; pushInput(); } });
+addEventListener('blur', () => { keys.l = keys.r = keys.a = false; pushInput(); });
+for (const [id, k] of [['lBtn', 'l'], ['rBtn', 'r'], ['actBtn', 'a']]) {
+  const b = $(id);
+  const on = (e) => { e.preventDefault(); keys[k] = true; b.classList.add('on'); pushInput(); };
+  const off = (e) => { e.preventDefault(); keys[k] = false; b.classList.remove('on'); pushInput(); };
+  b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('pointerleave', off);
+}
+document.querySelectorAll('[data-emote]').forEach((b) => (b.onclick = () => send({ k: 'emote', i: +b.dataset.emote })));
+$('meetBtn').onclick = () => { if (C && !C.usedMeet) { C.usedMeet = true; send({ k: 'meet' }); } };
+$('fartBtn').onclick = () => send({ k: 'power', p: 'fart' });
+$('crampBtn').onclick = () => send({ k: 'power', p: 'cramp' });
+$('vgrid').onclick = (e) => { const b = e.target.closest('[data-v]'); if (b && !b.disabled) { send({ k: 'vote', l: b.dataset.v }); C.votes[C.you] = b.dataset.v; renderVote(); } };
+$('skipBtn').onclick = () => { send({ k: 'vote', l: 'skip' }); C.votes[C.you] = 'skip'; renderVote(); };
+
+// ======================================================================
+// DRAWING
+// ======================================================================
+const cv = $('cv'), ctx = cv.getContext('2d');
+const cam = { x: 0, y: 2, s: 60 };
+let parts = []; // particles
+function burst(x, y, cols, n, kind = 'dot') { for (let i = 0; i < n; i++) parts.push({ x, y, vx: (Math.random() - 0.5) * 7, vy: Math.random() * 7, life: 1, c: pick(cols), kind, r: 0.05 + Math.random() * 0.08 }); }
+function resize() { const d = Math.min(2, devicePixelRatio || 1); cv.width = innerWidth * d; cv.height = innerHeight * d; }
+addEventListener('resize', resize); resize();
+const lerp = (a, b, t) => a + (b - a) * t;
+function lerpAngle(a, b, t) { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return a + d * t; }
+function frameNow() {
+  if (C.replay) { // slow-motion replay of the moments before the fall
+    const fr = C.replay.frames, i = Math.min(fr.length - 1, (performance.now() - C.replay.start) / REPLAY_MS * fr.length * 0.95);
+    const a = fr[Math.floor(i)], b = fr[Math.min(fr.length - 1, Math.floor(i) + 1)], t = i % 1;
+    return { f: a.f.map((v, k) => (k % 3 === 2 ? lerpAngle(v, b.f[k], t) : lerp(v, b.f[k], t))), p: new Set(a.p ? a.p.split(',') : []) };
+  }
+  const c = C.cur, p = C.prev; if (!c) return null;
+  if (!p) return { f: c.f, p: new Set() };
+  const t = Math.min(1.3, (performance.now() - c.at) / Math.max(16, c.at - p.at));
+  return { f: c.f.map((v, k) => (k % 3 === 2 ? lerpAngle(p.f[k], v, t) : lerp(p.f[k], v, t))), p: new Set() };
+}
+
+function draw() {
+  requestAnimationFrame(draw);
+  if (!C || $('game').hidden) return;
+  const W = cv.width, Hh = cv.height, fr = frameNow(); if (!fr) return;
+  const f = fr.f, body = (i) => ({ x: f[i * 3], y: f[i * 3 + 1], a: f[i * 3 + 2] });
+  const tor = body(0);
+  cam.s = Math.min(W / 11, Hh / 6.2);
+  const k = Math.abs(cam.x - tor.x) > 4 ? 1 : 0.1; // snap after a respawn, glide otherwise
+  cam.x = lerp(cam.x, tor.x + 1.2, k); cam.y = lerp(cam.y, Math.max(1.6, tor.y + 0.5), k * 0.7);
+  const AY = Hh < W * 0.6 ? 0.47 : 0.58; // short landscape screens: keep the creature above the buttons
+  const sx = (x) => W / 2 + (x - cam.x) * cam.s, sy = (y) => Hh * AY - (y - cam.y) * cam.s;
+  // sky + parallax hills
+  const g = ctx.createLinearGradient(0, 0, 0, Hh); g.addColorStop(0, '#7ec8ff'); g.addColorStop(1, '#ffe2f1');
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = g; ctx.fillRect(0, 0, W, Hh);
+  for (const [k, col, hgt] of [[0.2, '#c9b8ff', 0.35], [0.45, '#a8e6a1', 0.22]]) {
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, Hh);
+    for (let x = 0; x <= W; x += 20) { const wx = (x - W / 2) / cam.s + cam.x * k; ctx.lineTo(x, Hh * (1 - hgt) + Math.sin(wx * 0.35) * 30 + Math.sin(wx * 0.11) * 50); }
+    ctx.lineTo(W, Hh); ctx.fill();
+  }
+  // world space: y up
+  ctx.setTransform(cam.s, 0, 0, -cam.s, W / 2 - cam.x * cam.s, Hh * AY + cam.y * cam.s);
+  const T = performance.now() / 1000;
+  drawCourse(T, body);
+  drawCreature(body, fr.p, T);
+  // particles
+  parts = parts.filter((p) => (p.life -= 0.016) > 0);
+  for (const p of parts) {
+    p.vy += p.kind === 'cloud' ? 0.02 : -0.25; p.x += p.vx * 0.016; p.y += p.vy * 0.016;
+    ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.kind === 'cloud' ? 0.25 * (2 - p.life) : p.r, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // labels and speech bubbles in screen space
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const d = Math.min(2, devicePixelRatio || 1);
+  ctx.font = `800 ${13 * d}px system-ui, sans-serif`; ctx.textAlign = 'center';
+  const idx = { ll: 1, rl: 2, la: 3, ra: 4, hd: 5, tl: 6 };
+  for (const l of LIMBS) {
+    const b = C.bubbles[l]; if (!b || performance.now() - b.t > 2200) continue;
+    const p = body(idx[l]), x = sx(p.x), y = sy(p.y) - 58 * d;
+    const w = ctx.measureText(b.text).width + 16 * d;
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = COL[l]; ctx.lineWidth = 3 * d;
+    ctx.beginPath(); ctx.roundRect(x - w / 2, y - 14 * d, w, 26 * d, 10 * d); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#222'; ctx.fillText(b.text, x, y + 4 * d);
+  }
+  if (!C.demo && !C.replay) { // "you" arrow
+    const p = body(idx[C.you]);
+    if (!C.gone.has(C.you)) { ctx.fillStyle = C.traitor ? '#ff5d8f' : '#fff'; ctx.fillText('▼ you', sx(p.x), sy(p.y) - 30 * d); }
+  }
+  if (C.cur?.gust && tor.x > 49 && tor.x < 57) { ctx.fillStyle = '#fff'; ctx.fillText('💨 GUST!', W / 2, Hh * 0.2); }
+}
+
+function drawCourse(T, body) {
+  // ground
+  ctx.fillStyle = '#9a6a45'; ctx.strokeStyle = '#5bc256'; ctx.lineWidth = 0.3;
+  const pts = coursePts;
+  ctx.beginPath(); ctx.moveTo(pts[0][0], -20);
+  for (const p of pts) ctx.lineTo(p[0], p[1]);
+  ctx.lineTo(pts[pts.length - 1][0], -20); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.stroke();
+  // checkpoint flags
+  OB.CHECKPOINTS.slice(1).forEach((x, i) => {
+    const y = gy(x), got = C.cur && C.cur.cp > i;
+    ctx.fillStyle = '#5a4630'; ctx.fillRect(x - 0.04, y, 0.08, 1.6);
+    ctx.fillStyle = got ? '#5ee08f' : '#ff5d8f'; ctx.beginPath(); ctx.moveTo(x + 0.04, y + 1.6); ctx.lineTo(x + 0.7, y + 1.35 + Math.sin(T * 4) * 0.05); ctx.lineTo(x + 0.04, y + 1.1); ctx.fill();
+  });
+  // banana peels
+  for (const x of [21.5, 23.5]) { ctx.fillStyle = '#ffe14d'; ctx.beginPath(); ctx.ellipse(x, 0.6, 0.45, 0.07, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#c9a400'; ctx.fillRect(x + 0.35, 0.6, 0.12, 0.06); }
+  // mushroom in the pit
+  ctx.save(); ctx.translate(44.6, -1.0); ctx.rotate(-0.35);
+  ctx.fillStyle = '#e03131'; ctx.beginPath(); ctx.ellipse(0, 0.05, 0.6, 0.22, 0, 0, Math.PI); ctx.fill();
+  ctx.fillStyle = '#fff'; for (const dx of [-0.3, 0, 0.3]) { ctx.beginPath(); ctx.arc(dx, 0.12, 0.05, 0, 7); ctx.fill(); }
+  ctx.restore();
+  // fan + wind streaks
+  ctx.fillStyle = '#495057'; ctx.fillRect(56.8, 0, 0.15, 1.8); ctx.beginPath(); ctx.arc(56.85, 1.8, 0.5, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#dee2e6'; ctx.lineWidth = 0.08; const fa = T * (C.cur?.gust ? 20 : 2);
+  for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(56.85, 1.8); ctx.lineTo(56.85 + Math.cos(fa + i * 2.1) * 0.45, 1.8 + Math.sin(fa + i * 2.1) * 0.45); ctx.stroke(); }
+  if (C.cur?.gust) { ctx.strokeStyle = '#ffffffaa'; ctx.lineWidth = 0.05; for (let i = 0; i < 9; i++) { const x = 56.5 - ((T * 9 + i * 0.7) % 6), y = 0.4 + (i * 0.37) % 2.4; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 0.8, y); ctx.stroke(); } }
+  // seesaw
+  const ss = body(7);
+  ctx.fillStyle = '#7a5230'; ctx.beginPath(); ctx.moveTo(40, 0); ctx.lineTo(41, 0); ctx.lineTo(40.5, 0.34); ctx.fill();
+  ctx.save(); ctx.translate(ss.x, ss.y); ctx.rotate(ss.a); ctx.fillStyle = '#c08552'; ctx.fillRect(-3.6, -0.1, 7.2, 0.2); ctx.restore();
+  // punching bag
+  const bag = body(8);
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 0.04; ctx.beginPath(); ctx.moveTo(57, 7); ctx.lineTo(bag.x - Math.sin(bag.a) * 0.6, bag.y + Math.cos(bag.a) * 0.6); ctx.stroke();
+  ctx.fillStyle = '#555'; ctx.fillRect(56.5, 7, 1, 0.12);
+  ctx.save(); ctx.translate(bag.x, bag.y); ctx.rotate(bag.a); ctx.fillStyle = '#c92a2a'; ctx.beginPath(); ctx.roundRect(-0.45, -0.6, 0.9, 1.2, 0.3); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = '0.4px system-ui'; ctx.scale(1, -1); ctx.textAlign = 'center'; ctx.fillText('POW', 0, 0.15); ctx.restore();
+  // goose
+  const gs = body(9), dir = Math.cos(T * 0.7) >= 0 ? 1 : -1;
+  ctx.save(); ctx.translate(gs.x, gs.y); ctx.scale(dir, 1);
+  ctx.fillStyle = '#f8f9fa'; ctx.beginPath(); ctx.ellipse(0, -0.1, 0.5, 0.35, 0, 0, 7); ctx.fill();
+  ctx.fillRect(0.2, -0.05, 0.14, 0.55); ctx.beginPath(); ctx.arc(0.3, 0.55, 0.16, 0, 7); ctx.fill();
+  ctx.fillStyle = '#ff922b'; ctx.beginPath(); ctx.moveTo(0.42, 0.6); ctx.lineTo(0.68, 0.53 + (Math.sin(T * 9) > 0.6 ? 0.06 : 0)); ctx.lineTo(0.42, 0.49); ctx.fill();
+  ctx.fillRect(-0.12, -0.55, 0.05, 0.2); ctx.fillRect(0.08, -0.55, 0.05, 0.2);
+  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0.34, 0.6, 0.03, 0, 7); ctx.fill();
+  ctx.restore();
+  if (Math.sin(T * 9) > 0.97 && Math.abs(gs.x - cam.x) < 6) SFX.goose();
+  // ducks
+  for (let i = 0; i < 4; i++) {
+    const d = body(10 + i); ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.a);
+    ctx.fillStyle = '#ffd43b'; ctx.beginPath(); ctx.arc(0, 0, 0.26, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(0.12, 0.2, 0.14, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ff922b'; ctx.beginPath(); ctx.moveTo(0.24, 0.22); ctx.lineTo(0.38, 0.18); ctx.lineTo(0.24, 0.14); ctx.fill();
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0.16, 0.25, 0.025, 0, 7); ctx.fill(); ctx.restore();
+  }
+  // cake
+  const cx = FINISH, cy = 0;
+  ctx.fillStyle = '#ffc9de'; ctx.fillRect(cx - 0.8, cy, 1.6, 0.5); ctx.fillStyle = '#fff0f6'; ctx.fillRect(cx - 0.6, cy + 0.5, 1.2, 0.4);
+  ctx.fillStyle = '#ff5d8f'; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(cx - 0.6 + i * 0.3, cy + 0.9, 0.08, 0, 7); ctx.fill(); }
+  for (const dx of [-0.3, 0, 0.3]) { ctx.fillStyle = '#74c0fc'; ctx.fillRect(cx + dx - 0.03, cy + 0.9, 0.06, 0.3); ctx.fillStyle = Math.sin(T * 20 + dx * 9) > 0 ? '#ffd43b' : '#ff922b'; ctx.beginPath(); ctx.ellipse(cx + dx, cy + 1.27, 0.05, 0.09, 0, 0, 7); ctx.fill(); }
+  ctx.save(); ctx.scale(1, -1); ctx.font = '800 0.35px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#c2255c'; ctx.fillText('🎂 FINISH', cx, -1.8); ctx.restore();
+}
+const coursePts = [[-10, 0], [16, 0], [16, 0.18], [17.3, 0.18], [17.3, 0.36], [18.6, 0.36], [18.6, 0.54], [26, 0.54], [31, 0], [36, 0], [44, 0], [44, -1.1], [45.2, -1.1], [45.2, 0], [61, 0], [67, 0.9], [73, 0], [100, 0], [100, 12]];
+function gy(x) { const p = coursePts; for (let i = 0; i < p.length - 1; i++) if (x >= p[i][0] && x <= p[i + 1][0] && p[i + 1][0] > p[i][0]) return p[i][1] + (p[i + 1][1] - p[i][1]) * (x - p[i][0]) / (p[i + 1][0] - p[i][0]); return 0; }
+
+function drawCreature(body, pressed, T) {
+  const P = { ll: body(1), rl: body(2), la: body(3), ra: body(4), hd: body(5), tl: body(6) }, tor = body(0);
+  const glow = (l) => (C.replay ? pressed.has(l) : l === C.you && (keys.l || keys.r || keys.a));
+  const limbShape = (p, l, hw, hl, foot) => {
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a);
+    if (glow(l)) { ctx.shadowColor = '#fff'; ctx.shadowBlur = 25; }
+    ctx.fillStyle = C.cramped.has(l) ? '#adb5bd' : COL[l]; ctx.strokeStyle = '#2b1d4a'; ctx.lineWidth = 0.05;
+    ctx.beginPath(); ctx.roundRect(-hw, -hl, hw * 2, hl * 2, hw); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, -hl, foot, 0, 7); ctx.fill(); ctx.stroke();
+    if (C.replay && pressed.has(l)) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 0.1, 0, 7); ctx.fill(); }
+    if (C.cramped.has(l)) { ctx.scale(1, -1); ctx.font = '0.4px system-ui'; ctx.textAlign = 'center'; ctx.fillText('⚡', 0, 0.1); }
+    ctx.restore();
+  };
+  // back limbs first; your own limb is drawn last so you can always see it
+  const SZ = { ll: [0.11, 0.55, 0.14], rl: [0.11, 0.55, 0.14], la: [0.09, 0.425, 0.12], ra: [0.09, 0.425, 0.12] };
+  const mine = !C.replay && SZ[C.you] ? C.you : null;
+  const limb = (l) => l !== mine && limbShape(P[l], l, ...SZ[l]);
+  limb('la'); limb('ll');
+  // tail
+  ctx.save(); ctx.translate(P.tl.x, P.tl.y); ctx.rotate(P.tl.a);
+  if (glow('tl')) { ctx.shadowColor = '#fff'; ctx.shadowBlur = 25; }
+  ctx.strokeStyle = COL.tl; ctx.lineWidth = 0.14; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0.4, 0);
+  for (let i = 0; i <= 10; i++) ctx.lineTo(0.4 - i * 0.09, Math.sin(T * 8 + i) * 0.05 * i / 10); ctx.stroke();
+  ctx.fillStyle = COL.tl; ctx.beginPath(); ctx.arc(-0.5, Math.sin(T * 8 + 10) * 0.05, 0.12, 0, 7); ctx.fill();
+  ctx.restore();
+  // torso: fuzzy blob
+  ctx.save(); ctx.translate(tor.x, tor.y); ctx.rotate(tor.a);
+  ctx.fillStyle = '#8f6bff'; ctx.strokeStyle = '#2b1d4a'; ctx.lineWidth = 0.05;
+  ctx.beginPath();
+  for (let i = 0; i <= 40; i++) { const a = i / 40 * Math.PI * 2, r = 1 + Math.sin(a * 9 + T * 3) * 0.03; ctx.lineTo(Math.cos(a) * 0.68 * r, Math.sin(a) * 0.42 * r); }
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#b39dff'; ctx.beginPath(); ctx.ellipse(0.05, -0.05, 0.38, 0.22, 0, 0, 7); ctx.fill();
+  ctx.restore();
+  limb('rl');
+  // head with googly eyes and a hat
+  const hd = P.hd;
+  ctx.save(); ctx.translate(hd.x, hd.y); ctx.rotate(hd.a);
+  if (glow('hd')) { ctx.shadowColor = '#fff'; ctx.shadowBlur = 25; }
+  ctx.fillStyle = C.cramped.has('hd') ? '#adb5bd' : COL.hd; ctx.strokeStyle = '#2b1d4a'; ctx.lineWidth = 0.05;
+  ctx.beginPath(); ctx.arc(0, 0, 0.4, 0, 7); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
+  const e = C.eyes; e.vx += (-(hd.x - (e.px ?? hd.x)) * 3 - e.x * 0.2) ; e.vy += (-(hd.y - (e.py ?? hd.y)) * 3 - e.y * 0.2 - 0.004); e.vx *= 0.8; e.vy *= 0.8; e.x = Math.max(-0.05, Math.min(0.05, e.x + e.vx)); e.y = Math.max(-0.05, Math.min(0.05, e.y + e.vy)); e.px = hd.x; e.py = hd.y;
+  for (const ex of [0.02, 0.22]) {
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ex, 0.1, 0.12, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(ex + e.x + 0.02, 0.1 + e.y, 0.055, 0, 7); ctx.fill();
+  }
+  const scared = C.replay || (C.cur && Math.abs(tor.a) > 0.8), honk = performance.now() - (C.honkT || 0) < 400;
+  ctx.fillStyle = '#2b1d4a'; ctx.beginPath();
+  if (honk) ctx.ellipse(0.2, -0.17, 0.1, 0.09, 0, 0, 7); else if (scared) ctx.ellipse(0.16, -0.18, 0.07, 0.1, 0, 0, 7); else ctx.arc(0.14, -0.12, 0.12, Math.PI * 1.15, Math.PI * 1.85);
+  scared || honk ? ctx.fill() : (ctx.lineWidth = 0.04, ctx.stroke());
+  drawHat(C.hat);
+  ctx.restore();
+  limb('ra');
+  if (mine) limbShape(P[mine], mine, ...SZ[mine]);
+}
+function drawHat(h) {
+  ctx.save(); ctx.translate(0, 0.33);
+  if (h === 'crown') { ctx.fillStyle = '#ffd43b'; ctx.beginPath(); ctx.moveTo(-0.25, 0); ctx.lineTo(-0.25, 0.25); ctx.lineTo(-0.12, 0.12); ctx.lineTo(0, 0.3); ctx.lineTo(0.12, 0.12); ctx.lineTo(0.25, 0.25); ctx.lineTo(0.25, 0); ctx.fill(); }
+  if (h === 'party') { ctx.fillStyle = '#ff5d8f'; ctx.beginPath(); ctx.moveTo(-0.2, 0); ctx.lineTo(0.05, 0.55); ctx.lineTo(0.2, 0); ctx.fill(); ctx.fillStyle = '#ffd43b'; ctx.beginPath(); ctx.arc(0.05, 0.58, 0.07, 0, 7); ctx.fill(); }
+  if (h === 'cowboy') { ctx.fillStyle = '#8d5524'; ctx.fillRect(-0.42, 0, 0.84, 0.07); ctx.beginPath(); ctx.roundRect(-0.2, 0, 0.4, 0.28, 0.08); ctx.fill(); }
+  if (h === 'chef') { ctx.fillStyle = '#fff'; ctx.fillRect(-0.2, 0, 0.4, 0.2); for (const dx of [-0.15, 0, 0.15]) { ctx.beginPath(); ctx.arc(dx, 0.3, 0.14, 0, 7); ctx.fill(); } }
+  if (h === 'propeller') { ctx.fillStyle = '#4dabf7'; ctx.beginPath(); ctx.arc(0, 0, 0.24, 0, Math.PI); ctx.fill(); ctx.fillStyle = '#ff6b6b'; const s = Math.sin(performance.now() / 40) * 0.3; ctx.fillRect(-s, 0.28, s * 2, 0.05); ctx.fillRect(-0.02, 0.2, 0.04, 0.1); }
+  if (h === 'cone') { ctx.fillStyle = '#ff922b'; ctx.beginPath(); ctx.moveTo(-0.22, 0); ctx.lineTo(0, 0.5); ctx.lineTo(0.22, 0); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(-0.12, 0.17, 0.24, 0.07); }
+  ctx.restore();
+}
+requestAnimationFrame(draw);
+
+// mascot on the start screen
+(() => {
+  const s = $('mascot'), c = Object.values(COL);
+  s.innerHTML = `<g><rect x="-0.7" y="-0.1" width="0.22" height="1.2" rx="0.1" fill="${c[0]}" transform="rotate(-15 -0.6 0)"/><rect x="0.35" y="-0.1" width="0.22" height="1.2" rx="0.1" fill="${c[1]}" transform="rotate(12 0.45 0)"/>
+    <path d="M-1 -0.5 q-1 -0.6 -1.6 0.2" stroke="${c[5]}" stroke-width="0.16" fill="none" stroke-linecap="round"/>
+    <ellipse cx="0" cy="-0.45" rx="1.05" ry="0.65" fill="#8f6bff" stroke="#2b1d4a" stroke-width="0.06"/>
+    <rect x="-1.1" y="-0.7" width="0.18" height="1" rx="0.09" fill="${c[2]}" transform="rotate(30 -1 -0.7)"/><rect x="0.95" y="-0.7" width="0.18" height="1" rx="0.09" fill="${c[3]}" transform="rotate(-140 1 -0.6)"/>
+    <circle cx="0.9" cy="-1.5" r="0.62" fill="${c[4]}" stroke="#2b1d4a" stroke-width="0.06"/><circle cx="0.75" cy="-1.65" r="0.19" fill="#fff"/><circle cx="1.12" cy="-1.62" r="0.19" fill="#fff"/>
+    <circle cx="0.8" cy="-1.62" r="0.09"/><circle cx="1.08" cy="-1.68" r="0.09"/><ellipse cx="0.98" cy="-1.28" rx="0.16" ry="0.12" fill="#2b1d4a"/>
+    <path d="M0.55 -2.05 L0.95 -2.95 L1.3 -2.05 Z" fill="#ff5d8f"/><circle cx="0.95" cy="-3" r="0.1" fill="#ffd43b"/></g>`;
+  s.style.transform = 'scaleY(1)';
+  let t = 0; (function wob() { t += 0.05; s.firstElementChild.setAttribute('transform', `rotate(${Math.sin(t) * 6} 0 0)`); requestAnimationFrame(wob); })();
+})();
+
+// ======================================================================
+// NETWORK: local (practice/demo) or online (Firestore lobby + WebRTC)
+// ======================================================================
+const net = { mode: null, isHost: false, toHost: () => {} };
+const ICE = { iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }] };
+const fb = initializeApp({ apiKey: 'AIzaSyDz5J34ahi7fP48CU2cPrp1FNmqK-20D5E', authDomain: 'hatdoc-blog-1048.firebaseapp.com', projectId: 'hatdoc-blog-1048' });
+const db = getFirestore(fb);
+const ROOMS = 'oneBody';
+let room = null, code = '', unsub = null;
+const peers = {}; // host: pid -> { pc, r, u, name }   client: 'host' -> { pc, r, u }
+
+function startLocal(practice, demo) {
+  cleanup();
+  net.mode = 'local'; net.isHost = true;
+  const players = demo ? {} : { [me.id]: { name: myName(), send: (m) => onMsg(m) } };
+  net.toHost = (m) => hostMsg(me.id, m);
+  if (demo) { // the preview recorder: everyone is a bot, we just watch
+    hostStart({ players: { watcher: { name: '', send: (m) => onMsg(m) } }, demo: true });
+    const l = H.players.watcher.limb; H.limbs[l] = { pid: null, name: '🤖 Zed' }; C.limbs = H.limbs; C.you = null; legend();
+    const cp = +new URLSearchParams(location.search).get('cp') || 0; if (cp) { H.sim.cp = cp; H.sim.spawn(); } // ?cp=2 starts at a checkpoint (testing)
+    return;
+  }
+  hostStart({ players, practice: practice || 'any' });
+}
+
+// wait until ICE gathering is done so the whole offer/answer fits in one Firestore write
+const gathered = (pc) => new Promise((res) => { if (pc.iceGatheringState === 'complete') return res(); const t = setTimeout(res, 3000); pc.addEventListener('icegatheringstatechange', () => pc.iceGatheringState === 'complete' && (clearTimeout(t), res())); });
+function wire(peer, onMessage, onClose) {
+  for (const ch of [peer.r, peer.u]) { ch.onmessage = (e) => { try { onMessage(JSON.parse(e.data)); } catch {} }; }
+  let closed = false; const close = () => { if (!closed) { closed = true; onClose(); } };
+  peer.pc.onconnectionstatechange = () => { if (['failed', 'closed', 'disconnected'].includes(peer.pc.connectionState)) close(); };
+  peer.r.onclose = close;
+}
+const sendOn = (peer, m) => { const ch = m.k === 's' ? peer.u : peer.r; if (ch?.readyState === 'open') ch.send(JSON.stringify(m)); };
+
+async function mutate(fn) {
+  try {
+    await runTransaction(db, async (t) => {
+      const ref = doc(db, ROOMS, code), snap = await t.get(ref);
+      if (!snap.exists()) return; const r = fn(snap.data()); if (r) t.set(ref, r);
+    });
+  } catch (e) { console.warn(e); }
+}
+async function createRoom(pub) {
+  cleanup(); myName();
+  for (let i = 0; i < 5; i++) {
+    const c = rid(5), ref = doc(db, ROOMS, c);
+    try {
+      let ok = false;
+      await runTransaction(db, async (t) => {
+        const s = await t.get(ref); if (s.exists() && now() - s.data().created < ROOM_TTL) return;
+        t.set(ref, { code: c, pub, created: now(), host: me.id, phase: 'lobby', players: { [me.id]: { n: me.name, j: now() } }, sig: {} }); ok = true;
+      });
+      if (!ok) continue;
+      code = c; net.mode = 'online'; net.isHost = true; location.hash = c;
+      net.toHost = (m) => hostMsg(me.id, m);
+      unsub = onSnapshot(ref, (s) => { room = s.data(); hostSignal(); renderLobby(); });
+      screen('lobbyScr'); return;
+    } catch (e) { console.warn(e); toast('Could not create a room. Check your internet.'); return; }
+  }
+}
+// host: answer every new offer in the room doc
+const answering = new Set();
+async function hostSignal() {
+  if (!room) return;
+  for (const [pid, s] of Object.entries(room.sig || {})) {
+    if (!s.o || s.a || answering.has(pid) || peers[pid]) continue;
+    answering.add(pid);
+    const pc = new RTCPeerConnection(ICE), peer = { pc, name: room.players[pid]?.n || 'Player' };
+    pc.ondatachannel = (e) => { peer[e.channel.label] = e.channel; if (peer.r && peer.u) wire(peer, (m) => hostMsg(pid, m), () => dropPeer(pid)); };
+    await pc.setRemoteDescription({ type: 'offer', sdp: s.o });
+    await pc.setLocalDescription(await pc.createAnswer()); await gathered(pc);
+    peers[pid] = peer;
+    await mutate((r) => { if (!r.sig[pid]) return null; r.sig[pid].a = pc.localDescription.sdp; return r; });
+    answering.delete(pid);
+    setTimeout(() => { if (peers[pid] && peer.r?.readyState !== 'open') dropPeer(pid); }, 15000);
+  }
+}
+function dropPeer(pid) {
+  const p = peers[pid]; if (!p) return;
+  delete peers[pid]; try { p.pc.close(); } catch {}
+  if (H?.players[pid]) { const l = H.players[pid].limb; delete H.players[pid]; if (l) { H.limbs[l] = { pid: null, name: '🤖 ' + pick(BOTS) }; broadcast({ k: 'emote', l, i: 2 }); toast(`${p.name} left, a bot took over`); } }
+  mutate((r) => { delete r.players[pid]; delete r.sig[pid]; return r; });
+}
+async function joinRoom(c) {
+  cleanup(); myName();
+  const ref = doc(db, ROOMS, c);
+  const pc = new RTCPeerConnection(ICE), peer = { pc, r: pc.createDataChannel('r'), u: pc.createDataChannel('u', { ordered: false, maxRetransmits: 0 }) };
+  await pc.setLocalDescription(await pc.createOffer()); await gathered(pc);
+  let ok = false, why = 'Room not found';
+  try {
+    await runTransaction(db, async (t) => {
+      const s = await t.get(ref); const r = s.exists() ? s.data() : null;
+      if (!r || now() - r.created > ROOM_TTL) return;
+      if (r.phase !== 'lobby') { why = 'That game already started'; return; }
+      if (Object.keys(r.players).length >= MAXP && !r.players[me.id]) { why = 'Room is full'; return; }
+      r.players[me.id] = { n: me.name, j: now() }; r.sig[me.id] = { o: pc.localDescription.sdp }; t.set(ref, r); ok = true;
+    });
+  } catch (e) { console.warn(e); why = 'Could not connect. Check your internet.'; }
+  if (!ok) { pc.close(); toast(why); return false; }
+  code = c; net.mode = 'online'; net.isHost = false; location.hash = c; peers.host = peer;
+  net.toHost = (m) => sendOn(peer, m);
+  let connected = false;
+  peer.r.onopen = () => { connected = true; sendOn(peer, { k: 'hi', name: me.name }); };
+  wire(peer, onMsg, () => { if (code === c) { toast('Lost connection to the host'); leave(); } });
+  unsub = onSnapshot(ref, async (s) => {
+    room = s.data(); if (!room) return;
+    const a = room.sig?.[me.id]?.a; if (a && !pc.remoteDescription) await pc.setRemoteDescription({ type: 'answer', sdp: a });
+    if (!room.players[me.id] && connected) { toast('You were removed from the room'); leave(); return; }
+    if (!room.players[room.host]) { toast('The host left the room'); leave(); return; }
+    renderLobby();
+  });
+  setTimeout(() => { if (code === c && !connected) { toast("Couldn't connect to that room (some networks block direct connections). Try another room or Wi-Fi.", 5000); leave(); } }, 16000);
+  screen('lobbyScr'); return true;
+}
+async function quickPlay() {
+  myName();
+  try {
+    const snap = await getDocs(query(collection(db, ROOMS), where('pub', '==', true), where('phase', '==', 'lobby'), limit(20)));
+    const open = snap.docs.map((d) => d.data()).filter((r) => now() - r.created < 30 * 60e3 && Object.keys(r.players).length < MAXP)
+      .sort((a, b) => Object.keys(b.players).length - Object.keys(a.players).length);
+    for (const r of open) if (await joinRoom(r.code)) return;
+  } catch (e) { console.warn(e); }
+  await createRoom(true);
+}
+function renderLobby() {
+  if (!room || !$('game').hidden && C) return;
+  const ps = Object.entries(room.players).sort((a, b) => a[1].j - b[1].j), isHost = net.isHost;
+  const ready = (pid) => pid === room.host || (isHost ? peers[pid]?.r?.readyState === 'open' : pid === me.id ? peers.host?.r?.readyState === 'open' : true);
+  $('lobbyKind').textContent = room.pub ? 'Public room · players from Quick Play join here' : 'Private room · share the code with friends';
+  $('lobbyCode').textContent = room.code;
+  $('lobbyPlayers').innerHTML = ps.map(([pid, p], i) => `<div class="player"><span class="dot" style="background:${Object.values(COL)[i]}"></span>${esc(p.n)}${pid === room.host ? ' 👑' : ''}${pid === me.id ? ' (you)' : ''}<span style="margin-left:auto;font-size:12px;color:var(--mut)">${ready(pid) ? '✓' : 'connecting…'}</span></div>`).join('')
+    + Array.from({ length: MAXP - ps.length }, () => '<div class="player" style="opacity:.4">🤖 bot (until someone joins)</div>').join('');
+  const n = ps.filter(([pid]) => ready(pid)).length;
+  $('lobbyHint').textContent = isHost ? (n < 2 ? 'Waiting for friends… (or start now with bots)' : `${n} players ready!`) : 'Waiting for the host to start…';
+  $('startBtn').hidden = !isHost;
+  if (room.pub && isHost && n >= 3 && !renderLobby.auto) { renderLobby.auto = setTimeout(() => { renderLobby.auto = null; if (net.isHost && room?.phase === 'lobby') startOnline(); }, 12000); $('lobbyHint').textContent += ' Starting in 12s…'; }
+}
+async function startOnline() {
+  const players = { [me.id]: { name: me.name, send: (m) => onMsg(m) } };
+  for (const [pid, p] of Object.entries(peers)) if (p.r?.readyState === 'open') players[pid] = { name: (room.players[pid]?.n || 'Player').slice(0, 12), send: (m) => sendOn(p, m) };
+  await mutate((r) => { r.phase = 'play'; return r; });
+  hostStart({ players });
+}
+function cleanup() {
+  hostStop(); C = null;
+  unsub?.(); unsub = null;
+  for (const k of Object.keys(peers)) { try { peers[k].pc.close(); } catch {} delete peers[k]; }
+  room = null; code = ''; net.mode = null; net.isHost = false;
+  clearTimeout(renderLobby.auto); renderLobby.auto = null;
+}
+async function leave() {
+  const c = code, host = net.isHost && net.mode === 'online';
+  if (c && net.mode === 'online') await mutate((r) => { delete r.players[me.id]; delete r.sig[me.id]; if (host) r.phase = 'play'; return r; }); // a room whose host left never shows up in Quick Play again
+  cleanup(); history.replaceState(null, '', location.pathname + location.search); screen('startScr');
+}
+
+// ---------- buttons ----------
+$('practiceBtn').onclick = () => startLocal('any');
+$('quickBtn').onclick = () => quickPlay();
+$('createBtn').onclick = () => createRoom(false);
+$('joinBtn').onclick = () => { const c = $('codeIn').value.toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length !== 5) return toast('Room codes have 5 characters'); joinRoom(c); };
+$('codeIn').onkeydown = (e) => { if (e.key === 'Enter') $('joinBtn').click(); };
+$('startBtn').onclick = () => startOnline();
+$('leaveBtn').onclick = () => leave();
+$('inviteBtn').onclick = async () => { const u = `https://rank-game.com/games/one-body#${code}`; try { await navigator.clipboard.writeText(u); toast('Invite link copied! 📋'); } catch { toast(u, 6000); } };
+$('menuBtn').onclick = () => leave();
+$('againBtn').onclick = async () => {
+  $('endOv').hidden = true;
+  if (net.mode === 'local') return startLocal(H?.practice ? 'any' : null);
+  broadcast({ k: 'lobby' }); hostStop(); C = null; await mutate((r) => { r.phase = 'lobby'; return r; }); screen('lobbyScr'); renderLobby();
+};
+$('shareBtn').onclick = async () => {
+  const text = `I just tried to walk a wobbly creature to a cake with 5 other people in One Body 🎂🦵 One of us was a traitor…`, url = 'https://rank-game.com/games/one-body';
+  try { if (navigator.share) return await navigator.share({ title: 'One Body', text, url }); } catch { return; }
+  try { await navigator.clipboard.writeText(`${text} ${url}`); toast('Copied! 📋'); } catch { toast(url, 5000); }
+};
+setInterval(() => { if (!$('lobbyScr').hidden) renderLobby(); }, 1000); // "connecting…" -> ✓
+
+// builds for other sites (itch.io) can't reach the room database: practice only, with a link to the online version
+if (window.OB_OFFLINE) { for (const id of ['quickBtn', 'createBtn', 'joinBtn', 'codeIn']) $(id).hidden = true; document.querySelector('.or').hidden = true; $('onlineLink').hidden = false; }
+window.startDemo = () => startLocal(null, true); // the preview recorder
+if (location.hash === '#demo') startDemo();
+else if (/^#[A-Z0-9]{5}$/i.test(location.hash)) { const c = location.hash.slice(1).toUpperCase(); $('codeIn').value = c; setTimeout(() => joinRoom(c), 300); }
+</script>
+</body>
+</html>
