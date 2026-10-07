@@ -1,6 +1,11 @@
 {
   "title": "Beat Bloom",
-  "description": "Hit the beat on a neon 3D highway to 32 songs: 20 originals, from lo-fi Rainy Window to 172 BPM Hyperloop, plus classics like Für Elise, Ode to Joy, Korobeiniki and Rondo alla Turca. Tap the lanes or use D F J K, hold long notes, chain combos and chase S ranks on Easy, Normal and Hard, or six lanes (S D F J K L) on Extreme. Earn stars to unlock new songs and climb the global leaderboard.",
-  "tags": ["rhythm", "music", "arcade", "leaderboard"],
+  "description": "Hit the beat on a neon 3D highway to 52 songs: 20 originals plus famous tunes like Für Elise, Canon in D, Ode to Joy, Jingle Bells and Flight of the Bumblebee. 8 songs are free from the start; earn stars to unlock the rest. Tap the lanes or use D F J K, hold long notes, chain combos and watch your live rank on each song's leaderboard, from Easy to six-lane Extreme.",
+  "tags": [
+    "rhythm",
+    "music",
+    "arcade",
+    "leaderboard"
+  ],
   "emoji": "🎵"
 }

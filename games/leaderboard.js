@@ -29,6 +29,16 @@
     .lb .muted { justify-content: center; opacity: .6; background: none !important; }
   </style>`);
 
+  // Top scores of a board, highest first (for showing a live rank while playing)
+  window.leaderboardTop = async (game, n = 100) => {
+    const res = await fetch(`${FS}/games/${game}:runQuery?key=${FKEY}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'scores' }], orderBy: [{ field: { fieldPath: 'score' }, direction: 'DESCENDING' }], limit: n } }),
+    });
+    if (!res.ok) throw new Error('leaderboard ' + res.status);
+    return (await res.json()).filter((r) => r.document).map((r) => +r.document.fields.score.integerValue);
+  };
+
   window.leaderboard = (root, game, fmt = String) => {
     const path = `${FS}/games/${game}/scores`;
     const myIds = new Set(get(`lb-ids-${game}`, []));

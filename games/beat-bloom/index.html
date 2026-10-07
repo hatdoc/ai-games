@@ -128,6 +128,40 @@ const BIRTHDAY = [[0, 5, 4], [4, 4, 4], [8, 7, 4], [12, 6, 8], [20, 4, 3], [23, 
   [48, 11, 4], [52, 9, 4], [56, 7, 4], [60, 6, 4], [64, 5, 4], [68, 10, 3], [71, 10, 1], [72, 9, 4], [76, 7, 4], [80, 8, 4], [84, 7, 8], [92, 4, 3], [95, 4, 1]];
 const SUSANNA_END = [[32, 2, 2], [34, 4, 2], [36, 4, 3], [39, 5, 1], [40, 4, 2], [42, 2, 2], [44, 0, 3], [47, 1, 1], [48, 2, 2], [50, 2, 2], [52, 1, 2], [54, 1, 2], [56, 0, 4], [60, 0, 2], [62, 1, 2]];
 const WALTZ = { kick: 'x...........', snare: '....x...x...', hat: '..x...x...x.' };
+const SIXEIGHT = { kick: 'x.....x.....', snare: '......x.....', hat: '..x.x...x.x.' };
+const POP = { kick: 'x.......x.......', snare: '....x.......x...', hat: '..x...x...x...x.' };
+const DRIVE = { kick: 'x...x...x...x...', snare: '....x.......x...', hat: '..x...x...x...x.' };
+const sh = (m, k) => m.map(([st, d, l]) => [st + k, d, l]); // move a phrase later by k steps
+const MARY = [[0, 2, 4], [4, 1, 4], [8, 0, 4], [12, 1, 4], [16, 2, 4], [20, 2, 4], [24, 2, 8], [32, 1, 4], [36, 1, 4], [40, 1, 8], [48, 2, 4], [52, 4, 4], [56, 4, 8],
+  [64, 2, 4], [68, 1, 4], [72, 0, 4], [76, 1, 4], [80, 2, 4], [84, 2, 4], [88, 2, 4], [92, 2, 4], [96, 1, 4], [100, 1, 4], [104, 2, 4], [108, 1, 4], [112, 0, 16]];
+const BUNS = [[0, 2, 4], [4, 1, 4], [8, 0, 8], [16, 2, 4], [20, 1, 4], [24, 0, 8], [32, 0, 2], [34, 0, 2], [36, 0, 2], [38, 0, 2], [40, 1, 2], [42, 1, 2], [44, 1, 2], [46, 1, 2],
+  [48, 2, 4], [52, 1, 4], [56, 0, 8]];
+const ROW = [[0, 0, 6], [6, 0, 6], [12, 0, 4], [16, 1, 2], [18, 2, 6], [24, 2, 4], [28, 1, 2], [30, 2, 4], [34, 3, 2], [36, 4, 12], [48, 7, 2], [50, 7, 2], [52, 7, 2],
+  [54, 4, 2], [56, 4, 2], [58, 4, 2], [60, 2, 2], [62, 2, 2], [64, 2, 2], [66, 0, 2], [68, 0, 2], [70, 0, 2], [72, 4, 4], [76, 3, 2], [78, 2, 4], [82, 1, 2], [84, 0, 12]];
+const JACQUES = [[0, 0, 4], [4, 1, 4], [8, 2, 4], [12, 0, 4], [16, 0, 4], [20, 1, 4], [24, 2, 4], [28, 0, 4], [32, 2, 4], [36, 3, 4], [40, 4, 8], [48, 2, 4], [52, 3, 4], [56, 4, 8],
+  [64, 4, 2], [66, 5, 2], [68, 4, 2], [70, 3, 2], [72, 2, 4], [76, 0, 4], [80, 4, 2], [82, 5, 2], [84, 4, 2], [86, 3, 2], [88, 2, 4], [92, 0, 4],
+  [96, 0, 4], [100, -3, 4], [104, 0, 8], [112, 0, 4], [116, -3, 4], [120, 0, 8]];
+const LONDON = [[0, 4, 6], [6, 5, 2], [8, 4, 4], [12, 3, 4], [16, 2, 4], [20, 3, 4], [24, 4, 8], [32, 1, 4], [36, 2, 4], [40, 3, 8], [48, 2, 4], [52, 3, 4], [56, 4, 8],
+  [64, 4, 6], [70, 5, 2], [72, 4, 4], [76, 3, 4], [80, 2, 4], [84, 3, 4], [88, 4, 8], [96, 1, 8], [104, 4, 8], [112, 2, 4], [116, 0, 12]];
+const FARM = [[0, 0, 4], [4, 0, 4], [8, 0, 4], [12, -3, 4], [16, -2, 4], [20, -2, 4], [24, -3, 8], [32, 2, 4], [36, 2, 4], [40, 1, 4], [44, 1, 4], [48, 0, 12], [60, -3, 4]];
+const YANKEE = [[0, 0, 2], [2, 0, 2], [4, 1, 2], [6, 2, 2], [8, 0, 2], [10, 2, 2], [12, 1, 2], [14, -3, 2], [16, 0, 2], [18, 0, 2], [20, 1, 2], [22, 2, 2], [24, 0, 4], [28, -1, 4],
+  [32, 0, 2], [34, 0, 2], [36, 1, 2], [38, 2, 2], [40, 3, 2], [42, 2, 2], [44, 1, 2], [46, 0, 2], [48, -1, 2], [50, -3, 2], [52, -2, 2], [54, -1, 2], [56, 0, 4], [60, 0, 4]];
+const DECK = [[0, 4, 6], [6, 3, 2], [8, 2, 4], [12, 1, 4], [16, 0, 4], [20, 1, 4], [24, 2, 4], [28, 0, 4], [32, 1, 2], [34, 2, 2], [36, 3, 2], [38, 1, 2], [40, 2, 6], [46, 1, 2],
+  [48, 0, 4], [52, -1, 4], [56, 0, 8]];
+const WISH = [[0, 0, 4], [4, 0, 2], [6, 1, 2], [8, 0, 2], [10, -1, 2], [12, -2, 4], [16, -2, 4], [20, -2, 4], [24, 1, 4], [28, 1, 2], [30, 2, 2], [32, 1, 2], [34, 0, 2],
+  [36, -1, 4], [40, -3, 4], [44, -3, 4], [48, 2, 4], [52, 2, 2], [54, 3, 2], [56, 2, 2], [58, 1, 2], [60, 0, 4], [64, -2, 4], [68, -3, 2], [70, -3, 2],
+  [72, -2, 4], [76, 1, 4], [80, -1, 4], [84, 0, 8], [92, -3, 4]];
+const SILENT = [[0, 4, 3], [3, 5, 1], [4, 4, 2], [6, 2, 6], [12, 4, 3], [15, 5, 1], [16, 4, 2], [18, 2, 6], [24, 8, 4], [28, 8, 2], [30, 6, 6], [36, 7, 4], [40, 7, 2], [42, 4, 6],
+  [48, 5, 4], [52, 5, 2], [54, 7, 3], [57, 6, 1], [58, 5, 2], [60, 4, 3], [63, 5, 1], [64, 4, 2], [66, 2, 6], [72, 5, 4], [76, 5, 2], [78, 7, 3], [81, 6, 1], [82, 5, 2],
+  [84, 4, 3], [87, 5, 1], [88, 4, 2], [90, 2, 6]];
+const AULD = [[0, 0, 6], [6, 0, 2], [8, 0, 4], [12, 2, 4], [16, 1, 6], [22, 0, 2], [24, 1, 4], [28, 2, 4], [32, 0, 6], [38, 0, 2], [40, 2, 4], [44, 4, 4], [48, 5, 12], [60, 5, 4],
+  [64, 4, 6], [70, 2, 2], [72, 2, 4], [76, 0, 4], [80, 1, 6], [86, 0, 2], [88, 1, 4], [92, 2, 4], [96, 0, 6], [102, -2, 2], [104, -2, 4], [108, -3, 4], [112, 0, 12], [124, -3, 4]];
+const GRACE = [[0, 0, 8], [8, 2, 2], [10, 0, 2], [12, 2, 8], [20, 1, 4], [24, 0, 8], [32, -2, 4], [36, -3, 8], [44, -3, 4], [48, 0, 8], [56, 2, 2], [58, 0, 2], [60, 2, 8], [68, 1, 4]];
+const SLEEVES = [[0, 2, 4], [4, 3, 2], [6, 4, 3], [9, 5, 1], [10, 4, 2], [12, 3, 4], [16, 1, 2], [18, -1, 3], [21, 0, 1], [22, 1, 2], [24, 2, 4], [28, 0, 2], [30, 0, 3], [33, -0.5, 1],
+  [34, 0, 2], [36, 1, 4], [40, -0.5, 2], [42, -3, 4], [46, 0, 2]];
+const RAG = [[0, 1, 1], [1, 1.5, 1], [2, 2, 1], [3, 7, 2], [5, 2, 1], [6, 7, 2], [8, 2, 1], [9, 7, 7]];
+const BUZZ = [4, 3.5, 3, 2.5, 3, 2.5, 2, 1, 2, 2.5, 2, 1, 0.5, 0, 0.5, 1].map((d, i) => [i, d, 1]);
+
 const SONGS = [
   { id: 'sunrise', title: 'Sunrise Run', bpm: 112, root: 60, scale: 'major', prog: [0, 4, 5, 3], hue: 32, need: 0,
     drums: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: '..x...x...x...x.' },
@@ -219,7 +253,7 @@ const SONGS = [
     progB: [4, 4, 4, 4, 0, 4, 0, 0] },
   { id: 'birthday', title: 'Happy Birthday', by: 'Hill sisters (1893)', abs: true, span: 8, bar: 12, bpm: 120, root: 60, scale: 'major', prog: [0, 4, 4, 0, 0, 3, 0, 0], hue: 330, need: 0,
     drums: WALTZ, A: BIRTHDAY, B: shift(BIRTHDAY, 0) },
-  { id: 'jingle', title: 'Jingle Bells', by: 'James Lord Pierpont (1857)', abs: true, span: 8, bpm: 124, root: 60, scale: 'major', prog: [0, 0, 0, 3, 3, 4, 4, 0], hue: 120, need: 2,
+  { id: 'jingle', title: 'Jingle Bells', by: 'James Lord Pierpont (1857)', abs: true, span: 8, bpm: 124, root: 60, scale: 'major', prog: [0, 0, 0, 3, 3, 4, 4, 0], hue: 120, need: 0,
     drums: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: 'xxxxxxxxxxxxxxxx' },
     A: [[0, 4, 4], [4, 2, 4], [8, 1, 4], [12, 0, 4], [16, -3, 12], [28, -3, 2], [30, -3, 2], [32, -3, 4], [36, 2, 4], [40, 1, 4], [44, 0, 4], [48, -2, 16],
       [64, -2, 4], [68, 3, 4], [72, 2, 4], [76, 1, 4], [80, -1, 16], [96, 4, 4], [100, 4, 4], [104, 3, 4], [108, 1, 4], [112, 2, 16]],
@@ -242,7 +276,7 @@ const SONGS = [
   { id: 'nacht', title: 'Eine kleine Nachtmusik', by: 'Mozart', abs: true, span: 4, bpm: 132, root: 67, scale: 'major', prog: [0, 0, 4, 4], hue: 140, need: 9,
     drums: { kick: 'x.......x.......', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.' },
     A: NACHT, B: shift(NACHT, 7) },
-  { id: 'elise', title: 'Für Elise', by: 'Beethoven', abs: true, span: 8, bar: 12, bpm: 176, root: 69, scale: 'harmonic', prog: [0, 0, 4, 0, 0, 0, 4, 0], hue: 300, need: 11,
+  { id: 'elise', title: 'Für Elise', by: 'Beethoven', abs: true, span: 8, bar: 12, bpm: 176, root: 69, scale: 'harmonic', prog: [0, 0, 4, 0, 0, 0, 4, 0], hue: 300, need: 0,
     drums: { kick: 'x...........', snare: '......x.....', hat: '..x...x...x.' }, A: ELISE, B: ELISE },
   { id: 'fifth', title: 'Symphony No. 5', by: 'Beethoven', abs: true, span: 4, bpm: 108, root: 60, scale: 'harmonic', prog: [0, 4, 5, 0], hue: 5, need: 13,
     drums: { kick: 'x..x....x..x....', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.' },
@@ -253,17 +287,81 @@ const SONGS = [
   { id: 'turkish', title: 'Rondo alla Turca', by: 'Mozart', abs: true, span: 4, bpm: 120, root: 57, scale: 'minor', prog: [0, 0, 4, 4], hue: 185, need: 20,
     drums: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: '..x...x...x...x.' },
     A: TURKISH, B: TURKISH },
+  // ----- 20 more well-known tunes, all public domain -----
+  { id: 'canon', title: 'Canon in D', by: 'Johann Pachelbel', abs: true, span: 8, bar: 8, bpm: 112, root: 62, scale: 'major', prog: [0, 4, 5, 2, 3, 0, 3, 4], hue: 210, need: 0,
+    drums: { kick: 'x.......', snare: '....x...', hat: '..x...x.' },
+    A: [[0, 9, 8], [8, 8, 8], [16, 7, 8], [24, 6, 8], [32, 5, 8], [40, 4, 8], [48, 5, 8], [56, 6, 8]],
+    B: [7, 9, 11, 10, 9, 7, 9, 8, 7, 5, 7, 4, 3, 5, 4, 3, 3, 5, 7, 5, 2, 4, 7, 4, 3, 5, 7, 10, 6, 8, 4, 6].map((d, i) => [i * 2, d, 2]) },
+  { id: 'marylamb', title: 'Mary Had a Little Lamb', by: 'Traditional', abs: true, span: 8, bpm: 112, root: 60, scale: 'major', prog: [0, 0, 4, 0, 0, 0, 4, 0], hue: 100, need: 1,
+    drums: POP, A: MARY, B: shift(MARY, 7) },
+  { id: 'hotcross', title: 'Hot Cross Buns', by: 'Traditional', abs: true, span: 4, bpm: 108, root: 62, scale: 'major', prog: [0, 0, 4, 0], hue: 30, need: 1,
+    drums: POP, A: BUNS, B: shift(BUNS, 7) },
+  { id: 'rowboat', title: 'Row, Row, Row Your Boat', by: 'Traditional', abs: true, span: 8, bar: 12, bpm: 96, root: 60, scale: 'major', prog: [0, 0, 0, 0, 0, 0, 4, 0], hue: 190, need: 2,
+    drums: SIXEIGHT, A: ROW, B: shift(ROW, 7) },
+  { id: 'jacques', title: 'Frère Jacques', by: 'Traditional (French)', abs: true, span: 8, bpm: 108, root: 65, scale: 'major', prog: [0, 0, 0, 0, 0, 0, 4, 0], hue: 250, need: 2,
+    drums: POP, A: JACQUES, B: shift(JACQUES, 7) },
+  { id: 'london', title: 'London Bridge', by: 'Traditional', abs: true, span: 8, bpm: 116, root: 60, scale: 'major', prog: [0, 0, 4, 0, 0, 0, 4, 0], hue: 5, need: 3,
+    drums: POP, A: LONDON, B: shift(LONDON, 7) },
+  { id: 'macdonald', title: 'Old MacDonald Had a Farm', by: 'Traditional', abs: true, span: 8, bpm: 120, root: 62, scale: 'major', prog: [0, 3, 4, 0, 0, 3, 4, 0], hue: 80, need: 3,
+    drums: DRIVE, A: [...FARM, ...sh(FARM, 64)], B: [...FARM, ...sh(FARM, 64)] },
+  { id: 'yankee', title: 'Yankee Doodle', by: 'Traditional (American)', abs: true, span: 4, bpm: 120, root: 60, scale: 'major', prog: [0, 0, 0, 4], hue: 220, need: 4,
+    drums: DRIVE, A: YANKEE, B: shift(YANKEE, 7) },
+  { id: 'camptown', title: 'Camptown Races', by: 'Stephen Foster (1850)', abs: true, span: 4, bpm: 120, root: 60, scale: 'major', prog: [0, 4, 0, 0], progB: [0, 3, 0, 4], hue: 45, need: 5,
+    drums: DRIVE,
+    A: [[0, 4, 2], [2, 4, 2], [4, 2, 2], [6, 4, 2], [8, 5, 2], [10, 4, 2], [12, 2, 4], [16, 2, 2], [18, 1, 6], [24, 2, 2], [26, 1, 6],
+      [32, 4, 2], [34, 4, 2], [36, 2, 2], [38, 4, 2], [40, 5, 2], [42, 4, 2], [44, 2, 4], [48, 1, 4], [52, 2, 2], [54, 1, 2], [56, 0, 8]],
+    B: [[0, 0, 6], [6, 0, 2], [8, 2, 2], [10, 4, 2], [12, 7, 4], [16, 5, 6], [22, 5, 2], [24, 7, 2], [26, 5, 2], [28, 4, 4],
+      [32, 4, 2], [34, 4, 2], [36, 2, 2], [38, 2, 2], [40, 4, 2], [42, 4, 2], [44, 2, 2], [46, 2, 2], [48, 1, 2], [50, 2, 2], [52, 1, 2], [54, 0, 2], [56, 1, 4], [60, 0, 4]] },
+  { id: 'deckhalls', title: 'Deck the Halls', by: 'Traditional (Welsh)', abs: true, span: 8, bpm: 120, root: 60, scale: 'major', prog: [0, 0, 4, 0, 0, 0, 4, 0], progB: [4, 0, 4, 4, 0, 0, 3, 0], hue: 135, need: 6,
+    drums: DRIVE, A: [...DECK, ...sh(DECK, 64)],
+    B: [[0, 1, 6], [6, 2, 2], [8, 3, 4], [12, 1, 4], [16, 2, 6], [22, 3, 2], [24, 4, 4], [28, 1, 4], [32, 2, 2], [34, 3.5, 2], [36, 4, 4], [40, 5, 2], [42, 6, 2], [44, 7, 4],
+      [48, 6, 4], [52, 5, 4], [56, 4, 8], [64, 4, 6], [70, 3, 2], [72, 2, 4], [76, 1, 4], [80, 0, 4], [84, 1, 4], [88, 2, 4], [92, 0, 4],
+      [96, 5, 2], [98, 5, 2], [100, 5, 2], [102, 5, 2], [104, 4, 6], [110, 3, 2], [112, 2, 4], [116, 1, 4], [120, 0, 8]] },
+  { id: 'wewish', title: 'We Wish You a Merry Christmas', by: 'Traditional (English)', abs: true, span: 8, bar: 12, bpm: 132, root: 67, scale: 'major', prog: [0, 3, 1, 4, 5, 3, 4, 0], hue: 355, need: 7,
+    drums: WALTZ, A: WISH, B: WISH },
+  { id: 'silent', title: 'Silent Night', by: 'Franz Gruber (1818)', abs: true, span: 8, bar: 12, bpm: 80, root: 60, scale: 'major', prog: [0, 0, 4, 0, 3, 0, 3, 0], progB: [4, 0, 0, 0, 0, 0, 4, 0], hue: 240, need: 8,
+    drums: SIXEIGHT, A: SILENT,
+    B: [[0, 8, 4], [4, 8, 2], [6, 10, 3], [9, 8, 1], [10, 6, 2], [12, 7, 6], [18, 9, 6], [24, 7, 3], [27, 4, 1], [28, 2, 2], [30, 4, 3], [33, 3, 1], [34, 1, 2], [36, 0, 12],
+      ...sh(SILENT.filter(([st]) => st < 48), 48)] },
+  { id: 'auldlang', title: 'Auld Lang Syne', by: 'Traditional (Scottish)', abs: true, span: 8, bpm: 92, root: 65, scale: 'major', prog: [0, 4, 0, 3, 0, 4, 3, 0], hue: 60, need: 9,
+    drums: POP, A: AULD, B: AULD },
+  { id: 'amazing', title: 'Amazing Grace', by: 'Traditional (John Newton, 1779)', abs: true, span: 8, bar: 12, bpm: 92, root: 67, scale: 'major', prog: [0, 0, 3, 0, 0, 0, 4, 4], progB: [0, 0, 3, 0, 0, 4, 0, 0], hue: 280, need: 10,
+    drums: WALTZ, A: [...GRACE, [72, 4, 12], [84, 4, 8], [92, 2, 4]], B: [[0, 4, 8], ...GRACE.slice(1), [72, 0, 12], [84, 0, 8], [92, -3, 4]] },
+  { id: 'lullaby', title: 'Lullaby (Wiegenlied)', by: 'Johannes Brahms', abs: true, span: 8, bar: 12, bpm: 76, root: 62, scale: 'major', prog: [0, 0, 4, 4, 4, 4, 4, 0], hue: 300, need: 12,
+    drums: { kick: 'x...........', snare: '............', hat: '....x...x...' },
+    A: [[0, 4, 8], [8, 2, 2], [10, 2, 2], [12, 4, 8], [20, 2, 2], [22, 4, 2], [24, 7, 4], [28, 6, 6], [34, 5, 2], [36, 5, 8], [44, 1, 2], [46, 2, 2],
+      [48, 3, 8], [56, 1, 2], [58, 2, 2], [60, 3, 8], [68, 1, 2], [70, 3, 2], [72, 6, 4], [76, 5, 4], [80, 4, 2], [82, 6, 2], [84, 7, 8], [92, 2, 2], [94, 2, 2]],
+    B: null },
+  { id: 'greensleeves', title: 'Greensleeves', by: 'Traditional (English)', abs: true, span: 8, bar: 12, bpm: 96, root: 69, scale: 'minor', prog: [2, 6, 0, 4, 2, 6, 4, 0], hue: 150, need: 14,
+    drums: SIXEIGHT,
+    A: [...SLEEVES, ...sh(SLEEVES.slice(0, 10), 48), [72, 2, 3], [75, 1, 1], [76, 0, 2], [78, -0.5, 3], [81, -1.5, 1], [82, -0.5, 2], [84, 0, 10], [94, 0, 2]], B: null },
+  { id: 'morning', title: 'Morning Mood', by: 'Edvard Grieg', abs: true, span: 4, bar: 12, bpm: 84, root: 64, scale: 'major', prog: [0, 0, 5, 0], hue: 55, need: 17,
+    drums: SIXEIGHT,
+    A: [[0, 4, 2], [2, 2, 2], [4, 1, 2], [6, 0, 2], [8, 1, 2], [10, 2, 2], [12, 4, 2], [14, 2, 2], [16, 1, 2], [18, 0, 2], [20, 1, 1], [21, 2, 1], [22, 1, 2],
+      [24, 2, 2], [26, 4, 2], [28, 2, 2], [30, 4, 2], [32, 5, 2], [34, 2, 2], [36, 5, 2], [38, 4, 2], [40, 2, 2], [42, 1, 2], [44, 0, 4]], B: null },
+  { id: 'spring', title: 'Spring (The Four Seasons)', by: 'Antonio Vivaldi', abs: true, span: 4, bpm: 110, root: 64, scale: 'major', prog: [0, 0, 0, 0], progB: [0, 4, 0, 4], hue: 110, need: 20,
+    drums: POP,
+    A: [[0, 2, 4], [4, 2, 4], [8, 2, 4], [12, 1, 2], [14, 0, 2], [16, 4, 12], [28, 4, 2], [30, 3, 2], [32, 2, 4], [36, 2, 4], [40, 2, 4], [44, 1, 2], [46, 0, 2], [48, 4, 12], [60, 4, 2], [62, 3, 2]],
+    B: [[0, 2, 4], [4, 3, 2], [6, 4, 2], [8, 3, 4], [12, 2, 4], [16, 1, 12], [28, 4, 2], [30, 3, 2], [32, 2, 4], [36, 3, 2], [38, 4, 2], [40, 3, 4], [44, 2, 4], [48, 1, 8], [56, 0, 8]] },
+  { id: 'entertainer', title: 'The Entertainer', by: 'Scott Joplin (1902)', abs: true, span: 2, bpm: 96, root: 60, scale: 'major', prog: [0, 4], progB: [0, 1], hue: 20, need: 24,
+    drums: { kick: 'x.......x.......', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.' },
+    A: [...RAG, [16, 7, 1], [17, 8, 1], [18, 8.5, 1], [19, 9, 1], [20, 7, 1], [21, 8, 1], [22, 9, 2], [24, 6, 1], [25, 8, 2], [27, 7, 5]],
+    B: [...RAG, [16, 5, 1], [17, 4, 1], [18, 3.5, 1], [19, 5, 1], [20, 7, 1], [21, 9, 2], [23, 8, 1], [24, 7, 1], [25, 5, 1], [26, 8, 6]] },
+  { id: 'bumblebee', title: 'Flight of the Bumblebee', by: 'Nikolai Rimsky-Korsakov', abs: true, span: 4, bpm: 140, root: 69, scale: 'minor', prog: [0, 0, 0, 4], hue: 48, need: 30,
+    drums: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: 'xxxxxxxxxxxxxxxx' },
+    A: [...BUZZ, ...sh(BUZZ, 16), ...[4, 3.5, 3, 2.5, 2, 1, 0.5, 0, 0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5].map((d, i) => [32 + i, d, 1]), ...BUZZ.slice(0, 8).map(([st, d, l]) => [48 + st, d, l]), [56, 0, 8]], B: null },
 ];
+for (const song of SONGS) song.B ||= song.A;
 // Song form: intro, verse, build, chorus, verse, build, chorus ×2 (key lift), outro
 const FORM = [['intro', 4], ['verse', 8], ['build', 4], ['chorus', 8], ['verse', 8], ['build', 4], ['chorus', 8], ['chorus', 8], ['outro', 4]];
 const DIFFS = [{ id: 'easy', name: 'Easy', w: 0.6 }, { id: 'normal', name: 'Normal', w: 0.8 }, { id: 'hard', name: 'Hard', w: 1 }, { id: 'extreme', name: 'Extreme', w: 1.2 }];
 const lanesFor = (diff) => (diff === 'extreme' ? 6 : 4); // Extreme adds two outer lanes: S D F J K L
 
 function compose(song) {
-  const spb = 60 / song.bpm, s16 = spb / 4, sc = SCALES[song.scale], ev = [], N = song.bar || 16; // N: 16ths per bar (12 = 3/4 time)
+  const spb = 60 / song.bpm, s16 = spb / 4, sc = SCALES[song.scale], ev = [], N = song.bar || 16; // N: 16ths per bar (12 = 3/4 or 6/8, 8 = half-bar chords)
   const note = (deg, chord, lift = 0) => { const d = chord + deg, i = Math.floor(d), oct = Math.floor(i / 7); return song.root + sc[((i % 7) + 7) % 7] + oct * 12 + lift + (d > i ? 1 : 0); };
   const span = song.span || 2, rel = song.abs ? 0 : 1;
-  const bass = N === 12 ? [[0, 3, 0], [4, 2, 12], [8, 3, 0]] : [[0, 3, 0], [4, 2, 12], [6, 2, 0], [8, 3, 0], [12, 2, 12], [14, 2, 0]];
+  const bass = N === 12 ? [[0, 3, 0], [4, 2, 12], [8, 3, 0]] : N === 8 ? [[0, 3, 0], [4, 2, 12], [6, 2, 0]] : [[0, 3, 0], [4, 2, 12], [6, 2, 0], [8, 3, 0], [12, 2, 12], [14, 2, 0]];
   let bar = 0, lastChorus = false;
   FORM.forEach(([sec, bars], si) => {
     const lift = sec === 'chorus' && lastChorus ? 2 : 0; // final chorus goes up a step
@@ -378,6 +476,10 @@ function previewSong(song) { // short melody snippet on hover/tap in the menu
 // ---------- save ----------
 let save = { best: {}, speed: 4, offset: 0 };
 try { Object.assign(save, JSON.parse(localStorage.getItem('beatbloom-save')) || {}); } catch {}
+window.cloudSaveChanged = () => { // cloudsave.js merged your other devices' progress: use it without reloading
+  try { Object.assign(save, JSON.parse(localStorage.getItem('beatbloom-save')) || {}); } catch {}
+  if (state === 'menu') renderMenu();
+};
 const persist = () => { try { localStorage.setItem('beatbloom-save', JSON.stringify(save)); } catch {} };
 const gradeOf = (s) => (s >= 950000 ? 'S' : s >= 900000 ? 'A' : s >= 800000 ? 'B' : s >= 700000 ? 'C' : 'D');
 const starsOf = (s) => ({ S: 3, A: 2, B: 1, C: 1, D: 0 })[gradeOf(s)];
@@ -458,7 +560,10 @@ function start(song, diff) {
   const music = compose(song), notes = chart(song, music, diff).map((n) => ({ ...n, hit: false, judged: false, holding: false, done: false }));
   G = { song, diff, music, notes, idx: 0, sched: 0, t0: ac.currentTime + 2.2, score: 0, combo: 0, maxCombo: 0, counts: [0, 0, 0, 0], perNote: 1e6 / notes.length, hp: 100,
     pops: [], parts: [], press: Array(LANES).fill(0), held: Array(LANES).fill(false), flash: 0, ended: false, bloom: 0, judge: null };
-  state = 'play'; $('menu').hidden = true; $('pauseBtn').hidden = false; $('home').hidden = true;
+  G.lastNote = Math.max(0, ...G.notes.map((n) => n.t + n.dur));
+  G.board = null; // top scores on this song's board, for the live rank
+  leaderboardTop(`beat-bloom_${song.id}_${diff}`).then((b) => { if (G && G.song === song && G.diff === diff) G.board = b; }).catch(() => {});
+  state = 'play'; $('menu').hidden = true; $('pauseBtn').hidden = false; $('home')?.toggleAttribute('hidden', true);
 }
 const outLat = () => (ac.outputLatency || ac.baseLatency || 0);
 const songTime = (ctxT = ac.currentTime) => ctxT - G.t0 - outLat() - save.offset / 1000; // what the player is hearing now
@@ -524,7 +629,7 @@ function stopAudio() { // drop queued sounds by swapping in a fresh output chain
   try { master.disconnect(); } catch {}
   ac.close(); ac = null; initAudio();
 }
-function toMenu() { state = 'menu'; G = null; $('menu').hidden = false; $('pauseBtn').hidden = true; $('home').hidden = false; renderMenu(); }
+function toMenu() { state = 'menu'; G = null; $('menu').hidden = false; $('pauseBtn').hidden = true; $('home')?.toggleAttribute('hidden', false); renderMenu(); }
 
 function finish() {
   state = 'result'; G.ended = true;
@@ -585,7 +690,7 @@ function update(dt) {
   if (G.judge) G.judge.t -= dt;
   G.flash = Math.max(0, G.flash - dt); G.bloom = Math.max(0, G.bloom - dt * 0.08);
   if (G.hp <= 0 && !G.ended) return fail();
-  if (t > G.music.length + 1.2 && !G.ended) finish();
+  if ((t > G.lastNote + 1.2 || t > G.music.length + 1.2) && !G.ended) finish(); // results right after the last note
 }
 
 // ---------- drawing: perspective highway ----------
@@ -724,6 +829,11 @@ function drawHud(t) {
   // score + progress
   ctx.textAlign = 'right'; ctx.font = '900 22px system-ui'; ctx.fillStyle = '#fff';
   ctx.fillText(Math.max(0, Math.round(G.score)).toLocaleString().padStart(7, ' '), W - 64, 32);
+  if (G.board) { // where this score would place on the song's leaderboard right now
+    const r = 1 + G.board.filter((x) => x > G.score).length, full = G.board.length >= 100 && r > 100;
+    ctx.font = '800 13px system-ui'; ctx.fillStyle = r <= 3 ? '#ffd36a' : 'rgba(255,255,255,.75)';
+    ctx.fillText(full ? 'RANK 100+' : `RANK #${r}${r <= 3 ? ' 🏆' : ''}`, W - 64, 52);
+  }
   ctx.textAlign = 'left'; ctx.font = '800 13px system-ui'; ctx.fillStyle = 'rgba(255,255,255,.75)';
   ctx.fillText(`${G.song.title} · ${DIFFS.find((d) => d.id === G.diff).name}`, 14, 30);
   const bw = Math.min(180, W * 0.4), hp = G.hp / 100, low = hp < 0.3 && Math.sin(performance.now() / 90) > 0; // blinks when low
