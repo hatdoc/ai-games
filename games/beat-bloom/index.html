@@ -654,7 +654,7 @@ function fail() { // out of energy: stop the song, no best score or leaderboard 
   $('resScore').textContent = Math.max(0, Math.round(G.score)).toLocaleString(); $('resBest').hidden = true;
   $('resCounts').innerHTML = ['Perfect', 'Great', 'Good', 'Miss'].map((n, i) => `<span>${G.counts[i]}<small>${n}</small></span>`).join('') + `<span>${cleared}%<small>Cleared</small></span>`;
   $('resMore').textContent = '💔 Out of energy! Hit the notes to refill the bar.';
-  $('lb').hidden = true;
+  $('lb').hidden = false; boardFor(G.song, G.diff).show(0); // the song's top 10, view only: failed runs can't be submitted
   $('result').classList.add('on');
 }
 $('againBtn').onclick = () => { $('result').classList.remove('on'); stopAudio(); start(G.song, G.diff); };
