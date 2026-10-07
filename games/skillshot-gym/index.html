@@ -129,12 +129,14 @@ const toWorld = (e) => ({ x: (e.clientX - ox) / sc, y: (e.clientY - oy) / sc });
 cv.addEventListener('contextmenu', (e) => e.preventDefault());
 cv.addEventListener('pointermove', (e) => Object.assign(mouse, toWorld(e)));
 cv.addEventListener('pointerdown', (e) => { Object.assign(mouse, toWorld(e)); if (drill?.live) drill.pointer?.(e.button, mouse.x, mouse.y, e.timeStamp); });
+const GAME_KEYS = ['KeyQ', 'KeyF', 'KeyD', 'KeyA', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 addEventListener('keydown', (e) => {
+  // during a drill, game keys never scroll the page, including the repeats a held arrow key sends
+  if (drill && GAME_KEYS.includes(e.code)) e.preventDefault();
+  keys.add(e.code); // held keys count even if pressed during the countdown
   if (e.repeat) return;
   if (e.code === 'Escape' && drill) { endRun(true); return; }
   if (!drill?.live) return;
-  keys.add(e.code);
-  if (['KeyQ', 'KeyF', 'KeyD', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   drill.key?.(e.code, e.timeStamp);
 });
 addEventListener('keyup', (e) => keys.delete(e.code));

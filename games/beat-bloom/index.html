@@ -481,8 +481,9 @@ window.cloudSaveChanged = () => { // cloudsave.js merged your other devices' pro
   if (state === 'menu') renderMenu();
 };
 const persist = () => { try { localStorage.setItem('beatbloom-save', JSON.stringify(save)); } catch {} };
-const gradeOf = (s) => (s >= 950000 ? 'S' : s >= 900000 ? 'A' : s >= 800000 ? 'B' : s >= 700000 ? 'C' : 'D');
-const starsOf = (s) => ({ S: 3, A: 2, B: 1, C: 1, D: 0 })[gradeOf(s)];
+const gradeOf = (s) => (s >= 1e6 ? 'SS' : s >= 950000 ? 'S' : s >= 900000 ? 'A' : s >= 800000 ? 'B' : s >= 700000 ? 'C' : 'D'); // SS = every note Perfect
+const GRADE_COL = { SS: '#ffffff', S: '#ffd36a', A: '#ff5fa8', B: '#6ff0ff', C: '#9d7bff', D: '#a9a3c9' };
+const starsOf = (s) => ({ SS: 3, S: 3, A: 2, B: 1, C: 1, D: 0 })[gradeOf(s)];
 const totalStars = () => Object.values(save.best).reduce((a, v) => a + starsOf(v), 0);
 const totalScore = () => SONGS.reduce((sum, s) => sum + Math.max(0, ...DIFFS.map((d) => Math.round((save.best[`${s.id}:${d.id}`] || 0) * d.w))), 0);
 // one leaderboard per song and difficulty (games/beat-bloom_<song>_<diff>), so everyone on a board played the same chart
@@ -637,7 +638,7 @@ function finish() {
   if (isBest) { save.best[key] = score; persist(); }
   const g = gradeOf(score);
   $('resSong').textContent = `${G.song.title} · ${DIFFS.find((d) => d.id === G.diff).name}`;
-  $('resGrade').textContent = g; $('resGrade').style.color = { S: '#ffd36a', A: '#ff5fa8', B: '#6ff0ff', C: '#9d7bff', D: '#a9a3c9' }[g];
+  $('resGrade').textContent = g; $('resGrade').style.color = GRADE_COL[g];
   $('resScore').textContent = score.toLocaleString(); $('resBest').hidden = !isBest;
   $('resCounts').innerHTML = ['Perfect', 'Great', 'Good', 'Miss'].map((n, i) => `<span>${G.counts[i]}<small>${n}</small></span>`).join('') + `<span>${G.maxCombo}<small>Max combo</small></span>`;
   const full = G.counts[3] === 0;
@@ -829,6 +830,12 @@ function drawHud(t) {
   // score + progress
   ctx.textAlign = 'right'; ctx.font = '900 22px system-ui'; ctx.fillStyle = '#fff';
   ctx.fillText(Math.max(0, Math.round(G.score)).toLocaleString().padStart(7, ' '), W - 64, 32);
+  const judged = G.counts.reduce((x, y) => x + y, 0);
+  if (judged) { // the grade this run is on track for, from the notes judged so far
+    const g = gradeOf(Math.round(G.score / (G.perNote * judged) * 1e6));
+    ctx.textAlign = 'right'; ctx.font = '900 30px system-ui'; ctx.fillStyle = GRADE_COL[g]; ctx.shadowColor = GRADE_COL[g]; ctx.shadowBlur = g === 'SS' ? 16 : 8;
+    ctx.fillText(g, W - 64, 88); ctx.shadowBlur = 0;
+  }
   if (G.board) { // where this score would place on the song's leaderboard right now
     const r = 1 + G.board.filter((x) => x > G.score).length, full = G.board.length >= 100 && r > 100;
     ctx.font = '800 13px system-ui'; ctx.fillStyle = r <= 3 ? '#ffd36a' : 'rgba(255,255,255,.75)';
