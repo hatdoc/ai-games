@@ -141,6 +141,9 @@ const BOTS = {
       }, 5);
     });
   } },
+  'skillshot-gym': { skip: 3, len: 8, poster: 5, async play(page) { // the skillshot drill, with a bot that leads its shots
+    await page.evaluate(() => startDemo());
+  } },
   'line-mafia': { skip: 1.5, len: 9, poster: 7, async play(page) { // multiplayer: play the built-in demo room (bots draw a cat, one is the mafia)
     await page.evaluate(() => startDemo());
   } },

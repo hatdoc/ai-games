@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Skillshot Gym</title>
+<script src="../cloudsave.js" data-game="skillshot-gym" data-keys="sg-save"></script>
+<style>
+  :root { --ink: #eef4ff; --mut: #8fa3c4; --panel: rgba(10, 18, 34, .92); --line: rgba(140, 180, 255, .18); --blue: #4fb6ff; --red: #ff4d5e; --gold: #ffd166; --green: #4be08a; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #070d1a; color: var(--ink); font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    user-select: none; -webkit-user-select: none; touch-action: none; }
+  canvas { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  #home { position: fixed; top: 10px; left: 10px; color: var(--ink); text-decoration: none; font-weight: 800; font-size: 13px; padding: 6px 10px; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 10px; z-index: 5; }
+  .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; overflow-y: auto; padding: 48px 14px 24px; box-sizing: border-box;
+    background: radial-gradient(ellipse at 50% 20%, #12264acc, #070d1af2); }
+  h1 { margin: 0; font-size: clamp(36px, 7vw, 60px); font-weight: 900; letter-spacing: 1px; }
+  h1 span { color: var(--blue); }
+  .tag { color: var(--mut); margin: 4px 0 18px; text-align: center; font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; width: min(980px, 100%); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px; text-align: left; display: flex; flex-direction: column; gap: 6px; }
+  button.card:hover, button.card:focus-visible { border-color: var(--blue); outline: none; transform: translateY(-1px); }
+  .card .t { font-weight: 900; font-size: 18px; }
+  .card .d { color: var(--mut); font-size: 13px; line-height: 1.4; }
+  .card .b { color: var(--gold); font-weight: 800; font-size: 13px; }
+  .card.big { grid-column: 1 / -1; background: linear-gradient(135deg, #12305e, #0d1a33); border-color: #4fb6ff66; }
+  .card.big .t { font-size: 24px; }
+  .spark { height: 26px; width: 100%; }
+  .keys { color: var(--mut); font-size: 12px; margin-top: 14px; text-align: center; line-height: 1.7; }
+  kbd { background: #ffffff18; border-radius: 5px; padding: 1px 6px; font-weight: 800; color: var(--ink); }
+  .panel { width: min(460px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 20px; box-sizing: border-box; text-align: center; }
+  .big { font-size: 46px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .sub { color: var(--mut); font-size: 14px; margin: 4px 0 10px; }
+  .rows { display: grid; gap: 6px; margin: 10px 0; text-align: left; }
+  .rows div { display: flex; justify-content: space-between; padding: 7px 10px; background: #ffffff0a; border-radius: 9px; font-weight: 700; }
+  .rows b { color: var(--gold); }
+  .up { color: var(--green); } .down { color: var(--red); }
+  .cta { width: 100%; border: 0; border-radius: 12px; padding: 13px; font-weight: 900; font-size: 16px; margin-top: 10px; background: linear-gradient(90deg, #2f8cff, #4fd2ff); color: #04121f; }
+  .ghost { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 11px; font-weight: 800; margin-top: 8px; background: none; }
+  #lb { margin: 12px auto 0; }
+  #qBtn { position: fixed; right: 18px; bottom: 18px; width: 74px; height: 74px; border-radius: 50%; border: 2px solid var(--blue); background: #0b1b33cc; font-weight: 900; font-size: 22px; z-index: 4; }
+  #fBtn { position: fixed; right: 102px; bottom: 18px; width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--gold); background: #0b1b33cc; font-weight: 900; font-size: 18px; z-index: 4; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<a id="home" href="https://rank-game.com/">← Home</a>
+<script>if (top !== self) home.remove();</script>
+<button id="qBtn" hidden>Q</button><button id="fBtn" hidden>F</button>
+
+<div id="menu" class="overlay">
+  <h1>SKILLSHOT <span>GYM</span></h1>
+  <div class="tag">Warm up your reflexes, prediction and timing before you queue.</div>
+  <div class="grid" id="cards"></div>
+  <div class="keys">
+    <kbd>Right-click</kbd> move · <kbd>Q</kbd> skillshot at the cursor · <kbd>F</kbd>/<kbd>D</kbd> Flash · <kbd>Right-click</kbd> a minion to attack ·
+    <kbd>Arrow keys</kbd> also move · <kbd>Esc</kbd> quits a drill
+  </div>
+</div>
+
+<div id="result" class="overlay" hidden>
+  <div class="panel">
+    <div class="sub" id="rTitle"></div>
+    <div class="big" id="rScore">0</div>
+    <div class="sub" id="rVs"></div>
+    <div class="rows" id="rRows"></div>
+    <div id="lb"></div>
+    <button class="cta" id="rAgain">Again</button>
+    <button class="ghost" id="rShare">Share</button>
+    <button class="ghost" id="rMenu">Menu</button>
+  </div>
+</div>
+
+<script src="../leaderboard.js"></script>
+<script>
+// Skillshot Gym: four short drills (reaction, skillshot prediction, last hitting, dodging) plus a Warm-Up that runs
+// them back to back. The arena is 1600x900 world units, letterboxed to the screen.
+const cv = document.getElementById('c'), ctx = cv.getContext('2d'), $ = (id) => document.getElementById(id);
+const VW = 1600, VH = 900, TAU = Math.PI * 2;
+const rand = (a, b) => a + Math.random() * (b - a), clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, t) => a + (b - a) * t;
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+let W, H, sc, ox, oy, dpr;
+function resize() {
+  dpr = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr;
+  sc = Math.min(W / VW, H / VH); ox = (W - VW * sc) / 2; oy = (H - VH * sc) / 2;
+}
+addEventListener('resize', resize); resize();
+const touch = matchMedia('(pointer: coarse)').matches;
+
+// ---------- saves ----------
+let save = { best: {}, hist: {} };
+try { Object.assign(save, JSON.parse(localStorage.getItem('sg-save')) || {}); } catch {}
+const persist = () => { try { localStorage.setItem('sg-save', JSON.stringify(save)); } catch {} };
+window.cloudSaveChanged = () => { try { Object.assign(save, JSON.parse(localStorage.getItem('sg-save')) || {}); } catch {} if (!drill) renderMenu(); };
+function record(id, score) {
+  const h = (save.hist[id] ||= []), prevBest = save.best[id] || 0, avg = h.length ? h.reduce((a, b) => a + b, 0) / h.length : null;
+  h.push(score); if (h.length > 20) h.shift();
+  save.best[id] = Math.max(prevBest, score); persist();
+  return { isBest: score > prevBest && prevBest > 0, first: !prevBest, avg };
+}
+
+// ---------- sound ----------
+let ac;
+function tone(f, d = 0.1, type = 'sine', v = 0.08, slide = 1) {
+  try {
+    ac ||= new AudioContext(); if (ac.state === 'suspended') ac.resume();
+    const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
+    o.type = type; o.frequency.setValueAtTime(f, t); if (slide !== 1) o.frequency.exponentialRampToValueAtTime(f * slide, t + d);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d + 0.02);
+  } catch {}
+}
+const sfx = { fire: () => tone(520, 0.12, 'triangle', 0.06, 0.5), hit: () => { tone(880, 0.1, 'square', 0.05); tone(1320, 0.15, 'sine', 0.06); },
+  miss: () => tone(160, 0.12, 'sawtooth', 0.03), coin: () => { tone(1046, 0.08, 'square', 0.04); setTimeout(() => tone(1568, 0.12, 'square', 0.04), 70); },
+  hurt: () => tone(110, 0.35, 'sawtooth', 0.12, 0.5), flash: () => tone(1800, 0.18, 'sine', 0.05, 0.3), dodge: () => tone(700, 0.05, 'sine', 0.025),
+  bad: () => tone(200, 0.25, 'square', 0.06, 0.6), go: () => tone(660, 0.08, 'triangle', 0.07) };
+
+// ---------- shared effects ----------
+let fx = [], popups = [];
+const burst = (x, y, col, n = 14, sp = 260) => { for (let i = 0; i < n; i++) { const a = rand(0, TAU), v = rand(0.3, 1) * sp; fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: rand(0.3, 0.6), col }); } };
+const popup = (x, y, text, col = '#fff', size = 26) => popups.push({ x, y, text, col, size, t: 1 });
+const ring = (x, y, col, r = 30) => fx.push({ ring: true, x, y, r, col, t: 0.35 });
+
+// ---------- input ----------
+const mouse = { x: VW / 2, y: VH / 2 };
+const keys = new Set();
+const toWorld = (e) => ({ x: (e.clientX - ox) / sc, y: (e.clientY - oy) / sc });
+cv.addEventListener('contextmenu', (e) => e.preventDefault());
+cv.addEventListener('pointermove', (e) => Object.assign(mouse, toWorld(e)));
+cv.addEventListener('pointerdown', (e) => { Object.assign(mouse, toWorld(e)); if (drill?.live) drill.pointer?.(e.button, mouse.x, mouse.y, e.timeStamp); });
+addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  if (e.code === 'Escape' && drill) { endRun(true); return; }
+  if (!drill?.live) return;
+  keys.add(e.code);
+  if (['KeyQ', 'KeyF', 'KeyD', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+  drill.key?.(e.code, e.timeStamp);
+});
+addEventListener('keyup', (e) => keys.delete(e.code));
+addEventListener('blur', () => keys.clear());
+$('qBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); drill?.live && drill.key?.('KeyQ', e.timeStamp); });
+$('fBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); drill?.live && drill.key?.('KeyF', e.timeStamp); });
+
+// ======================================================================================
+// Drills. Each: { id, name, init(), update(dt), draw(t), key(code, ts), pointer(btn, x, y, ts), score, rows() }
+// ======================================================================================
+const DRILLS = {};
+
+// ---------- Reaction: press when a RED enemy blinks in; ignore GREEN allies (bait) ----------
+DRILLS.react = {
+  id: 'react', name: 'Reaction', icon: '⚡', time: null,
+  desc: 'Press F, D, Space or click the instant a red enemy blinks in. Don\'t react to green allies.',
+  init() { Object.assign(this, { n: 0, total: 10, score: 0, times: [], early: 0, fooled: 0, phase: 'wait', wait: rand(1.4, 2.6), stim: null, fb: null }); },
+  newStim() {
+    const a = rand(0, TAU), nogo = this.n >= 2 && Math.random() < 0.25;
+    this.stim = { nogo, x: VW / 2 + Math.cos(a) * 170, y: VH / 2 + Math.sin(a) * 140, shownAt: null, age: 0 };
+    this.phase = 'stim';
+  },
+  next(text, col) {
+    this.fb = { text, col, t: 0.9 }; this.stim = null; this.n++;
+    if (this.n >= this.total) return finishDrill();
+    this.phase = 'wait'; this.wait = rand(1.2, 3.0);
+  },
+  update(dt) {
+    if (this.fb) { this.fb.t -= dt; if (this.fb.t <= 0) this.fb = null; }
+    if (this.phase === 'wait') { if (!this.fb && (this.wait -= dt) <= 0) this.newStim(); return; }
+    const s = this.stim; if (!s || s.shownAt === null) return;
+    s.age += dt;
+    if (s.nogo && s.age > 0.9) { this.score += 300; this.next('✓ Ignored the bait', '#4be08a'); }
+    else if (!s.nogo && s.age > 1.2) { this.times.push(1200); this.next('Too slow', '#ff4d5e'); sfx.bad(); }
+  },
+  press(ts) {
+    if (this.phase === 'wait') { if (this.fb) return; this.early++; this.score -= 200; this.fb = { text: 'TOO EARLY −200', col: '#ff4d5e', t: 0.9 }; this.wait = rand(1.2, 2.6); sfx.bad(); return; }
+    const s = this.stim; if (!s || s.shownAt === null) return;
+    if (s.nogo) { this.fooled++; this.score -= 300; sfx.bad(); return this.next('Baited! −300', '#ff4d5e'); }
+    const ms = Math.max(80, Math.round(ts - s.shownAt));
+    this.times.push(ms); this.score += Math.max(0, 600 - ms); sfx.flash();
+    burst(s.x, s.y, '#ff4d5e', 20, 320);
+    this.next(`${ms} ms`, ms < 250 ? '#4be08a' : ms < 330 ? '#ffd166' : '#ff9a5a');
+  },
+  key(code, ts) { if (['KeyF', 'KeyD', 'Space'].includes(code)) this.press(ts); },
+  pointer(b, x, y, ts) { this.press(ts); },
+  draw(t, now) {
+    drawChamp(VW / 2, VH / 2, '#4fb6ff', 26, 'YOU');
+    const s = this.stim;
+    if (s) {
+      if (s.shownAt === null) s.shownAt = now; // timed from the frame it first appears
+      const col = s.nogo ? '#4be08a' : '#ff4d5e';
+      add(() => glow(s.x, s.y, 90, col, 0.7));
+      drawChamp(s.x, s.y, col, 26, s.nogo ? 'ALLY' : 'ENEMY');
+      if (!s.nogo) { ctx.fillStyle = '#fff'; ctx.font = '900 54px system-ui'; ctx.textAlign = 'center'; ctx.fillText('!', s.x, s.y - 50); }
+    }
+    if (this.fb) bigText(this.fb.text, VW / 2, VH / 2 + 130, this.fb.col, 40, Math.min(1, this.fb.t * 3));
+    else if (this.phase === 'wait') bigText('wait for it…', VW / 2, VH / 2 + 130, '#8fa3c4', 22);
+  },
+  hud() { const avg = this.avgMs(); return [`Trial ${Math.min(this.n + 1, this.total)}/${this.total}`, avg ? `avg ${avg} ms` : '']; },
+  avgMs() { const ok = this.times.filter((x) => x < 1200); return ok.length ? Math.round(ok.reduce((a, b) => a + b, 0) / ok.length) : null; },
+  rows() { return [['Average reaction', this.avgMs() ? `${this.avgMs()} ms` : '—'], ['Fastest', this.times.length ? `${Math.min(...this.times)} ms` : '—'], ['Baited / early', `${this.fooled} / ${this.early}`]]; },
+};
+
+// ---------- Skillshot: lead a moving, juking target with Q ----------
+DRILLS.aim = {
+  id: 'aim', name: 'Skillshot', icon: '🎯', time: 40,
+  desc: 'Press Q to throw a skillshot at your cursor. The target walks, jukes and sometimes dodges: aim where it will be.',
+  init() {
+    Object.assign(this, { me: { x: 260, y: VH / 2 }, shots: [], fired: 0, hits: 0, streak: 0, best: 0, score: 0, cd: 0, level: 0 });
+    this.spawn();
+  },
+  spawn() {
+    const sp = Math.min(480, 330 + this.level * 10);
+    this.tgt = { x: rand(900, 1400), y: rand(160, 740), vx: 0, vy: 0, sp, r: 24, wp: null, stop: 0, side: 0, dodged: false };
+    this.waypoint();
+  },
+  waypoint() { const g = this.tgt; g.wp = { x: rand(700, 1480), y: rand(110, 790) }; const d = Math.hypot(g.wp.x - g.x, g.wp.y - g.y) || 1; g.vx = (g.wp.x - g.x) / d * g.sp; g.vy = (g.wp.y - g.y) / d * g.sp; },
+  update(dt) {
+    const g = this.tgt;
+    this.cd -= dt;
+    // the target: walk to waypoints, juke (reverse or sidestep), sometimes stop, sometimes dodge a shot it sees coming
+    if (g.stop > 0) g.stop -= dt;
+    else {
+      if (g.side > 0) g.side -= dt;
+      if (Math.random() < dt * Math.min(0.8, 0.15 + this.level * 0.025)) { // juke, more often as you keep hitting
+        if (Math.random() < 0.5) { g.vx *= -1; g.vy *= -1; } else { const s = Math.random() < 0.5 ? 1 : -1; [g.vx, g.vy] = [-g.vy * s, g.vx * s]; g.side = 0.35; }
+      }
+      if (Math.random() < dt * 0.15) g.stop = rand(0.15, 0.4);
+      g.x += g.vx * dt; g.y += g.vy * dt;
+      if (g.x < 680 || g.x > 1500 || g.y < 100 || g.y > 800 || (g.side <= 0 && Math.hypot(g.wp.x - g.x, g.wp.y - g.y) < 20)) { g.x = clamp(g.x, 680, 1500); g.y = clamp(g.y, 100, 800); this.waypoint(); }
+    }
+    for (const s of this.shots) {
+      s.x += s.vx * dt; s.y += s.vy * dt; s.trav += Math.hypot(s.vx, s.vy) * dt;
+      // the target notices some shots and sidesteps (more often later)
+      if (!s.seen && dist(s, g) < 330) { s.seen = true; if (Math.random() < Math.min(0.3, 0.04 + this.level * 0.015)) { const k = Math.random() < 0.5 ? 1 : -1, n = Math.hypot(s.vx, s.vy); g.vx = -s.vy / n * g.sp * k; g.vy = s.vx / n * g.sp * k; g.side = 0.4; g.stop = 0; } }
+      if (!s.done && dist(s, g) < g.r + s.r) {
+        s.done = true; this.hits++; this.streak++; this.best = Math.max(this.best, this.streak);
+        const range = dist(this.me, g), pts = Math.round((60 + range / 14) * (1 + Math.min(this.streak - 1, 10) * 0.15));
+        this.score += pts; popup(g.x, g.y - 40, `+${pts}${this.streak > 1 ? `  ×${this.streak}` : ''}`, '#ffd166');
+        burst(g.x, g.y, '#ff4d5e', 22, 340); sfx.hit(); this.level++; this.spawn();
+      }
+      if (!s.done && s.trav > s.range) { s.done = true; this.streak = 0; popup(s.x, s.y, 'miss', '#8fa3c4', 18); sfx.miss(); }
+    }
+    this.shots = this.shots.filter((s) => !s.done);
+  },
+  fire() {
+    if (this.cd > 0) return;
+    const dx = mouse.x - this.me.x, dy = mouse.y - this.me.y, d = Math.hypot(dx, dy) || 1, sp = 1600;
+    this.shots.push({ x: this.me.x, y: this.me.y, vx: dx / d * sp, vy: dy / d * sp, r: 18, trav: 0, range: 1350 });
+    this.fired++; this.cd = 0.55; sfx.fire();
+  },
+  key(code) { if (code === 'KeyQ' || code === 'Space') this.fire(); },
+  pointer(b) { if (b === 0 && touch) this.fire(); },
+  draw() {
+    const g = this.tgt;
+    ctx.strokeStyle = '#4fb6ff22'; ctx.lineWidth = 2; ctx.setLineDash([10, 12]); ctx.beginPath(); ctx.arc(this.me.x, this.me.y, 1350, -0.8, 0.8); ctx.stroke(); ctx.setLineDash([]);
+    // aim line from you to the cursor
+    const dx = mouse.x - this.me.x, dy = mouse.y - this.me.y, d = Math.hypot(dx, dy) || 1;
+    ctx.strokeStyle = this.cd > 0 ? '#ffffff10' : '#4fb6ff40'; ctx.lineWidth = 36; ctx.lineCap = 'butt';
+    ctx.beginPath(); ctx.moveTo(this.me.x, this.me.y); ctx.lineTo(this.me.x + dx / d * 1350, this.me.y + dy / d * 1350); ctx.stroke();
+    drawChamp(this.me.x, this.me.y, '#4fb6ff', 26, 'YOU', Math.atan2(dy, dx));
+    drawChamp(g.x, g.y, '#ff4d5e', g.r, 'TARGET', Math.atan2(g.vy, g.vx));
+    for (const s of this.shots) bolt(s.x, s.y, s.vx, s.vy, s.r, '#7fd4ff');
+  },
+  hud() { return [`${this.hits}/${this.fired} hits`, this.streak > 1 ? `streak ×${this.streak}` : '']; },
+  rows() { return [['Hits', `${this.hits} / ${this.fired}`], ['Accuracy', this.fired ? `${Math.round(this.hits / this.fired * 100)}%` : '—'], ['Best streak', `×${this.best}`]]; },
+};
+
+// ---------- Last Hit: your attack lands after a wind-up, so click before they're low enough ----------
+DRILLS.cs = {
+  id: 'cs', name: 'Last Hit', icon: '💰', time: 40,
+  desc: 'Right-click (or click) a minion to attack. Your hit lands after a wind-up and travel time: kill it with the last hit.',
+  init() { Object.assign(this, { me: { x: 470, y: VH / 2 }, mins: [], cs: 0, missed: 0, wasted: 0, score: 0, cd: 0, atk: null, bolts: [], wave: 0, waveT: 0 }); this.spawnWave(); },
+  DMG: 72, WINDUP: 0.28, BOLT: 1500,
+  spawnWave() {
+    this.wave++; this.waveT = 0;
+    const ys = [VH / 2 - 120, VH / 2, VH / 2 + 120];
+    for (const [i, y] of ys.entries()) {
+      this.mins.push({ x: 1020 + rand(-10, 10), y: y + rand(-15, 15), hp: 460, max: 460, r: 24, kind: 'melee', t: rand(0.3, 1.0), alive: true, fl: 0 });
+      this.mins.push({ x: 1150 + rand(-10, 10), y: y + rand(-15, 15) + (i - 1) * 10, hp: 300, max: 300, r: 19, kind: 'caster', t: rand(0.6, 1.4), alive: true, fl: 0 });
+    }
+  },
+  update(dt) {
+    this.cd -= dt; this.waveT += dt;
+    for (const m of this.mins) { // allied minions chip them; now and then a tower shot takes a big chunk
+      if (!m.alive) continue;
+      m.fl = Math.max(0, m.fl - dt * 4);
+      if ((m.t -= dt) <= 0) {
+        const tower = Math.random() < 0.07;
+        const dmg = tower ? Math.round(m.max * 0.42) : Math.round(rand(m.kind === 'melee' ? 22 : 18, m.kind === 'melee' ? 48 : 40) * (1 + this.wave * 0.06));
+        m.hp -= dmg; m.fl = 1; m.t = rand(0.55, 1.15) / (1 + this.wave * 0.05);
+        if (tower) popup(m.x, m.y - 40, 'tower!', '#ffb36a', 16);
+        if (m.hp <= 0) { m.alive = false; this.missed++; popup(m.x, m.y - 30, 'missed', '#ff4d5e', 18); burst(m.x, m.y, '#556', 10, 120); }
+      }
+    }
+    if (this.atk && (this.atk.t -= dt) <= 0) { // wind-up done: the bolt flies
+      const m = this.atk.m; this.atk = null;
+      this.bolts.push({ x: this.me.x, y: this.me.y, m });
+      sfx.fire();
+    }
+    for (const b of this.bolts) {
+      const d = dist(b, b.m), step = this.BOLT * dt;
+      if (d <= step) {
+        b.done = true;
+        if (!b.m.alive) { this.wasted++; popup(b.m.x, b.m.y - 30, 'too late', '#8fa3c4', 16); continue; }
+        b.m.hp -= this.DMG; b.m.fl = 1;
+        if (b.m.hp <= 0) { b.m.alive = false; this.cs++; this.score += 200; popup(b.m.x, b.m.y - 34, '+21g', '#ffd166', 22); burst(b.m.x, b.m.y, '#ffd166', 16, 220); sfx.coin(); }
+        else { this.wasted++; popup(b.m.x, b.m.y - 30, 'not a kill', '#8fa3c4', 16); }
+      } else { b.x += (b.m.x - b.x) / d * step; b.y += (b.m.y - b.y) / d * step; }
+    }
+    this.bolts = this.bolts.filter((b) => !b.done);
+    if (this.mins.every((m) => !m.alive) || this.waveT > 14) { this.mins = this.mins.filter((m) => m.alive); this.spawnWave(); }
+  },
+  attackAt(x, y) {
+    const m = this.mins.filter((m) => m.alive).sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
+    if (!m || Math.hypot(m.x - x, m.y - y) > m.r + 30) return;
+    if (this.cd > 0 || this.atk) { ring(x, y, '#8fa3c4', 20); return; }
+    this.atk = { m, t: this.WINDUP }; this.cd = 0.85; ring(m.x, m.y, '#ffd166', m.r + 6);
+  },
+  pointer(b, x, y) { this.attackAt(x, y); },
+  key(code) { if (code === 'KeyA' || code === 'KeyQ') this.attackAt(mouse.x, mouse.y); },
+  draw() {
+    ctx.fillStyle = '#1c2c4a'; ctx.beginPath(); ctx.roundRect(1300, 330, 90, 240, 18); ctx.fill(); // their tower base, decoration
+    for (const m of this.mins) if (m.alive) {
+      ctx.fillStyle = m.kind === 'melee' ? '#c2475a' : '#a85ad6';
+      ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, TAU); ctx.fill();
+      if (m.fl > 0) { ctx.strokeStyle = `rgba(255,255,255,${m.fl})`; ctx.lineWidth = 3; ctx.stroke(); }
+      const bw = m.kind === 'melee' ? 64 : 52, f = clamp(m.hp / m.max, 0, 1), bx = m.x - bw / 2, by = m.y - m.r - 16;
+      ctx.fillStyle = '#000a'; ctx.fillRect(bx - 1, by - 1, bw + 2, 9);
+      ctx.fillStyle = f * m.max <= this.DMG ? '#ffdd55' : '#e0404f'; ctx.fillRect(bx, by, bw * f, 7);
+      ctx.fillStyle = '#0007'; for (let k = 100; k < m.max; k += 100) ctx.fillRect(bx + bw * k / m.max, by, 1, 7); // 100-hp ticks, like the real game
+    }
+    const tgt = this.atk?.m;
+    drawChamp(this.me.x, this.me.y, '#4fb6ff', 28, 'YOU', tgt ? Math.atan2(tgt.y - this.me.y, tgt.x - this.me.x) : 0);
+    if (this.atk) { ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(this.me.x, this.me.y, 36, -Math.PI / 2, -Math.PI / 2 + TAU * (1 - this.atk.t / this.WINDUP)); ctx.stroke(); }
+    for (const b of this.bolts) { add(() => glow(b.x, b.y, 26, '#ffd166', 1)); }
+  },
+  hud() { return [`${this.cs} CS`, `${this.missed} missed`]; },
+  rows() { const tot = this.cs + this.missed; return [['Last hits', this.cs], ['Missed minions', this.missed], ['CS rate', tot ? `${Math.round(this.cs / tot * 100)}%` : '—'], ['Wasted attacks', this.wasted]]; },
+};
+
+// ---------- Dodge: move with right-click / arrow keys, Flash with D/F; skillshots aim where you're going ----------
+DRILLS.dodge = {
+  id: 'dodge', name: 'Dodge', icon: '🛡️', time: 40,
+  desc: 'Right-click to move (or arrow keys), D/F to Flash. Dodge skillshots, AoE circles and hooks that aim where you\'re heading. 3 lives.',
+  init() { Object.assign(this, { me: { x: VW / 2, y: VH / 2, tx: VW / 2, ty: VH / 2, vx: 0, vy: 0, r: 22 }, lives: 3, inv: 0, flashCd: 0, abil: [], spawnT: 1.2, el: 0, dodged: 0, hitsTaken: 0, flashes: 0, score: 0, pts: 0 }); },
+  SPEED: 340,
+  lead(travel, k) { return { x: clamp(this.me.x + this.me.vx * travel * k, 40, VW - 40), y: clamp(this.me.y + this.me.vy * travel * k, 40, VH - 40) }; },
+  edge() { const s = Math.random() * 4 | 0, u = Math.random(); return [{ x: u * VW, y: -10 }, { x: VW + 10, y: u * VH }, { x: u * VW, y: VH + 10 }, { x: -10, y: u * VH }][s]; },
+  spawn() {
+    const p = this.el / 40, r = Math.random();
+    if (r < 0.22 + p * 0.1 && this.el > 6) { // hook: fast and aimed at where you'll be
+      const c = this.edge(), sp = 1900, a = this.lead(dist(c, this.me) / sp, rand(0.7, 1.05));
+      this.abil.push({ type: 'line', c, a, wind: lerp(0.38, 0.26, p), sp, r: 20, col: '#ffb020' });
+    } else if (r < 0.62) { // skillshot
+      const c = this.edge(), sp = 1250, a = this.lead(dist(c, this.me) / sp, rand(0, 0.8));
+      this.abil.push({ type: 'line', c, a, wind: lerp(0.5, 0.32, p), sp, r: 30, col: '#ff4d5e' });
+    } else { // circle on (or just ahead of) you
+      const delay = lerp(0.78, 0.55, p), a = this.lead(delay, rand(0, 0.6));
+      this.abil.push({ type: 'circle', x: a.x, y: a.y, rad: rand(105, 140), t: 0, delay, col: '#ff4d5e' });
+    }
+  },
+  update(dt) {
+    const me = this.me;
+    this.el += dt; this.inv = Math.max(0, this.inv - dt); this.flashCd = Math.max(0, this.flashCd - dt);
+    // movement: arrow keys while held, otherwise walk to the right-click point (D and F are Flash, like summoner spells)
+    const kx = (keys.has('ArrowRight') ? 1 : 0) - (keys.has('ArrowLeft') ? 1 : 0), ky = (keys.has('ArrowDown') ? 1 : 0) - (keys.has('ArrowUp') ? 1 : 0);
+    const px = me.x, py = me.y;
+    if (kx || ky) { const n = Math.hypot(kx, ky); me.x += kx / n * this.SPEED * dt; me.y += ky / n * this.SPEED * dt; me.tx = me.x; me.ty = me.y; }
+    else { const dx = me.tx - me.x, dy = me.ty - me.y, d = Math.hypot(dx, dy); if (d > 2) { const s = Math.min(d, this.SPEED * dt); me.x += dx / d * s; me.y += dy / d * s; } }
+    me.x = clamp(me.x, 30, VW - 30); me.y = clamp(me.y, 30, VH - 30);
+    me.vx = (me.x - px) / dt; me.vy = (me.y - py) / dt;
+    // abilities
+    if ((this.spawnT -= dt) <= 0) { this.spawn(); this.spawnT = lerp(1.05, 0.42, Math.min(1, this.el / 40)) * rand(0.8, 1.2); }
+    for (const a of this.abil) {
+      if (a.type === 'circle') {
+        a.t += dt;
+        if (a.t >= a.delay && !a.done) { a.done = true; a.boom = 0.25; if (Math.hypot(me.x - a.x, me.y - a.y) < a.rad + me.r * 0.6) this.hurt(); else this.dodge(a.x, a.y); }
+        if (a.boom !== undefined) a.boom -= dt;
+        continue;
+      }
+      if (a.wind > 0) { a.wind -= dt; if (a.wind <= 0) { const d = dist(a.c, a.a) || 1; a.x = a.c.x; a.y = a.c.y; a.vx = (a.a.x - a.c.x) / d * a.sp; a.vy = (a.a.y - a.c.y) / d * a.sp; sfx.dodge(); } continue; }
+      a.x += a.vx * dt; a.y += a.vy * dt;
+      if (!a.done && Math.hypot(me.x - a.x, me.y - a.y) < a.r + me.r) { a.done = true; this.hurt(); }
+      if (!a.done && (a.x < -80 || a.x > VW + 80 || a.y < -80 || a.y > VH + 80)) { a.done = true; this.dodge(); }
+    }
+    this.abil = this.abil.filter((a) => !(a.done && (a.type !== 'circle' || a.boom <= 0)));
+    this.score = Math.round(this.pts + this.el * 25);
+  },
+  dodge(x, y) { this.dodged++; this.pts += Math.round(25 * (1 + this.el / 40)); },
+  hurt() {
+    if (this.inv > 0) return;
+    this.lives--; this.hitsTaken++; this.inv = 1.2; flashScreen = 0.35; sfx.hurt(); burst(this.me.x, this.me.y, '#ff4d5e', 24, 300);
+    if (this.lives <= 0) finishDrill();
+  },
+  flash() {
+    if (this.flashCd > 0) return;
+    const me = this.me, dx = mouse.x - me.x, dy = mouse.y - me.y, d = Math.hypot(dx, dy) || 1, k = Math.min(d, 220);
+    burst(me.x, me.y, '#ffe9a0', 14, 200);
+    me.x = clamp(me.x + dx / d * k, 30, VW - 30); me.y = clamp(me.y + dy / d * k, 30, VH - 30); me.tx = me.x; me.ty = me.y;
+    burst(me.x, me.y, '#ffe9a0', 14, 200); this.flashCd = 8; this.flashes++; sfx.flash();
+  },
+  key(code) { if (code === 'KeyF' || code === 'KeyD') this.flash(); },
+  pointer(b, x, y) { this.me.tx = clamp(x, 30, VW - 30); this.me.ty = clamp(y, 30, VH - 30); ring(this.me.tx, this.me.ty, '#4be08a', 18); },
+  draw(t) {
+    const me = this.me;
+    for (const a of this.abil) {
+      if (a.type === 'circle') {
+        if (a.done) { ctx.fillStyle = `rgba(255,90,90,${Math.max(0, a.boom) * 2})`; ctx.beginPath(); ctx.arc(a.x, a.y, a.rad, 0, TAU); ctx.fill(); continue; }
+        const k = a.t / a.delay;
+        ctx.fillStyle = 'rgba(255,77,94,.12)'; ctx.beginPath(); ctx.arc(a.x, a.y, a.rad, 0, TAU); ctx.fill();
+        ctx.fillStyle = 'rgba(255,77,94,.32)'; ctx.beginPath(); ctx.arc(a.x, a.y, a.rad * k, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#ff4d5e'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(a.x, a.y, a.rad, 0, TAU); ctx.stroke();
+        continue;
+      }
+      drawChamp(a.c.x, a.c.y, a.col, 20, '', Math.atan2(a.a.y - a.c.y, a.a.x - a.c.x));
+      if (a.wind > 0) { // cast wind-up: a faint lane shows where it's going
+        const d = dist(a.c, a.a) || 1, ux = (a.a.x - a.c.x) / d, uy = (a.a.y - a.c.y) / d;
+        ctx.strokeStyle = a.col + '30'; ctx.lineWidth = a.r * 2; ctx.beginPath(); ctx.moveTo(a.c.x, a.c.y); ctx.lineTo(a.c.x + ux * 2200, a.c.y + uy * 2200); ctx.stroke();
+      } else bolt(a.x, a.y, a.vx, a.vy, a.r, a.col);
+    }
+    ctx.strokeStyle = '#4be08a55'; ctx.lineWidth = 2; ctx.setLineDash([6, 8]); ctx.beginPath(); ctx.moveTo(me.x, me.y); ctx.lineTo(me.tx, me.ty); ctx.stroke(); ctx.setLineDash([]);
+    if (this.inv > 0 && Math.sin(t * 40) > 0) return;
+    drawChamp(me.x, me.y, '#4fb6ff', me.r + 4, 'YOU', Math.atan2(me.vy, me.vx));
+  },
+  hud() { return [`${'❤️'.repeat(this.lives)}${'🖤'.repeat(3 - this.lives)}`, this.flashCd > 0 ? `Flash ${Math.ceil(this.flashCd)}s` : 'Flash ready (F)']; },
+  rows() { return [['Survived', `${Math.min(40, this.el).toFixed(1)} s`], ['Abilities dodged', this.dodged], ['Hits taken', this.hitsTaken], ['Flashes used', this.flashes]]; },
+};
+
+const ORDER = ['react', 'aim', 'cs', 'dodge'];
+
+// ======================================================================================
+// runs: a single drill, or the Warm-Up (all four in order, scores added up)
+// ======================================================================================
+let drill = null, run = null, flashScreen = 0;
+function startRun(id) {
+  $('home')?.toggleAttribute('hidden', true);
+  $('menu').hidden = true; $('result').hidden = true;
+  run = { warmup: id === 'warmup', queue: id === 'warmup' ? [...ORDER] : [id], scores: {}, total: 0 };
+  nextDrill();
+}
+function nextDrill() {
+  const id = run.queue.shift();
+  drill = DRILLS[id]; drill.init(); drill.live = false; drill.clock = drill.time; fx = []; popups = [];
+  drill.countdown = 3; $('qBtn').hidden = !(touch && id === 'aim'); $('fBtn').hidden = !(touch && (id === 'dodge' || id === 'react'));
+}
+function finishDrill() {
+  if (!drill.live) return;
+  drill.live = false;
+  const score = Math.max(0, Math.round(drill.score));
+  run.scores[drill.id] = { score, rows: drill.rows() }; run.total += score;
+  if (run.queue.length) { drill.between = 1.6; return; } // short breather, then the next drill
+  showResult();
+}
+function endRun(quit) { drill = null; run = null; $('qBtn').hidden = $('fBtn').hidden = true; if (quit) renderMenu(); }
+
+const lb = { board: null };
+function showResult() {
+  const id = run.warmup ? 'warmup' : Object.keys(run.scores)[0], score = run.warmup ? run.total : run.scores[id].score;
+  const rec = record(id, score);
+  if (run.warmup) for (const k of ORDER) record(k, run.scores[k].score);
+  $('rTitle').textContent = run.warmup ? 'WARM-UP COMPLETE' : `${DRILLS[id].icon} ${DRILLS[id].name.toUpperCase()}`;
+  $('rScore').textContent = score.toLocaleString();
+  $('rVs').innerHTML = rec.first ? 'First run! Come back tomorrow and beat it.' : rec.isBest ? '<span class="up">★ New personal best ★</span>'
+    : rec.avg != null ? (score >= rec.avg ? `<span class="up">▲ ${Math.round(score - rec.avg).toLocaleString()} above your average</span>` : `<span class="down">▼ ${Math.round(rec.avg - score).toLocaleString()} below your average</span>`) : '';
+  const rows = run.warmup ? ORDER.map((k) => [`${DRILLS[k].icon} ${DRILLS[k].name}`, run.scores[k].score.toLocaleString()]) : run.scores[id].rows;
+  $('rRows').innerHTML = rows.map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('');
+  lb.board = leaderboard($('lb'), id === 'warmup' ? 'skillshot-gym' : `skillshot-gym_${id}`, (n) => n.toLocaleString());
+  lb.board.show(score);
+  lb.id = id; lb.score = score;
+  $('result').hidden = false;
+  drill = null; $('qBtn').hidden = $('fBtn').hidden = true;
+}
+$('rAgain').onclick = () => startRun(lb.id);
+$('rMenu').onclick = () => { $('result').hidden = true; endRun(true); };
+$('rShare').onclick = async (e) => {
+  const name = lb.id === 'warmup' ? 'Warm-Up' : DRILLS[lb.id].name, text = `I scored ${lb.score.toLocaleString()} on the ${name} drill in Skillshot Gym 🎯 Can you beat it?`, url = 'https://rank-game.com/games/skillshot-gym';
+  try { if (navigator.share) await navigator.share({ title: 'Skillshot Gym', text, url }); else { await navigator.clipboard.writeText(`${text} ${url}`); e.target.textContent = 'Copied!'; } } catch {}
+};
+
+// ---------- menu ----------
+function spark(h) { // tiny trend line of the last scores
+  if (!h || h.length < 2) return '';
+  const lo = Math.min(...h), hi = Math.max(...h), pts = h.map((v, i) => `${(i / (h.length - 1)) * 100},${24 - (hi > lo ? (v - lo) / (hi - lo) : 0.5) * 20}`).join(' ');
+  return `<svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="#4fb6ff" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function renderMenu() {
+  $('menu').hidden = false; $('home')?.toggleAttribute('hidden', false);
+  const best = (k) => save.best[k] ? `Best ${save.best[k].toLocaleString()} · ${save.hist[k]?.length || 0} runs` : 'Not played yet';
+  $('cards').innerHTML = `<button class="card big" data-go="warmup"><div class="t">🔥 Warm-Up</div>
+      <div class="d">All four drills back to back, about 3 minutes. The best way to start a session.</div><div class="b">${best('warmup')}</div>${spark(save.hist.warmup)}</button>`
+    + ORDER.map((k) => `<button class="card" data-go="${k}"><div class="t">${DRILLS[k].icon} ${DRILLS[k].name}</div><div class="d">${DRILLS[k].desc}</div><div class="b">${best(k)}</div>${spark(save.hist[k])}</button>`).join('');
+}
+$('cards').addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if (b) { tone(660, 0.08, 'triangle', 0.06); startRun(b.dataset.go); } });
+
+// ---------- drawing helpers ----------
+const add = (fn) => { ctx.globalCompositeOperation = 'lighter'; fn(); ctx.globalCompositeOperation = 'source-over'; };
+function glow(x, y, r, col, a = 1) { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, col + 'cc'); g.addColorStop(1, col + '00'); ctx.globalAlpha = a; ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); ctx.globalAlpha = 1; }
+function drawChamp(x, y, col, r, label, ang = null) {
+  ctx.fillStyle = '#0008'; ctx.beginPath(); ctx.ellipse(x, y + r * 0.8, r, r * 0.4, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#ffffffaa'; ctx.lineWidth = 2.5; ctx.stroke();
+  if (ang !== null && isFinite(ang)) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x + Math.cos(ang) * r * 0.6, y + Math.sin(ang) * r * 0.6, r * 0.22, 0, TAU); ctx.fill(); }
+  if (label) { ctx.fillStyle = '#ffffffcc'; ctx.font = '800 12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(label, x, y - r - 8); }
+}
+function bolt(x, y, vx, vy, r, col) {
+  const n = Math.hypot(vx, vy) || 1, ux = vx / n, uy = vy / n;
+  add(() => glow(x, y, r * 2.2, col, 0.9));
+  ctx.strokeStyle = col; ctx.lineWidth = r * 1.3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x - ux * r * 2.2, y - uy * r * 2.2); ctx.lineTo(x, y); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, r * 0.45, 0, TAU); ctx.fill();
+}
+function bigText(text, x, y, col, size, a = 1) { ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.font = `900 ${size}px system-ui`; ctx.fillStyle = col; ctx.fillText(text, x, y); ctx.globalAlpha = 1; }
+
+function drawArena() {
+  ctx.fillStyle = '#0b1424'; ctx.fillRect(0, 0, VW, VH);
+  ctx.strokeStyle = '#1a2a46'; ctx.lineWidth = 1;
+  for (let x = 0; x <= VW; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, VH); ctx.stroke(); }
+  for (let y = 0; y <= VH; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(VW, y); ctx.stroke(); }
+  ctx.strokeStyle = '#2b4a7a'; ctx.lineWidth = 4; ctx.strokeRect(2, 2, VW - 4, VH - 4);
+}
+function drawHud() {
+  const d = drill, lines = d.hud();
+  ctx.fillStyle = '#0a1222d9'; ctx.fillRect(0, 0, VW, 64);
+  ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = '900 24px system-ui'; ctx.fillText(`${d.icon} ${d.name}`, 70, 40);
+  if (run.warmup) { ctx.font = '700 14px system-ui'; ctx.fillStyle = '#8fa3c4'; ctx.fillText(`Warm-Up ${ORDER.indexOf(d.id) + 1}/4 · total ${run.total.toLocaleString()}`, 70, 58); }
+  ctx.textAlign = 'center'; ctx.font = '900 34px system-ui'; ctx.fillStyle = '#ffd166'; ctx.fillText(Math.max(0, Math.round(d.score)).toLocaleString(), VW / 2, 44);
+  ctx.textAlign = 'right'; ctx.font = '800 18px system-ui'; ctx.fillStyle = '#eef4ff'; ctx.fillText(lines.filter(Boolean).join('   '), VW - 24, 40);
+  if (d.time) { const k = clamp(d.clock / d.time, 0, 1); ctx.fillStyle = '#ffffff14'; ctx.fillRect(0, 64, VW, 5); ctx.fillStyle = k < 0.2 ? '#ff4d5e' : '#4fb6ff'; ctx.fillRect(0, 64, VW * k, 5); }
+}
+
+// ---------- main loop ----------
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (drill) {
+    if (drill.countdown > 0) { drill.countdown -= dt; if (drill.countdown <= 0) { drill.live = true; sfx.go(); } }
+    else if (drill.live) {
+      drill.update(dt);
+      if (drill && drill.time) { drill.clock -= dt; if (drill.clock <= 0) finishDrill(); }
+    } else if (drill.between !== undefined && (drill.between -= dt) <= 0) nextDrill();
+  }
+  for (const p of fx) { p.t -= dt; if (!p.ring) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.92; p.vy *= 0.92; } else p.r += 120 * dt; }
+  fx = fx.filter((p) => p.t > 0);
+  for (const p of popups) { p.t -= dt; p.y -= 40 * dt; }
+  popups = popups.filter((p) => p.t > 0);
+  flashScreen = Math.max(0, flashScreen - dt);
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#05080f'; ctx.fillRect(0, 0, W, H);
+  ctx.setTransform(dpr * sc, 0, 0, dpr * sc, dpr * ox, dpr * oy);
+  drawArena();
+  if (drill) {
+    drill.draw(now / 1000, now);
+    add(() => { for (const p of fx) { ctx.globalAlpha = Math.min(1, p.t * 3); if (p.ring) { ctx.strokeStyle = p.col; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, TAU); ctx.stroke(); } else { ctx.fillStyle = p.col; ctx.fillRect(p.x - 2, p.y - 2, 4, 4); } } ctx.globalAlpha = 1; });
+    for (const p of popups) bigText(p.text, p.x, p.y, p.col, p.size, Math.min(1, p.t * 2));
+    drawHud();
+    if (drill.countdown > 0) {
+      ctx.fillStyle = '#05080fb0'; ctx.fillRect(0, 69, VW, VH - 69);
+      bigText(`${drill.icon} ${drill.name}`, VW / 2, VH / 2 - 80, '#fff', 54);
+      bigText(drill.desc, VW / 2, VH / 2 - 30, '#8fa3c4', 22);
+      bigText(Math.ceil(drill.countdown), VW / 2, VH / 2 + 90, '#4fb6ff', 96);
+    } else if (!drill.live && drill.between !== undefined) {
+      ctx.fillStyle = '#05080fb0'; ctx.fillRect(0, 69, VW, VH - 69);
+      bigText(`${Math.round(run.scores[drill.id].score).toLocaleString()} points`, VW / 2, VH / 2, '#ffd166', 56);
+      bigText('next drill…', VW / 2, VH / 2 + 50, '#8fa3c4', 24);
+    }
+  }
+  if (flashScreen > 0) { ctx.fillStyle = `rgba(255,40,60,${flashScreen * 0.6})`; ctx.fillRect(0, 0, VW, VH); }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+renderMenu();
+
+// preview clip (scripts/record-preview.mjs): the skillshot drill with a bot that leads its shots
+window.startDemo = () => {
+  startRun('aim'); drill.countdown = 0.01;
+  setInterval(() => {
+    if (!drill || drill.id !== 'aim' || !drill.live || drill.cd > 0) return;
+    const g = drill.tgt, t = dist(drill.me, g) / 1600;
+    mouse.x = g.x + g.vx * t; mouse.y = g.y + g.vy * t; drill.fire();
+  }, 120);
+};
+</script>
+</body>
+</html>
