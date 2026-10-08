@@ -63,6 +63,11 @@
   .result { width: min(440px, 100%); padding: 18px; display: grid; gap: 10px; text-align: center; max-height: 100%; overflow-y: auto; }
   .result h2 { margin: 0; font-size: 36px; }
   #lb { margin: 0 auto; }
+  .moves { display: grid; gap: 4px; font-size: 14px; }
+  .moves div { display: flex; justify-content: space-between; gap: 10px; padding: 5px 8px; border-radius: 8px; background: rgba(255, 255, 255, .05); }
+  .moves div.sig { background: rgba(255, 212, 59, .14); }
+  .moves b { color: var(--gold); white-space: nowrap; }
+  .moves h4 { margin: 8px 0 2px; color: var(--mut); font-size: 12px; letter-spacing: 1px; }
   @media (max-height: 460px) { #dpad { width: 120px; height: 120px; } #dknob { left: 34px; top: 34px; width: 50px; height: 50px; } #btns { grid-template-columns: 58px 58px; } #btns button { width: 58px; height: 58px; } #bS { width: 126px !important; } }
 </style>
 </head>
@@ -86,7 +91,7 @@
     <b>Controls</b><br>
     <kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd> move · <b>hold back to block</b> · <kbd>↑</kbd>/<kbd>W</kbd> jump · <kbd>↓</kbd>/<kbd>S</kbd> crouch (hold back + down to block lows)<br>
     <kbd>J</kbd> punch · <kbd>K</kbd> kick · <kbd>L</kbd> special (when the meter is full enough) · <kbd>J</kbd>+<kbd>K</kbd> throw<br>
-    <b>Combos:</b> <kbd>J J K</kbd> · <kbd>K K</kbd> · forward+<kbd>K</kbd> launches them into the air, then keep hitting!<br>
+    <b>Combos:</b> <kbd>J J K</kbd> · <kbd>K K K</kbd> · <kbd>J K</kbd> · every fighter has a 4-hit finisher: <kbd>J J J K</kbd>. Forward+<kbd>K</kbd> launches them into the air, then keep hitting! Full list: 📜 Move list.<br>
     forward+<kbd>J</kbd> power punch · down+<kbd>K</kbd> sweep · Gamepads work too. On phones, use the on-screen pad.
   </div>
 </div>
@@ -96,7 +101,7 @@
   <div class="chars" id="chars"></div>
   <div class="diff" id="diffRow" style="margin-top:14px"><button data-d="0">Easy</button><button data-d="1" class="on">Normal</button><button data-d="2">Hard</button></div>
   <div class="hint" id="selectHint" style="margin-top:10px"></div>
-  <div class="row" style="width:min(460px,100%);margin-top:12px"><button id="selBack">Back</button><button class="cta" id="selGo">FIGHT!</button></div>
+  <div class="row" style="width:min(460px,100%);margin-top:12px"><button id="selBack">Back</button><button id="movesBtn">📜 Move list</button><button class="cta" id="selGo">FIGHT!</button></div>
 </div>
 
 <div class="screen" id="lobbyScr" hidden>
@@ -125,9 +130,12 @@
     <button id="shareBtn">📤 Share</button>
   </div></div>
   <div class="overlay" id="pauseOv" hidden><div class="card result">
-    <h2>PAUSED</h2><button class="cta" id="resumeBtn">Resume</button><button id="quitBtn">Quit to menu</button>
+    <h2>PAUSED</h2><button class="cta" id="resumeBtn">Resume</button><button id="pauseMoves">📜 Move list</button><button id="quitBtn">Quit to menu</button>
   </div></div>
 </div>
+<div class="overlay" id="movesOv" hidden style="position:fixed;z-index:50"><div class="card result" style="text-align:left">
+  <h2 id="movesTitle" style="text-align:center"></h2><div id="movesList" class="moves"></div><button class="cta" id="movesClose">Close</button>
+</div></div>
 <div id="toast" hidden></div>
 
 <script src="fight.js"></script>
@@ -220,7 +228,7 @@ $('selGo').onclick = () => {
   if (sel.mode === 'local' && sel.step === 1) { sel.step = 2; sel.p2 = pick(IDS); $('selectTitle').textContent = 'PLAYER 2: CHOOSE'; $('selGo').textContent = 'FIGHT!'; renderChars(); return; }
   if (sel.mode === 'cpu') return startMatch({ mode: 'cpu', p1: sel.p1, p2: pick(IDS.filter((x) => x !== sel.p1)), cpu: sel.diff });
   if (sel.mode === 'local') return startMatch({ mode: 'local', p1: sel.p1, p2: sel.p2 });
-  if (sel.mode === 'arcade') { arcade = { order: [...shuffle(IDS.filter((x) => x !== sel.p1)), sel.p1], stage: 0, score: 0 }; return arcadeNext(); }
+  if (sel.mode === 'arcade') { arcade = { order: [...shuffle(IDS.filter((x) => x !== sel.p1)).slice(0, 3), sel.p1], stage: 0, score: 0 }; return arcadeNext(); }
   if (sel.mode === 'online') return onlineReady(sel.p1);
 };
 
@@ -326,6 +334,8 @@ function handleEvents(evs) {
     if (e.e === 'quake') { SFX.quake(); G.shake = 18; }
     if (e.e === 'land' && e.heavy) { SFX.land(); dust(e.x); G.shake = Math.max(G.shake, 6); }
     if (e.e === 'jump') SFX.whoosh();
+    if (e.e === 'string') { G.stringShow = { name: e.name, who: e.who, until: performance.now() + 1300 }; tone(660, 990, 0.12, 'triangle', 0.1); }
+    if (e.e === 'smoke') { noise(0.25, 0.2, 2000); for (let i = 0; i < 14; i++) { const a = Math.random() * 7; G.fx.push({ x: e.x + Math.cos(a) * 20, y: e.y + Math.sin(a) * 40, vx: Math.cos(a) * 2, vy: Math.sin(a) * 2 + 1, life: 1, col: '#868e96', k: 'dust' }); } }
     if (e.e === 'round') { say(e.n === 3 ? 'FINAL ROUND' : `ROUND ${e.n}`, 1500); SFX.round(); }
     if (e.e === 'fight') { say('FIGHT!', 800, '#ff3d5a', 1.3); SFX.fight(); }
     if (e.e === 'ko') {
@@ -422,6 +432,12 @@ function hud(W, H, d, T, sf) {
     ctx.strokeStyle = '#000'; ctx.lineWidth = 6 * d; const x = cs.who ? W - pad : pad, y = H * 0.38;
     ctx.strokeText(`${cs.n} HITS!`, x, y); ctx.fillText(`${cs.n} HITS!`, x, y);
   }
+  const ss = G.stringShow;
+  if (ss && performance.now() < ss.until) {
+    const x = ss.who ? W - pad : pad, y = H * 0.38 + 40 * d;
+    ctx.font = `900 italic ${24 * d}px system-ui`; ctx.textAlign = ss.who ? 'right' : 'left'; ctx.lineWidth = 5 * d; ctx.strokeStyle = '#000'; ctx.fillStyle = '#ff8787';
+    ctx.strokeText(ss.name.toUpperCase() + '!', x, y); ctx.fillText(ss.name.toUpperCase() + '!', x, y);
+  }
   if (sf) { ctx.textAlign = 'center'; ctx.font = `900 italic ${34 * d}px system-ui`; ctx.fillStyle = '#ffd43b'; ctx.strokeStyle = '#000'; ctx.lineWidth = 6 * d; ctx.strokeText(sf.name.toUpperCase() + '!', W / 2, H * 0.3); ctx.fillText(sf.name.toUpperCase() + '!', W / 2, H * 0.3); }
   if (banner && performance.now() < banner.until) {
     const k = Math.min(1, (performance.now() - banner.start) / 150);
@@ -462,7 +478,7 @@ function finishArcade() {
 }
 $('againBtn').onclick = () => {
   $('endOv').hidden = true;
-  if (G.mode === 'arcade') { if (arcade.done) { arcade = { order: [...shuffle(IDS.filter((x) => x !== sel.p1)), sel.p1], stage: 0, score: 0 }; } return arcadeNext(); }
+  if (G.mode === 'arcade') { if (arcade.done) { arcade = { order: [...shuffle(IDS.filter((x) => x !== sel.p1)).slice(0, 3), sel.p1], stage: 0, score: 0 }; } return arcadeNext(); }
   if (G.mode === 'online' || G.mode === 'guest') return net.rematch();
   startMatch({ mode: G.mode, p1: G.s.p[0].id, p2: G.s.p[1].id, cpu: G.cpu, names: G.names });
 };
@@ -473,6 +489,19 @@ $('shareBtn').onclick = async () => {
   try { if (navigator.share) return await navigator.share({ title: 'Dojo Duel', text, url }); } catch { return; }
   try { await navigator.clipboard.writeText(`${text} ${url}`); toast('Copied! 📋'); } catch { toast(url, 5000); }
 };
+// move list for one fighter
+function showMoves(id) {
+  const c = FD.CHARS[id], S = FD.SPECIALS[c.special], F = FD.FINISHERS[c.finisher];
+  const row = (k, name, sig) => `<div class="${sig ? 'sig' : ''}"><span>${name}</span><b>${k}</b></div>`;
+  $('movesTitle').textContent = `${c.name.toUpperCase()} · ${c.style}`;
+  $('movesList').innerHTML = '<h4>SIGNATURE</h4>' + row('L (special meter ½)', `★ ${S.name}`, 1) + row('J J J K', `★ ${F.combo} (4-hit combo)`, 1)
+    + '<h4>COMBOS</h4>' + [['J J K', 'Whirlwind'], ['J J J', 'Triple Punch'], ['J K', 'One-Two Kick'], ['K K', 'Double Kick'], ['K K K', 'Triple Kick'], ['K J', 'Kick Punch'], ['→J K', 'Power Combo'], ['↓J ↓J ↓K', 'Low Rush']].map(([k, n]) => row(k, n)).join('')
+    + '<h4>MOVES</h4>' + [['→ K', 'Launcher (juggle them after!)'], ['→ J', 'Power punch'], ['↓ J', 'Low punch'], ['↓ K', 'Sweep (knockdown)'], ['J + K', 'Throw (unblockable)'], ['↑ then J/K', 'Jump attack'], ['hold ←', 'Block · hold ← ↓ to block lows']].map(([k, n]) => row(k, n)).join('');
+  $('movesOv').hidden = false;
+}
+$('movesBtn').onclick = () => showMoves(sel.mode === 'local' && sel.step === 2 ? sel.p2 : sel.p1);
+$('pauseMoves').onclick = () => G && showMoves(G.s.p[0].id);
+$('movesClose').onclick = () => ($('movesOv').hidden = true);
 function togglePause() { if (!G) return; G.paused = !G.paused; $('pauseOv').hidden = !G.paused; G.last = performance.now(); }
 $('pauseBtn').onclick = togglePause; $('resumeBtn').onclick = togglePause;
 $('quitBtn').onclick = () => { $('pauseOv').hidden = true; G = null; screen('titleScr'); };
@@ -599,7 +628,7 @@ function applyState(m) {
   m.p.forEach((a, i) => {
     const p = s.p[i]; p.id = m.ids[i];
     [p.x, p.y, p.face, p.state, p.mname, p.mt, p.hp, p.meter, p.wins, p.combo, p.inv, p.t, p.vy, p.vx] = a;
-    p.move = p.mname ? (p.mname === 'special' ? FD.SPECIALS[FD.CHARS[p.id].special] : FD.M[p.mname]) : null;
+    p.move = p.mname ? FD.moveOf(p, p.mname) : null;
     p.max = FD.CHARS[p.id].hp;
   });
   Object.assign(s, { phase: m.ph, pt: m.pt, timer: m.tm, round: m.rd, frame: m.fr, winner: m.win, waves: m.w.map(([x, dir]) => ({ x, dir })) });

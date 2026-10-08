@@ -1,6 +1,12 @@
 {
   "title": "Dojo Duel",
-  "description": "A 1v1 fighting game inspired by Tekken: four fighters with their own styles and specials, punch and kick strings, launchers and juggles, throws, high/low blocking and best-of-three rounds. Beat four CPU fighters in Arcade for the leaderboard, play a friend on the same keyboard or with gamepads, or fight anyone online with Quick Match or a room code.",
-  "tags": ["fighting", "1v1", "multiplayer", "action", "online"],
+  "description": "A 1v1 fighting game inspired by Tekken: eight fighters with their own styles, specials and 4-hit finishers, combo strings, launchers and juggles, throws, high/low blocking and best-of-three rounds. Beat four CPU fighters in Arcade for the leaderboard, play a friend on the same keyboard or with gamepads, or fight anyone online with Quick Match or a room code.",
+  "tags": [
+    "fighting",
+    "1v1",
+    "multiplayer",
+    "action",
+    "online"
+  ],
   "emoji": "🥋"
 }
