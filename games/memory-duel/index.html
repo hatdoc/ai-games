@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Memory Duel</title>
+<style>
+  :root { --bg: #14122b; --panel: #221f45; --ink: #f6f3ff; --mut: #a9a3cf; --line: rgba(255, 255, 255, .12); --p0: #4dabf7; --p1: #ff6b8b; --gold: #ffd43b; --ok: #51cf66; --bad: #ff6b6b; --speed: 1; }
+  [hidden] { display: none !important; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: radial-gradient(circle at 50% 0, #2c2660, var(--bg) 70%); color: var(--ink); overflow: hidden;
+    font: 15px "Avenir Next", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 1px solid var(--line); background: rgba(255, 255, 255, .08); border-radius: 12px; padding: 10px 14px; font-weight: 700; }
+  button:disabled { opacity: .4; cursor: default; }
+  button.cta { background: linear-gradient(90deg, #7950f2, #e64980); border: 0; color: #fff; }
+  button.on { background: var(--gold); color: #1b1300; border-color: var(--gold); }
+  input { width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, .3); font-weight: 700; -webkit-user-select: text; user-select: text; }
+  #home { position: fixed; top: 8px; left: 10px; color: var(--ink); text-decoration: none; font-weight: 700; font-size: 13px; padding: 6px 10px; z-index: 40; }
+  .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; overflow-y: auto; padding: 14px 12px 40px; z-index: 20; touch-action: pan-y; }
+  .screen > * { flex-shrink: 0; }
+  body:not(.framed) .screen { padding-top: 40px; }
+  h1 { font-size: clamp(42px, 11vw, 72px); margin: 26px 0 0; letter-spacing: -1px; text-align: center; line-height: 1; }
+  h1 span { background: linear-gradient(90deg, var(--p0), var(--p1)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  h2 { margin: 14px 0 10px; }
+  .tag { color: var(--mut); text-align: center; max-width: 460px; margin: 8px 0 14px; }
+  .col { width: min(480px, 100%); display: grid; gap: 10px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row > * { flex: 1; }
+  .card-ui { background: rgba(34, 31, 69, .92); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { padding: 7px 11px; font-size: 14px; }
+  .lbl { font-size: 12px; font-weight: 800; color: var(--mut); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .hint { color: var(--mut); font-size: 13px; text-align: center; }
+  .how { font-size: 14px; color: var(--mut); line-height: 1.55; }
+  .how b { color: var(--ink); }
+  .lvl { display: flex; align-items: center; gap: 10px; text-align: left; }
+  .lvl .n { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .1); font-weight: 900; flex: none; }
+  .lvl small { display: block; color: var(--mut); font-weight: 500; }
+  #toast { position: fixed; left: 50%; top: 50px; transform: translateX(-50%); background: #000d; border: 1px solid var(--line); padding: 10px 16px; border-radius: 12px; font-weight: 700; z-index: 70; max-width: 92vw; text-align: center; }
+
+  /* game */
+  #game { position: fixed; inset: 0; display: flex; flex-direction: column; }
+  #top { display: flex; align-items: center; gap: 8px; padding: 44px 10px 6px; }
+  body.framed #top { padding-top: 8px; }
+  .pl { flex: 1; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; border: 2px solid transparent; background: rgba(255, 255, 255, .05); min-width: 0; }
+  .pl.turn { border-color: currentColor; box-shadow: 0 0 18px -4px currentColor; }
+  .pl .nm { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
+  .pl .sc { font-weight: 900; font-size: 22px; margin-left: auto; font-variant-numeric: tabular-nums; }
+  .pl .st { font-size: 12px; color: var(--mut); white-space: nowrap; }
+  #pl0 { color: var(--p0); } #pl1 { color: var(--p1); flex-direction: row-reverse; text-align: right; }
+  #pl1 .sc { margin-left: 0; margin-right: auto; }
+  .pl .nm, .pl .sc { color: var(--ink); }
+  #msg { text-align: center; font-weight: 800; padding: 4px 10px 6px; min-height: 30px; font-size: 16px; }
+  #boardWrap { flex: 1; overflow: auto; position: relative; display: flex; justify-content: center; align-items: flex-start; padding: 4px 8px; }
+  #board { position: relative; margin: 0 auto; }
+  .card { position: absolute; perspective: 600px; transition: left calc(.65s * var(--speed)) ease-in-out, top calc(.65s * var(--speed)) ease-in-out, opacity .3s; cursor: pointer; }
+  .card .in { position: absolute; inset: 3px; transition: transform calc(.3s * var(--speed)); transform-style: preserve-3d; }
+  .card.up .in { transform: rotateY(180deg); }
+  .card .f, .card .b { position: absolute; inset: 0; border-radius: 10%; backface-visibility: hidden; -webkit-backface-visibility: hidden; display: grid; place-items: center; }
+  .card .b { background: var(--c); border: 2px solid rgba(255, 255, 255, .5); box-shadow: inset 0 0 0 4px rgba(0, 0, 0, .15);
+    background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, .14) 0 6px, transparent 6px 12px); }
+  .card .b::after { content: attr(data-mark); font-weight: 900; color: rgba(255, 255, 255, .85); font-size: calc(var(--cs) * .28); }
+  .card .f { transform: rotateY(180deg); background: #fffaf0; border: 3px solid var(--c); color: #222; }
+  .card .f span { font-size: calc(var(--cs) * .52); line-height: 1; transition: transform .4s; }
+  .card.gone { opacity: .16; pointer-events: none; }
+  .card.gone .f { border-color: var(--gold); }
+  .card.warn .b { animation: warn calc(.45s * var(--speed)) ease-in-out infinite alternate; }
+  @keyframes warn { to { filter: brightness(1.6); box-shadow: 0 0 0 4px var(--gold); } }
+  .card.sel .f { box-shadow: 0 0 0 4px var(--gold); }
+  .card.good .f { box-shadow: 0 0 0 5px var(--ok), 0 0 26px var(--ok); }
+  .card.badc .f { box-shadow: 0 0 0 5px var(--bad); }
+  .card.shake { animation: shake .4s; }
+  @keyframes shake { 25% { transform: translate(-4px, 2px) } 50% { transform: translate(4px, -2px) } 75% { transform: translate(-3px, -1px) } }
+  .card.target:hover .b { filter: brightness(1.3); }
+  .card.dim { opacity: .45; }
+  #fog { position: absolute; pointer-events: none; border-radius: 30px; background: radial-gradient(#cfd4ffee, #cfd4ff00 70%); transition: all .6s; z-index: 3; }
+  #bottom { padding: 6px 10px 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  #items { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  #items button { padding: 6px 10px; font-size: 13px; }
+  #items button.armed { background: var(--gold); color: #1b1300; }
+  #emotes { display: flex; gap: 4px; }
+  #emotes button { padding: 4px 7px; font-size: 18px; background: transparent; border-color: transparent; }
+  #placeBar { display: flex; align-items: center; gap: 12px; justify-content: center; padding: 6px 10px 12px; flex-wrap: wrap; }
+  #nextCard { width: 64px; height: 64px; border-radius: 12px; background: #fffaf0; display: grid; place-items: center; font-size: 40px; border: 3px solid var(--p0); }
+  .banner { position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(.9); z-index: 50; pointer-events: none; text-align: center; font-weight: 900; font-size: clamp(28px, 7vw, 54px);
+    text-shadow: 0 4px 0 #0008, 0 0 30px #0008; white-space: nowrap; transition: opacity .25s, transform .25s; opacity: 0; }
+  .banner.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  .banner small { display: block; font-size: .4em; font-weight: 700; color: #fff; text-shadow: 0 2px 4px #000; white-space: normal; max-width: 90vw; }
+  .bubble { position: fixed; z-index: 55; font-size: 40px; pointer-events: none; animation: pop 1.6s forwards; }
+  @keyframes pop { 0% { transform: scale(.3); opacity: 0 } 15% { transform: scale(1.2); opacity: 1 } 80% { opacity: 1 } 100% { transform: translateY(-40px); opacity: 0 } }
+  .over { position: fixed; inset: 0; background: #0b0a1cdd; display: flex; align-items: center; justify-content: center; z-index: 60; padding: 12px; }
+  .res { width: min(460px, 100%); max-height: 100%; overflow-y: auto; display: grid; gap: 10px; text-align: center; }
+  .res h2 { margin: 0; font-size: 36px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 13px; }
+  .stats div { background: rgba(255, 255, 255, .06); border-radius: 10px; padding: 6px; }
+  .stats b { display: block; font-size: 18px; }
+  #lb { margin: 0 auto; }
+  .confetti { position: fixed; top: -20px; width: 10px; height: 14px; z-index: 65; pointer-events: none; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+  body.reduce .card, body.reduce .card .in { transition-duration: 0s !important; }
+  body.reduce .card.warn .b, body.reduce .card.shake { animation: none; }
+  body.reduce .card.warn .b { box-shadow: 0 0 0 4px var(--gold); }
+</style>
+</head>
+<body>
+<a id="home" href="https://rank-game.com/">← Home</a>
+<script>if (top !== self) { home.remove(); document.body.classList.add('framed'); }</script>
+
+<!-- home -->
+<div class="screen" id="homeScr">
+  <h1>MEMORY <span>DUEL</span></h1>
+  <div class="tag">You hide your cards. They hide theirs. Remember where yours are, then find their matching card before they find yours.</div>
+  <div class="card-ui col" id="chalBox" hidden style="border-color:var(--gold)"></div>
+  <div class="col">
+    <button class="cta" id="cpuB" style="font-size:20px;padding:14px">🤖 Play vs CPU</button>
+    <div class="row"><button id="localB">👥 2 Players (one device)</button><button id="onlineB">🌐 Online</button></div>
+    <div class="row"><button id="campB">🗺️ Campaign</button><button id="dailyB">📅 Daily challenge</button></div>
+    <button id="setB">⚙️ Settings</button>
+  </div>
+  <div class="card-ui col how" style="margin-top:14px">
+    <b>How to play</b>
+    <span>1️⃣ Every pair is split: <b style="color:var(--p0)">blue</b> cards are yours, <b style="color:var(--p1)">red</b> cards are theirs. You each secretly place your own half.</span>
+    <span>2️⃣ On your turn, flip one of <b>your</b> cards, then guess which of <b>their</b> cards matches it.</span>
+    <span>3️⃣ Match = points and <b>another turn</b> (streaks multiply). Miss = their turn, and you both saw what flipped.</span>
+    <span>🌀 On Hard and above, the board <b>moves</b> between turns, always with a warning. Track it!</span>
+    <span>🎒 One item per turn: Preview, Double Points, Peek, Extra Guess, Freeze, Scanner, Score Steal.</span>
+  </div>
+</div>
+
+<!-- setup -->
+<div class="screen" id="setupScr" hidden>
+  <h2 id="setupT">New match</h2>
+  <div class="col">
+    <div class="card-ui"><div class="lbl">Cards</div><div class="chips" id="sizeC"></div></div>
+    <div class="card-ui"><div class="lbl">Difficulty</div><div class="chips" id="modeC"></div><div class="hint" id="modeD" style="text-align:left;margin-top:6px"></div></div>
+    <div class="card-ui" id="cpuBox"><div class="lbl">CPU</div><div class="chips" id="cpuC"></div></div>
+    <div class="card-ui"><div class="lbl">Items (pick 3)</div><div class="chips" id="itemC"></div><div class="hint" style="text-align:left;margin-top:6px">Both players get the same items. One item per turn.</div></div>
+    <div class="card-ui"><div class="lbl">Card pack</div><div class="chips" id="packC"></div></div>
+    <div class="card-ui" id="evBox"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="evIn" style="width:auto"> 🎲 Chaos events (Earthquake, Switch, Panic…)</label></div>
+    <div class="card-ui" id="onlineBox" hidden><input id="nameIn" maxlength="12" placeholder="Your name"><div class="row" style="margin-top:8px"><button class="cta" id="quickB">⚡ Quick Match</button><button id="createB">🔒 Create room</button></div><div class="row" style="margin-top:8px"><input id="codeIn" maxlength="5" placeholder="Room code" style="text-transform:uppercase"><button id="joinB" style="flex:.5">Join</button></div><div id="lobby" class="hint" style="margin-top:8px"></div></div>
+    <button class="cta" id="goB" style="font-size:18px">▶ Start</button>
+    <button id="setupBack">Back</button>
+  </div>
+</div>
+
+<!-- campaign -->
+<div class="screen" id="campScr" hidden>
+  <h2>🗺️ Campaign</h2>
+  <div class="hint">Beat the CPU to unlock the next level. Each level adds something new.</div>
+  <div class="col" id="levels" style="margin-top:10px"></div>
+  <button id="campBack" style="margin-top:12px">Back</button>
+</div>
+
+<!-- daily -->
+<div class="screen" id="dailyScr" hidden>
+  <h2>📅 Daily challenge</h2>
+  <div class="card-ui col" id="dailyInfo"></div>
+  <div id="dailyLb" style="margin-top:12px"></div>
+  <div class="col" style="margin-top:12px"><button class="cta" id="dailyGo">▶ Play today's board</button><button id="dailyBack">Back</button></div>
+</div>
+
+<!-- settings -->
+<div class="screen" id="setScr" hidden>
+  <h2>⚙️ Settings</h2>
+  <div class="card-ui col">
+    <label><input type="checkbox" id="sSound" style="width:auto"> 🔊 Sound effects</label>
+    <label><input type="checkbox" id="sMotion" style="width:auto"> 🐢 Reduced motion (no sliding or shaking; moves are shown by highlights)</label>
+    <label><input type="checkbox" id="sSlow" style="width:auto"> ⏳ Slow animations (moves and reveals take longer)</label>
+    <label><input type="checkbox" id="sBig" style="width:auto"> 🔎 Large cards (big boards scroll)</label>
+  </div>
+  <button id="setBack" style="margin-top:12px">Back</button>
+</div>
+
+<!-- game -->
+<div id="game" hidden>
+  <div id="top">
+    <div class="pl" id="pl0"><span>🔵</span><div style="min-width:0"><div class="nm" id="nm0">You</div><div class="st" id="st0"></div></div><div class="sc" id="sc0">0</div></div>
+    <div class="pl" id="pl1"><span>🔴</span><div style="min-width:0"><div class="nm" id="nm1">CPU</div><div class="st" id="st1"></div></div><div class="sc" id="sc1">0</div></div>
+  </div>
+  <div id="msg"></div>
+  <div id="boardWrap"><div id="board"><div id="fog" hidden></div></div></div>
+  <div id="placeBar" hidden><div id="nextCard"></div><div><b id="placeT"></b><div class="hint" id="placeH" style="text-align:left">Tap an empty spot. Remember where it goes!</div></div><button id="autoB">🎲 Place the rest for me</button></div>
+  <div id="bottom" hidden><div id="items"></div><div id="emotes"></div><button id="quitG" style="padding:6px 10px;font-size:13px">⏸ Menu</button></div>
+</div>
+<div class="banner" id="banner"></div>
+<div class="over" id="passOv" hidden><div class="card-ui res"><h2 id="passT"></h2><div class="hint" id="passH"></div><button class="cta" id="passB" style="font-size:18px">I'm ready</button></div></div>
+<div class="over" id="endOv" hidden><div class="card-ui res">
+  <h2 id="endT"></h2><div id="endS" class="hint" style="font-size:15px"></div>
+  <div class="stats" id="endStats"></div>
+  <div id="endJoke" style="font-weight:700"></div>
+  <div id="lb"></div>
+  <button class="cta" id="againB"></button>
+  <div class="row"><button id="revealB">👀 Show the whole board</button><button id="shareB">📤 Share</button></div>
+  <button id="menuB">Menu</button>
+</div></div>
+<div class="over" id="confirmOv" hidden><div class="card-ui res"><h2 id="cfT" style="font-size:26px"></h2><div class="hint" id="cfD" style="font-size:15px"></div><div class="row"><button id="cfNo">Keep it</button><button class="cta" id="cfYes">Use it</button></div></div></div>
+<div id="toast" hidden></div>
+
+<script src="engine.js"></script>
+<script src="../cloudsave.js" data-game="memory-duel" data-keys="memoryduel"></script>
+<script src="../leaderboard.js"></script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import { getFirestore, doc, onSnapshot, runTransaction, collection, query, where, limit, getDocs } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+
+const $ = (id) => document.getElementById(id);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms * (S.slow ? 1.6 : 1)));
+const pick = (a) => a[Math.random() * a.length | 0];
+let toastT; const toast = (t, ms = 2600) => { $('toast').innerHTML = t; $('toast').hidden = false; clearTimeout(toastT); toastT = setTimeout(() => ($('toast').hidden = true), ms); };
+const SCREENS = ['homeScr', 'setupScr', 'campScr', 'dailyScr', 'setScr', 'game'];
+const screen = (id) => { for (const s of SCREENS) $(s).hidden = s !== id; };
+
+// ---------- save ----------
+const DEF = { level: 1, stars: {}, packs: ['animals', 'food'], sound: true, reduce: false, slow: false, big: false, wins: 0, games: 0, name: '', last: {} };
+let S; try { S = { ...DEF, ...JSON.parse(localStorage.getItem('memoryduel') || '{}') }; } catch { S = { ...DEF }; }
+const save = () => { try { localStorage.setItem('memoryduel', JSON.stringify(S)); } catch {} applySettings(); };
+function applySettings() { document.body.classList.toggle('reduce', !!S.reduce); document.documentElement.style.setProperty('--speed', S.slow ? 1.6 : 1); }
+applySettings();
+window.cloudSaveChanged = () => { try { S = { ...DEF, ...JSON.parse(localStorage.getItem('memoryduel') || '{}') }; } catch {} applySettings(); };
+
+// ---------- card packs ----------
+const PACKS = {
+  animals: { name: 'Animals', icon: '🐶', e: [...'🐶🐱🐭🐹🐰🦊🐻🐼🐨🐯🦁🐮🐷🐸🐵🐔🐧🐦🐤🦆🦅🦉🦇🐺🐗🐴🦄🐝🐛🦋🐌🐞🐢🐍🦎🦖🐙🦑🦀🐡🐠🐬🐳🦈🐊🦓🦒🐘🦛🦘'] },
+  food: { name: 'Food', icon: '🍕', e: [...'🍎🍐🍊🍋🍌🍉🍇🍓🍈🍒🍑🥭🍍🥥🥝🍅🍆🥑🥦🌽🥕🧄🥔🍠🥐🍞🧀🥚🍳🥞🧇🥓🍔🍟🍕🌭🥪🌮🌯🍿🍩🍪🎂🍰🧁🍫🍬🍭🍦🍯'] },
+  space: { name: 'Space', icon: '🚀', e: ['🌍', '🌕', '🌗', '🌑', '🌙', '⭐', '🌟', '✨', '💫', '☄️', '🌞', '🪐', '🚀', '🛸', '🛰️', '👽', '👾', '🌌', '🔭', '🌠', '💥', '🌈', '⚡', '🔥', '❄️', '💧', '🌪️', '🌋', '🗻', '🌊', '🧑‍🚀', '🪨', '💎', '🔮', '🧲', '⚙️', '🔋', '📡', '🧪', '🧬', '🌀', '🎇', '🎆', '🔦', '🧭', '⏳', '🗿', '🎯', '🛡️', '🗝️'] },
+  monsters: { name: 'Monsters', icon: '👻', e: ['👻', '💀', '👹', '👺', '🤡', '👽', '👾', '🤖', '🎃', '😈', '👿', '🧟', '🧛', '🧙', '🧞', '🧜', '🐉', '🐲', '🦖', '🦕', '🕷️', '🦂', '🦠', '🐙', '🦑', '🗿', '🌚', '🌝', '😱', '🙀', '💩', '👁️', '🧠', '🦴', '🪦', '⚰️', '🔮', '🕸️', '🦇', '🐺', '🐍', '🦈', '🐊', '🦃', '🪳', '🪰', '🦗', '🐀', '☠️', '🧌'] },
+  ocean: { name: 'Ocean', icon: '🐳', e: ['🐳', '🐋', '🐬', '🦭', '🐟', '🐠', '🐡', '🦈', '🐙', '🦑', '🦐', '🦞', '🦀', '🐚', '🪸', '🪼', '🐢', '🦦', '🐧', '🌊', '⚓', '⛵', '🚤', '🛳️', '🏝️', '🏖️', '🧜', '🔱', '🪝', '🎣', '🤿', '🏄', '🛟', '🧭', '🌅', '🐊', '🐸', '🦆', '🦢', '🦩', '💧', '🫧', '🪨', '🐌', '🧽', '🏊', '🚢', '⛱️', '🌴', '🌞'] },
+  street: { name: 'Food Court', icon: '🍜', e: ['🍚', '🍙', '🍘', '🍥', '🍢', '🍜', '🍲', '🥘', '🍱', '🥟', '🍤', '🍗', '🍖', '🥩', '🥢', '🍶', '🍵', '🧋', '☕', '🥤', '🍡', '🍧', '🍨', '🫕', '🥬', '🥒', '🌶️', '🧅', '🫑', '🍄', '🌰', '🥜', '🫘', '🥠', '🥮', '🍯', '🥛', '🍮', '🥧', '🍣', '🍛', '🥗', '🧆', '🥙', '🫓', '🧈', '🥯', '🥨', '🧂', '🍼'] },
+  twins: { name: 'Look-alikes', icon: '😀', e: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🥵', '🥶'] },
+};
+const PACK_UNLOCK = { animals: 0, food: 0, space: 3, monsters: 5, ocean: 7, street: 9, twins: 7 };
+const face = (pair) => (PACKS[G?.pack] || PACKS.animals).e[pair % 50];
+const hue = (pair) => (pair * 137.5) % 360;
+
+// ---------- sound ----------
+let ac = null;
+function tone(f0, f1, dur, type = 'sine', vol = 0.15, delay = 0) {
+  if (!S.sound) return; try { ac ||= new AudioContext(); } catch { return; }
+  const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+const SFX = {
+  place: () => tone(500, 380, 0.07, 'triangle', 0.1), flip: () => tone(900, 1500, 0.08, 'sine', 0.06),
+  match: (n) => [0, 4, 7, 12].slice(0, 2 + Math.min(2, n)).forEach((st, i) => tone(523 * 2 ** ((st + n * 2) / 12), 523 * 2 ** ((st + n * 2) / 12), 0.16, 'triangle', 0.14, i * 0.07)),
+  miss: () => { tone(330, 160, 0.35, 'sawtooth', 0.07); tone(250, 120, 0.4, 'square', 0.04, 0.05); },
+  warn: () => [0, 0.18].forEach((d) => tone(880, 660, 0.14, 'square', 0.06, d)), move: () => tone(200, 600, 0.4, 'sine', 0.08),
+  item: () => { tone(700, 1400, 0.15, 'sine', 0.1); tone(1050, 2100, 0.15, 'sine', 0.06, 0.05); }, win: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, f, 0.2, 'triangle', 0.14, i * 0.1)),
+  lose: () => [392, 349, 311, 262].forEach((f, i) => tone(f, f * 0.97, 0.3, 'sawtooth', 0.05, i * 0.22)), emote: () => tone(1200, 1500, 0.06, 'sine', 0.06),
+};
+
+// ======================================================================
+// BOARD VIEW: one element per card; moves slide them to their new spots
+// ======================================================================
+let G = null; // current match
+const board = $('board');
+let els = []; // card id -> element
+function layout() {
+  if (!G) return;
+  const s = G.view, wrap = $('boardWrap').getBoundingClientRect();
+  const portrait = wrap.height > wrap.width * 1.1 && s.C > s.R;
+  G.flipAxes = portrait; // tall screens show the board on its side
+  const cols = portrait ? s.R : s.C, rows = portrait ? s.C : s.R;
+  let cs = Math.floor(Math.min((wrap.width - 16) / cols, (wrap.height - 8) / rows));
+  cs = Math.max(S.big ? 64 : 34, Math.min(110, cs));
+  G.cs = cs;
+  board.style.width = cols * cs + 'px'; board.style.height = rows * cs + 'px';
+  board.style.setProperty('--cs', cs + 'px');
+  s.cards.forEach((c) => place(c));
+}
+const xy = (pos) => { const s = G.view, r = Math.floor(pos / s.C), c = pos % s.C; return G.flipAxes ? [r, c] : [c, r]; };
+function place(c) {
+  const el = els[c.id]; if (!el) return;
+  if (c.pos < 0) { el.hidden = true; return; }
+  el.hidden = false;
+  const [x, y] = xy(c.pos);
+  el.style.left = x * G.cs + 'px'; el.style.top = y * G.cs + 'px'; el.style.width = el.style.height = G.cs + 'px';
+}
+function buildBoard() {
+  board.querySelectorAll('.card').forEach((e) => e.remove());
+  els = G.view.cards.map((c) => {
+    const el = document.createElement('div');
+    el.className = 'card'; el.dataset.id = c.id;
+    el.innerHTML = `<div class="in"><div class="b" data-mark=""></div><div class="f"><span></span></div></div>`;
+    el.style.setProperty('--c', c.owner ? 'var(--p1)' : 'var(--p0)');
+    el.onclick = () => tapCard(c.id);
+    board.appendChild(el); return el;
+  });
+  layout();
+}
+function paint(c) { // update one card's face from the visible state
+  const el = els[c.id]; if (!el) return;
+  const known = c.pair != null;
+  el.querySelector('.f span').textContent = known ? face(c.pair) : '';
+  el.querySelector('.f').style.background = known ? `hsl(${hue(c.pair)} 90% 94%)` : '#fffaf0';
+  el.querySelector('.f span').style.transform = `rotate(${G.spin || 0}deg)`;
+  el.classList.toggle('up', !!c.up); el.classList.toggle('gone', !!c.gone);
+}
+new ResizeObserver(() => layout()).observe($('boardWrap'));
+
+// ---------- banners, emotes, confetti ----------
+let bannerT;
+async function banner(html, col = '#fff', ms = 1100) {
+  const b = $('banner'); b.innerHTML = html; b.style.color = col; b.classList.add('show');
+  clearTimeout(bannerT); bannerT = setTimeout(() => b.classList.remove('show'), ms * (S.slow ? 1.6 : 1));
+}
+function emoteAt(p, em) {
+  const el = document.createElement('div'); el.className = 'bubble'; el.textContent = em;
+  const r = $('pl' + p).getBoundingClientRect(); el.style.left = (r.left + r.width / 2 - 20) + 'px'; el.style.top = (r.bottom + 4) + 'px';
+  document.body.appendChild(el); setTimeout(() => el.remove(), 1700); SFX.emote();
+}
+function confetti() { for (let i = 0; i < 60; i++) { const c = document.createElement('div'); c.className = 'confetti'; c.style.left = Math.random() * 100 + 'vw'; c.style.background = `hsl(${Math.random() * 360} 90% 60%)`; c.style.animationDuration = 1.5 + Math.random() * 2 + 's'; document.body.appendChild(c); setTimeout(() => c.remove(), 4000); } }
+
+// ======================================================================
+// THE MATCH. The engine (ME) runs on this device (vs CPU, local, online host). The "view" is what this screen may show.
+// ======================================================================
+const ITEM_KEYS = Object.keys(ME.ITEMS);
+function newMatch(cfg) {
+  const s = ME.create({ size: cfg.size, mode: cfg.mode, seed: cfg.seed ?? (Math.random() * 2 ** 31) | 0, items: [cfg.items, cfg.items], events: cfg.events, override: cfg.override });
+  G = { cfg, s, kind: cfg.kind, pack: cfg.pack || 'animals', names: cfg.names || ['You', 'CPU'], me: cfg.me ?? 0, busy: false, spin: 0, armed: null, emoteT: [0, 0], cpuLevel: cfg.cpu ?? 1, track: { start: Date.now() } };
+  G.view = { C: s.C, R: s.R, size: s.size, cards: s.cards.map((c) => ({ id: c.id, owner: c.owner, pair: null, pos: -1, up: false, gone: false })) };
+  screen('game'); $('endOv').hidden = true;
+  $('nm0').textContent = G.names[0]; $('nm1').textContent = G.names[1];
+  buildBoard(); hud();
+  if (G.kind === 'guest') return; // the host drives everything
+  if (G.kind !== 'local' && G.kind !== 'online') ME.autoPlace(s, 1, cpuPlaceRnd(s));
+  if (G.kind === 'demo') { ME.autoPlace(s, 0); return startBattleNow(); }
+  startPlacement(G.kind === 'local' ? 0 : G.me);
+}
+// the CPU likes clusters and corners sometimes (seeded so daily/challenge boards are the same for everyone)
+const cpuPlaceRnd = (s) => { let a = (s.seed ^ 0x9e3779b9) >>> 0; return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+function syncView(revealOwn) { // copy positions; show pairs only for cards this screen may know
+  const s = G.s;
+  s.cards.forEach((c, i) => { const v = G.view.cards[i]; v.pos = c.pos; v.gone = c.gone; if (c.gone) v.pair = c.pair; if (revealOwn != null && c.owner === revealOwn) v.pair = c.pair; });
+  G.view.cards.forEach((v) => { place(v); paint(v); });
+}
+function hud() {
+  const s = G.kind === 'guest' ? G.gs : G.s; if (!s) return;
+  for (const p of [0, 1]) {
+    $('sc' + p).textContent = s.score[p];
+    $('st' + p).textContent = `${s.hits[p]} pairs${s.streak[p] > 1 ? ` · 🔥×${Math.min(4, s.streak[p])}` : ''}`;
+    $('pl' + p).classList.toggle('turn', s.phase === 'battle' && s.turn === p);
+  }
+}
+const msg = (t) => ($('msg').innerHTML = t);
+
+// ---------- placement ----------
+let placing = null; // player currently placing on this screen
+async function startPlacement(p) {
+  placing = p; G.view.cards.forEach((v) => (v.up = false));
+  if (G.kind === 'local') { await pass(`${G.names[p]}: place your cards`, `${G.names[1 - p]}, look away! 🙈`); }
+  syncView(null); showPlaceBar();
+}
+function showPlaceBar() {
+  const s = G.s, left = s.toPlace[placing].length;
+  $('placeBar').hidden = false; $('bottom').hidden = true;
+  if (!left) return;
+  const c = s.cards[s.toPlace[placing][0]];
+  $('nextCard').textContent = face(c.pair); $('nextCard').style.borderColor = placing ? 'var(--p1)' : 'var(--p0)';
+  $('placeT').textContent = `${G.names[placing]}: card ${s.pairs - left + 1} of ${s.pairs}`;
+  msg(`Place your <span style="color:${placing ? 'var(--p1)' : 'var(--p0)'}">${placing ? 'red' : 'blue'}</span> cards. Remember them!`);
+}
+async function placeAt(pos) {
+  const s = G.s, id = s.toPlace[placing][0];
+  if (!ME.place(s, placing, pos)) return;
+  SFX.place();
+  const v = G.view.cards[id]; v.pos = pos; v.pair = s.cards[id].pair; v.up = true; place(v); paint(v);
+  const p = placing;
+  setTimeout(() => { if (G && placing === p) { v.up = false; paint(v); } }, 650 * (S.slow ? 1.6 : 1));
+  if (!s.toPlace[placing].length) return donePlacing(); showPlaceBar();
+}
+$('autoB').onclick = async () => {
+  if (G.busy || placing == null) return;
+  G.busy = true;
+  const s = G.s, p = placing; ME.autoPlace(s, p);
+  // show your whole layout to memorize
+  s.cards.forEach((c, i) => { if (c.owner === p) { const v = G.view.cards[i]; v.pos = c.pos; v.pair = c.pair; v.up = true; place(v); paint(v); } });
+  const secs = Math.round(4 + s.pairs * 0.25);
+  for (let t = secs; t > 0; t--) { msg(`Memorize your cards! ⏳ ${t}`); await sleep(1000); }
+  s.cards.forEach((c, i) => { if (c.owner === p) { G.view.cards[i].up = false; paint(G.view.cards[i]); } });
+  G.busy = false; donePlacing();
+};
+async function donePlacing() {
+  $('placeBar').hidden = true;
+  const s = G.s, p = placing;
+  if (G.kind === 'online' && !ME.placed(s)) { placing = null; msg('Waiting for your opponent to finish placing…'); return; }
+  if (G.kind === 'local' && p === 0) { G.view.cards.forEach((v) => { v.pair = null; v.up = false; paint(v); }); return startPlacement(1); }
+  placing = null;
+  startBattleNow();
+}
+async function startBattleNow() {
+  const s = G.s;
+  ME.startBattle(s, 0);
+  G.cpus = {}; // seat -> CPU memory
+  if (G.kind !== 'local' && G.kind !== 'online') G.cpus[1] = ME.cpuInit(s, 1, G.cpuLevel);
+  if (G.kind === 'demo') G.cpus[0] = ME.cpuInit(s, 0, 2);
+  if (G.kind === 'online') { net.send({ k: 'start' }); net.state(); }
+  if (G.kind === 'local') { G.view.cards.forEach((v) => { v.pair = null; paint(v); }); await pass('Battle time!', `${G.names[0]} goes first. Both of you can watch now.`); }
+  else syncView(null);
+  G.view.cards.forEach((v) => { v.pair = v.gone ? v.pair : null; v.up = false; paint(v); });
+  $('bottom').hidden = false; renderItems(); hud();
+  await banner('MEMORY DUEL!<small>Flip one of your cards, then find its twin.</small>', '#fff', 1500);
+  nextTurnPrompt();
+}
+function pass(title, sub) { return new Promise((res) => { $('passT').textContent = title; $('passH').textContent = sub; $('passOv').hidden = false; $('passB').onclick = () => { $('passOv').hidden = true; res(); }; }); }
+
+// ---------- battle ----------
+const myTurn = () => G.s.phase === 'battle' && (G.kind === 'local' || G.s.turn === G.me);
+function nextTurnPrompt() {
+  if (!G || G.s.phase !== 'battle') return;
+  hud(); renderItems();
+  const p = G.s.turn, col = p ? 'var(--p1)' : 'var(--p0)';
+  if (G.cpus?.[p]) { msg(`<span style="color:${col}">${G.names[p]}</span> is thinking…`); cpuTurn(); }
+  else if (myTurn()) msg(`<span style="color:${col}">${G.kind === 'local' ? G.names[p] + ':' : 'Your turn:'}</span> flip one of your ${p ? 'red' : 'blue'} cards`);
+  else msg(`<span style="color:${col}">${G.names[p]}</span> is thinking…`);
+}
+async function tapCard(id) {
+  if (!G || G.busy) return;
+  const v = G.view.cards[id];
+  if (placing != null) { if (v.pos >= 0 && G.s.slots[v.pos] !== -1) return; return; }
+  if (G.kind === 'guest') return net.guestTap(v.pos);
+  if (!myTurn()) return;
+  if (G.armed) return useItem(G.armed, v.pos);
+  const s = G.s;
+  if (s.pick == null && v.owner !== s.turn) { toast(`That's ${s.turn ? 'a blue' : 'a red'} card. Flip one of <b>your</b> cards first!`); return; }
+  if (s.pick != null && v.owner === s.turn) { toast('Now pick one of <b>their</b> cards: where is the twin?'); return; }
+  await doFlip(v.pos);
+}
+// tapping an empty slot during placement
+board.addEventListener('click', (e) => {
+  if (!G || placing == null || G.busy || e.target.closest('.card')) return;
+  const r = board.getBoundingClientRect(), x = Math.floor((e.clientX - r.left) / G.cs), y = Math.floor((e.clientY - r.top) / G.cs);
+  const pos = G.flipAxes ? x * G.s.C + y : y * G.s.C + x;
+  if (G.kind === 'guest') return net.guestPlace(pos);
+  placeAt(pos);
+});
+async function doFlip(pos) {
+  const s = G.s; G.busy = true;
+  const res = ME.flip(s, pos);
+  if (G.kind === 'online') net.send({ k: 'res', res: maskRes(res) });
+  await show(res); G.busy = false;
+  if (G.kind === 'online') net.state();
+}
+// animate one flip result (also used on the guest from the host's messages)
+async function show(res) {
+  const s = G.kind === 'guest' ? G.gs : G.s;
+  const v = G.view.cards.find((x) => x.pos === res.pos);
+  if (res.type === 'invalid' || !v) return;
+  v.pair = res.card.pair; v.up = true; paint(v); SFX.flip();
+  for (const m of Object.values(G.cpus || {})) ME.cpuSaw(s, m, res.pos, res.card.pair);
+  if (res.type === 'first') { els[v.id].classList.add('sel'); msg(`Where is the other ${face(res.card.pair)}? Pick one of their cards!`); return; }
+  const a = G.view.cards.find((x) => x.pos === res.first);
+  if (res.type === 'match') {
+    await sleep(250);
+    for (const c of [a, v]) { els[c.id].classList.remove('sel'); els[c.id].classList.add('good'); }
+    SFX.match(res.streak);
+    const p = s.turn, col = p ? 'var(--p1)' : 'var(--p0)';
+    banner(`${res.doubled ? '2× PERFECT! ' : 'MATCH! '}+${res.pts}${res.stolen ? ` <small>🦹 stole ${res.stolen} points!</small>` : res.streak >= 3 ? `<small>🔥 ${res.streak} in a row!</small>` : ''}`, res.doubled ? '#ffd43b' : '#51cf66', 1000);
+    if (res.streak >= 5) confetti();
+    await sleep(700);
+    for (const c of [a, v]) { c.gone = true; els[c.id].classList.remove('good'); paint(c); }
+    for (const m of Object.values(G.cpus || {})) { ME.cpuForget(m, a.pos); ME.cpuForget(m, v.pos); }
+    hud();
+    if (G.kind === 'guest') return;
+    if (s.phase === 'over') return gameOver();
+    if (G.cpus?.[s.turn] && G.kind !== 'guest') return cpuTurn();
+    if (G.kind !== 'guest') nextTurnPrompt();
+    return;
+  }
+  // miss (or not-mine)
+  els[v.id].classList.add('badc'); SFX.miss();
+  const joke = res.type === 'notmine' ? 'Not your card! 😅' : res.wasted ? 'Ouch… item wasted! 😂' : pick(['Nope! 😬', 'Not quite!', 'So close… maybe.', 'Your brain betrayed you 🧠', 'Wrong one! 🙈']);
+  banner(res.type === 'retry' ? '🎯 EXTRA GUESS!<small>Try once more</small>' : joke, res.type === 'retry' ? '#ffd43b' : '#ff6b6b', 900);
+  if (G.kind !== 'guest' && G.cpus?.[1] && !G.cpus[0] && s.turn === 0 && Math.random() < 0.35) setTimeout(() => emoteAt(1, pick(['😂', '😎', '🔥'])), 500);
+  await sleep(s.M.reveal);
+  els[v.id].classList.remove('badc'); v.up = false; v.pair = (G.kind === 'local' || v.owner === G.me) ? null : null; paint(v);
+  if (res.type === 'retry') { msg(`Extra guess! Where is the other ${face(res.wanted.pair)}?`); return; }
+  if (a) { els[a.id].classList.remove('sel'); a.up = false; a.pair = null; paint(a); }
+  if (G.kind === 'guest') return;
+  await endTurn();
+}
+async function endTurn() {
+  const s = G.s, { move, bonus } = ME.endTurn(s);
+  if (G.kind === 'online') net.send({ k: 'endturn', move, bonus, turn: s.turn });
+  await animateMove(move);
+  for (const m of Object.values(G.cpus || {})) ME.cpuMoved(m, move);
+  if (bonus) { banner('💪 DESPERATION BONUS<small>+1 Peek for the player behind</small>', '#ffd43b', 1500); await sleep(800); }
+  if (move?.event === 'panic' && (G.kind === 'local' || s.turn === G.me)) startPanic();
+  nextTurnPrompt();
+  if (G.kind === 'online') net.state();
+}
+async function animateMove(move) {
+  const s = G.kind === 'guest' ? G.gs : G.s, M = s.M;
+  G.spin = M.spin ? (G.spin + 90) % 360 : 0; // Hard/Hell: card faces turn every turn
+  if (move?.event === 'confusion') G.spin = (G.spin + 180) % 360;
+  if (M.fog) fog();
+  if (!move) return;
+  const ev = { quake: '🌋 EARTHQUAKE!', switch: '🔀 SWITCH!', lucky: '🍀 LUCKY GLIMPSE!', panic: '⏱️ PANIC MODE!', confusion: '😵 CONFUSION!' }[move.event];
+  if (ev) { banner(ev, '#ffd43b', 1000); SFX.warn(); await sleep(900); }
+  if (move.event === 'lucky') { const h = G.view.cards.filter((v) => v.pos >= 0 && !v.gone); const v = h[Math.floor(Math.random() * h.length)]; await flash([v.pos], 180); }
+  if (!move.ops.length) return;
+  // warn: say what will move and light it up, then slide
+  const text = move.ops.map((o) => ME.describe(o, s)).join(' + ');
+  const cells = new Set(move.cells);
+  G.view.cards.forEach((v) => els[v.id].classList.toggle('warn', cells.has(v.pos) && !v.gone));
+  msg(`⚠️ ${text}`); SFX.warn();
+  await sleep(1100);
+  if (G.kind !== 'guest') ME.applyMove(s, move);
+  G.view.cards.forEach((v) => { if (v.pos >= 0) v.pos = move.map[v.pos]; els[v.id].classList.remove('warn'); place(v); paint(v); });
+  SFX.move();
+  await sleep(S.reduce ? 300 : 750);
+  if (M.fog || s.mode === 'hell') { const vs = G.view.cards.filter((v) => !v.gone); for (let i = 0; i < 3; i++) { const v = pick(vs); els[v.id].classList.add('shake'); setTimeout(() => els[v.id].classList.remove('shake'), 450); } } // decoys
+}
+function fog() { const f = $('fog'), s = G.view; if (Math.random() < 0.6) { const r = Math.floor(Math.random() * s.R), c = Math.floor(Math.random() * s.C), [x, y] = xy(r * s.C + c); f.hidden = false; f.style.left = (x - 1) * G.cs + 'px'; f.style.top = (y - 1) * G.cs + 'px'; f.style.width = f.style.height = G.cs * 3 + 'px'; } else f.hidden = true; }
+async function flash(positions, ms) {
+  const vs = G.view.cards.filter((v) => positions.includes(v.pos));
+  const s = G.s;
+  vs.forEach((v) => { v.pair = s.cards[v.id].pair; v.up = true; paint(v); });
+  await sleep(ms);
+  vs.forEach((v) => { v.up = false; v.pair = null; paint(v); });
+}
+let panicT;
+function startPanic() { let t = 8; clearInterval(panicT); panicT = setInterval(() => { if (!G || G.busy || G.s.pick != null) return; if (--t <= 0) { clearInterval(panicT); msg('⏱️ Too slow!'); endTurn(); } else msg(`⏱️ PANIC! ${t}s to flip a card!`); }, 1000); }
+
+// ---------- items ----------
+function renderItems() {
+  const s = G.kind === 'guest' ? G.gs : G.s; if (!s) return;
+  const p = G.kind === 'local' ? s.turn : G.me, inv = s.items[p];
+  $('items').innerHTML = Object.entries(inv).map(([k, n]) => { const it = ME.ITEMS[k]; return `<button data-item="${k}" class="${G.armed === k ? 'armed' : ''}" ${n <= 0 || !myTurnView() || s.pick != null || s.fx?.used ? 'disabled' : ''} title="${it.desc}">${it.icon} ${it.name} ×${n}</button>`; }).join('');
+  $('emotes').innerHTML = ['😂', '😱', '🤔', '😎', '😭', '💀', '🔥'].map((e) => `<button data-emote="${e}">${e}</button>`).join('');
+}
+const myTurnView = () => { const s = G.kind === 'guest' ? G.gs : G.s; return s?.phase === 'battle' && (G.kind === 'local' || s.turn === G.me); };
+$('items').onclick = (e) => {
+  const b = e.target.closest('[data-item]'); if (!b || b.disabled || G.busy) return;
+  const k = b.dataset.item, it = ME.ITEMS[k];
+  if (G.armed === k) { G.armed = null; renderItems(); msg('Item cancelled.'); return; }
+  $('cfT').textContent = `${it.icon} ${it.name}?`; $('cfD').innerHTML = `${it.desc}<br><b>Uses up 1. Only one item per turn.</b>`; $('confirmOv').hidden = false;
+  $('cfNo').onclick = () => ($('confirmOv').hidden = true);
+  $('cfYes').onclick = () => { $('confirmOv').hidden = true; if (it.target) { G.armed = k; renderItems(); msg(`${it.icon} Tap a card to ${k === 'peek' ? 'peek at' : 'scan around'}.`); } else useItem(k); };
+};
+async function useItem(k, pos) {
+  G.armed = null;
+  if (G.kind === 'guest') return net.send({ k: 'item', kind: k, pos });
+  const s = G.s, r = ME.useItem(s, k, pos); if (!r) return;
+  if (G.kind === 'online') net.send({ k: 'itemres', r: { kind: r.kind } });
+  await itemEffect(r, s.turn, true);
+  if (G.kind === 'online') net.state();
+}
+async function itemEffect(r, p, mine) {
+  SFX.item(); renderItems();
+  const labels = { double: '✖️2 DOUBLE POINTS!', extra: '🎯 EXTRA GUESS READY', freeze: '🧊 BOARD FROZEN', steal: '🦹 SCORE STEAL ARMED', preview: '👁️ PREVIEW', peek: '🔍 PEEK', scanner: '📡 SCANNER' };
+  banner(labels[r.kind], '#ffd43b', 900);
+  if (r.reveal && mine) { await sleep(300); await flash(r.reveal, r.ms); }
+  if (G.kind === 'local' && r.reveal) toast(`${G.names[1 - p]}, that peek was not for you! 🙈`);
+  msg(`Item used. Now flip one of your ${p ? 'red' : 'blue'} cards.`);
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-emote]'); if (!b || !G) return;
+  const p = G.kind === 'local' ? G.s.turn : G.me, now = Date.now();
+  if (now - G.emoteT[p] < 2500) return toast('Easy on the emotes 😅'); G.emoteT[p] = now;
+  emoteAt(p, b.dataset.emote); if (G.kind === 'online' || G.kind === 'guest') net.send({ k: 'emote', p, e: b.dataset.emote });
+});
+
+// ---------- CPU turns ----------
+async function cpuTurn() {
+  const p = G?.s.turn, mem = G?.cpus?.[p];
+  if (!mem || G.s.phase !== 'battle') return;
+  G.busy = true; await sleep(700);
+  const s = G.s;
+  if (s.items[p].preview > 0 && Math.random() < 0.25) { const r = ME.useItem(s, 'preview'); if (r) { SFX.item(); banner('👁️ CPU used PREVIEW', '#ffd43b', 800); for (const pos of r.reveal) ME.cpuSaw(s, mem, pos, s.cards[s.slots[pos]].pair); await sleep(900); } }
+  else if (s.items[p].double > 0 && Math.random() < 0.2) { ME.useItem(s, 'double'); banner('✖️2 CPU went DOUBLE!', '#ffd43b', 800); await sleep(700); }
+  const { first, second } = ME.cpuChoose(s, mem);
+  let res = ME.flip(s, first); await show(res);
+  if (res.type === 'first') { await sleep(800); res = ME.flip(s, second); G.busy = true; await show(res); }
+  G.busy = false;
+}
+
+// ---------- end ----------
+const JOKES = [(d) => `You were ${d} space${d === 1 ? '' : 's'} away from reality.`, () => 'Your brain confidently betrayed you.', (d) => `So close! Only ${d} space${d === 1 ? '' : 's'} off.`, () => 'You KNEW where it was. Didn\'t you.'];
+const lb = leaderboard($('lb'), 'memory-duel');
+async function gameOver() {
+  const s = G.s; G.over = true; $('bottom').hidden = true; clearInterval(panicT);
+  if (G.kind === 'online') { net.state(); net.send({ k: 'over' }); }
+  await sleep(500);
+  const me = G.kind === 'local' ? null : G.me, [a, b] = s.score, w = a === b ? -1 : a > b ? 0 : 1;
+  const won = me == null ? null : w === me;
+  (won === false ? SFX.lose : SFX.win)(); if (won !== false) confetti();
+  $('endT').textContent = w < 0 ? "IT'S A TIE!" : me == null ? `${G.names[w]} WINS!` : won ? 'YOU WIN! 🏆' : 'YOU LOSE 😭';
+  $('endS').textContent = `${G.names[0]} ${a} · ${b} ${G.names[1]}`;
+  $('endStats').innerHTML = [0, 1].map((p) => `<div><span style="color:${p ? 'var(--p1)' : 'var(--p0)'}">${G.names[p]}</span><b>${s.hits[p]} pairs</b>accuracy ${s.tries[p] ? Math.round(s.hits[p] / s.tries[p] * 100) : 0}% · best streak ${s.bestStreak[p]}</div>`).join('');
+  const mine = s.misses.filter((m) => me == null || m.p === me).sort((x, y) => y.dist - x.dist)[0];
+  $('endJoke').innerHTML = mine ? `🤔 What were you thinking? You guessed spot #${mine.guess + 1}, the ${face(mine.pair)} was at #${mine.actual + 1}.<br>${pick(JOKES)(mine.dist)}` : '🧠 Not a single wrong guess. Are you a computer?';
+  $('lb').hidden = true;
+  // progress, daily score
+  S.games++; if (won) S.wins++;
+  if (G.kind === 'camp' && won) { const lv = G.cfg.lv, acc = s.hits[0] / Math.max(1, s.tries[0]); S.stars[lv] = Math.max(S.stars[lv] || 0, acc > 0.7 ? 3 : acc > 0.45 ? 2 : 1); S.level = Math.max(S.level, lv + 1); for (const [k, need] of Object.entries(PACK_UNLOCK)) if (S.level > need && !S.packs.includes(k)) { S.packs.push(k); setTimeout(() => toast(`🎉 New card pack unlocked: ${PACKS[k].icon} ${PACKS[k].name}!`, 4000), 800); } }
+  let score = null;
+  if (G.kind === 'daily' || G.kind === 'challenge') {
+    score = Math.max(0, a + (won ? 500 : 0) + Math.round(s.hits[0] / Math.max(1, s.tries[0]) * 500));
+    $('endS').innerHTML += `<br><b style="color:var(--gold)">Score: ${score.toLocaleString()}</b>${G.cfg.target ? ` · your friend: ${G.cfg.target.toLocaleString()} ${score > G.cfg.target ? '🎉 You beat them!' : '😤'}` : ''}`;
+    G.score = score;
+  }
+  if (G.kind === 'daily') { S.last.daily = { day: today(), score }; $('lb').hidden = false; dailyBoard().show(score); }
+  save();
+  $('againB').textContent = G.kind === 'camp' ? (won && G.cfg.lv < LEVELS.length ? `▶ Level ${G.cfg.lv + 1}` : '↻ Try again') : G.kind === 'daily' ? '↻ Play again (best counts)' : '↻ Rematch';
+  $('endOv').hidden = false;
+}
+$('againB').onclick = () => {
+  $('endOv').hidden = true; const c = G.cfg;
+  if (G.kind === 'online' || G.kind === 'guest') return net.rematch();
+  if (G.kind === 'camp') { const won = G.s.score[0] > G.s.score[1]; return startLevel(won && c.lv < LEVELS.length ? c.lv + 1 : c.lv); }
+  newMatch({ ...c, seed: G.kind === 'daily' || G.kind === 'challenge' ? c.seed : undefined });
+};
+$('revealB').onclick = () => { // everything face up, coloured by who placed it
+  $('endOv').hidden = true;
+  G.view.cards.forEach((v) => { const c = G.s.cards[v.id]; v.pos = c.pos; v.pair = c.pair; v.up = true; v.gone = false; place(v); paint(v); });
+  msg('The full board. Blue = placed by ' + G.names[0] + ', red = ' + G.names[1] + '. <button id="backEnd" style="padding:4px 10px">Back</button>');
+  $('backEnd').onclick = () => ($('endOv').hidden = false);
+};
+$('shareB').onclick = async () => {
+  const s = G.s, url = challengeUrl(G.cfg, G.score ?? s.score[G.me]);
+  const text = `I found ${s.hits[G.me]} pairs (${Math.round(s.hits[G.me] / Math.max(1, s.tries[G.me]) * 100)}% accuracy) on a ${s.size}-card ${s.M.name} board in Memory Duel 🧠 Can you beat me?`;
+  try { if (navigator.share) return await navigator.share({ title: 'Memory Duel', text, url }); } catch { return; }
+  try { await navigator.clipboard.writeText(`${text} ${url}`); toast('Challenge link copied! 📋'); } catch { toast(url, 6000); }
+};
+$('menuB').onclick = () => { $('endOv').hidden = true; if (net.on) net.leave(); G = null; screen('homeScr'); };
+$('quitG').onclick = () => { if (!confirm('Leave this match?')) return; if (net.on) net.leave(); G = null; clearInterval(panicT); screen('homeScr'); };
+
+// ======================================================================
+// SETUP, CAMPAIGN, DAILY, CHALLENGES
+// ======================================================================
+const setup = { size: 20, mode: 'normal', cpu: 1, items: ['preview', 'double', 'peek'], pack: 'animals', events: false, kind: 'cpu' };
+function renderSetup() {
+  const chips = (id, opts, cur, fn) => { $(id).innerHTML = opts.map(([v, l]) => `<button data-v="${v}" class="${cur(v) ? 'on' : ''}">${l}</button>`).join(''); $(id).onclick = (e) => { const b = e.target.closest('[data-v]'); if (b) { fn(b.dataset.v); renderSetup(); } }; };
+  chips('sizeC', Object.keys(ME.DIMS).map((n) => [n, n]), (v) => +v === setup.size, (v) => (setup.size = +v));
+  chips('modeC', Object.entries(ME.MODES).map(([k, m]) => [k, { normal: '🙂', hard: '🌀', extreme: '🌪️', hell: '🔥' }[k] + ' ' + m.name]), (v) => v === setup.mode, (v) => { setup.mode = v; setup.events = v === 'extreme' || v === 'hell'; });
+  $('modeD').textContent = { normal: 'Cards stay where they are.', hard: 'The whole board turns or flips between turns, and card faces rotate.', extreme: 'Rows and columns swap or slide between turns (with a warning).', hell: 'Board turns AND sections move, short reveals, fog, decoys. Good luck.' }[setup.mode];
+  chips('cpuC', [[0, '😴 Easy'], [1, '🙂 Normal'], [2, '🧠 Hard']], (v) => +v === setup.cpu, (v) => (setup.cpu = +v));
+  chips('itemC', ITEM_KEYS.map((k) => [k, `${ME.ITEMS[k].icon} ${ME.ITEMS[k].name}`]), (v) => setup.items.includes(v), (v) => { setup.items = setup.items.includes(v) ? setup.items.filter((x) => x !== v) : [...setup.items, v].slice(-3); });
+  chips('packC', Object.entries(PACKS).filter(([k]) => S.packs.includes(k)).map(([k, p]) => [k, `${p.icon} ${p.name}`]), (v) => v === setup.pack, (v) => (setup.pack = v));
+  $('evIn').checked = setup.events; $('evIn').onchange = () => (setup.events = $('evIn').checked);
+  $('cpuBox').hidden = setup.kind !== 'cpu'; $('onlineBox').hidden = setup.kind !== 'online'; $('goB').hidden = setup.kind === 'online';
+  $('setupT').textContent = { cpu: '🤖 vs CPU', local: '👥 2 Players', online: '🌐 Online match' }[setup.kind];
+}
+function openSetup(kind) { setup.kind = kind; renderSetup(); $('nameIn').value = S.name; screen('setupScr'); }
+$('goB').onclick = () => {
+  if (setup.items.length !== 3) return toast('Pick 3 items');
+  if (setup.kind === 'local') return newMatch({ ...setup, kind: 'local', names: ['Player 1', 'Player 2'] });
+  newMatch({ ...setup, kind: 'cpu', names: [S.name || 'You', `CPU (${['Easy', 'Normal', 'Hard'][setup.cpu]})`] });
+};
+const LEVELS = [
+  { t: 'First Steps', d: '12 cards. Just remember.', size: 12, mode: 'normal', cpu: 0 },
+  { t: 'More Cards', d: '20 cards.', size: 20, mode: 'normal', cpu: 0 },
+  { t: 'Spin Cycle', d: 'The board turns between turns.', size: 20, mode: 'hard', cpu: 1 },
+  { t: 'Row Shuffle', d: 'Rows and columns move.', size: 28, mode: 'extreme', cpu: 1, events: false },
+  { t: 'Bigger Board', d: '40 cards, moving sections.', size: 40, mode: 'extreme', cpu: 1, events: false },
+  { t: 'Double Trouble', d: 'Two moves every turn.', size: 28, mode: 'extreme', cpu: 1, override: { sections: 2 }, events: false },
+  { t: 'Look-alikes', d: 'Every card looks almost the same. 😬', size: 28, mode: 'normal', cpu: 1, pack: 'twins' },
+  { t: 'Blink', d: 'Wrong guesses show for half a second.', size: 28, mode: 'extreme', cpu: 2, override: { reveal: 500 }, events: false },
+  { t: 'Chaos', d: '40 cards and random events.', size: 40, mode: 'extreme', cpu: 2, events: true },
+  { t: 'HELL', d: 'Everything at once. 🔥', size: 40, mode: 'hell', cpu: 2, events: true },
+];
+function renderCampaign() {
+  $('levels').innerHTML = LEVELS.map((L, i) => { const n = i + 1, open = n <= S.level, st = S.stars[n] || 0;
+    return `<button class="lvl" data-l="${n}" ${open ? '' : 'disabled'}><span class="n">${open ? n : '🔒'}</span><span style="flex:1">${L.t}<small>${L.d} · ${L.size} cards · ${ME.MODES[L.mode].name}</small></span><span>${'⭐'.repeat(st)}${'☆'.repeat(3 - st)}</span></button>`; }).join('');
+}
+$('levels').onclick = (e) => { const b = e.target.closest('[data-l]'); if (b && !b.disabled) startLevel(+b.dataset.l); };
+function startLevel(n) { const L = LEVELS[n - 1]; newMatch({ kind: 'camp', lv: n, size: L.size, mode: L.mode, cpu: L.cpu, items: ['preview', 'double', 'peek'], pack: L.pack || pick(S.packs.filter((p) => p !== 'twins')), events: L.events, override: L.override, names: [S.name || 'You', `CPU · Level ${n}`] }); banner(`LEVEL ${n}<small>${L.t}: ${L.d}</small>`, '#fff', 1800); }
+const today = () => new Date().toISOString().slice(0, 10);
+function dailyCfg() {
+  const d = today(), seed = [...d].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 17), dow = new Date(d).getUTCDay();
+  const mode = ['normal', 'hard', 'extreme', 'normal', 'hard', 'extreme', 'hell'][dow], size = [20, 28, 28, 40, 28, 28, 20][dow];
+  return { kind: 'daily', seed, size, mode, cpu: 1, items: ['preview', 'double', 'extra'], pack: ['animals', 'food'][seed % 2], events: mode !== 'normal', names: [S.name || 'You', 'Daily CPU'] };
+}
+const dailyBoard = () => leaderboard($('dailyLb'), `memory-duel_d${today().replace(/-/g, '')}`);
+function openDaily() {
+  const c = dailyCfg();
+  $('dailyInfo').innerHTML = `<b>${today()}</b><span>${c.size} cards · ${ME.MODES[c.mode].name}${c.events ? ' · chaos events' : ''}</span><span class="hint" style="text-align:left">Everyone gets the same board and the same CPU. Score = your points + 500 for a win + up to 500 for accuracy.</span>${S.last.daily?.day === today() ? `<b style="color:var(--gold)">Your best today: ${S.last.daily.score.toLocaleString()}</b>` : ''}`;
+  dailyBoard().show(0); screen('dailyScr');
+}
+$('dailyGo').onclick = () => newMatch(dailyCfg());
+const challengeUrl = (c, score) => `https://rank-game.com/games/memory-duel#c=${c.seed}-${c.size}-${c.mode}-${score || 0}`;
+function startChallenge(ch) { newMatch({ kind: 'challenge', seed: ch.seed, size: ch.size, mode: ch.mode, cpu: 1, items: ['preview', 'double', 'peek'], pack: 'animals', events: ch.mode === 'extreme' || ch.mode === 'hell', target: ch.score, names: [S.name || 'You', 'CPU'] }); }
+
+// ---------- settings + nav ----------
+for (const [id, k] of [['sSound', 'sound'], ['sMotion', 'reduce'], ['sSlow', 'slow'], ['sBig', 'big']]) { $(id).checked = !!S[k]; $(id).onchange = () => { S[k] = $(id).checked; save(); }; }
+$('cpuB').onclick = () => openSetup('cpu');
+$('localB').onclick = () => openSetup('local');
+$('onlineB').onclick = () => openSetup('online');
+$('campB').onclick = () => { renderCampaign(); screen('campScr'); };
+$('dailyB').onclick = openDaily;
+$('setB').onclick = () => screen('setScr');
+for (const id of ['setupBack', 'campBack', 'dailyBack', 'setBack']) $(id).onclick = () => { if (id === 'setupBack' && net.on) net.leave(); screen('homeScr'); };
+
+// ======================================================================
+// ONLINE: Firestore room (lobby + WebRTC handshake). The host runs the game; the guest only ever learns its own cards
+// and cards that get flipped face up.
+// ======================================================================
+const ICE = { iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }] };
+const fb = initializeApp({ apiKey: 'AIzaSyDz5J34ahi7fP48CU2cPrp1FNmqK-20D5E', authDomain: 'hatdoc-blog-1048.firebaseapp.com', projectId: 'hatdoc-blog-1048' });
+const db = getFirestore(fb);
+const ROOMS = 'memoryDuel', ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const rid = (n, a = ALPHA) => Array.from(crypto.getRandomValues(new Uint32Array(n)), (x) => a[x % a.length]).join('');
+const meId = localStorage.getItem('md-id') || rid(10, 'abcdefghijklmnopqrstuvwxyz0123456789'); try { localStorage.setItem('md-id', meId); } catch {}
+const BAD = /f+u+c+k|sh[i1]t|b[i1]tch|cunt|n[i1]gg|fag|dick|pussy|씨발|시발|병신|좆|썅|개새/i;
+const myName = () => { const n = ($('nameIn').value.trim() || 'Player').slice(0, 12); S.name = BAD.test(n) ? 'Player' : n; save(); return S.name; };
+const net = { on: false, host: false, code: '', room: null, unsub: null, peer: null, votes: new Set() };
+const gathered = (pc) => new Promise((res) => { if (pc.iceGatheringState === 'complete') return res(); const t = setTimeout(res, 3000); pc.addEventListener('icegatheringstatechange', () => pc.iceGatheringState === 'complete' && (clearTimeout(t), res())); });
+net.send = (m) => { const ch = net.peer?.r; if (ch?.readyState === 'open') ch.send(JSON.stringify(m)); };
+function wire(peer) {
+  let q = Promise.resolve();
+  peer.r.onmessage = (e) => { q = q.then(() => onNet(JSON.parse(e.data))).catch((err) => console.warn(err)); };
+  let closed = false; const close = () => { if (!closed && net.on) { closed = true; toast('Your opponent left'); net.leave(); } };
+  peer.pc.onconnectionstatechange = () => { if (['failed', 'closed', 'disconnected'].includes(peer.pc.connectionState)) close(); };
+  peer.r.onclose = close;
+  peer.r.onopen = () => { net.send({ k: 'hi', name: S.name || 'Player' }); lobby(); };
+  if (peer.r.readyState === 'open') peer.r.onopen();
+}
+async function mutate(fn) { try { await runTransaction(db, async (t) => { const ref = doc(db, ROOMS, net.code), s = await t.get(ref); if (!s.exists()) return; const r = fn(s.data()); if (r) t.set(ref, r); }); } catch (e) { console.warn(e); } }
+async function createRoom(pub) {
+  await net.leave(true); myName();
+  for (let i = 0; i < 5; i++) {
+    const c = rid(5), ref = doc(db, ROOMS, c);
+    try {
+      let ok = false;
+      await runTransaction(db, async (t) => { const s = await t.get(ref); if (s.exists() && Date.now() - s.data().created < 7200e3) return; t.set(ref, { code: c, pub, created: Date.now(), host: meId, phase: 'lobby', players: { [meId]: { n: S.name } }, sig: {} }); ok = true; });
+      if (!ok) continue;
+      Object.assign(net, { on: true, host: true, pub, code: c }); location.hash = c;
+      net.unsub = onSnapshot(ref, (s) => { net.room = s.data(); hostSignal(); lobby(); });
+      lobby(); return;
+    } catch (e) { console.warn(e); toast('Could not create a room. Check your internet.'); return; }
+  }
+}
+let answering = false;
+async function hostSignal() {
+  const r = net.room; if (!r || net.peer || answering) return;
+  const [pid, s] = Object.entries(r.sig || {}).find(([, v]) => v.o && !v.a) || []; if (!pid) return;
+  answering = true;
+  const pc = new RTCPeerConnection(ICE), peer = { pc };
+  pc.ondatachannel = (e) => { if (e.channel.label === 'r') { peer.r = e.channel; wire(peer); } };
+  await pc.setRemoteDescription({ type: 'offer', sdp: s.o }); await pc.setLocalDescription(await pc.createAnswer()); await gathered(pc);
+  net.peer = peer;
+  await mutate((r) => { if (!r.sig[pid]) return null; r.sig[pid].a = pc.localDescription.sdp; r.phase = 'play'; return r; });
+  answering = false;
+}
+async function joinRoom(c) {
+  await net.leave(true); myName();
+  const ref = doc(db, ROOMS, c), pc = new RTCPeerConnection(ICE), peer = { pc, r: pc.createDataChannel('r') };
+  await pc.setLocalDescription(await pc.createOffer()); await gathered(pc);
+  let ok = false, why = 'Room not found';
+  try {
+    await runTransaction(db, async (t) => {
+      const s = await t.get(ref), r = s.exists() ? s.data() : null;
+      if (!r || Date.now() - r.created > 7200e3) return;
+      if (Object.keys(r.players).length >= 2 || r.phase !== 'lobby') { why = 'That room is full'; return; }
+      r.players[meId] = { n: S.name }; r.sig[meId] = { o: pc.localDescription.sdp }; t.set(ref, r); ok = true;
+    });
+  } catch (e) { console.warn(e); why = 'Could not connect. Check your internet.'; }
+  if (!ok) { pc.close(); toast(why); return false; }
+  Object.assign(net, { on: true, host: false, pub: false, code: c, peer }); location.hash = c;
+  wire(peer);
+  net.unsub = onSnapshot(ref, async (s) => {
+    net.room = s.data(); if (!net.room) return;
+    const a = net.room.sig?.[meId]?.a; if (a && !pc.remoteDescription) await pc.setRemoteDescription({ type: 'answer', sdp: a });
+    if (!net.room.players[net.room.host]) { toast('The host left'); net.leave(); }
+    lobby();
+  });
+  setTimeout(() => { if (net.on && net.code === c && peer.r.readyState !== 'open') { toast("Couldn't connect to that player (some networks block direct connections).", 5000); net.leave(); } }, 16000);
+  lobby(); return true;
+}
+async function quickMatch() {
+  myName();
+  try {
+    const snap = await getDocs(query(collection(db, ROOMS), where('pub', '==', true), where('phase', '==', 'lobby'), limit(15)));
+    const open = snap.docs.map((d) => d.data()).filter((r) => Date.now() - r.created < 20 * 60e3 && Object.keys(r.players).length === 1 && !r.players[meId]);
+    for (const r of open) if (await joinRoom(r.code)) return;
+  } catch (e) { console.warn(e); }
+  await createRoom(true);
+}
+function lobby() {
+  if (!net.on) return;
+  const open = net.peer?.r?.readyState === 'open';
+  $('lobby').innerHTML = `${(net.room?.pub ?? net.pub) ? 'Quick Match room' : 'Private room'} <b style="font-size:20px;letter-spacing:4px;color:var(--gold)">${net.code}</b> <button id="invB" style="padding:4px 10px">🔗 Invite</button><br>${open ? 'Opponent connected! Starting…' : net.host ? 'Waiting for an opponent… (keep this open)' : 'Connecting…'}`;
+  $('invB').onclick = async () => { const u = `https://rank-game.com/games/memory-duel#${net.code}`; try { await navigator.clipboard.writeText(u); toast('Invite link copied! 📋'); } catch { toast(u, 6000); } };
+  if (open && net.host && !G) setTimeout(() => net.host && !G && hostStart(), 600);
+}
+// host: start with the setup on the host's screen
+function hostStart() {
+  const cfg = { ...setup, kind: 'online', me: 0, names: [S.name || 'Host', net.oppName || 'Guest'], seed: (Math.random() * 2 ** 31) | 0 };
+  net.send({ k: 'cfg', cfg: { size: cfg.size, mode: cfg.mode, items: cfg.items, pack: cfg.pack, events: cfg.events, names: cfg.names } });
+  newMatch(cfg); net.state();
+}
+// what the guest may see: its own cards, gone cards, and nothing else
+function guestView() {
+  const s = G.s;
+  return { phase: s.phase, turn: s.turn, score: s.score, hits: s.hits, tries: s.tries, streak: s.streak, bestStreak: s.bestStreak, items: s.items, fx: { used: s.fx.used }, pick: s.pick, M: s.M, mode: s.mode, size: s.size, misses: s.misses.filter((m) => m.p === 1),
+    toPlace: [s.toPlace[0].length, s.toPlace[1].map((id) => s.cards[id].pair)], cards: s.cards.map((c) => ({ pos: c.pos, gone: c.gone, pair: c.gone || c.owner === 1 ? c.pair : null })) };
+}
+net.state = () => { if (net.host && G?.kind === 'online') net.send({ k: 'state', v: guestView() }); };
+// guest actions go to the host
+net.guestTap = (pos) => { const s = G.gs; if (!s || s.phase !== 'battle' || s.turn !== 1 || G.busy) return;
+  if (G.armed) { const k = G.armed; G.armed = null; renderItems(); return net.send({ k: 'item', kind: k, pos }); }
+  const v = G.view.cards.find((x) => x.pos === pos); if (!v) return;
+  if (s.pick == null && v.owner !== 1) return toast('Flip one of <b>your</b> red cards first!');
+  if (s.pick != null && v.owner === 1) return toast('Now pick one of <b>their</b> blue cards!');
+  net.send({ k: 'flip', pos }); };
+net.guestPlace = (pos) => net.send({ k: 'place', pos });
+async function onNet(m) {
+  if (m.k === 'hi') { net.oppName = m.name; return; }
+  if (net.host) {
+    const s = G?.s;
+    if (m.k === 'place' && s?.phase === 'place') { if (ME.place(s, 1, m.pos)) { const id = s.cards.findIndex((c) => c.pos === m.pos && c.owner === 1); const v = G.view.cards[id]; v.pos = m.pos; place(v); paint(v); net.state(); if (ME.placed(s) && placing == null) startBattleNow(); } return; }
+    if (m.k === 'auto' && s?.phase === 'place') { ME.autoPlace(s, 1); syncView(0); net.state(); net.send({ k: 'memorize' }); if (ME.placed(s) && placing == null) setTimeout(() => startBattleNow(), 4000 + s.pairs * 250); return; }
+    if (m.k === 'flip' && s?.phase === 'battle' && s.turn === 1 && !G.busy) { G.busy = true; const res = ME.flip(s, m.pos); net.send({ k: 'res', res: maskRes(res) }); await show(res); G.busy = false; net.state(); return; }
+    if (m.k === 'item' && s?.phase === 'battle' && s.turn === 1) { const r = ME.useItem(s, m.kind, m.pos); if (r) { const rev = r.reveal?.map((p) => ({ pos: p, pair: s.cards[s.slots[p]].pair })); net.send({ k: 'itemres', r: { ...r, reveal: rev } }); itemEffect({ kind: r.kind }, 1, false); net.state(); } return; }
+  }
+  if (m.k === 'emote') return emoteAt(m.p, m.e);
+  if (m.k === 'again') { net.votes.add('them'); return tryRematch(); }
+  if (!net.host) {
+    if (m.k === 'cfg') { newMatch({ ...m.cfg, kind: 'guest', me: 1 }); G.gs = null; msg('Place your <span style="color:var(--p1)">red</span> cards. Remember them!'); return; }
+    if (m.k === 'state') return guestState(m.v);
+    if (m.k === 'res') { G.busy = true; await show(m.res); G.busy = false; return; }
+    if (m.k === 'endturn') { G.busy = true; await animateMove(m.move); G.busy = false; if (m.bonus && m.turn === 1) banner('💪 DESPERATION BONUS<small>+1 Peek</small>', '#ffd43b', 1500); return; }
+    if (m.k === 'itemres') { await itemEffect(m.r, 1, false); await flashKnown(m.r.reveal || [], m.r.ms); return; }
+    if (m.k === 'memorize') { G.gs && G.view.cards.forEach((v) => { if (v.owner === 1) { v.up = true; paint(v); } }); setTimeout(() => G && G.view.cards.forEach((v) => { if (v.owner === 1) { v.up = false; paint(v); } }), 4000 + (G.gs?.size || 20) * 125); return; }
+    if (m.k === 'start') { $('placeBar').hidden = true; $('bottom').hidden = false; banner('MEMORY DUEL!<small>You are red. Flip one of your cards, then find its twin.</small>', '#fff', 1500); return; }
+    if (m.k === 'over') return guestOver();
+  }
+}
+const maskRes = (r) => ({ type: r.type, pos: r.pos, first: r.first, card: { pair: r.card.pair }, pts: r.pts, stolen: r.stolen, streak: r.streak, doubled: r.doubled, wanted: r.wanted && { pair: r.wanted.pair }, wasted: r.wasted });
+async function flashKnown(list, ms) { const vs = list.map((x) => { const v = G.view.cards.find((c) => c.pos === x.pos); if (v) { v.pair = x.pair; v.up = true; paint(v); } return v; }).filter(Boolean); await sleep(ms); vs.forEach((v) => { v.up = false; if (v.owner !== 1) v.pair = null; paint(v); }); }
+function guestState(v) {
+  G.gs = v;
+  v.cards.forEach((c, i) => { const x = G.view.cards[i]; x.pos = c.pos; x.gone = c.gone; x.pair = c.pair ?? (x.up ? x.pair : null); place(x); paint(x); });
+  if (v.phase === 'place') {
+    const left = v.toPlace[1];
+    $('placeBar').hidden = !left.length; $('bottom').hidden = true;
+    if (left.length) { $('nextCard').textContent = face(left[0]); $('nextCard').style.borderColor = 'var(--p1)'; $('placeT').textContent = `Card ${v.size / 2 - left.length + 1} of ${v.size / 2}`; msg('Place your <span style="color:var(--p1)">red</span> cards. Remember them!'); placing = 1; }
+    else { placing = null; msg('Waiting for your opponent to finish placing…'); }
+    // your own cards flip face down right after placing
+    G.view.cards.forEach((x) => { if (x.owner === 1 && x.pos >= 0 && !x.seen) { x.seen = true; x.up = true; paint(x); setTimeout(() => { x.up = false; paint(x); }, 650); } });
+  } else { placing = null; $('placeBar').hidden = true; $('bottom').hidden = v.phase !== 'battle'; }
+  hud(); renderItems();
+  if (v.phase === 'battle' && !G.busy) { if (v.turn === 1) msg(v.pick == null ? '<span style="color:var(--p1)">Your turn:</span> flip one of your red cards' : 'Now pick one of their blue cards!'); else msg(`<span style="color:var(--p0)">${G.names[0]}</span> is thinking…`); }
+}
+function guestOver() {
+  const v = G.gs; G.over = true; $('bottom').hidden = true;
+  const [a, b] = v.score, won = b > a;
+  (won ? SFX.win : SFX.lose)(); if (won) confetti();
+  $('endT').textContent = a === b ? "IT'S A TIE!" : won ? 'YOU WIN! 🏆' : 'YOU LOSE 😭';
+  $('endS').textContent = `${G.names[0]} ${a} · ${b} ${G.names[1]}`;
+  $('endStats').innerHTML = [0, 1].map((p) => `<div><span style="color:${p ? 'var(--p1)' : 'var(--p0)'}">${G.names[p]}</span><b>${v.hits[p]} pairs</b>accuracy ${v.tries[p] ? Math.round(v.hits[p] / v.tries[p] * 100) : 0}% · best streak ${v.bestStreak[p]}</div>`).join('');
+  const m = v.misses.sort((x, y) => y.dist - x.dist)[0];
+  $('endJoke').innerHTML = m ? `🤔 Your wildest guess was ${m.dist} space${m.dist === 1 ? '' : 's'} away. ${pick(['Your brain confidently betrayed you.', 'You KNEW where it was. Didn\'t you.'])}` : '🧠 Not a single wrong guess!';
+  $('revealB').hidden = true; $('lb').hidden = true; $('againB').textContent = '↻ Rematch'; $('endOv').hidden = false;
+}
+// guest placement: auto
+const _auto = $('autoB').onclick;
+$('autoB').onclick = (e) => { if (G?.kind === 'guest') { net.send({ k: 'auto' }); $('placeBar').hidden = true; return; } _auto(e); };
+net.rematch = () => { net.votes.add('me'); net.send({ k: 'again' }); $('endS').textContent = 'Waiting for your opponent…'; $('endOv').hidden = false; tryRematch(); };
+function tryRematch() { if (!net.votes.has('me') || !net.votes.has('them')) return; net.votes.clear(); $('endOv').hidden = true; $('revealB').hidden = false; G = null; if (net.host) hostStart(); }
+net.leave = async (quiet) => {
+  if (!net.on) return;
+  const c = net.code, host = net.host;
+  net.on = false; net.unsub?.(); net.unsub = null;
+  try { net.peer?.pc.close(); } catch {}
+  net.peer = null; net.room = null; net.votes.clear();
+  if (c) { net.code = c; await mutate((r) => { delete r.players[meId]; delete r.sig[meId]; if (host) r.phase = 'play'; return r; }); net.code = ''; }
+  history.replaceState(null, '', location.pathname + location.search);
+  if (!quiet) { G = null; screen('homeScr'); }
+};
+$('quickB').onclick = () => { if (setup.items.length !== 3) return toast('Pick 3 items'); quickMatch(); };
+$('createB').onclick = () => { if (setup.items.length !== 3) return toast('Pick 3 items'); createRoom(false); };
+$('joinB').onclick = () => { const c = $('codeIn').value.toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length !== 5) return toast('Room codes have 5 characters'); joinRoom(c); };
+addEventListener('pagehide', () => { if (net.on) net.leave(true); });
+
+// ---------- start ----------
+window.mdState = () => G; // for tests and the preview recorder
+window.startDemo = () => { newMatch({ kind: 'demo', size: 28, mode: 'extreme', items: ['preview', 'double', 'peek'], pack: 'animals', events: true, names: ['Blue Bot', 'Red Bot'], cpu: 2 }); };
+if (window.MD_OFFLINE) $('onlineB').hidden = true;
+const hash = location.hash.slice(1);
+if (/^c=/.test(hash)) { const [seed, size, mode, score] = hash.slice(2).split('-'); const ch = { seed: +seed, size: +size, mode, score: +score || 0 };
+  if (ME.DIMS[ch.size] && ME.MODES[ch.mode]) { $('chalBox').hidden = false; $('chalBox').innerHTML = `<b>⚔️ You've been challenged!</b><span>${ch.size} cards · ${ME.MODES[ch.mode].name}${ch.score ? ` · their score: <b>${ch.score.toLocaleString()}</b>` : ''}</span><button class="cta" id="chGo">Accept the challenge</button>`; $('chGo').onclick = () => startChallenge(ch); } }
+else if (/^[A-Z0-9]{5}$/i.test(hash) && !window.MD_OFFLINE) { openSetup('online'); setTimeout(() => joinRoom(hash.toUpperCase()), 300); }
+</script>
+</body>
+</html>
