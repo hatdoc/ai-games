@@ -7,36 +7,62 @@
   // ---------- moves (frames at 60 fps) ----------
   // hit: [x, y, w, h] in front of the fighter (x grows forward). level: high (whiffs on crouchers), mid, low, over (jump-in), throw
   const M = {
-    jab: { start: 5, act: 3, rec: 9, dmg: 5, hit: [18, 118, 74, 24], level: 'high', hs: 15, bs: 9, push: 4, cancel: { p: 'jab2' }, pose: 'jab' },
-    jab2: { start: 6, act: 3, rec: 12, dmg: 6, hit: [18, 116, 78, 26], level: 'high', hs: 17, bs: 10, push: 5, cancel: { k: 'roundhouse' }, pose: 'cross' },
-    roundhouse: { start: 10, act: 4, rec: 20, dmg: 12, hit: [18, 92, 96, 44], level: 'mid', kd: true, bs: 14, push: 10, pose: 'roundhouse' },
-    kick: { start: 9, act: 4, rec: 15, dmg: 9, hit: [22, 68, 98, 32], level: 'mid', hs: 18, bs: 12, push: 7, cancel: { k: 'kick2' }, pose: 'kick' },
-    kick2: { start: 9, act: 4, rec: 18, dmg: 10, hit: [22, 112, 98, 32], level: 'high', hs: 18, bs: 12, push: 9, pose: 'highkick' },
-    lowpunch: { start: 5, act: 3, rec: 10, dmg: 4, hit: [16, 38, 74, 24], level: 'low', hs: 13, bs: 8, push: 4, crouch: true, pose: 'lowpunch' },
-    sweep: { start: 10, act: 4, rec: 22, dmg: 8, hit: [16, 2, 112, 26], level: 'low', kd: true, bs: 12, push: 6, crouch: true, pose: 'sweep' },
-    power: { start: 12, act: 4, rec: 20, dmg: 13, hit: [22, 100, 84, 38], level: 'mid', hs: 22, bs: 14, push: 16, lunge: 4, pose: 'power' },
+    // strings: a move's cancel says which button continues it (only when the previous hit landed or was blocked)
+    jab: { start: 5, act: 3, rec: 9, dmg: 5, hit: [18, 118, 74, 24], level: 'high', hs: 15, bs: 9, push: 4, cancel: { p: 'jab2', k: 'jabkick' }, pose: 'jab' },
+    jab2: { start: 6, act: 3, rec: 12, dmg: 6, hit: [18, 116, 78, 26], level: 'high', hs: 17, bs: 10, push: 5, cancel: { k: 'roundhouse', p: 'hook' }, pose: 'cross' },
+    roundhouse: { start: 10, act: 4, rec: 20, dmg: 12, hit: [18, 92, 96, 44], level: 'mid', kd: true, bs: 14, push: 10, pose: 'roundhouse', combo: 'Whirlwind' },
+    hook: { start: 7, act: 3, rec: 14, dmg: 7, hit: [16, 104, 74, 34], level: 'mid', hs: 19, bs: 11, push: 5, cancel: { k: 'finisher' }, pose: 'hook', combo: 'Triple Punch' },
+    jabkick: { start: 8, act: 4, rec: 16, dmg: 9, hit: [22, 70, 96, 34], level: 'mid', hs: 18, bs: 12, push: 8, pose: 'kick', combo: 'One-Two Kick' },
+    kick: { start: 9, act: 4, rec: 15, dmg: 9, hit: [22, 68, 98, 32], level: 'mid', hs: 18, bs: 12, push: 7, cancel: { k: 'kick2', p: 'kickpunch' }, pose: 'kick' },
+    kick2: { start: 9, act: 4, rec: 18, dmg: 10, hit: [22, 112, 98, 32], level: 'high', hs: 18, bs: 12, push: 9, cancel: { k: 'axe' }, pose: 'highkick', combo: 'Double Kick' },
+    axe: { start: 12, act: 4, rec: 22, dmg: 12, hit: [18, 30, 92, 140], level: 'mid', kd: true, bs: 14, push: 8, pose: 'axe', combo: 'Triple Kick' },
+    kickpunch: { start: 7, act: 3, rec: 15, dmg: 8, hit: [18, 110, 80, 30], level: 'high', hs: 19, bs: 11, push: 9, pose: 'cross', combo: 'Kick Punch' },
+    lowpunch: { start: 5, act: 3, rec: 10, dmg: 4, hit: [16, 38, 74, 24], level: 'low', hs: 13, bs: 8, push: 4, crouch: true, cancel: { p: 'lowpunch2', k: 'sweep' }, pose: 'lowpunch' },
+    lowpunch2: { start: 6, act: 3, rec: 11, dmg: 4, hit: [16, 38, 74, 24], level: 'low', hs: 13, bs: 8, push: 4, crouch: true, cancel: { k: 'sweep' }, pose: 'lowpunch', combo: 'Low Jabs' },
+    sweep: { start: 10, act: 4, rec: 22, dmg: 8, hit: [16, 2, 112, 26], level: 'low', kd: true, bs: 12, push: 6, crouch: true, pose: 'sweep', combo: 'Low Rush' },
+    power: { start: 12, act: 4, rec: 20, dmg: 13, hit: [22, 100, 84, 38], level: 'mid', hs: 22, bs: 14, push: 16, lunge: 4, cancel: { k: 'powerkick' }, pose: 'power' },
+    powerkick: { start: 9, act: 4, rec: 20, dmg: 11, hit: [20, 80, 96, 44], level: 'mid', kd: true, bs: 14, push: 10, pose: 'roundhouse', combo: 'Power Combo' },
     launcher: { start: 14, act: 4, rec: 16, dmg: 10, hit: [16, 60, 74, 115], level: 'mid', launch: 15, bs: 16, push: 2, pose: 'uppercut' },
     jumpP: { start: 5, act: 7, rec: 6, dmg: 7, hit: [8, 70, 72, 34], level: 'over', hs: 16, bs: 10, push: 4, air: true, pose: 'airpunch' },
     jumpK: { start: 7, act: 9, rec: 6, dmg: 9, hit: [12, 22, 84, 44], level: 'over', hs: 18, bs: 12, push: 5, air: true, pose: 'airkick' },
     throw: { start: 6, act: 2, rec: 30, dmg: 20, hit: [8, 50, 66, 100], level: 'throw', kd: true, push: 0, pose: 'throw' },
   };
+  // each fighter's own 4-hit ending: punch, punch, punch, KICK
+  const FINISHERS = {
+    dragonrush: { combo: 'Dragon Rush', start: 9, act: 5, rec: 22, dmg: 14, hit: [10, 70, 80, 120], level: 'mid', launch: 16, bs: 16, push: 4, pose: 'uppercut' },
+    phantom: { combo: 'Phantom Flurry', start: 6, act: 15, rec: 16, dmg: 4, hit: [16, 60, 96, 70], level: 'mid', hs: 14, bs: 8, push: 2, multi: 5, kdLast: true, lunge: 4, pose: 'kick' },
+    wrecking: { combo: 'Wrecking Ball', start: 12, act: 5, rec: 24, dmg: 18, hit: [16, 40, 90, 120], level: 'mid', kd: true, bs: 16, push: 14, lunge: 7, pose: 'power' },
+    crane: { combo: 'Crane Kick', start: 8, act: 7, rec: 20, dmg: 14, hit: [10, 80, 104, 70], level: 'mid', kd: true, bs: 14, push: 9, rise: 9, pose: 'flykick' },
+    storm: { combo: 'Capoeira Storm', start: 7, act: 18, rec: 18, dmg: 5, hit: [-24, 60, 132, 70], level: 'mid', hs: 14, bs: 8, push: 3, multi: 6, kdLast: true, spin: true, pose: 'cyclone' },
+    suplex: { combo: 'Suplex', start: 10, act: 4, rec: 26, dmg: 17, hit: [6, 50, 80, 110], level: 'mid', launch: 13, bs: 16, push: 2, pose: 'throw' },
+    shadowstrike: { combo: 'Shadow Strike', start: 10, act: 4, rec: 18, dmg: 13, hit: [10, 60, 74, 90], level: 'mid', kd: true, bs: 14, push: 8, teleport: true, pose: 'flykick' },
+    cometup: { combo: 'Comet Uppercut', start: 6, act: 10, rec: 20, dmg: 7, hit: [12, 70, 78, 110], level: 'mid', hs: 16, bs: 10, push: 2, multi: 5, launchLast: 15, lunge: 3, pose: 'uppercut' },
+  };
   const SPECIALS = {
     dragon: { name: 'Rising Dragon', start: 4, act: 12, rec: 26, dmg: 16, hit: [4, 60, 72, 150], level: 'mid', launch: 18, bs: 18, push: 3, meter: 50, inv: 9, rise: 13, pose: 'dragon' },
     shadow: { name: 'Shadow Dash', start: 8, act: 14, rec: 18, dmg: 15, hit: [8, 50, 74, 90], level: 'mid', kd: true, bs: 12, push: 8, meter: 50, lunge: 17, pose: 'flykick' },
     quake: { name: 'Earthquake', start: 18, act: 2, rec: 24, dmg: 0, level: 'mid', meter: 50, wave: { speed: 9, life: 60, dmg: 11 }, pose: 'stomp' },
-    cyclone: { name: 'Cyclone Kick', start: 7, act: 18, rec: 18, dmg: 6, hit: [-20, 72, 124, 70], level: 'mid', hs: 14, bs: 8, push: 3, meter: 50, multi: 6, lunge: 4, kdLast: true, pose: 'cyclone' },
+    cyclone: { name: 'Cyclone Kick', start: 7, act: 18, rec: 18, dmg: 6, hit: [-20, 72, 124, 70], level: 'mid', hs: 14, bs: 8, push: 3, meter: 50, multi: 6, lunge: 4, kdLast: true, spin: true, pose: 'cyclone' },
+    ginga: { name: 'Ginga Sweep', start: 8, act: 18, rec: 18, dmg: 6, hit: [-30, 0, 144, 40], level: 'low', hs: 14, bs: 8, push: 3, meter: 50, multi: 6, lunge: 3, kdLast: true, crouch: true, spin: true, pose: 'sweep' },
+    bearhug: { name: 'Bear Hug', start: 12, act: 4, rec: 34, dmg: 22, hit: [6, 40, 90, 110], level: 'throw', range: 108, kd: true, push: 0, meter: 50, pose: 'throw' },
+    smoke: { name: 'Smoke Step', start: 14, act: 4, rec: 18, dmg: 15, hit: [10, 60, 74, 90], level: 'mid', kd: true, bs: 14, push: 8, meter: 50, inv: 14, teleport: true, pose: 'flykick' },
+    comet: { name: 'Comet Punch', start: 6, act: 15, rec: 20, dmg: 5, hit: [16, 90, 82, 50], level: 'mid', hs: 16, bs: 8, push: 2, meter: 50, multi: 5, lunge: 9, launchLast: 15, pose: 'power' },
   };
   const CHARS = {
-    kenji: { name: 'Kenji', style: 'Balanced', speed: 1, jump: 1, hp: 140, dmg: 1, reach: 1, special: 'dragon', color: '#e03131', trim: '#fff', skin: '#f1c27d', hair: '#222' },
-    vex: { name: 'Vex', style: 'Fast', speed: 1.25, jump: 1.08, hp: 134, dmg: 1, reach: 0.95, special: 'shadow', color: '#7048e8', trim: '#e5dbff', skin: '#c68642', hair: '#f8f9fa' },
-    tank: { name: 'Tank', style: 'Heavy', speed: 0.82, jump: 0.9, hp: 155, dmg: 1.06, reach: 1.05, special: 'quake', color: '#2f9e44', trim: '#ffd43b', skin: '#8d5524', hair: '#111', big: true },
-    lin: { name: 'Lin', style: 'Long legs', speed: 1.05, jump: 1.02, hp: 138, dmg: 1, reach: 1.15, special: 'cyclone', color: '#1c7ed6', trim: '#ffe066', skin: '#ffe0bd', hair: '#5c2b0c' },
+    kenji: { name: 'Kenji', style: 'Balanced', speed: 1, jump: 1, hp: 140, dmg: 1, reach: 1, special: 'dragon', finisher: 'dragonrush', color: '#e03131', trim: '#fff', skin: '#f1c27d', hair: '#222' },
+    vex: { name: 'Vex', style: 'Fast', speed: 1.25, jump: 1.08, hp: 140, dmg: 1.04, reach: 0.95, special: 'shadow', finisher: 'phantom', color: '#7048e8', trim: '#e5dbff', skin: '#c68642', hair: '#f8f9fa' },
+    tank: { name: 'Tank', style: 'Heavy', speed: 0.82, jump: 0.9, hp: 146, dmg: 1.02, reach: 1.05, special: 'quake', finisher: 'wrecking', color: '#2f9e44', trim: '#ffd43b', skin: '#8d5524', hair: '#111', big: true },
+    lin: { name: 'Lin', style: 'Long legs', speed: 1.05, jump: 1.02, hp: 138, dmg: 1, reach: 1.15, special: 'cyclone', finisher: 'crane', color: '#1c7ed6', trim: '#ffe066', skin: '#ffe0bd', hair: '#5c2b0c' },
+    rosa: { name: 'Rosa', style: 'Capoeira', speed: 1.12, jump: 1.1, hp: 134, dmg: 0.98, reach: 1.08, special: 'ginga', finisher: 'storm', color: '#f76707', trim: '#fff3bf', skin: '#a0522d', hair: '#3b1f0e' },
+    bruno: { name: 'Bruno', style: 'Wrestler', speed: 0.84, jump: 0.88, hp: 144, dmg: 1, reach: 0.95, special: 'bearhug', finisher: 'suplex', color: '#c2255c', trim: '#ffd43b', skin: '#d9a066', hair: '#111', big: true },
+    mei: { name: 'Mei', style: 'Ninja', speed: 1.2, jump: 1.15, hp: 134, dmg: 0.98, reach: 1, special: 'smoke', finisher: 'shadowstrike', color: '#343a40', trim: '#e03131', skin: '#ffe0bd', hair: '#111' },
+    ace: { name: 'Ace', style: 'Boxer', speed: 1.08, jump: 0.95, hp: 142, dmg: 1.02, reach: 0.92, special: 'comet', finisher: 'cometup', color: '#1971c2', trim: '#f8f9fa', skin: '#6b3e26', hair: '#111', gloves: '#e03131' },
   };
 
   function fighter(id, x, face) {
     const c = CHARS[id];
     return { id, x, y: 0, vx: 0, vy: 0, face, hp: c.hp, max: c.hp, meter: 0, state: 'idle', t: 0, move: null, mt: 0, hits: 0, hitAt: -99,
-      combo: 0, juggle: 0, prev: {}, buf: null, inv: 0, wins: 0 };
+      combo: 0, juggle: 0, prev: {}, q: [], inv: 0, wins: 0 };
   }
   function create(opt) {
     const s = { p: [fighter(opt.p1, 520, 1), fighter(opt.p2, 880, -1)], round: 1, phase: 'intro', pt: 0, timer: ROUND_FRAMES, events: [], waves: [], freeze: 0, frame: 0, winner: null };
@@ -44,7 +70,7 @@
     return s;
   }
   const char = (f) => CHARS[f.id];
-  const moveOf = (f, name) => (name === 'special' ? SPECIALS[char(f).special] : M[name]);
+  const moveOf = (f, name) => (name === 'special' ? SPECIALS[char(f).special] : name === 'finisher' ? FINISHERS[char(f).finisher] : M[name]);
   const airborne = (f) => f.y > 0 || f.state === 'jump' || f.state === 'launched';
   function hurtbox(f) {
     if (f.state === 'down' || f.state === 'ko') return null;
@@ -63,7 +89,7 @@
   function startMove(s, f, name) {
     const m = moveOf(f, name);
     if (m.meter) { if (f.meter < m.meter) return false; f.meter -= m.meter; s.events.push({ e: 'special', who: s.p.indexOf(f), name: m.name }); }
-    f.move = m; f.mname = name; f.mt = 0; f.hits = 0; f.state = 'attack'; f.buf = null;
+    f.move = m; f.mname = name; f.mt = 0; f.hits = 0; f.state = 'attack'; f.chained = false;
     if (!m.air) f.vx = 0;
     if (m.inv) f.inv = m.inv;
     return true;
@@ -77,9 +103,10 @@
     if (s.phase !== 'fight') { if (['idle', 'walk', 'crouch', 'block', 'cblock'].includes(f.state)) { f.state = 'idle'; f.vx = 0; } return; }
     // buffered string input (P,P,K …) while an attack is running
     if (f.state === 'attack') {
-      for (const b of ['p', 'k']) if (pr[b]) f.buf = b;
+      for (const b of ['p', 'k']) if (pr[b] && f.q.length < 3) f.q.push(b); // presses queue up in order (fast P,P,P,K still works)
       const m = f.move, end = m.start + m.act + m.rec;
-      if (f.buf && m.cancel?.[f.buf] && f.hitAt === f.mt0 && f.mt > m.start && f.mt < end - 2) { startMove(s, f, m.cancel[f.buf]); }
+      while (f.q.length && !m.cancel?.[f.q[0]]) f.q.shift(); // a button this move can't continue with is dropped
+      if (f.q.length && f.hitAt === f.mt0 && f.mt > m.start && f.mt < end - 2) { startMove(s, f, m.cancel[f.q.shift()]); f.chained = true; }
       return;
     }
     if (!['idle', 'walk', 'crouch', 'block', 'cblock', 'jump'].includes(f.state)) return;
@@ -129,15 +156,17 @@
     const dmg = Math.max(1, Math.round(m.dmg * char(a).dmg * scale));
     d.hp = Math.max(0, d.hp - dmg); d.combo++;
     a.meter = Math.min(100, a.meter + dmg); d.meter = Math.min(100, d.meter + dmg * 0.7);
-    d.move = null; d.buf = null;
+    d.move = null; d.q = [];
     const heavy = dmg >= 12 || m.launch || m.kd;
     s.freeze = heavy ? 8 : 5;
     s.events.push({ e: m.level === 'throw' ? 'throw' : 'hit', who: di, dmg, heavy, combo: d.combo, x: d.x - d.face * 10, y: m.hit ? a.y + m.hit[1] + m.hit[3] / 2 : 110 });
-    if (m.level === 'throw') { d.state = 'launched'; d.vy = 11; d.vx = 6 * a.face; d.x = a.x + 40 * a.face; d.juggle = 9; return true; }
+    if (a.chained && m.combo && !(m.multi && a.hits)) s.events.push({ e: 'string', who: ai, name: m.combo });
+    if (m.level === 'throw') { d.state = 'launched'; d.vy = m.range ? 15 : 11; d.vx = 6 * a.face; d.x = a.x + 40 * a.face; d.juggle = 9; return true; }
     if (airborne(d)) { // juggle
       d.juggle++;
       d.state = 'launched'; d.vy = d.juggle > 4 ? -2 : Math.max(d.vy, m.launch ? 13 : 8); d.vx = 2.5 * a.face;
     } else if (m.launch) { d.state = 'launched'; d.vy = m.launch; d.vx = 1.5 * a.face; d.juggle = 0; }
+    else if (multiLast && m.launchLast) { d.state = 'launched'; d.vy = m.launchLast; d.vx = 1.5 * a.face; d.juggle = 0; }
     else if (m.kd || multiLast) { d.state = 'launched'; d.vy = 7; d.vx = 7 * a.face; d.juggle = 9; }
     else { d.state = 'hstun'; d.t = m.hs || 14; d.vx = (m.push || 4) * a.face; }
     if (d.hp <= 0) { d.state = 'launched'; d.vy = 12; d.vx = 8 * a.face; d.juggle = 9; }
@@ -154,8 +183,13 @@
         if (m.lunge && f.mt > m.start * 0.5 && f.mt <= m.start + m.act) f.vx = m.lunge * f.face * (m === SPECIALS.shadow ? 1 : c.speed);
         else if (!m.air) f.vx *= 0.7;
         if (m.rise && f.mt === m.start) { f.vy = m.rise; f.vx = 3 * f.face; }
+        if (m.teleport && f.mt === m.start - 3) { // vanish and reappear behind them
+          s.events.push({ e: 'smoke', x: f.x, y: 90 });
+          const side = o.x >= f.x ? 1 : -1; f.x = Math.max(WALL, Math.min(W - WALL, o.x + side * 72)); f.face = -side;
+          s.events.push({ e: 'smoke', x: f.x, y: 90 });
+        }
         if (m.wave && f.mt === m.start + 1) { s.waves.push({ x: f.x + 50 * f.face, dir: f.face, life: m.wave.life, owner: s.p.indexOf(f), dmg: m.wave.dmg, hit: false }); s.events.push({ e: 'quake', x: f.x }); }
-        if (f.mt > m.start + m.act + m.rec && (!m.air || f.y === 0)) { f.state = f.y > 0 ? 'jump' : 'idle'; f.move = null; }
+        if (f.mt > m.start + m.act + m.rec && (!m.air || f.y === 0)) { f.state = f.y > 0 ? 'jump' : 'idle'; f.move = null; f.q = []; }
         break;
       }
       case 'hstun': case 'bstun': if (--f.t <= 0) f.state = 'idle'; f.vx *= 0.85; break;
@@ -182,7 +216,7 @@
     const ins = [in1 || {}, in2 || {}], [a, b] = s.p;
     if (s.freeze > 0) { // hit-stop: freeze, but remember buttons pressed meanwhile so strings still come out
       s.freeze--;
-      for (let i = 0; i < 2; i++) { const f = s.p[i], pr = presses(f, ins[i]); if (f.state === 'attack' && (pr.p || pr.k)) f.buf = pr.k ? 'k' : 'p'; }
+      for (let i = 0; i < 2; i++) { const f = s.p[i], pr = presses(f, ins[i]); if (f.state === 'attack') for (const b of ['p', 'k']) if (pr[b] && f.q.length < 3) f.q.push(b); }
       return;
     }
     s.frame++; s.pt++;
@@ -200,17 +234,20 @@
       for (const f of [a, b]) f.x = Math.max(WALL, Math.min(W - WALL, f.x));
       if (Math.abs(b.x - a.x) < gap - 1) { if (a.x <= WALL + 1) b.x = a.x + gap; else if (b.x <= WALL + 1) a.x = b.x + gap; else if (a.x >= W - WALL - 1) b.x = a.x - gap; else if (b.x >= W - WALL - 1) a.x = b.x - gap; }
     }
-    // attacks connect
+    // attacks connect: find both fighters' hits first, then apply them, so same-frame hits trade (no player-1 advantage)
+    const landed = [];
     for (const [f, o, oi] of [[a, b, 1], [b, a, 0]]) {
       if (f.state !== 'attack' || !f.move.hit) continue;
       const m = f.move, active = f.mt > m.start && f.mt <= m.start + m.act;
       if (!active) continue;
       const maxHits = m.multi ? Math.ceil(m.act / m.multi) : 1;
       if (f.hits >= maxHits || (m.multi && f.hits && (f.mt - m.start - 1) % m.multi)) continue;
-      if (m.level === 'throw' ? Math.abs(o.x - f.x) < 96 && overlap(hitbox(f), hurtbox(o)) : overlap(hitbox(f), hurtbox(o))) {
-        if (applyHit(s, f, o, ins[oi], m, m.kdLast && f.hits === maxHits - 1)) { f.hits++; if (m.lunge) f.vx = 0; if (o.hp <= 0) endRound(s, s.p.indexOf(f), 'ko'); }
-        else if (m.level === 'throw') f.hits = maxHits;
-      }
+      if (m.level === 'throw' ? Math.abs(o.x - f.x) < (m.range || 96) && overlap(hitbox(f), hurtbox(o)) : overlap(hitbox(f), hurtbox(o))) landed.push([f, o, oi, m, maxHits]);
+    }
+    if (landed.length === 2 && landed.some(([, , , m]) => m.level === 'throw')) landed.splice(landed.findIndex(([, , , m]) => m.level === 'throw'), 1); // strikes beat throws
+    for (const [f, o, oi, m, maxHits] of landed) {
+      if (applyHit(s, f, o, ins[oi], m, (m.kdLast || m.launchLast) && f.hits === maxHits - 1)) { f.hits++; if (m.lunge) f.vx = 0; if (o.hp <= 0) endRound(s, s.p.indexOf(f), 'ko'); }
+      else if (m.level === 'throw') f.hits = maxHits;
     }
     // Earthquake shockwaves travel along the floor
     for (const w of s.waves) {
@@ -268,7 +305,8 @@
     if (mem.hold > 0) { mem.hold--; Object.assign(inp, mem.keys); if (mem.tap) { inp[mem.tap] = true; mem.tap = null; } return inp; }
     // continue a string or juggle
     if (f.state === 'attack') {
-      if (f.hitAt === f.mt0 && f.move.cancel && rnd() < L.combo) { const b = Object.keys(f.move.cancel)[0]; inp[b] = !f.prev[b]; }
+      if (f.hitAt === f.mt0 && f.move.cancel && rnd() < L.combo) { mem.br ??= rnd() < 0.5 ? 0 : 1; const ks = Object.keys(f.move.cancel), b = ks[Math.min(mem.br, ks.length - 1)]; inp[b] = !f.prev[b]; }
+      else mem.br = null;
       return inp;
     }
     if (o.state === 'launched' && o.juggle < 3 && dist < 150 && f.state !== 'jump' && rnd() < L.combo) return set({}, 2, o.y > 60 ? 'p' : 'k');
@@ -276,7 +314,8 @@
     mem.think = L.think + Math.floor(rnd() * L.think);
     // punish a whiffed / blocked heavy move
     if (o.state === 'attack' && o.mt > o.move.start + o.move.act && dist < 150 && rnd() < L.punish) return set({}, 2, rnd() < 0.5 ? 'p' : 'k');
-    if (f.meter >= 50 && dist < (f.id === 'tank' ? 600 : f.id === 'vex' ? 330 : 160) && rnd() < 0.3 * L.aggro + 0.1) return set({}, 2, 's');
+    const SR = { tank: 600, vex: 330, mei: 520, ace: 270, rosa: 170, bruno: 115 };
+    if (f.meter >= 50 && dist < (SR[f.id] || 160) && rnd() < 0.3 * L.aggro + 0.1) return set({}, 2, 's');
     if (dist > 240) {
       const r = rnd();
       if (r < 0.06 * L.aggro) return set({ [fwdKey]: true, u: true }, 3);
@@ -299,5 +338,5 @@
     return set({ [backKey]: true, d: true }, 8);
   }
 
-  globalThis.FD = { create, step, cpu, CHARS, SPECIALS, M, W, ROUND_FRAMES, hurtbox, hitbox };
+  globalThis.FD = { create, step, cpu, CHARS, SPECIALS, FINISHERS, M, W, ROUND_FRAMES, hurtbox, hitbox, moveOf };
 })();

@@ -20,6 +20,8 @@
     flykick: { tor: -24, head: 6, ua1: 120, fa1: 150, ua2: 30, fa2: 80, th1: -60, sh1: -110, th2: 100, sh2: 100, hip: 80, rot: 0 },
     stomp: { tor: -6, head: -6, ua1: 120, fa1: 170, ua2: 125, fa2: 175, th1: -8, sh1: -4, th2: 80, sh2: 0, hip: 92, rot: 0 },
     cyclone: { tor: -18, head: 6, ua1: -60, fa1: -40, ua2: 120, fa2: 140, th1: 0, sh1: 0, th2: 104, sh2: 100, hip: 94, rot: 0 },
+    hook: { tor: 18, head: 4, ua1: 40, fa1: 130, ua2: 88, fa2: 140, th1: -26, sh1: -12, th2: 24, sh2: 6, hip: 86, rot: 0 },
+    axe: { tor: -18, head: 8, ua1: 30, fa1: 110, ua2: 20, fa2: 100, th1: -4, sh1: 0, th2: 150, sh2: 150, hip: 92, rot: 0 },
     throw: { tor: 18, head: 4, ua1: 88, fa1: 80, ua2: 88, fa2: 76, th1: -26, sh1: -12, th2: 26, sh2: 6, hip: 86, rot: 0 },
     jump: { tor: 4, head: 0, ua1: 110, fa1: 150, ua2: 120, fa2: 155, th1: 60, sh1: -50, th2: 85, sh2: -25, hip: 90, rot: 0 },
     airpunch: { tor: 14, head: 4, ua1: 70, fa1: 130, ua2: 110, fa2: 100, th1: 60, sh1: -50, th2: 80, sh2: -30, hip: 90, rot: 0 },
@@ -41,7 +43,8 @@
         const m = f.move, pose = P[m.pose] || P.jab, base = m.air ? P.jump : m.crouch ? P.crouch : P.idle;
         const t = f.mt <= m.start ? ease(f.mt / m.start) : f.mt <= m.start + m.act ? 1 : 1 - ease((f.mt - m.start - m.act) / m.rec);
         const o = mix(base, pose, t);
-        if (m.pose === 'cyclone' && f.mt > m.start) o.spin = Math.floor((f.mt - m.start) / 4) % 2;
+        if (m.spin && f.mt > m.start) o.spin = Math.floor((f.mt - m.start) / 4) % 2;
+        if (m.pose === 'axe' && f.mt > m.start) { o.th2 = 95; o.sh2 = 70; } // the heel comes down
         if (m.pose === 'stomp' && f.mt > m.start) { o.th2 = 10; o.sh2 = 4; }
         return o;
       }
@@ -80,9 +83,9 @@
     const limb = (a, b, w, col) => { line(a, b, w + 5, out); line(a, b, w, col); };
     // back arm and leg
     limb(hip, kn1, 17, dark); limb(kn1, ft1, 15, dark); dot(ft1, 9, out); dot(ft1, 7, '#2b2b2b');
-    limb(sh1, el1, 13, shade(C.color, -0.2)); limb(el1, ha1, 11, shade(C.skin, -0.2)); dot(ha1, 10, out); dot(ha1, 8, shade(C.trim, -0.25));
+    limb(sh1, el1, 13, C.gloves ? shade(C.skin, -0.2) : shade(C.color, -0.2)); limb(el1, ha1, 11, shade(C.skin, -0.2)); dot(ha1, C.gloves ? 13.5 : 10, out); dot(ha1, C.gloves ? 11.5 : 8, shade(C.gloves || C.trim, -0.25));
     // torso
-    limb(hip, neck, 30, C.color);
+    limb(hip, neck, 30, C.gloves ? C.skin : C.color);
     const bx = hip[0] + Math.sin(tor) * 12, by = hip[1] + Math.cos(tor) * 12, cx = Math.cos(tor) * 16, cy = -Math.sin(tor) * 16; // belt across the waist
     line([bx - cx, by - cy], [bx + cx, by + cy], 8, C.trim); line([bx + cx * 0.3, by + cy * 0.3], [bx - cx * 0.2 - 4, by - cy * 0.2 - 16], 4, C.trim);
     // front leg
@@ -99,7 +102,8 @@
       ctx.lineWidth = 2; ctx.strokeStyle = '#111'; ctx.beginPath(); ctx.moveTo(head[0] + 4, head[1] + 8); ctx.lineTo(head[0] + 12, head[1] + (f.state === 'attack' ? 6 : 8)); ctx.stroke(); }
     ctx.fillStyle = '#111'; ctx.fillRect(head[0] + 6, head[1] - 8, hurt ? 7 : 6, f.state === 'attack' || hurt ? 3.5 : 2);
     // front arm on top
-    limb(sh2, el2, 13, C.color); limb(el2, ha2, 11, C.skin); dot(ha2, 10.5, out); dot(ha2, 8.5, C.trim);
+    const gl = C.gloves ? 14 : 10.5;
+    limb(sh2, el2, 13, C.gloves ? C.skin : C.color); limb(el2, ha2, 11, C.skin); dot(ha2, gl, out); dot(ha2, gl - 2, C.gloves || C.trim);
     ctx.restore();
   }
   function drawHair(ctx, C, h, a, T) {
@@ -108,6 +112,16 @@
     if (C.name === 'Kenji') { ctx.beginPath(); ctx.arc(0, 4, 16.5, Math.PI * 0.95, Math.PI * 2.05); ctx.fill(); ctx.fillStyle = T(C.color); ctx.fillRect(-16, 2, 32, 5); ctx.beginPath(); ctx.moveTo(-15, 5); ctx.lineTo(-30, 0); ctx.lineTo(-28, 9); ctx.fill(); }
     if (C.name === 'Vex') { ctx.beginPath(); ctx.moveTo(-16, 2); ctx.lineTo(-24, 22); ctx.lineTo(-6, 14); ctx.lineTo(-8, 28); ctx.lineTo(6, 16); ctx.lineTo(14, 22); ctx.lineTo(16, 4); ctx.arc(0, 4, 16, 0, Math.PI, true); ctx.fill(); }
     if (C.name === 'Tank') { ctx.fillRect(-12, 15, 24, 4); ctx.fillStyle = T('#111111'); ctx.fillRect(2, -14, 12, 6); }
+    if (C.name === 'Rosa') { for (const [x, y, r] of [[-12, 12, 8], [-4, 17, 8], [6, 16, 7], [-16, 2, 8], [-20, -8, 7], [-14, -16, 6]]) { ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); } ctx.fillStyle = T(C.color); ctx.fillRect(-15, 9, 28, 4); }
+    if (C.name === 'Bruno') { // wrestling mask with eye holes
+      ctx.fillStyle = T(C.color); ctx.beginPath(); ctx.arc(0, 0, 16.5, 0, 7); ctx.fill();
+      ctx.fillStyle = T(C.trim); ctx.beginPath(); ctx.moveTo(-4, 16); ctx.lineTo(2, 4); ctx.lineTo(8, 16); ctx.fill();
+      ctx.fillStyle = T('#ffffff'); ctx.beginPath(); ctx.ellipse(8, 2, 6, 5, 0, 0, 7); ctx.fill(); }
+    if (C.name === 'Mei') { // ninja hood: only the eyes show
+      ctx.fillStyle = T('#212529'); ctx.beginPath(); ctx.arc(0, 0, 16.8, 0, 7); ctx.fill();
+      ctx.fillStyle = T(C.skin); ctx.fillRect(1, -1, 15, 8);
+      ctx.fillStyle = T(C.trim); ctx.fillRect(-16, 8, 32, 4); ctx.beginPath(); ctx.moveTo(-15, 10); ctx.lineTo(-32, 16); ctx.lineTo(-30, 6); ctx.fill(); }
+    if (C.name === 'Ace') { ctx.beginPath(); ctx.arc(0, 4, 16.5, Math.PI * 0.85, Math.PI * 2.15); ctx.fill(); }
     if (C.name === 'Lin') { ctx.beginPath(); ctx.arc(0, 4, 16.5, Math.PI * 0.9, Math.PI * 2.1); ctx.fill(); ctx.beginPath(); ctx.arc(-14, 12, 7, 0, 7); ctx.fill(); ctx.beginPath(); ctx.moveTo(-16, 8); ctx.quadraticCurveTo(-30, -10, -22, -24); ctx.lineTo(-18, -22); ctx.quadraticCurveTo(-24, -8, -12, 4); ctx.fill(); }
     ctx.restore();
   }
