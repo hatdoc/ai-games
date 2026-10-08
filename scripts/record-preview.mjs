@@ -150,6 +150,9 @@ const BOTS = {
   'dojo-duel': { skip: 3, len: 9, poster: 4, async play(page) { // CPU vs CPU on Hard: strings, launchers and specials
     await page.evaluate(() => { startDemo(); ddGame.s.p[0].meter = ddGame.s.p[1].meter = 60; });
   } },
+  'doodle-brawl': { skip: 3, len: 9, poster: 4.5, async play(page) { // two CPUs with drawn weapons (hammer/sword/club vs spear/curved/shield)
+    await page.evaluate(() => startDemo());
+  } },
   'demolition-rush': { skip: 2, len: 7, poster: 0.5, async play(page) {
     await page.click('#playBtn');
     await page.evaluate(() => setInterval(() => { // smash the leftmost columns, take the first upgrade card
