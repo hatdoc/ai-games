@@ -319,9 +319,9 @@ const say = (text, ms = 1100, color = '#fff', size = 1) => (banner = { text, unt
 function handleEvents(evs) {
   for (const e of evs) {
     const p = G.s.p;
-    if (e.e === 'hit') { SFX.hit(e.heavy); spark(e.x, e.y, e.heavy ? '#ffd43b' : '#fff', e.heavy ? 22 : 12); if (e.heavy) G.shake = 10; if (e.combo >= 2) G.comboShow = { n: e.combo, who: 1 - e.who, until: performance.now() + 1200 }; }
-    if (e.e === 'block') { SFX.block(); spark(e.x, e.y, '#74c0fc', 8); }
-    if (e.e === 'throw') { SFX.throw(); G.shake = 14; spark(e.x, e.y, '#ff6b6b', 18); }
+    if (e.e === 'hit') { SFX.hit(e.heavy); spark(e.x, e.y, e.heavy ? '#ffd43b' : '#fff', e.heavy ? 22 : 12, e.heavy); (G.hitFlash ||= [])[e.who] = performance.now(); if (e.heavy) G.shake = 10; if (e.combo >= 2) G.comboShow = { n: e.combo, who: 1 - e.who, until: performance.now() + 1200 }; }
+    if (e.e === 'block') { SFX.block(); const d = p[e.who]; G.fx.push({ k: 'guard', x: d.x + d.face * 26, y: 110, face: d.face, life: 1 }); for (let i = 0; i < 6; i++) { const a = Math.random() * 7; G.fx.push({ x: d.x + d.face * 30, y: 110, vx: Math.cos(a) * 4 + d.face * 2, vy: Math.sin(a) * 4, life: 0.7, col: '#a5d8ff', k: 'spark' }); } }
+    if (e.e === 'throw') { SFX.throw(); G.shake = 14; spark(e.x, e.y, '#ff6b6b', 18, true); (G.hitFlash ||= [])[e.who] = performance.now(); }
     if (e.e === 'special') { SFX.special(); G.superFlash = { who: e.who, until: performance.now() + 450, name: e.name }; }
     if (e.e === 'quake') { SFX.quake(); G.shake = 18; }
     if (e.e === 'land' && e.heavy) { SFX.land(); dust(e.x); G.shake = Math.max(G.shake, 6); }
@@ -336,7 +336,10 @@ function handleEvents(evs) {
     if (e.e === 'match') setTimeout(() => matchOver(e.winner), 900);
   }
 }
-function spark(x, y, col, n) { for (let i = 0; i < n; i++) { const a = Math.random() * 7, v = 3 + Math.random() * 7; G.fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, col, k: 'spark' }); } G.fx.push({ x, y, life: 1, k: 'ring', col }); }
+function spark(x, y, col, n, heavy) {
+  for (let i = 0; i < n; i++) { const a = Math.random() * 7, v = 4 + Math.random() * 8; G.fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.8, col, k: 'spark' }); }
+  G.fx.push({ x, y, life: 1, k: 'burst', size: heavy ? 70 : 44, inner: '#fff', edge: heavy ? '#ff922b' : '#ffd43b' });
+}
 function dust(x) { for (let i = 0; i < 12; i++) G.fx.push({ x: x + (Math.random() - 0.5) * 60, y: 6, vx: (Math.random() - 0.5) * 4, vy: Math.random() * 2, life: 1, col: '#c9a27a', k: 'dust' }); }
 
 // ---------- drawing ----------
@@ -366,21 +369,22 @@ function draw() {
   for (const i of order) {
     const f = s.p[i];
     if (f.inv > 0 && f.state === 'getup' && Math.floor(T * 20) % 2) ctx.globalAlpha = 0.6;
-    const flash = f.state === 'hstun' && f.t > (f.move ? 0 : 10) ? '#ffffff55' : sf && sf.who === i ? '#ffd43b44' : null;
+    const hitT = performance.now() - (G.hitFlash?.[i] || 0), flash = hitT < 160 ? { col: [255, 255, 255], k: 0.75 * (1 - hitT / 160) } : sf && sf.who === i ? { col: [255, 212, 59], k: 0.3 } : null;
     FR.drawFighter(ctx, f, s.frame, s, flash);
     ctx.globalAlpha = 1;
   }
   // effects
-  G.fx = G.fx.filter((p) => (p.life -= p.k === 'ring' ? 0.08 : 0.035) > 0);
+  G.fx = G.fx.filter((p) => (p.life -= p.k === 'burst' ? 0.11 : p.k === 'guard' ? 0.09 : 0.045) > 0);
   for (const p of G.fx) {
-    if (p.k === 'ring') { ctx.strokeStyle = p.col; ctx.globalAlpha = p.life; ctx.lineWidth = 6 * p.life; ctx.beginPath(); ctx.arc(p.x, p.y, (1 - p.life) * 70 + 8, 0, 7); ctx.stroke(); continue; }
+    if (p.k === 'burst') { FR.drawBurst(ctx, p.x, p.y, p.life, p.size, p.inner, p.edge); continue; }
+    if (p.k === 'guard') { FR.drawGuard(ctx, p.x, p.y, p.face, p.life); continue; }
     p.x += p.vx; p.y += p.vy; p.vy -= p.k === 'dust' ? 0.05 : 0.3;
     ctx.globalAlpha = p.life; ctx.fillStyle = p.col;
-    if (p.k === 'spark') { ctx.strokeStyle = p.col; ctx.lineWidth = 4 * p.life; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 2.5, p.y - p.vy * 2.5); ctx.stroke(); }
+    if (p.k === 'spark') { ctx.strokeStyle = p.col; ctx.lineCap = 'round'; ctx.lineWidth = 5 * p.life; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 3, p.y - p.vy * 3); ctx.stroke(); }
     else { ctx.beginPath(); ctx.arc(p.x, p.y, 10 * (1.4 - p.life), 0, 7); ctx.fill(); }
   }
   ctx.globalAlpha = 1;
-  if (sf) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#0006'; ctx.fillRect(0, 0, W, H); ctx.setTransform(scale, 0, 0, -scale, W / 2 - cam.x * scale, groundY); FR.drawFighter(ctx, s.p[sf.who], s.frame, s, '#ffd43b44'); }
+  if (sf) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#0006'; ctx.fillRect(0, 0, W, H); ctx.setTransform(scale, 0, 0, -scale, W / 2 - cam.x * scale, groundY); FR.drawFighter(ctx, s.p[sf.who], s.frame, s, { col: [255, 212, 59], k: 0.3 }); }
   hud(W, H, d, T, sf);
 }
 function hud(W, H, d, T, sf) {
