@@ -57,7 +57,7 @@
   .card { position: absolute; perspective: 600px; transition: left calc(.65s * var(--speed)) ease-in-out, top calc(.65s * var(--speed)) ease-in-out, opacity .3s; cursor: pointer; }
   .card .in { position: absolute; inset: 3px; transition: transform calc(.3s * var(--speed)); transform-style: preserve-3d; }
   .card.up .in { transform: rotateY(180deg); }
-  .card .f, .card .b { position: absolute; inset: 0; border-radius: 10%; backface-visibility: hidden; -webkit-backface-visibility: hidden; display: grid; place-items: center; }
+  .card .f, .card .b { position: absolute; inset: 0; border-radius: 12px; backface-visibility: hidden; -webkit-backface-visibility: hidden; display: grid; place-items: center; }
   .card .b { background: var(--c); border: 2px solid rgba(255, 255, 255, .5); box-shadow: inset 0 0 0 4px rgba(0, 0, 0, .15);
     background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, .14) 0 6px, transparent 6px 12px); }
   .card .b::after { content: attr(data-mark); font-weight: 900; color: rgba(255, 255, 255, .85); font-size: calc(var(--cs) * .28); }
@@ -74,6 +74,9 @@
   @keyframes shake { 25% { transform: translate(-4px, 2px) } 50% { transform: translate(4px, -2px) } 75% { transform: translate(-3px, -1px) } }
   .card.target:hover .b { filter: brightness(1.3); }
   .card.dim { opacity: .45; }
+  #half { position: absolute; left: 0; right: 0; border: 3px dashed; border-radius: 14px; background: rgba(255, 255, 255, .05); pointer-events: none; }
+  #board { transform-origin: 50% 50%; }
+  #board.snap .card { transition: none !important; }
   #fog { position: absolute; pointer-events: none; border-radius: 30px; background: radial-gradient(#cfd4ffee, #cfd4ff00 70%); transition: all .6s; z-index: 3; }
   #bottom { padding: 6px 10px 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
   #items { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
@@ -120,11 +123,11 @@
   </div>
   <div class="card-ui col how" style="margin-top:14px">
     <b>How to play</b>
-    <span>1️⃣ Every pair is split: <b style="color:var(--p0)">blue</b> cards are yours, <b style="color:var(--p1)">red</b> cards are theirs. You each secretly place your own half.</span>
+    <span>1️⃣ Every pair is split: <b style="color:var(--p0)">blue</b> cards are yours, <b style="color:var(--p1)">red</b> cards are theirs. You secretly place yours on your side (the bottom half), they place theirs on top.</span>
     <span>2️⃣ On your turn, flip one of <b>your</b> cards, then guess which of <b>their</b> cards matches it.</span>
     <span>3️⃣ Match = points and <b>another turn</b> (streaks multiply). Miss = their turn, and you both saw what flipped.</span>
     <span>🌀 On Hard and above, the board <b>moves</b> between turns, always with a warning. Track it!</span>
-    <span>🎒 One item per turn: Preview, Double Points, Peek, Extra Guess, Freeze, Scanner, Score Steal.</span>
+    <span>🎒 One item per turn: Preview, Double Points, Peek, Extra Guess, Freeze, Scanner, Score Steal, Rewind (undo the board's last move).</span>
   </div>
 </div>
 
@@ -179,7 +182,7 @@
     <div class="pl" id="pl1"><span>🔴</span><div style="min-width:0"><div class="nm" id="nm1">CPU</div><div class="st" id="st1"></div></div><div class="sc" id="sc1">0</div></div>
   </div>
   <div id="msg"></div>
-  <div id="boardWrap"><div id="board"><div id="fog" hidden></div></div></div>
+  <div id="boardWrap"><div id="board"><div id="half" hidden></div><div id="fog" hidden></div></div></div>
   <div id="placeBar" hidden><div id="nextCard"></div><div><b id="placeT"></b><div class="hint" id="placeH" style="text-align:left">Tap an empty spot. Remember where it goes!</div></div><button id="autoB">🎲 Place the rest for me</button></div>
   <div id="bottom" hidden><div id="items"></div><div id="emotes"></div><button id="quitG" style="padding:6px 10px;font-size:13px">⏸ Menu</button></div>
 </div>
@@ -259,23 +262,34 @@ let els = []; // card id -> element
 function layout() {
   if (!G) return;
   const s = G.view, wrap = $('boardWrap').getBoundingClientRect();
-  const portrait = wrap.height > wrap.width * 1.1 && s.C > s.R;
-  G.flipAxes = portrait; // tall screens show the board on its side
-  const cols = portrait ? s.R : s.C, rows = portrait ? s.C : s.R;
-  let cs = Math.floor(Math.min((wrap.width - 16) / cols, (wrap.height - 8) / rows));
-  cs = Math.max(S.big ? 64 : 34, Math.min(110, cs));
-  G.cs = cs;
-  board.style.width = cols * cs + 'px'; board.style.height = rows * cs + 'px';
-  board.style.setProperty('--cs', cs + 'px');
+  G.flipped = G.kind === 'guest'; // your side is always at the bottom of your screen
+  const cols = s.C, rows = s.R;
+  // cards may be up to 1.5× taller than wide, so wide boards still fill a phone screen (square boards stay square so they can turn)
+  const lo = S.big ? 64 : 34, fit = (v) => Math.max(lo, Math.min(110, Math.floor(v)));
+  let cw = fit((wrap.width - 16) / cols), ch = fit((wrap.height - 8) / rows);
+  if (s.R === s.C) cw = ch = Math.min(cw, ch); else { ch = Math.min(ch, Math.floor(cw * 1.5)); cw = Math.min(cw, ch); }
+  G.cw = cw; G.ch = ch; G.cs = Math.min(cw, ch);
+  board.style.width = cols * cw + 'px'; board.style.height = rows * ch + 'px';
+  board.style.setProperty('--cs', G.cs + 'px');
   s.cards.forEach((c) => place(c));
+  showHalf();
 }
-const xy = (pos) => { const s = G.view, r = Math.floor(pos / s.C), c = pos % s.C; return G.flipAxes ? [r, c] : [c, r]; };
+const xy = (pos) => { const s = G.view; let r = Math.floor(pos / s.C), c = pos % s.C; if (G.flipped) { r = s.R - 1 - r; c = s.C - 1 - c; } return [c, r]; };
+const posAt = (x, y) => { const s = G.view; return G.flipped ? (s.R - 1 - y) * s.C + (s.C - 1 - x) : y * s.C + x; };
+// while placing: outline the half of the board you may use
+function showHalf() {
+  const el = $('half'), s = G?.view; if (!s) return;
+  el.hidden = placing == null; if (el.hidden) return;
+  const bottom = (placing === 0) !== !!G.flipped;
+  el.style.top = (bottom ? s.R / 2 : 0) * G.ch + 'px'; el.style.height = (s.R / 2) * G.ch + 'px';
+  el.style.borderColor = placing ? 'var(--p1)' : 'var(--p0)';
+}
 function place(c) {
   const el = els[c.id]; if (!el) return;
   if (c.pos < 0) { el.hidden = true; return; }
   el.hidden = false;
   const [x, y] = xy(c.pos);
-  el.style.left = x * G.cs + 'px'; el.style.top = y * G.cs + 'px'; el.style.width = el.style.height = G.cs + 'px';
+  el.style.left = x * G.cw + 'px'; el.style.top = y * G.ch + 'px'; el.style.width = G.cw + 'px'; el.style.height = G.ch + 'px';
 }
 function buildBoard() {
   board.querySelectorAll('.card').forEach((e) => e.remove());
@@ -359,7 +373,7 @@ function showPlaceBar() {
   const c = s.cards[s.toPlace[placing][0]];
   $('nextCard').textContent = face(c.pair); $('nextCard').style.borderColor = placing ? 'var(--p1)' : 'var(--p0)';
   $('placeT').textContent = `${G.names[placing]}: card ${s.pairs - left + 1} of ${s.pairs}`;
-  msg(`Place your <span style="color:${placing ? 'var(--p1)' : 'var(--p0)'}">${placing ? 'red' : 'blue'}</span> cards. Remember them!`);
+  msg(`Place your <span style="color:${placing ? 'var(--p1)' : 'var(--p0)'}">${placing ? 'red' : 'blue'}</span> cards on your side (${placing && G.kind === 'local' ? 'top' : 'bottom'} half). Remember them!`); showHalf();
 }
 async function placeAt(pos) {
   const s = G.s, id = s.toPlace[placing][0];
@@ -384,9 +398,9 @@ $('autoB').onclick = async () => {
 async function donePlacing() {
   $('placeBar').hidden = true;
   const s = G.s, p = placing;
-  if (G.kind === 'online' && !ME.placed(s)) { placing = null; msg('Waiting for your opponent to finish placing…'); return; }
+  if (G.kind === 'online' && !ME.placed(s)) { placing = null; showHalf(); msg('Waiting for your opponent to finish placing…'); return; }
   if (G.kind === 'local' && p === 0) { G.view.cards.forEach((v) => { v.pair = null; v.up = false; paint(v); }); return startPlacement(1); }
-  placing = null;
+  placing = null; showHalf();
   startBattleNow();
 }
 async function startBattleNow() {
@@ -418,7 +432,7 @@ function nextTurnPrompt() {
 async function tapCard(id) {
   if (!G || G.busy) return;
   const v = G.view.cards[id];
-  if (placing != null) { if (v.pos >= 0 && G.s.slots[v.pos] !== -1) return; return; }
+  if (placing != null) return toast(ME.myHalf(G.view, placing, v.pos) ? 'That spot is taken. Pick an empty one.' : 'Place your cards on <b>your side</b> (the outlined half).');
   if (G.kind === 'guest') return net.guestTap(v.pos);
   if (!myTurn()) return;
   if (G.armed) return useItem(G.armed, v.pos);
@@ -430,8 +444,10 @@ async function tapCard(id) {
 // tapping an empty slot during placement
 board.addEventListener('click', (e) => {
   if (!G || placing == null || G.busy || e.target.closest('.card')) return;
-  const r = board.getBoundingClientRect(), x = Math.floor((e.clientX - r.left) / G.cs), y = Math.floor((e.clientY - r.top) / G.cs);
-  const pos = G.flipAxes ? x * G.s.C + y : y * G.s.C + x;
+  const r = board.getBoundingClientRect(), x = Math.floor((e.clientX - r.left) / G.cw), y = Math.floor((e.clientY - r.top) / G.ch);
+  if (x < 0 || y < 0 || x >= G.view.C || y >= G.view.R) return;
+  const pos = posAt(x, y);
+  if (!ME.myHalf(G.view, placing, pos)) return toast('Place your cards on <b>your side</b> (the outlined half).');
   if (G.kind === 'guest') return net.guestPlace(pos);
   placeAt(pos);
 });
@@ -492,27 +508,41 @@ async function endTurn() {
 }
 async function animateMove(move) {
   const s = G.kind === 'guest' ? G.gs : G.s, M = s.M;
-  G.spin = M.spin ? (G.spin + 90) % 360 : 0; // Hard/Hell: card faces turn every turn
-  if (move?.event === 'confusion') G.spin = (G.spin + 180) % 360;
+  if (move?.event === 'confusion') { G.spin = (G.spin + 180) % 360; G.view.cards.forEach(paint); }
   if (M.fog) fog();
   if (!move) return;
   const ev = { quake: '🌋 EARTHQUAKE!', switch: '🔀 SWITCH!', lucky: '🍀 LUCKY GLIMPSE!', panic: '⏱️ PANIC MODE!', confusion: '😵 CONFUSION!' }[move.event];
   if (ev) { banner(ev, '#ffd43b', 1000); SFX.warn(); await sleep(900); }
   if (move.event === 'lucky') { const h = G.view.cards.filter((v) => v.pos >= 0 && !v.gone); const v = h[Math.floor(Math.random() * h.length)]; await flash([v.pos], 180); }
   if (!move.ops.length) return;
-  // warn: say what will move and light it up, then slide
-  const text = move.ops.map((o) => ME.describe(o, s)).join(' + ');
-  const cells = new Set(move.cells);
-  G.view.cards.forEach((v) => els[v.id].classList.toggle('warn', cells.has(v.pos) && !v.gone));
-  msg(`⚠️ ${text}`); SFX.warn();
-  await sleep(1100);
+  await animateOps(move.ops);
   if (G.kind !== 'guest') ME.applyMove(s, move);
-  G.view.cards.forEach((v) => { if (v.pos >= 0) v.pos = move.map[v.pos]; els[v.id].classList.remove('warn'); place(v); paint(v); });
-  SFX.move();
-  await sleep(S.reduce ? 300 : 750);
   if (M.fog || s.mode === 'hell') { const vs = G.view.cards.filter((v) => !v.gone); for (let i = 0; i < 3; i++) { const v = pick(vs); els[v.id].classList.add('shake'); setTimeout(() => els[v.id].classList.remove('shake'), 450); } } // decoys
 }
-function fog() { const f = $('fog'), s = G.view; if (Math.random() < 0.6) { const r = Math.floor(Math.random() * s.R), c = Math.floor(Math.random() * s.C), [x, y] = xy(r * s.C + c); f.hidden = false; f.style.left = (x - 1) * G.cs + 'px'; f.style.top = (y - 1) * G.cs + 'px'; f.style.width = f.style.height = G.cs * 3 + 'px'; } else f.hidden = true; }
+const BOARD_FX = { rot180: 'rotate(180deg)', rot90: 'rotate(90deg)', rot270: 'rotate(-90deg)', mirrorH: 'scaleX(-1)', mirrorV: 'scaleY(-1)' };
+const BOARD_ICON = { rot180: '🔄 UPSIDE DOWN', rot90: '↻ QUARTER TURN', rot270: '↺ QUARTER TURN BACK', mirrorH: '⇆ FLIP SIDEWAYS', mirrorV: '⇅ FLIP TOP TO BOTTOM' };
+const SPIN = { rot180: 180, rot90: 90, rot270: -90 }; // card faces turn with the board
+// show each step of a move on its own: announce it, light up what moves, then move it
+async function animateOps(ops) {
+  for (const o of ops) {
+    const map = ME.composeMap(G.view, [o]), cells = new Set(map.map((to, from) => (to !== from ? from : -1))), whole = !!BOARD_FX[o.k];
+    G.view.cards.forEach((c) => els[c.id].classList.toggle('warn', !c.gone && c.pos >= 0 && cells.has(c.pos)));
+    msg(`⚠️ ${ME.describe(o)}`); SFX.warn();
+    if (whole) banner(`${BOARD_ICON[o.k]}<small>${ME.describe(o)}</small>`, '#ffd43b', 1100);
+    await sleep(whole ? 1300 : 1000);
+    SFX.move();
+    if (whole && !S.reduce) { // turn the whole board as one piece, then quietly put the cards in their new spots
+      board.style.transition = `transform ${0.9 * (S.slow ? 1.6 : 1)}s ease-in-out`; board.style.transform = BOARD_FX[o.k];
+      await sleep(950);
+      board.classList.add('snap'); board.style.transition = 'none'; board.style.transform = '';
+    }
+    G.spin = (G.spin + (SPIN[o.k] || 0) + 360) % 360;
+    G.view.cards.forEach((c) => { if (c.pos >= 0) c.pos = map[c.pos]; els[c.id].classList.remove('warn'); place(c); paint(c); });
+    if (whole) { void board.offsetWidth; board.classList.remove('snap'); }
+    await sleep(whole ? 400 : S.reduce ? 300 : 750);
+  }
+}
+function fog() { const f = $('fog'), s = G.view; if (Math.random() < 0.6) { const r = Math.floor(Math.random() * s.R), c = Math.floor(Math.random() * s.C), [x, y] = xy(r * s.C + c); f.hidden = false; f.style.left = (x - 1) * G.cw + 'px'; f.style.top = (y - 1) * G.ch + 'px'; f.style.width = G.cw * 3 + 'px'; f.style.height = G.ch * 3 + 'px'; } else f.hidden = true; }
 async function flash(positions, ms) {
   const vs = G.view.cards.filter((v) => positions.includes(v.pos));
   const s = G.s;
@@ -527,7 +557,7 @@ function startPanic() { let t = 8; clearInterval(panicT); panicT = setInterval((
 function renderItems() {
   const s = G.kind === 'guest' ? G.gs : G.s; if (!s) return;
   const p = G.kind === 'local' ? s.turn : G.me, inv = s.items[p];
-  $('items').innerHTML = Object.entries(inv).map(([k, n]) => { const it = ME.ITEMS[k]; return `<button data-item="${k}" class="${G.armed === k ? 'armed' : ''}" ${n <= 0 || !myTurnView() || s.pick != null || s.fx?.used ? 'disabled' : ''} title="${it.desc}">${it.icon} ${it.name} ×${n}</button>`; }).join('');
+  $('items').innerHTML = Object.entries(inv).map(([k, n]) => { const it = ME.ITEMS[k]; return `<button data-item="${k}" class="${G.armed === k ? 'armed' : ''}" ${n <= 0 || !myTurnView() || s.pick != null || s.fx?.used || (k === 'rewind' && !s.lastMove) ? 'disabled' : ''} title="${it.desc}">${it.icon} ${it.name} ×${n}</button>`; }).join('');
   $('emotes').innerHTML = ['😂', '😱', '🤔', '😎', '😭', '💀', '🔥'].map((e) => `<button data-emote="${e}">${e}</button>`).join('');
 }
 const myTurnView = () => { const s = G.kind === 'guest' ? G.gs : G.s; return s?.phase === 'battle' && (G.kind === 'local' || s.turn === G.me); };
@@ -543,14 +573,18 @@ async function useItem(k, pos) {
   G.armed = null;
   if (G.kind === 'guest') return net.send({ k: 'item', kind: k, pos });
   const s = G.s, r = ME.useItem(s, k, pos); if (!r) return;
-  if (G.kind === 'online') net.send({ k: 'itemres', r: { kind: r.kind } });
+  if (G.kind === 'online') net.send({ k: 'itemres', r: { kind: r.kind, move: r.move } });
   await itemEffect(r, s.turn, true);
   if (G.kind === 'online') net.state();
 }
 async function itemEffect(r, p, mine) {
   SFX.item(); renderItems();
-  const labels = { double: '✖️2 DOUBLE POINTS!', extra: '🎯 EXTRA GUESS READY', freeze: '🧊 BOARD FROZEN', steal: '🦹 SCORE STEAL ARMED', preview: '👁️ PREVIEW', peek: '🔍 PEEK', scanner: '📡 SCANNER' };
+  const labels = { double: '✖️2 DOUBLE POINTS!', extra: '🎯 EXTRA GUESS READY', freeze: '🧊 BOARD FROZEN', steal: '🦹 SCORE STEAL ARMED', preview: '👁️ PREVIEW', peek: '🔍 PEEK', scanner: '📡 SCANNER', rewind: '⏪ REWIND!' };
   banner(labels[r.kind], '#ffd43b', 900);
+  if (r.move) { // Rewind: the board plays its last move backwards
+    G.busy = true; await sleep(900); await animateOps(r.move.ops); G.busy = false;
+    for (const m of Object.values(G.cpus || {})) ME.cpuMoved(m, r.move);
+  }
   if (r.reveal && mine) { await sleep(300); await flash(r.reveal, r.ms); }
   if (G.kind === 'local' && r.reveal) toast(`${G.names[1 - p]}, that peek was not for you! 🙈`);
   msg(`Item used. Now flip one of your ${p ? 'red' : 'blue'} cards.`);
@@ -635,7 +669,7 @@ function renderSetup() {
   const chips = (id, opts, cur, fn) => { $(id).innerHTML = opts.map(([v, l]) => `<button data-v="${v}" class="${cur(v) ? 'on' : ''}">${l}</button>`).join(''); $(id).onclick = (e) => { const b = e.target.closest('[data-v]'); if (b) { fn(b.dataset.v); renderSetup(); } }; };
   chips('sizeC', Object.keys(ME.DIMS).map((n) => [n, n]), (v) => +v === setup.size, (v) => (setup.size = +v));
   chips('modeC', Object.entries(ME.MODES).map(([k, m]) => [k, { normal: '🙂', hard: '🌀', extreme: '🌪️', hell: '🔥' }[k] + ' ' + m.name]), (v) => v === setup.mode, (v) => { setup.mode = v; setup.events = v === 'extreme' || v === 'hell'; });
-  $('modeD').textContent = { normal: 'Cards stay where they are.', hard: 'The whole board turns or flips between turns, and card faces rotate.', extreme: 'Rows and columns swap or slide between turns (with a warning).', hell: 'Board turns AND sections move, short reveals, fog, decoys. Good luck.' }[setup.mode];
+  $('modeD').textContent = { normal: 'Cards stay where they are.', hard: 'The whole board turns or flips between turns. Watch which way it goes!', extreme: 'Rows and columns swap or slide between turns (with a warning).', hell: 'Board turns AND sections move, short reveals, fog, decoys. Good luck.' }[setup.mode];
   chips('cpuC', [[0, '😴 Easy'], [1, '🙂 Normal'], [2, '🧠 Hard']], (v) => +v === setup.cpu, (v) => (setup.cpu = +v));
   chips('itemC', ITEM_KEYS.map((k) => [k, `${ME.ITEMS[k].icon} ${ME.ITEMS[k].name}`]), (v) => setup.items.includes(v), (v) => { setup.items = setup.items.includes(v) ? setup.items.filter((x) => x !== v) : [...setup.items, v].slice(-3); });
   chips('packC', Object.entries(PACKS).filter(([k]) => S.packs.includes(k)).map(([k, p]) => [k, `${p.icon} ${p.name}`]), (v) => v === setup.pack, (v) => (setup.pack = v));
@@ -794,7 +828,7 @@ function hostStart() {
 // what the guest may see: its own cards, gone cards, and nothing else
 function guestView() {
   const s = G.s;
-  return { phase: s.phase, turn: s.turn, score: s.score, hits: s.hits, tries: s.tries, streak: s.streak, bestStreak: s.bestStreak, items: s.items, fx: { used: s.fx.used }, pick: s.pick, M: s.M, mode: s.mode, size: s.size, misses: s.misses.filter((m) => m.p === 1),
+  return { phase: s.phase, turn: s.turn, score: s.score, hits: s.hits, tries: s.tries, streak: s.streak, bestStreak: s.bestStreak, items: s.items, fx: { used: s.fx.used }, lastMove: !!s.lastMove, pick: s.pick, M: s.M, mode: s.mode, size: s.size, misses: s.misses.filter((m) => m.p === 1),
     toPlace: [s.toPlace[0].length, s.toPlace[1].map((id) => s.cards[id].pair)], cards: s.cards.map((c) => ({ pos: c.pos, gone: c.gone, pair: c.gone || c.owner === 1 ? c.pair : null })) };
 }
 net.state = () => { if (net.host && G?.kind === 'online') net.send({ k: 'state', v: guestView() }); };
@@ -813,12 +847,12 @@ async function onNet(m) {
     if (m.k === 'place' && s?.phase === 'place') { if (ME.place(s, 1, m.pos)) { const id = s.cards.findIndex((c) => c.pos === m.pos && c.owner === 1); const v = G.view.cards[id]; v.pos = m.pos; place(v); paint(v); net.state(); if (ME.placed(s) && placing == null) startBattleNow(); } return; }
     if (m.k === 'auto' && s?.phase === 'place') { ME.autoPlace(s, 1); syncView(0); net.state(); net.send({ k: 'memorize' }); if (ME.placed(s) && placing == null) setTimeout(() => startBattleNow(), 4000 + s.pairs * 250); return; }
     if (m.k === 'flip' && s?.phase === 'battle' && s.turn === 1 && !G.busy) { G.busy = true; const res = ME.flip(s, m.pos); net.send({ k: 'res', res: maskRes(res) }); await show(res); G.busy = false; net.state(); return; }
-    if (m.k === 'item' && s?.phase === 'battle' && s.turn === 1) { const r = ME.useItem(s, m.kind, m.pos); if (r) { const rev = r.reveal?.map((p) => ({ pos: p, pair: s.cards[s.slots[p]].pair })); net.send({ k: 'itemres', r: { ...r, reveal: rev } }); itemEffect({ kind: r.kind }, 1, false); net.state(); } return; }
+    if (m.k === 'item' && s?.phase === 'battle' && s.turn === 1) { const r = ME.useItem(s, m.kind, m.pos); if (r) { const rev = r.reveal?.map((p) => ({ pos: p, pair: s.cards[s.slots[p]].pair })); net.send({ k: 'itemres', r: { ...r, reveal: rev } }); itemEffect({ kind: r.kind, move: r.move }, 1, false); net.state(); } return; }
   }
   if (m.k === 'emote') return emoteAt(m.p, m.e);
   if (m.k === 'again') { net.votes.add('them'); return tryRematch(); }
   if (!net.host) {
-    if (m.k === 'cfg') { newMatch({ ...m.cfg, kind: 'guest', me: 1 }); G.gs = null; msg('Place your <span style="color:var(--p1)">red</span> cards. Remember them!'); return; }
+    if (m.k === 'cfg') { newMatch({ ...m.cfg, kind: 'guest', me: 1 }); G.gs = null; msg('Place your <span style="color:var(--p1)">red</span> cards on your side (bottom half). Remember them!'); return; }
     if (m.k === 'state') return guestState(m.v);
     if (m.k === 'res') { G.busy = true; await show(m.res); G.busy = false; return; }
     if (m.k === 'endturn') { G.busy = true; await animateMove(m.move); G.busy = false; if (m.bonus && m.turn === 1) banner('💪 DESPERATION BONUS<small>+1 Peek</small>', '#ffd43b', 1500); return; }
@@ -836,11 +870,12 @@ function guestState(v) {
   if (v.phase === 'place') {
     const left = v.toPlace[1];
     $('placeBar').hidden = !left.length; $('bottom').hidden = true;
-    if (left.length) { $('nextCard').textContent = face(left[0]); $('nextCard').style.borderColor = 'var(--p1)'; $('placeT').textContent = `Card ${v.size / 2 - left.length + 1} of ${v.size / 2}`; msg('Place your <span style="color:var(--p1)">red</span> cards. Remember them!'); placing = 1; }
+    if (left.length) { $('nextCard').textContent = face(left[0]); $('nextCard').style.borderColor = 'var(--p1)'; $('placeT').textContent = `Card ${v.size / 2 - left.length + 1} of ${v.size / 2}`; msg('Place your <span style="color:var(--p1)">red</span> cards on your side (bottom half). Remember them!'); placing = 1; }
     else { placing = null; msg('Waiting for your opponent to finish placing…'); }
+    showHalf();
     // your own cards flip face down right after placing
     G.view.cards.forEach((x) => { if (x.owner === 1 && x.pos >= 0 && !x.seen) { x.seen = true; x.up = true; paint(x); setTimeout(() => { x.up = false; paint(x); }, 650); } });
-  } else { placing = null; $('placeBar').hidden = true; $('bottom').hidden = v.phase !== 'battle'; }
+  } else { placing = null; showHalf(); $('placeBar').hidden = true; $('bottom').hidden = v.phase !== 'battle'; }
   hud(); renderItems();
   if (v.phase === 'battle' && !G.busy) { if (v.turn === 1) msg(v.pick == null ? '<span style="color:var(--p1)">Your turn:</span> flip one of your red cards' : 'Now pick one of their blue cards!'); else msg(`<span style="color:var(--p0)">${G.names[0]}</span> is thinking…`); }
 }
