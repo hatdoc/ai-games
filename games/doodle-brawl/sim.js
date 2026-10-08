@@ -92,7 +92,7 @@
     const spd = (4.4 / (1 + f.mass * 0.07) / (1 + Math.max(0, f.reach - 120) / 450)) * (boss ? boss.speed : 1) * (s.chaos.includes('speed') ? 1.5 : 1);
     if (f.dodge > 0) return;
     // face the opponent unless mid-swing
-    if (f.phase === 'idle' && !f.block) f.face = o.x >= f.x ? 1 : -1;
+    if (f.phase === 'idle') f.face = o.x >= f.x ? 1 : -1; // also while blocking, so the guard follows them
     // block (hold) — slower walking, weapon raised in front
     const wasBlock = f.block;
     f.block = !!inp.b && f.phase === 'idle' && !f.air && !unarmed;
@@ -250,7 +250,8 @@
     // long weapons: weak when the enemy is inside their reach, and very long thin ones are flimsy
     const inside = f.reach > 120 && best.rr < f.reach * 0.5 && !f.sp;
     if (inside) dmg *= 0.5;
-    if (f.reach > 170) dmg *= Math.max(0.7, 1 - (f.reach - 170) / 450);
+    const far = f.reach > 150 ? Math.max(0.6, 1 - (f.reach - 150) / 400) : 1; // very long weapons hit softer and push less
+    dmg *= far;
     if (f.w.type === 'curved') dmg *= 1.25; // curved blades slash
     if (f.sp) dmg *= f.sp.k === 'lunge' ? 1.5 : f.sp.k === 'flurry' ? 1.2 : f.sp.k === 'bash' ? 0.8 : 1;
     if (s.chaos.includes('onehit')) dmg *= 2.5;
@@ -271,12 +272,15 @@
         s.events.push({ e: 'parry', who: 1 - me, x: best.px, y: best.py }); return;
       }
       const guard = 18 + o.stats.guard * 9 + o.mass * 4;
-      const power = Math.pow(f.mass, 1.3) * Math.sqrt(sp), hold = 0.8 + o.stats.guard * 0.22 + o.mass * 0.3; // heavy beats light guards, a shield holds
-      if (power > hold) { o.block = false; o.stun = 40; dmg = Math.round(dmg * 0.5); s.events.push({ e: 'guardbreak', who: 1 - me, x: best.px, y: best.py }); }
+      // only heavy weapons smash through a guard (a long thin one just gets blocked); a shield holds
+      const power = Math.pow(f.mass, 1.3) * Math.sqrt(sp), hold = 0.8 + o.stats.guard * 0.22 + o.mass * 0.3;
+      // a heavy head on a short handle breaks guards; a long one can't put its weight behind it
+      if (f.mass >= 2.2 && f.reach <= 220 && power > hold) { o.block = false; o.stun = 40; dmg = Math.round(dmg * 0.5); s.events.push({ e: 'guardbreak', who: 1 - me, x: best.px, y: best.py }); }
       else {
         const chip = Math.max(0, Math.round(dmg * (0.3 - o.stats.guard * 0.03)));
         if (chip) damage(s, o, chip, me);
         o.vx = f.face * Math.min(14, impact / guard * 4); bounce(f); s.freeze = 5;
+        if (f.reach > 160 && !f.sp) { f.stun = Math.round(10 + (f.reach - 160) / 5); f.deflectT = s.frame + f.stun; } // a blocked long weapon is knocked aside: rush in!
         o.meter = Math.min(100, o.meter + 4);
         s.events.push({ e: 'block', who: 1 - me, x: best.px, y: best.py, heavy: impact > guard * 1.5 });
         return;
@@ -289,7 +293,7 @@
     f.meter = Math.min(100, f.meter + dmg * 1.6 * ({ curved: 2.2, star: 1.6, spiral: 1.5, pebble: 2 }[f.w.type] || 1));
     // super armour: a heavy weapon mid-swing shrugs off small pokes
     if (o.mass >= 2 && dmg < 10 && (o.phase === 'windup' || o.phase === 'strike') && !f.sp && o.hp > 0) { s.freeze = 3; s.events.push({ e: 'hit', who: 1 - me, by: me, x: best.px, y: best.py, dmg, heavy: false, mass: f.mass, kb: 0, combo: f.swings, armor: true }); return; }
-    const kb = (inside ? 0.5 : 1) * Math.min(26, 2 + Math.pow(f.mass, 1.35) * Math.pow(sp, 0.7) * 3.4 * (0.55 + f.w.comRatio)) * (boss ? 0.4 : 1); // heavy heads send people flying
+    const kb = (inside ? 0.5 : 1) * far * Math.min(26, 2 + Math.pow(f.mass, 1.35) * Math.pow(sp, 0.7) * 3.4 * (0.55 + f.w.comRatio)) * (boss ? 0.4 : 1); // heavy heads send people flying
     o.vx = f.face * kb; o.vy = Math.min(14, kb * 0.55 + 2); o.y = Math.max(o.y, 0.1);
     o.phase = 'idle'; o.block = false; o.sp = null;
     if (kb > 9 && !boss) { o.tumble = 0.25 * f.face; o.stun = 10; } else o.stun = Math.round(8 + dmg * 0.6);
@@ -422,6 +426,10 @@
     const rock = (s.rocks || []).find((r) => Math.abs(r.x - f.x) < 80);
     if (rock) { inp[f.x < rock.x ? 'l' : 'r'] = true; return inp; }
     const set = (keys, n) => { mem.keys = keys; mem.hold = n; return Object.assign(inp, keys); };
+    // their long weapon was knocked aside: charge in before it's ready again
+    if (theirRange > myRange && dist > myRange * 0.8 && s.frame < (o.deflectT || 0) && level >= 1) {
+      inp[toward] = true; if (f.dodgeCd <= 0 && dist > myRange + 80 && r() < 0.25 * L.aggro) inp.d = true; return inp;
+    }
     // special when it'll land
     if (f.meter >= 100) {
       const ranged = ['curved', 'star', 'spiral', 'pebble'].includes(f.w.type);
