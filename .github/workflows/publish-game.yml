@@ -39,6 +39,14 @@ jobs:
           git add games/*/preview.webm games/*/preview.jpg
           git commit -m "Record preview clips" && git push
 
+      # This github.io copy is what the blog iframes; point search engines at the rank-game.com page instead
+      - name: Add canonical links to rank-game.com
+        run: |
+          for f in games/*/index.html; do
+            slug=$(basename "$(dirname "$f")")
+            grep -q 'rel="canonical"' "$f" || perl -0pi -e "s|<head>|<head><link rel=\"canonical\" href=\"https://rank-game.com/games/$slug\">|" "$f"
+          done
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
