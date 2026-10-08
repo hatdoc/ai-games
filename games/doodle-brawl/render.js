@@ -4,8 +4,9 @@
   let boil = 0; // changes every few frames so outlines wobble like a flip-book
   const jit = (i, a = 1.2) => Math.sin(i * 12.9898 + boil * 78.233) * a;
 
-  function paper(ctx, W, H, camX, scale) {
-    ctx.fillStyle = '#fdfaf1'; ctx.fillRect(0, 0, W, H);
+  const TINT = { dojo: '#fdfaf1', notes: '#fffbea', lava: '#fff1e8', ice: '#eff7ff', bouncy: '#fcf2ff' };
+  function paper(ctx, W, H, camX, scale, map) {
+    ctx.fillStyle = TINT[map] || '#fdfaf1'; ctx.fillRect(0, 0, W, H);
     ctx.strokeStyle = '#c9dcf0'; ctx.lineWidth = 1.5;
     const gap = 34 * scale, off = (-camX * scale * 0.25) % gap;
     for (let y = gap; y < H; y += gap) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
@@ -21,6 +22,15 @@
     if (close) ctx.closePath();
   }
   function arena(ctx, s, T) {
+    const m = s.map || {};
+    // map backdrops
+    if (m.meteors) { // a volcano doodle far behind
+      ctx.fillStyle = '#ffd8c2'; ctx.strokeStyle = '#c4705a'; ctx.lineWidth = 3;
+      inkPath(ctx, [[380, 0], [560, 360], [640, 360], [820, 0]], true); ctx.fill(); ctx.stroke();
+      for (let i = 0; i < 4; i++) { ctx.fillStyle = '#ced4da88'; ctx.beginPath(); ctx.arc(600 + Math.sin(T + i) * 20, 400 + i * 40 + (T * 20 % 40), 26 + i * 6, 0, 7); ctx.fill(); }
+    }
+    if (m.ice) { ctx.fillStyle = '#ffffff'; for (let i = 0; i < 40; i++) { const x = (i * 157 + T * 30 * (1 + i % 3)) % 1300 - 50, y = 650 - ((i * 97 + T * 40) % 700); ctx.beginPath(); ctx.arc(x, y, 2 + i % 3, 0, 7); ctx.fill(); } }
+    if (m.softWalls) { for (const wx of [40, 1160]) { ctx.fillStyle = '#ffc9e3'; ctx.strokeStyle = INK; ctx.lineWidth = 3; for (let y = 10; y < 600; y += 70) { ctx.beginPath(); ctx.roundRect(wx === 40 ? 18 : 1160, y, 22, 62, 10); ctx.fill(); ctx.stroke(); } } }
     // floor and walls, drawn in pencil
     ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.lineCap = 'round';
     inkPath(ctx, [[-200, 0], [300, 0], [600, 0], [900, 0], [1400, 0]]); ctx.stroke();
@@ -32,9 +42,40 @@
       ctx.strokeStyle = '#8a8698'; ctx.lineWidth = 1.5;
       for (let y = 0; y < 700; y += 24) { const d = wx === 40 ? -1 : 1; ctx.beginPath(); ctx.moveTo(wx, y); ctx.lineTo(wx + d * 18, y + 12); ctx.stroke(); }
     }
-    // hanging crates
+    for (const [a, b] of m.lava || []) { // lava pits
+      ctx.fillStyle = '#ff6b2b'; ctx.beginPath(); ctx.moveTo(a, -26);
+      for (let x = a; x <= b; x += 10) ctx.lineTo(x, 4 + Math.sin(x * 0.08 + T * 4) * 5);
+      ctx.lineTo(b, -26); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = INK; ctx.lineWidth = 3.5; ctx.stroke();
+      ctx.fillStyle = '#ffd43b'; for (let i = 0; i < 4; i++) { const x = a + ((i * 37 + T * 25) % (b - a)), y = (T * 30 + i * 9) % 22; ctx.beginPath(); ctx.arc(x, y - 6, 4, 0, 7); ctx.fill(); }
+    }
+    if (m.ice) { ctx.fillStyle = '#d0ebff'; ctx.fillRect(40, -10, 1120, 10); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; for (let x = 80; x < 1160; x += 140) { ctx.beginPath(); ctx.moveTo(x, -4); ctx.lineTo(x + 40, -4); ctx.stroke(); } }
+    for (const [a, b] of m.tramps || []) { // trampolines
+      const mid = (a + b) / 2, sq = Math.max(0, Math.sin(T * 10)) * 4;
+      ctx.strokeStyle = INK; ctx.lineWidth = 3;
+      for (const x of [a + 8, b - 8]) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 16); ctx.stroke(); }
+      ctx.fillStyle = '#ff6b9b'; ctx.beginPath(); ctx.ellipse(mid, 18 - sq, (b - a) / 2, 8, 0, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.save(); ctx.scale(1, -1); ctx.fillStyle = INK; ctx.font = '700 13px "Comic Sans MS", system-ui'; ctx.textAlign = 'center'; ctx.fillText('BOING', mid, -30); ctx.restore();
+    }
+    const NOTE = ['#ffe066', '#ffc9de', '#a5d8ff'];
+    (m.plats || []).forEach(([a, b, h], i) => { // sticky-note platforms
+      ctx.save(); ctx.translate((a + b) / 2, h - 14); ctx.rotate((i - 1) * 0.02);
+      ctx.fillStyle = NOTE[i % 3]; ctx.fillRect(-(b - a) / 2, -14, b - a, 28); ctx.strokeStyle = INK; ctx.lineWidth = 3; inkPath(ctx, [[-(b - a) / 2, -14], [(b - a) / 2, -14], [(b - a) / 2, 14], [-(b - a) / 2, 14]], true); ctx.stroke();
+      ctx.fillStyle = '#ffffffaa'; ctx.fillRect(-20, 8, 40, 14);
+      ctx.restore();
+    });
+    for (const r of s.rocks || []) { // meteor: warning ring, then the rock
+      ctx.strokeStyle = '#e03131'; ctx.lineWidth = 3; ctx.setLineDash([8, 6]); ctx.beginPath(); ctx.ellipse(r.x, 2, 50 * (1 - (r.warn || 0) / 140), 8, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+      if (!(r.warn > 0)) { ctx.fillStyle = '#868e96'; ctx.strokeStyle = INK; ctx.beginPath(); ctx.arc(r.x, r.y, 26, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#ff922b'; ctx.beginPath(); ctx.moveTo(r.x - 20, r.y + 14); ctx.lineTo(r.x, r.y + 70); ctx.lineTo(r.x + 20, r.y + 14); ctx.fill(); }
+    }
+    // hanging crates (icicles on the ice map)
     for (const c of s.crates) {
       if (c.broken) continue;
+      if (c.icicle) {
+        if (c.hang) { ctx.strokeStyle = '#a5d8ff'; ctx.lineWidth = 2; inkPath(ctx, [[c.x, 700], [c.x, c.y + c.w + 30]]); ctx.stroke(); }
+        ctx.fillStyle = '#d0ebff'; ctx.strokeStyle = INK; ctx.lineWidth = 3; inkPath(ctx, [[c.x - 18, c.y + c.w + 30], [c.x + 18, c.y + c.w + 30], [c.x, c.y]], true); ctx.fill(); ctx.stroke();
+        continue;
+      }
       if (c.hang) { ctx.strokeStyle = '#8a6d4b'; ctx.lineWidth = 2.5; inkPath(ctx, [[c.x, 700], [c.x, c.y + c.w]]); ctx.stroke(); }
       const sw = c.hang ? Math.sin(T * 1.3 + c.x) * 0.04 : 0;
       ctx.save(); ctx.translate(c.x, c.y + c.w / 2); ctx.rotate(sw);

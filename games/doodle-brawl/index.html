@@ -64,6 +64,9 @@
   .mode { text-align: left; display: flex; gap: 12px; align-items: center; }
   .mode .em { font-size: 34px; }
   .mode small { display: block; color: var(--mut); font-weight: 400; font-size: 13px; }
+  .maps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .maps button { padding: 6px 10px; font-size: 14px; box-shadow: 2px 2px 0 var(--ink); }
+  .maps button.on { background: #ffe066; }
   .disc { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
   .disc div { border: 2px dashed #adb5bd; border-radius: 12px; padding: 8px; text-align: center; font-size: 13px; }
   .disc div.got { border: 2px solid var(--ink); background: #fff9db; }
@@ -145,6 +148,7 @@
 <!-- modes -->
 <div class="screen" id="modesScr" hidden>
   <h2>🎯 Modes</h2>
+  <div class="card col" style="margin-bottom:10px"><b>🗺️ Map</b><div class="maps" data-maps></div></div>
   <div class="col" id="modeList"></div>
   <button id="modesBack" style="margin-top:12px">Back</button>
 </div>
@@ -154,6 +158,7 @@
   <h2>🌐 Online 1v1</h2>
   <div class="card col">
     <div class="hint">You'll fight with your current weapon: <b id="onlineW"></b></div>
+    <div><b>🗺️ Map</b> <small class="hint">(the room creator's choice is used)</small><div class="maps" data-maps></div></div>
     <input id="name" maxlength="12" placeholder="Your name">
     <button class="go" id="quickB">⚡ Quick Match</button>
     <div class="row"><button id="createB">🔒 Create room</button></div>
@@ -365,12 +370,19 @@ function drawPreview(T) {
 let G = null, pendingChallenge = null, pendingMode = null;
 Object.defineProperty(window, 'dbGame', { get: () => G }); // for debugging
 const LEVEL_NAMES = ['Easy', 'Normal', 'Hard', 'Expert'];
+const pickMap = () => (S.map && S.map !== 'random' && DB.MAPS[S.map] ? S.map : pick(Object.keys(DB.MAPS)));
+function renderMaps() {
+  const opts = [['random', '🎲', 'Random'], ...Object.entries(DB.MAPS).map(([id, m]) => [id, m.icon, m.name])], cur = S.map || 'random';
+  document.querySelectorAll('[data-maps]').forEach((el) => { el.innerHTML = opts.map(([id, ic, n]) => `<button data-map="${id}" class="${cur === id ? 'on' : ''}">${ic} ${n}</button>`).join(''); });
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-map]'); if (!b) return; S.map = b.dataset.map; persist(); renderMaps(); });
 const cpuLevel = () => (S.wins < 2 ? 0 : S.wins < 7 ? 1 : S.wins < 18 ? 2 : 3);
 const PRESET_TYPES = ['sword', 'spear', 'hammer', 'dagger', 'shield', 'curved', 'club', 'star'];
 function quickBattle() { const t = pick(PRESET_TYPES); startMatch({ mode: 'quick', w2: WP.preset(t), level: cpuLevel(), names: [S.name || 'You', `CPU · ${WP.preset(t).name}`] }); }
 function startMatch(o) {
   const w1 = o.w1 || currentWeapon();
-  const s = DB.create({ w1, w2: o.w2, chaos: o.chaos, boss: o.boss, rounds: o.rounds ?? 2, hp1: o.hp1 });
+  o.map ??= pickMap();
+  const s = DB.create({ w1, w2: o.w2, chaos: o.chaos, boss: o.boss, rounds: o.rounds ?? 2, hp1: o.hp1, map: o.map });
   s.p[0].hat = o.hat1 === undefined ? S.equip.hat : o.hat1; s.p[1].hat = o.hat2 ?? (o.boss ? { golem: 'tophat', ninja: 'cap', giant: 'horns' }[o.boss] : pick([null, null, 'cap', 'party', 'crown']));
   G = { ...o, s, w1, mem: [{}, {}], acc: 0, last: performance.now(), fx: [], words: [], shake: 0, zoom: 1, trail: [s.p[0].hp, s.p[1].hp], banner: null, paused: false,
     track: { blocks: 0, parries: 0, bestHit: 0, dmgDealt: 0, start: performance.now(), splats: 0 }, inks: [o.ink1 || S.equip.ink, o.ink2 || pick(['#e03131', '#1c7ed6', '#2f9e44', '#7048e8', '#1d1b2f'])] };
@@ -459,7 +471,11 @@ function handleEvents(evs) {
     if (e.e === 'guardbreak') { SFX.clang(); SFX.hit(3, 20); word('GUARD BREAK!', e.x, e.y + 30, 40, '#fff', '#e03131'); G.shake = 14; }
     if (e.e === 'clank') { SFX.clang(); word(e.text || 'CLANK!', e.x, e.y + 20, 30, '#1d1b2f', '#dee2e6'); }
     if (e.e === 'miss') { word(e.text || 'MISS!', e.x, e.y + 10, 26, '#1d1b2f', '#fff'); SFX.swing(0.3); }
-    if (e.e === 'splat') { word('WALL SPLAT!', e.x, e.y + 40, 40, '#fff', '#7048e8'); G.shake = 16; SFX.hit(3, 20); if (1 - e.who === mine) G.track.splats++; }
+    if (e.e === 'splat') { word('BOUNCE!', e.x, e.y + 40, 34, '#fff', '#7048e8'); G.shake = 8; tone(180, 90, 0.18, 'sine', 0.2); }
+    if (e.e === 'boing') { tone(200, 800, 0.25, 'sine', 0.15); word('BOING!', e.x, 60, 26, '#1d1b2f', '#ffc9de'); }
+    if (e.e === 'lava') { word('HOT!', e.x, 70, 34, '#fff', '#ff6b2b'); noise(0.3, 0.2, 1500); if (e.who === mine) G.track.burns = (G.track.burns || 0) + 1; }
+    if (e.e === 'crack') { word(e.icicle ? 'SHATTER!' : 'CRACK!', e.x, e.y + 30, 30, '#1d1b2f', e.icicle ? '#d0ebff' : '#e2b77a'); noise(0.25, 0.3, e.icicle ? 3000 : 600); inkSplat(e.x, e.y, 10, e.icicle ? '#a5d8ff' : '#c08552'); }
+    if (e.e === 'meteor') { SFX.boom(); word('THOOM!', e.x, 60, 44, '#fff', '#868e96'); G.shake = 16; inkSplat(e.x, 10, 16, '#868e96'); }
     if (e.e === 'crate') { SFX.pop(); word('CREAK…', e.x, e.y + 80, 22); }
     if (e.e === 'squash') { word('SQUASH!', e.x, e.y + 40, 44, '#1d1b2f', '#e2b77a'); SFX.hit(3, 18); G.shake = 14; }
     if (e.e === 'thud') { SFX.hit(2, 8); G.shake = Math.max(G.shake, 6); }
@@ -490,7 +506,7 @@ function draw(T) {
   const scale = Math.min(Wc / viewW, Hc / 560) * G.zoom;
   cam.x += (Math.max(viewW / 2 - 30, Math.min(s.W - viewW / 2 + 30, (a.x + b.x) / 2)) - cam.x) * 0.12;
   const sx = (Math.random() - 0.5) * G.shake * d, sy = (Math.random() - 0.5) * G.shake * d, groundY = Hc * (document.body.classList.contains('touch') ? 0.72 : 0.84);
-  ctx.setTransform(1, 0, 0, 1, 0, 0); DR.paper(ctx, Wc, Hc, cam.x, scale);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); DR.paper(ctx, Wc, Hc, cam.x, scale, s.mapId);
   ctx.setTransform(scale, 0, 0, -scale, Wc / 2 - cam.x * scale + sx, groundY + sy);
   DR.arena(ctx, s, T);
   // shockwaves and thrown things
@@ -569,7 +585,7 @@ function matchOver(winner) {
   $('lb').hidden = true;
   if (G.mode === 'survival') {
     if (won) { // next wave, keep your health (plus a little)
-      G.score += 1000 + Math.round(G.s.p[0].hp * 5); addCoins(10); const hp = Math.min(100, G.s.p[0].hp + 25), wave = G.wave + 1;
+      G.score += 1000 + Math.round(G.s.p[0].hp * 3); addCoins(10); const hp = Math.min(DB.HP, G.s.p[0].hp + 40), wave = G.wave + 1;
       return setTimeout(() => survivalWave(wave, hp), 600);
     }
     title = 'GAME OVER'; sub = `You survived ${G.wave - 1} wave${G.wave === 2 ? '' : 's'} · score ${G.score.toLocaleString()}`;
@@ -584,7 +600,7 @@ function matchOver(winner) {
   }
   if (won) S.wins++; S.games++;
   sub += `<br><small>Best hit: ${G.track.bestHit} · damage dealt: ${G.track.dmgDealt} · ${Math.round(secs)}s</small>`;
-  const daily = checkDaily({ won, mode: G.mode, w: G.s.p[mine].w, secs, ...G.track });
+  const daily = checkDaily({ won, mode: G.mode, w: G.s.p[mine].w, secs, map: G.s.mapId, ...G.track });
   if (daily) { coins += 60; sub += `<br>🏆 Daily challenge complete! +60🪙`; }
   addCoins(coins); persist();
   (won ? SFX.win : SFX.lose)();
@@ -613,7 +629,7 @@ $('muteB').onclick = () => { muted = !muted; localStorage.setItem('db-mute', mut
 
 // ---------- modes ----------
 const CHAOS = { lowgrav: 'Low gravity', giant: 'GIANT weapons', tiny: 'Tiny fighters', onehit: 'Glass cannons', explode: 'Exploding hits', infinite: 'Infinite specials', bouncy: 'Bouncy walls', speed: 'Hyper speed' };
-function startSurvival() { G = null; survivalWave(1, 100, 0); }
+function startSurvival() { G = null; survivalWave(1, DB.HP, 0); }
 function survivalWave(wave, hp, score) {
   const t = pick(PRESET_TYPES), prevScore = score ?? G?.score ?? 0;
   startMatch({ mode: 'survival', w2: WP.preset(t), level: Math.min(3, Math.floor((wave - 1) / 2)), rounds: 1, hp1: hp, names: [S.name || 'You', `Wave ${wave} · ${WP.preset(t).name}`] });
@@ -646,7 +662,7 @@ const DAILY = [
   { text: 'Win with a shield', ok: (r) => r.won && r.w.type === 'shield' },
   { text: 'Parry 3 attacks in one match', ok: (r) => r.parries >= 3 },
   { text: 'Win a Chaos match', ok: (r) => r.won && r.mode === 'chaos' },
-  { text: 'Knock someone into a wall (WALL SPLAT)', ok: (r) => r.splats > 0 },
+  { text: 'Win a match on the Hot Lava map', ok: (r) => r.won && r.map === 'lava' },
   { text: 'Win with a weapon heavier than 4', ok: (r) => r.won && r.w.mass > 4 },
   { text: 'Win with a spear', ok: (r) => r.won && r.w.type === 'spear' },
 ];
@@ -749,10 +765,10 @@ function showHome() {
 $('playB').onclick = () => { if (!S.current || pendingChallenge) { if (!S.current) toast('First, draw your weapon! Start at the handle ✋', 3500); return openDraw(S.current); } quickBattle(); };
 $('drawB').onclick = () => openDraw(S.current);
 $('armoryB').onclick = () => { renderArmory(); screen('armoryScr'); };
-$('modesB').onclick = () => { renderModes(); screen('modesScr'); };
+$('modesB').onclick = () => { renderModes(); renderMaps(); screen('modesScr'); };
 $('challB').onclick = () => { renderChallenges(); screen('challScr'); };
 $('lockerB').onclick = () => { renderLocker(); screen('lockerScr'); };
-$('onlineB').onclick = () => { if (!S.current) { toast('First, draw your weapon! ✏️'); return openDraw(); } $('onlineW').textContent = S.weapons.find((w) => w.code === S.current)?.name || WP.analyze(WP.decode(S.current)).name; $('name').value = S.name; screen('onlineScr'); };
+$('onlineB').onclick = () => { if (!S.current) { toast('First, draw your weapon! ✏️'); return openDraw(); } $('onlineW').textContent = S.weapons.find((w) => w.code === S.current)?.name || WP.analyze(WP.decode(S.current)).name; $('name').value = S.name; renderMaps(); screen('onlineScr'); };
 for (const id of ['armoryBack', 'modesBack', 'challBack', 'lockerBack']) $(id).onclick = () => showHome();
 $('onlineBack').onclick = () => { leaveRoom(true); showHome(); };
 
@@ -850,27 +866,28 @@ function lobbyStatus() {
 function onNet(m) {
   if (m.k === 'pick') { net.picks.them = m; if (net.host) maybeStart(); return; }
   if (m.k === 'in' && net.host) { net.guestIn = m.i; return; }
-  if (m.k === 'start' && !net.host) { startMatch({ mode: 'guest', w1: WP.analyze(WP.decode(m.c1)), w2: WP.analyze(WP.decode(m.c2)), names: m.names, ink1: m.ink1, ink2: m.ink2, hat1: m.hat1, hat2: m.hat2 }); return; }
+  if (m.k === 'start' && !net.host) { startMatch({ mode: 'guest', w1: WP.analyze(WP.decode(m.c1)), w2: WP.analyze(WP.decode(m.c2)), names: m.names, ink1: m.ink1, ink2: m.ink2, hat1: m.hat1, hat2: m.hat2, map: m.map }); return; }
   if (m.k === 's' && !net.host && G?.mode === 'guest') return applyState(m);
   if (m.k === 'again') { net.votes.add('them'); tryRematch(); }
 }
 function maybeStart() {
   const t = net.picks.them; if (!t) return;
-  const m = { k: 'start', c1: S.current, c2: t.code, names: [S.name || 'Host', t.name || 'Guest'], ink1: S.equip.ink, ink2: t.ink, hat1: S.equip.hat, hat2: t.hat };
+  const m = { k: 'start', c1: S.current, c2: t.code, names: [S.name || 'Host', t.name || 'Guest'], ink1: S.equip.ink, ink2: t.ink, hat1: S.equip.hat, hat2: t.hat, map: pickMap() };
   sendOn(m);
-  startMatch({ mode: 'online', w1: WP.analyze(WP.decode(m.c1)), w2: WP.analyze(WP.decode(m.c2)), names: m.names, ink1: m.ink1, ink2: m.ink2, hat1: m.hat1, hat2: m.hat2 });
+  startMatch({ mode: 'online', w1: WP.analyze(WP.decode(m.c1)), w2: WP.analyze(WP.decode(m.c2)), names: m.names, ink1: m.ink1, ink2: m.ink2, hat1: m.hat1, hat2: m.hat2, map: m.map });
 }
 const F_KEYS = ['x', 'y', 'face', 'hp', 'phi', 'om', 'phase', 'block', 'stun', 'tumble', 'spin', 'dodge', 'meter', 'wins', 'dizzy', 'gone', 'vx'];
 net.sendState = (s) => {
   const r = (v) => (typeof v === 'number' ? Math.round(v * 100) / 100 : v);
   sendOn({ k: 's', p: s.p.map((f) => [...F_KEYS.map((k) => r(f[k])), f.sp ? f.sp.k : null]), ph: s.phase, tm: s.timer, rd: s.round, win: s.winner,
-    cr: s.crates.map((c) => [c.x, r(c.y), c.hang, c.broken]), br: [s.barrel.fuse, s.barrel.gone], sh: s.shots.map((p) => [p.k, r(p.x), r(p.y), p.owner]), wv: s.waves.map((w) => [r(w.x), w.dir]), ev: s.events.length ? s.events : undefined });
+    cr: s.crates.map((c) => [c.x, r(c.y), c.hang, c.broken]), rk: s.rocks.map((k) => [r(k.x), r(k.y), k.warn]), br: [s.barrel.fuse, s.barrel.gone], sh: s.shots.map((p) => [p.k, r(p.x), r(p.y), p.owner]), wv: s.waves.map((w) => [r(w.x), w.dir]), ev: s.events.length ? s.events : undefined });
 };
 function applyState(m) {
   const s = G.s;
   m.p.forEach((a, i) => { const f = s.p[i]; F_KEYS.forEach((k, j) => (f[k] = a[j])); f.sp = a[F_KEYS.length] ? { k: a[F_KEYS.length], t: 1 } : null; });
   Object.assign(s, { phase: m.ph, timer: m.tm, round: m.rd, winner: m.win });
-  s.crates = m.cr.map(([x, y, hang, broken]) => ({ x, y, hang, broken, w: 60 })); s.barrel = { x: 600, fuse: m.br[0], gone: m.br[1] };
+  s.crates = m.cr.map(([x, y, hang, broken]) => ({ x, y, hang, broken, w: s.map.icicles ? 40 : 60, icicle: !!s.map.icicles })); s.barrel = { x: s.map.barrel ?? 600, fuse: m.br[0], gone: m.br[1] };
+  s.rocks = (m.rk || []).map(([x, y, warn]) => ({ x, y, warn }));
   s.shots = m.sh.map(([k, x, y, owner]) => ({ k, x, y, owner })); s.waves = m.wv.map(([x, dir]) => ({ x, dir }));
   if (m.ev) handleEvents(m.ev);
 }
