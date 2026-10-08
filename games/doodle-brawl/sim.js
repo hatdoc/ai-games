@@ -1,7 +1,7 @@
 // Doodle Brawl: the fight. 60 steps a second; the host runs it online, everyone draws the result.
 // Weapons swing with real momentum: the drawing's ink is its mass, so a heavy head swings slowly but hits hard.
 (() => {
-  const W = 1200, WALL = 40, R = 28, GRAV = 0.8, ROUND = 45 * 60, WINS = 2;
+  const W = 1200, WALL = 40, R = 28, GRAV = 0.8, ROUND = 50 * 60, WINS = 2, HP = 170;
   const REST = 0.5, UP = 1.95, DOWN = -1.25, BLOCK = 1.45; // weapon angles (radians, 0 = forward, + = up)
 
   // ---------- fighters ----------
@@ -11,7 +11,7 @@
     for (const st of w.segs) for (let i = 0; i < st.length; i += 2) pts.push([st[i][0] * k, st[i][1] * k]);
     const body = opt.body || 1;
     return {
-      w, pts, x, y: 0, vx: 0, vy: 0, face, hp: opt.hp || 100, max: opt.hp || 100, phi: REST, om: 0, phase: 'idle', pt: 0, swings: 0, dir: -1, queued: false,
+      w, pts, x, y: 0, vx: 0, vy: 0, face, hp: opt.hp || HP, max: opt.hp || HP, phi: REST, om: 0, phase: 'idle', pt: 0, swings: 0, dir: -1, queued: false,
       block: false, blockT: 0, dodge: 0, dodgeCd: 0, stun: 0, tumble: 0, spin: 0, meter: opt.meter || 0, hit: false, wins: 0, sp: null, gone: false,
       mass: w.mass * k, inertia: w.inertia * k * k * k * (w.type === 'curved' ? 0.7 : 1) /* curved blades are well balanced */, reach: w.reach * k, r: R * body, boss: opt.boss || null, prev: {}, air: false, lastHitBy: 0, stats: w.stats,
     };
@@ -25,11 +25,11 @@
   function create(o) {
     const s = {
       W, round: 1, phase: 'intro', pt: 0, timer: ROUND, frame: 0, freeze: 0, slow: 0, slowAcc: 0, events: [], shots: [], waves: [], winner: null, rnd: 12345,
-      chaos: o.chaos || [], survival: !!o.survival, bossId: o.boss || null,
+      chaos: o.chaos || [], survival: !!o.survival, bossId: o.boss || null, mapId: MAPS[o.map] ? o.map : 'dojo', map: MAPS[o.map] || MAPS.dojo,
       grav: GRAV * ((o.chaos || []).includes('lowgrav') ? 0.42 : 1), rounds: o.rounds ?? WINS,
     };
     s.mk = (i) => {
-      const w = i ? o.w2 : o.w1, ch = s.chaos, base = { wscale: ch.includes('giant') ? 1.7 : 1, body: ch.includes('tiny') ? 0.65 : 1, hp: ch.includes('onehit') ? 35 : 100, meter: ch.includes('infinite') ? 100 : 0 };
+      const w = i ? o.w2 : o.w1, ch = s.chaos, base = { wscale: ch.includes('giant') ? 1.7 : 1, body: ch.includes('tiny') ? 0.65 : 1, hp: ch.includes('onehit') ? 60 : HP, meter: ch.includes('infinite') ? 100 : 0 };
       const b = i && o.boss ? BOSSES[o.boss] : null;
       return fighter(w, i ? 840 : 360, i ? -1 : 1, b ? { ...base, hp: b.hp, body: b.body, wscale: b.wscale, boss: o.boss } : i && o.hp2 ? { ...base, hp: o.hp2 } : i === 0 && o.hp1 ? { ...base, hp: o.hp1 } : base);
     };
@@ -38,10 +38,19 @@
     s.events.push({ e: 'round', n: 1 });
     return s;
   }
+  // arenas: what hangs from the ceiling, platforms, hazards
+  const MAPS = {
+    dojo: { name: 'Notebook Dojo', icon: '📓', crates: [360, 840], barrel: 600 },
+    notes: { name: 'Sticky Notes', icon: '🟨', crates: [600], barrel: null, plats: [[220, 400, 150], [500, 700, 270], [800, 980, 150]] },
+    lava: { name: 'Hot Lava', icon: '🌋', crates: [], barrel: 600, lava: [[230, 370], [830, 970]], meteors: true },
+    ice: { name: 'Frozen Pond', icon: '🧊', crates: [300, 600, 900], icicles: true, barrel: null, ice: true },
+    bouncy: { name: 'Trampoline Park', icon: '🎪', crates: [600], barrel: null, tramps: [[230, 330], [870, 970]], softWalls: true },
+  };
   function resetProps(s) {
-    s.crates = [360, 840].map((x) => ({ x, y: 330, vy: 0, hang: true, broken: false, w: 60 }));
-    s.barrel = { x: 600, y: 0, fuse: -1, gone: false };
-    s.shots = []; s.waves = [];
+    const m = s.map;
+    s.crates = m.crates.map((x) => ({ x, y: 330, vy: 0, hang: true, broken: false, w: m.icicles ? 40 : 60, icicle: !!m.icicles }));
+    s.barrel = { x: m.barrel ?? 600, y: 0, fuse: -1, gone: m.barrel == null };
+    s.shots = []; s.waves = []; s.rocks = []; s.rockAt = 300;
   }
   const rnd = (s) => ((s.rnd = (s.rnd * 1664525 + 1013904223) >>> 0) / 4294967296);
   const presses = (f, inp) => { const o = {}; for (const k of ['a', 'u', 'd', 's']) o[k] = inp[k] && !f.prev[k]; f.prev = { ...inp }; return o; };
@@ -49,9 +58,9 @@
 
   // ---------- bosses: each one needs a different kind of weapon ----------
   const BOSSES = {
-    golem: { name: 'Shield Golem', hp: 220, body: 1.7, wscale: 1.2, weapon: 'hammer', hint: 'Its shield stops hits from the front. Use a SHARP point, jump on it, or get behind it.', speed: 0.55 },
-    ninja: { name: 'Ninja Fox', hp: 130, body: 0.9, wscale: 1, weapon: 'dagger', hint: 'It dodges slow swings. Draw something LIGHT and fast.', speed: 1.5 },
-    giant: { name: 'Iron Giant', hp: 200, body: 2, wscale: 1.5, weapon: 'club', hint: 'Its armour shrugs off weak hits. Draw something HEAVY.', speed: 0.5 },
+    golem: { name: 'Shield Golem', hp: 360, body: 1.7, wscale: 1.2, weapon: 'hammer', hint: 'Its shield stops hits from the front. Use a SHARP point, jump on it, or get behind it.', speed: 0.55 },
+    ninja: { name: 'Ninja Fox', hp: 210, body: 0.9, wscale: 1, weapon: 'dagger', hint: 'It dodges slow swings. Draw something LIGHT and fast.', speed: 1.5 },
+    giant: { name: 'Iron Giant', hp: 330, body: 2, wscale: 1.5, weapon: 'club', hint: 'Its armour shrugs off weak hits. Draw something HEAVY.', speed: 0.5 },
   };
 
   // ---------- one step ----------
@@ -89,7 +98,8 @@
     f.block = !!inp.b && f.phase === 'idle' && !f.air && !unarmed;
     f.blockT = f.block ? (wasBlock ? f.blockT + 1 : 0) : 99;
     const dir = (inp.r ? 1 : 0) - (inp.l ? 1 : 0);
-    if (f.y === 0) f.vx = dir * spd * (f.block ? 0.4 : f.phase === 'idle' ? 1 : 0.55);
+    const want = dir * spd * (f.block ? 0.4 : f.phase === 'idle' ? 1 : 0.55);
+    if (!f.air) f.vx = s.map.ice ? f.vx + (want - f.vx) * 0.05 : want; // ice: slow to start, slow to stop
     else f.vx += dir * 0.25;
     if (pr.u && f.y === 0 && !f.block) { f.vy = 13.5 * (s.chaos.includes('lowgrav') ? 0.75 : 1); s.events.push({ e: 'jump', who: me }); }
     if (pr.d && f.dodgeCd <= 0) { f.dodge = 14; f.dodgeCd = 48; f.dodgeDir = dir || -f.face; f.phase = 'idle'; f.block = false; s.events.push({ e: 'dodge', who: me }); return; }
@@ -140,19 +150,29 @@
       f.y += f.vy; f.vy -= s.grav; f.air = true;
       const top = standOn(s, f);
       if (f.y <= top && f.vy <= 0) {
+        const tramp = top === 0 && (s.map.tramps || []).some(([a, b]) => f.x > a && f.x < b);
+        if (tramp && f.vy < -1) { f.y = 0; f.vy = Math.min(21, -f.vy * 0.95 + 6); s.events.push({ e: 'boing', x: f.x }); return; }
         f.y = top; f.vy = 0; f.air = false;
         if (f.tumble) { f.tumble = 0; f.stun = Math.max(f.stun, 18); s.events.push({ e: 'land', x: f.x, heavy: true }); }
         if (sp && sp.k === 'slam') { f.sp = null; s.waves.push({ owner: me, x: f.x, dir: 1, life: 40, power: 10 + f.mass * 4 }, { owner: me, x: f.x, dir: -1, life: 40, power: 10 + f.mass * 4 }); s.events.push({ e: 'slam', x: f.x, power: f.mass }); }
       }
-    } else { const top = standOn(s, f); if (top < f.y) { f.vy = -0.1; f.y -= 0.01; } else f.air = false; }
+    } else {
+      const top = standOn(s, f); if (top < f.y) { f.vy = -0.1; f.y -= 0.01; } else f.air = false;
+      if (f.y === 0 && (s.map.tramps || []).some(([a, b]) => f.x > a && f.x < b)) { f.vy = 15; f.y = 0.1; s.events.push({ e: 'boing', x: f.x }); } // step on a trampoline: boing
+    }
     if (f.tumble) f.spin += f.tumble;
+    if (s.phase === 'fight' && f.y < 2 && (s.map.lava || []).some(([a, b]) => f.x > a && f.x < b) && s.frame - (f.burnt || -99) > 20) {
+      const [a, b] = s.map.lava.find(([a, b]) => f.x > a && f.x < b);
+      f.burnt = s.frame; f.vy = 13; f.y = 0.1; f.vx = (f.x < (a + b) / 2 ? -1 : 1) * 7; // hop out towards the nearer edge
+      damage(s, f, 4, 1 - me); s.events.push({ e: 'lava', who: me, x: f.x, y: 20 });
+    }
     if (f.stun && f.y === 0 && !f.tumble) f.vx *= 0.8;
     f.x += f.vx;
     // walls (and wall splats)
     for (const [edge, side] of [[WALL + f.r, -1], [W - WALL - f.r, 1]]) {
       if ((side < 0 && f.x < edge) || (side > 0 && f.x > edge)) {
         f.x = edge;
-        if (Math.abs(f.vx) > 8 && (f.tumble || f.stun)) { const d = Math.round(5 + Math.abs(f.vx) * 0.55); damage(s, f, d, f.lastHitBy, 'splat'); s.events.push({ e: 'splat', who: me, x: f.x, y: f.y + f.r, dmg: d }); f.vx = -f.vx * (s.chaos.includes('bouncy') ? 1.1 : 0.35); }
+        if (Math.abs(f.vx) > 8 && (f.tumble || f.stun)) { s.events.push({ e: 'splat', who: me, x: f.x, y: f.y + f.r }); f.vx = -f.vx * (s.chaos.includes('bouncy') || s.map.softWalls ? 0.9 : 0.35); } // bounce off, no damage
         else f.vx = 0;
       }
     }
@@ -161,7 +181,12 @@
     // fighters don't overlap
     if (!o.gone && Math.abs(o.x - f.x) < f.r + o.r - 8 && Math.abs(o.y - f.y) < 60 && !f.dodge && !o.dodge) { const push = ((f.r + o.r - 8) - Math.abs(o.x - f.x)) / 2 * Math.sign(f.x - o.x || (me ? 1 : -1)); f.x += push; }
   }
-  const standOn = (s, f) => { let top = 0; for (const c of s.crates) if (!c.hang && !c.broken && c.y < 1 && Math.abs(f.x - c.x) < c.w / 2 + 6 && f.y >= c.w - 10) top = Math.max(top, c.w); return top; };
+  const standOn = (s, f) => {
+    let top = 0;
+    for (const c of s.crates) if (!c.hang && !c.broken && c.y < 1 && Math.abs(f.x - c.x) < c.w / 2 + 6 && f.y >= c.w - 10) top = Math.max(top, c.w);
+    for (const [a, b, h] of s.map.plats || []) if (f.x > a && f.x < b && f.y >= h - 14 && f.vy <= 0) top = Math.max(top, h);
+    return top;
+  };
 
   // weapon angle: torque-limited servo, so the weapon's inertia sets how fast it swings
   function weapon(s, f) {
@@ -193,7 +218,10 @@
     // also knock down hanging crates / light the barrel
     for (let i = 0; i < f.pts.length; i += 3) {
       const [px, py] = wpos(f, f.pts[i]);
-      for (const c of s.crates) if (c.hang && Math.abs(px - c.x) < c.w / 2 && py > c.y && py < c.y + c.w) { c.hang = false; s.events.push({ e: 'crate', x: c.x, y: c.y }); }
+      for (const c of s.crates) {
+        if (c.hang && Math.abs(px - c.x) < c.w / 2 && py > c.y && py < c.y + c.w) { c.hang = false; s.events.push({ e: 'crate', x: c.x, y: c.y }); }
+        else if (!c.hang && !c.broken && c.y < 1 && Math.abs(px - c.x) < c.w / 2 && py < c.w && Math.abs(f.om) > 0.15) { c.broken = true; s.events.push({ e: 'crack', x: c.x, y: c.w / 2, icicle: c.icicle }); } // smash it
+      }
       if (!s.barrel.gone && s.barrel.fuse < 0 && Math.abs(px - s.barrel.x) < 26 && py < 64) { s.barrel.fuse = 45; s.events.push({ e: 'fuse', x: s.barrel.x }); }
     }
     const cx = o.x, cy = o.y + o.r;
@@ -290,8 +318,21 @@
     for (const c of s.crates) {
       if (c.hang || c.broken || c.y <= 0) continue;
       c.vy -= s.grav; c.y = Math.max(0, c.y + c.vy);
-      s.p.forEach((f, i) => { if (!f.gone && c.vy < -3 && Math.abs(f.x - c.x) < c.w / 2 + f.r * 0.7 && c.y < f.y + f.r * 2 && c.y > f.y) { damage(s, f, 15, 1 - i); f.stun = 45; f.vy = 0; c.vy = 4; s.freeze = 8; s.events.push({ e: 'squash', who: i, x: f.x, y: f.y + f.r * 2 }); } });
-      if (c.y === 0) { c.vy = 0; s.events.push({ e: 'thud', x: c.x }); }
+      s.p.forEach((f, i) => { if (!f.gone && !c.squashed && c.vy < -3 && Math.abs(f.x - c.x) < c.w / 2 + f.r * 0.7 && c.y < f.y + f.r * 2 && c.y > f.y) {
+        damage(s, f, c.icicle ? 18 : 15, 1 - i); f.stun = 40; f.vy = 0; s.freeze = 8; s.events.push({ e: 'squash', who: i, x: f.x, y: f.y + f.r * 2, icicle: c.icicle });
+        c.squashed = true; c.broken = true; s.events.push({ e: 'crack', x: c.x, y: f.y + f.r * 2, icicle: c.icicle }); // it breaks on their head: hits once, never traps anyone
+      } });
+      if (c.y === 0) { c.vy = 0; if (c.icicle) { c.broken = true; s.events.push({ e: 'crack', x: c.x, y: 10, icicle: true }); } else s.events.push({ e: 'thud', x: c.x }); }
+    }
+    // meteors: a warning shadow, then a rock falls
+    if (s.map.meteors && s.phase === 'fight') {
+      if (--s.rockAt <= 0) { s.rockAt = 300 + Math.floor(rnd(s) * 200); const t = s.p[Math.floor(rnd(s) * 2)]; s.rocks.push({ x: Math.max(80, Math.min(W - 80, t.x + (rnd(s) - 0.5) * 160)), y: 700, warn: 70 }); }
+      for (const r of s.rocks) {
+        if (r.warn > 0) { r.warn--; continue; }
+        r.y -= 16;
+        if (r.y <= 0) { r.done = true; s.events.push({ e: 'meteor', x: r.x }); s.p.forEach((f, i) => { if (!f.gone && Math.abs(f.x - r.x) < 60 && f.y < 60) { damage(s, f, 12, 1 - i); f.vy = 10; f.y = 0.1; f.vx = Math.sign(f.x - r.x || 1) * 7; f.tumble = 0.2 * Math.sign(f.x - r.x || 1); f.stun = 12; } }); }
+      }
+      s.rocks = s.rocks.filter((r) => !r.done);
     }
     // barrel fuse
     const b = s.barrel;
@@ -372,6 +413,10 @@
     }
     if (!s.barrel.gone && s.barrel.fuse > 0 && Math.abs(f.x - s.barrel.x) < 220) { inp[f.x < s.barrel.x ? 'l' : 'r'] = true; if (s.barrel.fuse < 15) inp.u = true; return inp; }
     if (s.waves.some((w) => w.owner !== me && Math.abs(w.x - f.x) < 140)) { inp.u = true; return inp; }
+    const lava = (s.map.lava || []).find(([a, b]) => f.x > a - 20 && f.x < b + 20);
+    if (lava && f.y < 5) { inp[f.x < (lava[0] + lava[1]) / 2 ? 'l' : 'r'] = true; inp.u = f.x > lava[0] && f.x < lava[1]; return inp; }
+    const rock = (s.rocks || []).find((r) => Math.abs(r.x - f.x) < 80);
+    if (rock) { inp[f.x < rock.x ? 'l' : 'r'] = true; return inp; }
     const set = (keys, n) => { mem.keys = keys; mem.hold = n; return Object.assign(inp, keys); };
     // special when it'll land
     if (f.meter >= 100) {
@@ -396,5 +441,5 @@
     return set({}, 5);
   }
 
-  globalThis.DB = { create, step, cpu, wpos, BOSSES, W, ROUND, R };
+  globalThis.DB = { create, step, cpu, wpos, BOSSES, MAPS, W, ROUND, R, HP };
 })();
