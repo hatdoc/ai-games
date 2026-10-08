@@ -60,7 +60,9 @@
 
   const rad = (d) => d * Math.PI / 180;
   // draw one fighter at its feet position; ctx is in world space with y up
+  // flash: { col: [r, g, b], k: 0..1 } tints only the fighter's own colours (hit flash, special glow)
   function drawFighter(ctx, f, frame, s, flash) {
+    const T = (c) => (flash && c !== '#120c1c' ? tint(c, flash.col, flash.k) : c);
     const C = FD.CHARS[f.id], p = poseOf(f, frame, s), big = C.big ? 1.12 : 1, leg = f.id === 'lin' ? 1.12 : 1;
     const face = p.spin ? -f.face : f.face;
     ctx.save(); ctx.translate(f.x, f.y); ctx.scale(face * big, big);
@@ -71,8 +73,8 @@
     const sh1 = [neck[0] - 6, neck[1] - 4], sh2 = [neck[0] + 4, neck[1] - 4];
     const el1 = seg(sh1, p.ua1, 32), ha1 = seg(el1, p.fa1, 30), el2 = seg(sh2, p.ua2, 32), ha2 = seg(el2, p.fa2, 30);
     const kn1 = seg(hip, p.th1, 46 * leg), ft1 = seg(kn1, p.sh1, 46 * leg), kn2 = seg(hip, p.th2, 46 * leg), ft2 = seg(kn2, p.sh2, 46 * leg);
-    const line = (a, b, w, col) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); };
-    const dot = (a, r, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(a[0], a[1], r, 0, 7); ctx.fill(); };
+    const line = (a, b, w, col) => { ctx.strokeStyle = T(col); ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); };
+    const dot = (a, r, col) => { ctx.fillStyle = T(col); ctx.beginPath(); ctx.arc(a[0], a[1], r, 0, 7); ctx.fill(); };
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     const dark = shade(C.color, -0.35), out = '#120c1c';
     const limb = (a, b, w, col) => { line(a, b, w + 5, out); line(a, b, w, col); };
@@ -88,7 +90,7 @@
     // head
     const head = [neck[0] + Math.sin(tor + rad(p.head) * 0.5) * 22, neck[1] + Math.cos(tor + rad(p.head) * 0.5) * 22];
     dot(head, 18, out); dot(head, 16, C.skin);
-    drawHair(ctx, C, head, rad(p.tor + p.head * 0.5));
+    drawHair(ctx, C, head, rad(p.tor + p.head * 0.5), T);
     // face: eye and mouth looking forward
     const hurt = ['hstun', 'launched', 'down', 'ko'].includes(f.state);
     ctx.fillStyle = '#111';
@@ -98,18 +100,19 @@
     ctx.fillStyle = '#111'; ctx.fillRect(head[0] + 6, head[1] - 8, hurt ? 7 : 6, f.state === 'attack' || hurt ? 3.5 : 2);
     // front arm on top
     limb(sh2, el2, 13, C.color); limb(el2, ha2, 11, C.skin); dot(ha2, 10.5, out); dot(ha2, 8.5, C.trim);
-    if (flash) { ctx.globalCompositeOperation = 'source-atop'; ctx.fillStyle = flash; ctx.fillRect(-200, -50, 400, 300); ctx.globalCompositeOperation = 'source-over'; }
     ctx.restore();
   }
-  function drawHair(ctx, C, h, a) {
+  function drawHair(ctx, C, h, a, T) {
     ctx.save(); ctx.translate(h[0], h[1]); ctx.rotate(-a);
-    ctx.fillStyle = C.hair;
-    if (C.name === 'Kenji') { ctx.beginPath(); ctx.arc(0, 4, 16.5, Math.PI * 0.95, Math.PI * 2.05); ctx.fill(); ctx.fillStyle = C.color; ctx.fillRect(-16, 2, 32, 5); ctx.beginPath(); ctx.moveTo(-15, 5); ctx.lineTo(-30, 0); ctx.lineTo(-28, 9); ctx.fill(); }
+    ctx.fillStyle = T(C.hair);
+    if (C.name === 'Kenji') { ctx.beginPath(); ctx.arc(0, 4, 16.5, Math.PI * 0.95, Math.PI * 2.05); ctx.fill(); ctx.fillStyle = T(C.color); ctx.fillRect(-16, 2, 32, 5); ctx.beginPath(); ctx.moveTo(-15, 5); ctx.lineTo(-30, 0); ctx.lineTo(-28, 9); ctx.fill(); }
     if (C.name === 'Vex') { ctx.beginPath(); ctx.moveTo(-16, 2); ctx.lineTo(-24, 22); ctx.lineTo(-6, 14); ctx.lineTo(-8, 28); ctx.lineTo(6, 16); ctx.lineTo(14, 22); ctx.lineTo(16, 4); ctx.arc(0, 4, 16, 0, Math.PI, true); ctx.fill(); }
-    if (C.name === 'Tank') { ctx.fillRect(-12, 15, 24, 4); ctx.fillStyle = '#111'; ctx.fillRect(2, -14, 12, 6); }
+    if (C.name === 'Tank') { ctx.fillRect(-12, 15, 24, 4); ctx.fillStyle = T('#111111'); ctx.fillRect(2, -14, 12, 6); }
     if (C.name === 'Lin') { ctx.beginPath(); ctx.arc(0, 4, 16.5, Math.PI * 0.9, Math.PI * 2.1); ctx.fill(); ctx.beginPath(); ctx.arc(-14, 12, 7, 0, 7); ctx.fill(); ctx.beginPath(); ctx.moveTo(-16, 8); ctx.quadraticCurveTo(-30, -10, -22, -24); ctx.lineTo(-18, -22); ctx.quadraticCurveTo(-24, -8, -12, 4); ctx.fill(); }
     ctx.restore();
   }
+  function rgbOf(c) { if (c[0] === '#') { const n = parseInt(c.slice(1, 7), 16); return [n >> 16, (n >> 8) & 255, n & 255]; } return c.match(/\d+/g).slice(0, 3).map(Number); }
+  function tint(c, to, k) { const a = rgbOf(c); return `rgb(${a.map((v, i) => Math.round(v + (to[i] - v) * k)).join(',')})`; }
   function shade(hex, k) {
     const n = parseInt(hex.slice(1), 16), f = (c) => Math.max(0, Math.min(255, Math.round(k < 0 ? c * (1 + k) : c + (255 - c) * k)));
     return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
@@ -153,5 +156,20 @@
   }
   function drawShadow(ctx, f) { ctx.fillStyle = '#00000044'; ctx.beginPath(); ctx.ellipse(f.x, -4, Math.max(18, 44 - f.y * 0.12), 8, 0, 0, 7); ctx.fill(); }
 
-  globalThis.FR = { drawFighter, drawStage, drawShadow, poseOf, shade };
+  // comic-style impact burst: a jagged star that pops out and fades
+  function drawBurst(ctx, x, y, life, size, inner, edge) {
+    const k = 1 - life, r = size * (0.45 + k * 0.9), n = 12;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(x * 0.01); ctx.globalAlpha = Math.min(1, life * 2.2);
+    const star = (rad, jag) => { ctx.beginPath(); for (let i = 0; i < n * 2; i++) { const a = i / (n * 2) * Math.PI * 2, rr = i % 2 ? rad * jag * (0.8 + ((i * 37) % 7) / 20) : rad; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } ctx.closePath(); };
+    star(r, 0.45); ctx.fillStyle = edge; ctx.fill();
+    star(r * 0.62, 0.5); ctx.fillStyle = inner; ctx.fill();
+    ctx.restore(); ctx.globalAlpha = 1;
+  }
+  function drawGuard(ctx, x, y, face, life) { // blue shield arc in front of a blocking fighter
+    ctx.save(); ctx.globalAlpha = life; ctx.translate(x, y); ctx.scale(face, 1);
+    ctx.strokeStyle = '#74c0fc'; ctx.lineWidth = 8 * life + 2; ctx.beginPath(); ctx.arc(-10, 0, 46 + (1 - life) * 18, -0.9, 0.9); ctx.stroke();
+    ctx.strokeStyle = '#e7f5ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(-10, 0, 40 + (1 - life) * 18, -0.7, 0.7); ctx.stroke();
+    ctx.restore(); ctx.globalAlpha = 1;
+  }
+  globalThis.FR = { drawFighter, drawStage, drawShadow, poseOf, shade, drawBurst, drawGuard };
 })();
