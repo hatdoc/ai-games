@@ -153,6 +153,9 @@ const BOTS = {
   'doodle-brawl': { skip: 3, len: 9, poster: 4.5, async play(page) { // two CPUs with drawn weapons (hammer/sword/club vs spear/curved/shield)
     await page.evaluate(() => startDemo());
   } },
+  'memory-duel': { skip: 2, len: 10, poster: 5, async play(page) { // two CPUs on a moving Extreme board
+    await page.evaluate(() => startDemo());
+  } },
   'demolition-rush': { skip: 2, len: 7, poster: 0.5, async play(page) {
     await page.click('#playBtn');
     await page.evaluate(() => setInterval(() => { // smash the leftmost columns, take the first upgrade card
