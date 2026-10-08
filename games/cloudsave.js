@@ -100,7 +100,7 @@
   }
   addEventListener('message', (e) => {
     if (e.origin !== SITE || e.source !== parent) return;
-    if (e.data?.type === 'rg-cloud-hello') return ask(); // the page loaded after us and missed our first hello
+    if (e.data?.type === 'rg-cloud-hello') { if (window.rgHasBoard) parent.postMessage({ type: 'rg-board' }, SITE); return ask(); } // the page loaded after us and missed our first messages
     if (e.data?.type !== 'rg-cloud-auth') return;
     const { token: t, uid: u, nick } = e.data;
     window.rgAuth.user = t && u ? { uid: u, nick: nick || null } : null;
