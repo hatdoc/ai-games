@@ -45,7 +45,7 @@
     let score = 0, done = true, busy = false;
     const say = (html) => { note.innerHTML = html; note.hidden = !html; };
     const esc = (t) => t.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-    if (A.onSite) parent.postMessage({ type: 'rg-board' }, 'https://rank-game.com'); // page shows the nickname box
+    if (A.onSite) { window.rgHasBoard = true; parent.postMessage({ type: 'rg-board' }, 'https://rank-game.com'); } // page shows the nickname box / sign-in prompt
     // Keep game keyboard/touch handlers from reacting to typing or taps in the panel.
     for (const ev of ['keydown', 'pointerdown', 'touchstart', 'touchend']) root.addEventListener(ev, (e) => e.stopPropagation());
 

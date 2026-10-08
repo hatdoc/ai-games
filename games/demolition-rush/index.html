@@ -611,6 +611,7 @@ async function rankUpdate() {
   rankBusy = false;
 }
 addEventListener('rg-auth', rankUpdate);
+if (window.rgAuth?.onSite) { window.rgHasBoard = true; parent.postMessage({ type: 'rg-board' }, 'https://rank-game.com'); } // the page shows "sign in to rank"
 
 async function share() {
   const text = `🏗️ I scored ${fmt(run.score)} in Demolition Rush${run.mode === 'daily' ? ` (Daily ${run.day})` : ''} and leveled ${run.stage - 1} buildings! Can you beat me?`;
