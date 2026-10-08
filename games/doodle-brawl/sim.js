@@ -41,7 +41,7 @@
   // arenas: what hangs from the ceiling, platforms, hazards
   const MAPS = {
     dojo: { name: 'Notebook Dojo', icon: '📓', crates: [360, 840], barrel: 600 },
-    notes: { name: 'Sticky Notes', icon: '🟨', crates: [600], barrel: null, plats: [[220, 400, 150], [500, 700, 270], [800, 980, 150]] },
+    notes: { name: 'Sticky Notes', icon: '🟨', crates: [600], barrel: null, plats: [[200, 400, 115], [500, 700, 215], [800, 1000, 115]] },
     lava: { name: 'Hot Lava', icon: '🌋', crates: [], barrel: 600, lava: [[230, 370], [830, 970]], meteors: true },
     ice: { name: 'Frozen Pond', icon: '🧊', crates: [300, 600, 900], icicles: true, barrel: null, ice: true },
     bouncy: { name: 'Trampoline Park', icon: '🎪', crates: [600], barrel: null, tramps: [[230, 330], [870, 970]], softWalls: true },
@@ -89,7 +89,7 @@
     if (f.tumble || (f.sp && f.sp.k !== 'boomer')) return;
     const unarmed = f.sp && f.sp.k === 'boomer'; // weapon is out flying: you can move and dodge, not swing or block
     const boss = f.boss ? BOSSES[f.boss] : null;
-    const spd = (4.4 / (1 + f.mass * 0.07)) * (boss ? boss.speed : 1) * (s.chaos.includes('speed') ? 1.5 : 1);
+    const spd = (4.4 / (1 + f.mass * 0.07) / (1 + Math.max(0, f.reach - 120) / 450)) * (boss ? boss.speed : 1) * (s.chaos.includes('speed') ? 1.5 : 1);
     if (f.dodge > 0) return;
     // face the opponent unless mid-swing
     if (f.phase === 'idle' && !f.block) f.face = o.x >= f.x ? 1 : -1;
@@ -101,7 +101,7 @@
     const want = dir * spd * (f.block ? 0.4 : f.phase === 'idle' ? 1 : 0.55);
     if (!f.air) f.vx = s.map.ice ? f.vx + (want - f.vx) * 0.05 : want; // ice: slow to start, slow to stop
     else f.vx += dir * 0.25;
-    if (pr.u && f.y === 0 && !f.block) { f.vy = 13.5 * (s.chaos.includes('lowgrav') ? 0.75 : 1); s.events.push({ e: 'jump', who: me }); }
+    if (pr.u && !f.air && !f.block) { f.vy = 16 * (s.chaos.includes('lowgrav') ? 0.75 : 1); s.events.push({ e: 'jump', who: me }); }
     if (pr.d && f.dodgeCd <= 0) { f.dodge = 14; f.dodgeCd = 48; f.dodgeDir = dir || -f.face; f.phase = 'idle'; f.block = false; s.events.push({ e: 'dodge', who: me }); return; }
     if (unarmed) return;
     if (pr.s && f.meter >= 100) { f.meter = s.chaos.includes('infinite') ? 100 : 0; startSpecial(s, f, o, me); return; }
@@ -234,7 +234,7 @@
         const [px, py] = wpos(f, p, phi);
         if ((px - cx) ** 2 + (py - cy) ** 2 < (o.r + 3) ** 2) {
           const rr = Math.hypot(p[0], p[1]), v = Math.abs(f.om) * rr + (f.sp && f.sp.k !== 'spin' ? 10 : 0);
-          if (!best || v > best.v) best = { v, px, py, tip: p[0] > f.reach * 0.85 };
+          if (!best || v > best.v) best = { v, px, py, tip: p[0] > f.reach * 0.85, rr };
         }
       }
     }
@@ -244,9 +244,13 @@
     const boss = o.boss;
     // impact: mass at speed (the head-heavy, fast-moving point hits hardest), sharp tips pierce
     const sp = Math.max(0.45, Math.min(1.35, best.v / 35));
-    let dmg = 4 + 4.6 * Math.pow(f.mass, 1.15) * (0.5 + f.w.comRatio * 0.75) * Math.pow(sp, 0.4);
+    let dmg = 4 + 4.9 * Math.pow(f.mass, 0.95) * (0.5 + f.w.comRatio * 0.75) * Math.pow(sp, 0.4);
     if (best.tip && f.w.sharp > 0.5) dmg += 3 * f.w.sharp; // sharp points bite
     if (f.swings >= 2) dmg *= 1.25; // third swing in a combo
+    // long weapons: weak when the enemy is inside their reach, and very long thin ones are flimsy
+    const inside = f.reach > 120 && best.rr < f.reach * 0.5 && !f.sp;
+    if (inside) dmg *= 0.5;
+    if (f.reach > 170) dmg *= Math.max(0.7, 1 - (f.reach - 170) / 450);
     if (f.w.type === 'curved') dmg *= 1.25; // curved blades slash
     if (f.sp) dmg *= f.sp.k === 'lunge' ? 1.5 : f.sp.k === 'flurry' ? 1.2 : f.sp.k === 'bash' ? 0.8 : 1;
     if (s.chaos.includes('onehit')) dmg *= 2.5;
@@ -285,7 +289,7 @@
     f.meter = Math.min(100, f.meter + dmg * 1.6 * ({ curved: 2.2, star: 1.6, spiral: 1.5, pebble: 2 }[f.w.type] || 1));
     // super armour: a heavy weapon mid-swing shrugs off small pokes
     if (o.mass >= 2 && dmg < 10 && (o.phase === 'windup' || o.phase === 'strike') && !f.sp && o.hp > 0) { s.freeze = 3; s.events.push({ e: 'hit', who: 1 - me, by: me, x: best.px, y: best.py, dmg, heavy: false, mass: f.mass, kb: 0, combo: f.swings, armor: true }); return; }
-    const kb = Math.min(26, 2 + Math.pow(f.mass, 1.35) * Math.pow(sp, 0.7) * 3.4 * (0.55 + f.w.comRatio)) * (boss ? 0.4 : 1); // heavy heads send people flying
+    const kb = (inside ? 0.5 : 1) * Math.min(26, 2 + Math.pow(f.mass, 1.35) * Math.pow(sp, 0.7) * 3.4 * (0.55 + f.w.comRatio)) * (boss ? 0.4 : 1); // heavy heads send people flying
     o.vx = f.face * kb; o.vy = Math.min(14, kb * 0.55 + 2); o.y = Math.max(o.y, 0.1);
     o.phase = 'idle'; o.block = false; o.sp = null;
     if (kb > 9 && !boss) { o.tumble = 0.25 * f.face; o.stun = 10; } else o.stun = Math.round(8 + dmg * 0.6);
