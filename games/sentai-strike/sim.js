@@ -369,7 +369,7 @@
     if (e.cd > 0) e.cd--;
     if (e.carry) {
       const dir = e.x < W / 2 ? -1 : 1; e.face = dir; e.x += dir * 2.1; e.carry.x = e.x; e.carry.y = e.y + e.h + 4;
-      if (e.x < -40 || e.x > W + 40) { e.carry.state = 'lost'; e.carry = null; e.gone = true; s.lost++; s.score -= 100; s.city = Math.max(0, s.city - 8); ev(s, { e: 'lost' }); }
+      if (e.x < -40 || e.x > W + 40) { e.carry.state = 'lost'; e.carry = null; e.gone = true; s.lost++; s.score = Math.max(0, s.score - 100); s.city = Math.max(0, s.city - 8); ev(s, { e: 'lost' }); }
       return;
     }
     const runners = s.civs.filter((c) => c.state === 'run' && Math.abs(c.x - e.x) < 500);
