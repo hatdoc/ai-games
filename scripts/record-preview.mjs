@@ -153,6 +153,9 @@ const BOTS = {
   'doodle-brawl': { skip: 3, len: 9, poster: 4.5, async play(page) { // two CPUs with drawn weapons (hammer/sword/club vs spear/curved/shield)
     await page.evaluate(() => startDemo());
   } },
+  'gridwit': { skip: 1, len: 9, poster: 8.5, async play(page) { // three guesses on a practice word, ending in a win
+    await page.evaluate(() => startDemo());
+  } },
   'sentai-strike': { skip: 2, len: 10, poster: 6, async play(page) { // the CPU player brawls through a stage
     await page.evaluate(() => startDemo());
   } },
