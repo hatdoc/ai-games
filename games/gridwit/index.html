@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Gridwit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#140b2e; --bg2:#22114a; --surface:#2a1a5c; --ink:#f6f1ff; --ink-dim:#b9a8e6; --violet:#8b5cf6; --pink:#ec4899; --amber:#f59e0b;
+    --hit:#10d9a0; --hit-ink:#062b22; --near:#ffb627; --near-ink:#3a2300; --miss:#4a3f6b; --miss-ink:#d8d0f0;
+    --tile-empty:#1d1240; --tile-edge:#3d2c7a; --tile-typed-edge:#a78bfa; --key:#3b2a78; --key-ink:#f6f1ff; --tile:56px; --gap:6px; color-scheme: dark; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme=dark]) { --bg:#fbf7ff; --bg2:#f3e8ff; --surface:#fff; --ink:#1e1240; --ink-dim:#5b4b8a; --hit:#0fb386; --hit-ink:#fff; --near:#f59e0b; --near-ink:#2b1700; --miss:#9d93b8; --miss-ink:#fff; --tile-empty:#fff; --tile-edge:#d9ccf5; --tile-typed-edge:#8b5cf6; --key:#ece4ff; --key-ink:#1e1240; color-scheme: light; } }
+  :root[data-theme=light] { --bg:#fbf7ff; --bg2:#f3e8ff; --surface:#fff; --ink:#1e1240; --ink-dim:#5b4b8a; --hit:#0fb386; --hit-ink:#fff; --near:#f59e0b; --near-ink:#2b1700; --miss:#9d93b8; --miss-ink:#fff; --tile-empty:#fff; --tile-edge:#d9ccf5; --tile-typed-edge:#8b5cf6; --key:#ece4ff; --key-ink:#1e1240; color-scheme: light; }
+  /* unlockable tile themes */
+  :root[data-tiles=neon] { --hit:#00f5d4; --hit-ink:#00201b; --near:#f15bb5; --near-ink:#2a0019; }
+  :root[data-tiles=candy] { --hit:#7ae582; --hit-ink:#082b0c; --near:#ff8fab; --near-ink:#3a0716; }
+  :root[data-tiles=chalk] { --hit:#e9f5db; --hit-ink:#1b3a1d; --near:#ffd6a5; --near-ink:#3a2300; --miss:#344e41; --miss-ink:#dad7cd; }
+  :root[data-tiles=retro] { --hit:#39ff14; --hit-ink:#032000; --near:#ffe600; --near-ink:#2a2600; --miss:#2b2b2b; --miss-ink:#9aff8a; }
+  :root[data-tiles=gold] { --hit:#ffd166; --hit-ink:#3b2a00; --near:#ef476f; --near-ink:#fff; }
+  :root[data-hc] { --hit:#1e88ff; --hit-ink:#fff; --near:#ff7a00; --near-ink:#1a0d00; --miss:#2b2b2b; --miss-ink:#fff; }
+  [hidden] { display: none !important; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--ink); font: 500 15px Inter, system-ui, sans-serif; overflow: hidden; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+  body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background: radial-gradient(520px 420px at 0% 0%, rgb(139 92 246 / .35), transparent 70%), radial-gradient(520px 420px at 100% 100%, rgb(236 72 153 / .3), transparent 70%); }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  h1, h2, h3, .num { font-family: 'Space Grotesk', Inter, sans-serif; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  :focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+  #app { position: relative; z-index: 1; height: 100dvh; display: flex; flex-direction: column; max-width: 520px; margin: 0 auto; padding: 0 10px env(safe-area-inset-bottom); }
+  .btn { border: 0; border-radius: 14px; padding: 12px 16px; font-weight: 700; background: var(--surface); color: var(--ink); box-shadow: inset 0 -3px 0 rgb(0 0 0/.25), 0 2px 0 rgb(0 0 0/.2); }
+  .btn:active { transform: translateY(2px); box-shadow: none; }
+  .btn.cta { background: linear-gradient(135deg, var(--violet), var(--pink)); color: #fff; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--surface); font-weight: 700; font-size: 13px; letter-spacing: .02em; }
+  .iconbtn { width: 40px; height: 40px; border-radius: 12px; border: 0; background: var(--surface); display: grid; place-items: center; font-size: 18px; }
+
+  /* ---------- home ---------- */
+  #home { flex: 1; overflow-y: auto; padding: 18px 4px 24px; display: flex; flex-direction: column; gap: 14px; }
+  .mark { display: flex; justify-content: center; gap: 5px; margin: 6px 0 2px; }
+  .mark span { width: 34px; height: 40px; border-radius: 22%; display: grid; place-items: center; font: 700 22px 'Space Grotesk'; color: var(--hit-ink); background: linear-gradient(160deg, color-mix(in srgb, var(--c) 82%, #fff), var(--c)); box-shadow: inset 0 -3px 0 rgb(0 0 0/.25); animation: markIn .5s backwards cubic-bezier(.3,1.6,.6,1); }
+  @keyframes markIn { from { transform: rotateX(90deg) scale(.6); opacity: 0; } }
+  .tagline { text-align: center; color: var(--ink-dim); margin: 0; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .mode { border: 0; text-align: left; border-radius: 18px; padding: 14px; min-height: 120px; background: var(--surface); display: flex; flex-direction: column; gap: 4px; box-shadow: inset 0 -3px 0 rgb(0 0 0/.25); position: relative; overflow: hidden; }
+  .mode b { font: 700 18px 'Space Grotesk'; } .mode small { color: var(--ink-dim); line-height: 1.35; } .mode .em { font-size: 26px; }
+  .mode .done { position: absolute; top: 10px; right: 10px; font-size: 12px; font-weight: 700; color: var(--hit); }
+  .mode.wide { grid-column: 1 / -1; min-height: 0; flex-direction: row; align-items: center; gap: 12px; }
+  .row-btns { display: flex; gap: 8px; } .row-btns .btn { flex: 1; font-size: 14px; }
+
+  /* ---------- game ---------- */
+  #game { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .top { height: 52px; display: flex; align-items: center; gap: 8px; }
+  .top .grow { flex: 1; display: flex; justify-content: center; }
+  #timerBar { height: 4px; border-radius: 4px; background: var(--surface); overflow: hidden; margin-bottom: 4px; }
+  #timerBar i { display: block; height: 100%; background: var(--violet); transform-origin: left; transition: transform .25s linear, background .3s; }
+  .mascot { height: 46px; display: flex; align-items: center; gap: 10px; }
+  #wit { width: 40px; height: 40px; font-size: 32px; line-height: 40px; text-align: center; transition: transform .3s; }
+  #wit[data-mood=happy] { animation: squash .6s; } #wit[data-mood=shocked] { transform: scale(1.18); } #wit[data-mood=faint] { transform: rotate(80deg) translateY(4px); }
+  #wit[data-mood=sus] { transform: rotate(-12deg); } #wit[data-mood=idle] { animation: breathe 3s ease-in-out infinite; }
+  @keyframes squash { 30% { transform: scale(1.25, .8); } 60% { transform: scale(.9, 1.15) translateY(-6px); } }
+  @keyframes breathe { 50% { transform: scale(1.05); } }
+  #bubble { position: relative; background: var(--surface); border: 1px solid color-mix(in srgb, var(--violet) 60%, transparent); padding: 7px 12px; border-radius: 14px; font-weight: 600; font-size: 13.5px; line-height: 1.3; max-width: calc(100% - 56px); }
+  #bubble::before { content: ''; position: absolute; left: -6px; top: 50%; width: 10px; height: 10px; background: inherit; border-left: inherit; border-bottom: inherit; transform: translateY(-50%) rotate(45deg); }
+  #boardWrap { flex: 1; min-height: 0; display: grid; place-items: center; }
+  #board { display: grid; gap: var(--gap); }
+  .brow { display: grid; grid-auto-flow: column; gap: var(--gap); }
+  .tile { width: var(--tile); height: var(--tile); border-radius: 22%; display: grid; place-items: center; position: relative; font: 700 calc(var(--tile) * .52) 'Space Grotesk'; text-transform: uppercase;
+    background: var(--tile-empty); border: 2px solid var(--tile-edge); color: var(--ink); }
+  .tile.typed { border-color: var(--tile-typed-edge); animation: pop .11s cubic-bezier(.3,1.6,.6,1); }
+  .tile.hit, .tile.near, .tile.miss { border: 0; box-shadow: inset 0 -3px 0 rgb(0 0 0/.25), 0 2px 0 rgb(0 0 0/.2); }
+  .tile.hit { --c: var(--hit); background: linear-gradient(160deg, color-mix(in srgb, var(--c) 82%, #fff), var(--c)); color: var(--hit-ink); }
+  .tile.near { --c: var(--near); background: linear-gradient(160deg, color-mix(in srgb, var(--c) 82%, #fff), var(--c)); color: var(--near-ink); }
+  .tile.miss { --c: var(--miss); background: var(--c); color: var(--miss-ink); }
+  .tile.answer { --c: var(--pink); background: linear-gradient(160deg, color-mix(in srgb, var(--c) 82%, #fff), var(--c)); color: #fff; border: 0; }
+  .tile.pinned { border-style: dashed; border-color: var(--hit); color: var(--hit); }
+  .tile.hit::after, .tile.near::after { position: absolute; right: 9%; bottom: 6%; font-size: 9px; opacity: .6; }
+  :root[data-hc] .tile.hit::after { content: '●'; } :root[data-hc] .tile.near::after { content: '◐'; }
+  .tile .fib { position: absolute; top: -6px; right: -6px; font-size: 14px; }
+  .tile.flip { animation: flipA .16s ease-in forwards; } .tile.flip2 { animation: flipB .16s ease-out; }
+  @keyframes flipA { to { transform: rotateX(90deg); } } @keyframes flipB { from { transform: rotateX(90deg); } }
+  @keyframes pop { 50% { transform: scale(1.12); } }
+  .brow.shake { animation: shake .42s ease-out; }
+  @keyframes shake { 15% { transform: translateX(-10px); } 30% { transform: translateX(9px); } 45% { transform: translateX(-7px); } 60% { transform: translateX(5px); } 75% { transform: translateX(-2px); } }
+  .tile.hop { animation: hop .36s cubic-bezier(.2,1.8,.5,1); } @keyframes hop { 50% { transform: translateY(-18px); } }
+  .brow.faded { opacity: .4; transition: opacity .4s; }
+  #rail { height: 52px; display: flex; gap: 8px; justify-content: center; align-items: center; }
+  .pw { position: relative; height: 42px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--surface); font-weight: 700; font-size: 13px; box-shadow: inset 0 -3px 0 rgb(0 0 0/.25); }
+  .pw:disabled { opacity: .4; } .pw .cost { color: var(--amber); font-size: 11px; margin-left: 4px; }
+  #keys { display: grid; gap: 6px; padding: 4px 0 8px; }
+  .krow { display: flex; gap: 5px; justify-content: center; }
+  .key { flex: 1; max-width: 46px; height: 56px; border: 0; border-radius: 12px; background: var(--key); color: var(--key-ink); font: 600 16px Inter; text-transform: uppercase; box-shadow: inset 0 -3px 0 rgb(0 0 0/.25), 0 2px 0 rgb(0 0 0/.2); transition: background-color .2s; }
+  .key.wide { max-width: 70px; flex: 1.5; font-size: 12px; }
+  .key:active { transform: translateY(2px); box-shadow: none; }
+  .key.hit { background: var(--hit); color: var(--hit-ink); } .key.near { background: var(--near); color: var(--near-ink); } .key.miss { background: var(--miss); color: var(--miss-ink); opacity: .75; }
+  .combo { position: fixed; left: 50%; top: 28%; transform: translate(-50%, 0) scale(0); z-index: 40; font: 700 34px 'Space Grotesk'; color: var(--amber); text-shadow: 0 3px 0 rgb(0 0 0/.35), 0 0 24px rgb(245 158 11/.6); pointer-events: none; animation: comboIn 1.2s forwards; white-space: nowrap; }
+  @keyframes comboIn { 20% { transform: translate(-50%, 0) scale(1.25); } 35%, 80% { transform: translate(-50%, 0) scale(1); opacity: 1; } 100% { transform: translate(-50%, -20px) scale(1); opacity: 0; } }
+  #toast { position: fixed; left: 50%; top: 58px; transform: translateX(-50%); z-index: 60; background: var(--surface); border: 1px solid var(--violet); padding: 9px 16px; border-radius: 999px; font: 600 14px Inter; box-shadow: 0 8px 24px rgb(0 0 0/.3); animation: toastIn .18s; max-width: 92vw; text-align: center; }
+  @keyframes toastIn { from { transform: translate(-50%, -12px); opacity: 0; } }
+  .confetti { position: fixed; top: -12px; width: 6px; height: 10px; z-index: 50; pointer-events: none; border-radius: 2px; }
+
+  /* ---------- sheets / modals ---------- */
+  .sheet { position: fixed; inset: 0; z-index: 30; display: flex; align-items: flex-end; justify-content: center; background: rgb(10 5 25/.6); backdrop-filter: blur(3px); }
+  .sheet > div { width: min(520px, 100%); max-height: 92dvh; overflow-y: auto; background: var(--bg2); border-radius: 22px 22px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); display: grid; gap: 12px; animation: up .22s ease-out; }
+  @media (min-width: 600px) { .sheet { align-items: center; } .sheet > div { border-radius: 22px; } }
+  @keyframes up { from { transform: translateY(30px); opacity: 0; } }
+  .sheet h2 { margin: 0; font-size: 22px; }
+  .tiers { display: grid; gap: 8px; }
+  .tier { display: flex; align-items: center; gap: 12px; text-align: left; border: 0; padding: 12px 14px; border-radius: 16px; background: var(--surface); box-shadow: inset 0 -3px 0 rgb(0 0 0/.2); }
+  .tier .lt { font: 700 22px 'Space Grotesk'; width: 34px; text-align: center; color: var(--violet); }
+  .tier div { flex: 1; } .tier b { display: block; } .tier small { color: var(--ink-dim); }
+  .tier .st { font-size: 12px; font-weight: 700; color: var(--hit); }
+  .muted { color: var(--ink-dim); font-size: 14px; line-height: 1.5; margin: 0; }
+  .hist { display: grid; gap: 4px; } .hist div { display: grid; grid-template-columns: 18px 1fr; gap: 6px; align-items: center; font-size: 12px; font-weight: 700; }
+  .hist i { display: block; height: 20px; border-radius: 6px; background: var(--violet); min-width: 22px; color: #fff; font-style: normal; text-align: right; padding: 2px 6px; transform-origin: left; animation: grow .4s backwards; }
+  .hist i.me { background: var(--hit); color: var(--hit-ink); } @keyframes grow { from { transform: scaleX(0); } }
+  .stats4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; }
+  .stats4 b { display: block; font: 700 22px 'Space Grotesk'; } .stats4 span { font-size: 11px; color: var(--ink-dim); }
+  .grid-preview { font-size: 18px; line-height: 1.15; letter-spacing: 1px; text-align: center; white-space: pre-line; }
+  #lb { background: #1d1240; color: #f6f1ff; border-radius: 16px; padding: 6px 10px; } #lb:empty { display: none; }
+  .ans { display: flex; gap: 4px; justify-content: center; }
+  .ans span { width: 36px; height: 40px; border-radius: 22%; display: grid; place-items: center; font: 700 20px 'Space Grotesk'; text-transform: uppercase; background: var(--pink); color: #fff; }
+  .ach { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ach div { background: var(--surface); border-radius: 14px; padding: 10px; font-size: 12.5px; color: var(--ink-dim); } .ach b { display: block; color: var(--ink); font-size: 14px; }
+  .ach .no { opacity: .45; }
+  label.opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface); font-weight: 600; }
+  .seg { display: flex; gap: 6px; flex-wrap: wrap; } .seg button { border: 0; padding: 8px 12px; border-radius: 999px; background: var(--surface); font-weight: 700; font-size: 13px; }
+  .seg button.on { background: var(--violet); color: #fff; } .seg button:disabled { opacity: .35; }
+  input.word { width: 100%; padding: 14px; border-radius: 14px; border: 2px solid var(--tile-edge); background: var(--tile-empty); font: 700 22px 'Space Grotesk'; letter-spacing: 6px; text-transform: uppercase; text-align: center; -webkit-user-select: text; user-select: text; }
+  .credit { font-size: 11px; color: var(--ink-dim); text-align: center; opacity: .7; }
+  @media (max-height: 640px) { .mascot { height: 36px; } #wit { font-size: 24px; } .key { height: 48px; } #rail { height: 44px; } }
+  @media (max-height: 560px) { .mascot { display: none; } }
+  @media (prefers-reduced-motion: reduce) { :root:not([data-motion=on]) * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+  :root[data-motion=off] * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- home -->
+  <section id="home">
+    <div class="mark" id="mark" aria-label="Gridwit"></div>
+    <p class="tagline">Guess the word. Outwit the owl. 🦉</p>
+    <div class="modes">
+      <button class="mode" data-go="daily"><span class="em">📅</span><b>Daily</b><small>5 fresh words a day, one per difficulty. Leaderboards!</small><span class="done" id="dailyDone"></span></button>
+      <button class="mode" data-go="gauntlet"><span class="em">🔥</span><b>Gauntlet</b><small>Endless words that get longer. One miss ends it.</small><span class="done" id="gBest"></span></button>
+      <button class="mode" data-go="rush"><span class="em">⏱️</span><b>Rush</b><small>3 minutes. Solve fast to earn more time.</small><span class="done" id="rBest"></span></button>
+      <button class="mode" data-go="fib"><span class="em">🤥</span><b>Fib</b><small>One tile in every row is lying. Trust nobody.</small></button>
+      <button class="mode wide" data-go="practice"><span class="em">🎲</span><span><b>Practice</b><br><small>Any difficulty, unlimited words, no pressure.</small></span></button>
+      <button class="mode wide" data-go="challenge"><span class="em">🔗</span><span><b>Challenge a friend</b><br><small>Pick a word, send the link, see if they crack it.</small></span></button>
+    </div>
+    <div class="row-btns"><button class="btn" id="howB">❓ How to play</button><button class="btn" id="statsB">📊 Stats</button><button class="btn" id="setB">⚙️</button></div>
+    <p class="credit">Word lists: ENABLE (public domain), SCOWL © Kevin Atkinson, wordfreq by Robyn Speer (CC BY-SA 4.0).</p>
+  </section>
+
+  <!-- game -->
+  <section id="game" hidden>
+    <div class="top">
+      <button class="iconbtn" id="backB" aria-label="Back to menu">←</button>
+      <div class="grow"><span class="chip" id="modeChip"></span></div>
+      <span class="chip" id="topRight"></span>
+    </div>
+    <div id="timerBar" hidden><i></i></div>
+    <div class="mascot"><div id="wit" data-mood="idle" aria-hidden="true">🦉</div><div id="bubble" aria-live="polite"></div></div>
+    <div id="boardWrap"><div id="board" role="grid" aria-label="Guesses"></div></div>
+    <div id="rail"></div>
+    <div id="keys"></div>
+  </section>
+</div>
+<div class="sr" id="live" aria-live="polite"></div><div class="sr" id="alert" aria-live="assertive"></div>
+
+<!-- difficulty -->
+<div class="sheet" id="tierS" hidden><div>
+  <h2 id="tierT">Pick a difficulty</h2>
+  <p class="muted" id="tierD"></p>
+  <div class="tiers" id="tierList"></div>
+  <button class="btn" data-close>Cancel</button>
+</div></div>
+
+<!-- results -->
+<div class="sheet" id="resS" hidden><div>
+  <h2 id="resT"></h2>
+  <div class="ans" id="resAns"></div>
+  <p class="muted" id="resD" style="text-align:center"></p>
+  <div class="grid-preview" id="resGrid"></div>
+  <div class="stats4" id="resStats"></div>
+  <div class="hist" id="resHist"></div>
+  <div id="lb"></div>
+  <div class="row-btns"><button class="btn cta" id="shareB">📤 Share</button><button class="btn" id="nextB"></button></div>
+  <div class="row-btns"><a class="btn" id="defB" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">📖 Look it up</a><button class="btn" id="menuB">Menu</button></div>
+</div></div>
+
+<!-- challenge -->
+<div class="sheet" id="chalS" hidden><div>
+  <h2>🔗 Challenge a friend</h2>
+  <p class="muted">Type a real word with 4 to 8 letters. Your friend gets the same number of tries as that length's difficulty.</p>
+  <input class="word" id="chalIn" maxlength="8" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="WORD">
+  <button class="btn cta" id="chalMake">Create link</button>
+  <button class="btn" data-close>Cancel</button>
+</div></div>
+
+<!-- how to play -->
+<div class="sheet" id="howS" hidden><div>
+  <h2>How to play</h2>
+  <p class="muted">Guess the hidden word. After each guess the tiles show how close you were:</p>
+  <div style="display:grid;gap:8px">
+    <div style="display:flex;gap:10px;align-items:center"><span class="tile hit" style="--tile:40px">G</span><span class="muted"><b>Mint</b>: right letter, right spot.</span></div>
+    <div style="display:flex;gap:10px;align-items:center"><span class="tile near" style="--tile:40px">R</span><span class="muted"><b>Amber</b>: in the word, wrong spot.</span></div>
+    <div style="display:flex;gap:10px;align-items:center"><span class="tile miss" style="--tile:40px">X</span><span class="muted"><b>Slate</b>: not in the word.</span></div>
+  </div>
+  <p class="muted"><b>Difficulties:</b> Easy 4 letters / 7 tries · Normal 5 / 6 · Hard 6 letters, and you must keep greens and use ambers · Expert 7, and ambers can't go back where they were ruled out · Brutal 8 letters with 60 seconds per guess.</p>
+  <p class="muted"><b>Hints:</b> 📍 Pin shows one letter in place, 🧹 Sweep greys out 3 letters. They cost points in scored modes.</p>
+  <p class="muted"><b>Fib mode:</b> in every row exactly one tile shows the wrong colour (never on a correct answer). Long-press a tile to mark it as a liar 🤥.</p>
+  <p class="muted">Daily scores go on the leaderboard when you're signed in on rank-game.com. Invalid words never cost a try.</p>
+  <button class="btn cta" data-close>Let's play</button>
+</div></div>
+
+<!-- stats + achievements -->
+<div class="sheet" id="statsS" hidden><div>
+  <h2>📊 Your stats</h2>
+  <div class="seg" id="statsSeg"></div>
+  <div class="stats4" id="stStats"></div>
+  <div class="hist" id="stHist"></div>
+  <h2 style="font-size:18px">🏅 Achievements</h2>
+  <div class="ach" id="achList"></div>
+  <button class="btn" data-close>Close</button>
+</div></div>
+
+<!-- settings -->
+<div class="sheet" id="setS" hidden><div>
+  <h2>⚙️ Settings</h2>
+  <div><div class="muted" style="margin-bottom:6px">Theme</div><div class="seg" id="themeSeg"></div></div>
+  <div><div class="muted" style="margin-bottom:6px">Tile colours (unlock more with achievements)</div><div class="seg" id="tileSeg"></div></div>
+  <label class="opt">High contrast (colour-blind friendly) <input type="checkbox" id="optHc"></label>
+  <label class="opt">Reduce motion <input type="checkbox" id="optMotion"></label>
+  <label class="opt">Sound <input type="checkbox" id="optSound"></label>
+  <label class="opt">Vibration <input type="checkbox" id="optHaptic"></label>
+  <button class="btn" data-close>Done</button>
+</div></div>
+<div id="toast" hidden></div>
+
+<script src="words.js"></script>
+<script src="engine.js"></script>
+<script src="../cloudsave.js" data-game="gridwit" data-keys="gridwit"></script>
+<script src="../leaderboard.js"></script>
+<script>
+GW.load(GW_WORDS);
+const $ = (id) => document.getElementById(id);
+const T = GW.TIERS, TIER_IDS = GW.TIER_IDS;
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, reduced() ? Math.min(ms, 60) : ms));
+
+// ---------- save ----------
+const DEF = { stats: {}, daily: {}, dstreak: 0, dbest: 0, dlast: '', ach: {}, gBest: 0, rBest: 0, theme: 'auto', tiles: 'classic', hc: false, motion: 'auto', sound: true, haptic: true, seenHow: false, games: 0 };
+let S; const loadS = () => { try { S = { ...DEF, ...JSON.parse(localStorage.getItem('gridwit') || '{}') }; } catch { S = { ...DEF }; } };
+const save = () => { try { localStorage.setItem('gridwit', JSON.stringify(S)); } catch {} };
+loadS(); window.cloudSaveChanged = () => { loadS(); applySettings(); renderHome(); };
+const reduced = () => S.motion === 'off' || (S.motion === 'auto' && matchMedia('(prefers-reduced-motion: reduce)').matches);
+function applySettings() {
+  const r = document.documentElement;
+  S.theme === 'auto' ? r.removeAttribute('data-theme') : r.setAttribute('data-theme', S.theme);
+  S.tiles === 'classic' ? r.removeAttribute('data-tiles') : r.setAttribute('data-tiles', S.tiles);
+  S.hc ? r.setAttribute('data-hc', '') : r.removeAttribute('data-hc');
+  S.motion === 'auto' ? r.removeAttribute('data-motion') : r.setAttribute('data-motion', S.motion);
+}
+applySettings();
+
+// ---------- sound ----------
+let ac;
+function tone(f, d = 0.08, type = 'triangle', v = 0.06, delay = 0) {
+  if (!S.sound) return; try { ac ||= new AudioContext(); } catch { return; }
+  const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f, t);
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + d); o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d + 0.02);
+}
+const SFX = { type: () => tone(620, 0.04, 'sine', 0.035), back: () => tone(380, 0.04, 'sine', 0.03), bad: () => { tone(180, 0.18, 'square', 0.04); tone(140, 0.2, 'square', 0.03, 0.06); },
+  flip: (s, i) => tone(s === 'hit' ? 523 * 2 ** (i / 12 * 2) : s === 'near' ? 440 : 260, 0.09, 'triangle', 0.05), win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.07, i * 0.09)),
+  lose: () => [392, 330, 262].forEach((f, i) => tone(f, 0.25, 'sawtooth', 0.04, i * 0.18)), hint: () => tone(988, 0.15, 'sine', 0.06) };
+const buzz = (ms) => { if (S.haptic && navigator.vibrate) try { navigator.vibrate(ms); } catch {} };
+
+// ---------- Wit, the owl ----------
+const LINES = {
+  start: ['Fresh word, fresh hopes. Go!', 'I picked a good one. Probably.', 'Ready when you are.'],
+  solve1: ['Did you… read my diary?', 'WHAT. 🤯 First try?!', 'Psychic. Confirmed.'],
+  solve2: ['Showoff. I love it.', 'Two guesses. Smooth.', 'That was rude (to the word).'],
+  solve: ['Nailed it! 🎉', 'Big brain energy.', 'The word never stood a chance.', 'Hoot hoot! 🦉'],
+  clutch: ['Clutch! My feathers are still shaking.', 'Last row! I need to sit down.', 'Living dangerously, huh?'],
+  blank: ['Bold strategy: eliminate the entire alphabet.', 'Zero for zero. Very informative, honestly.', 'Bold strategy. Let’s see if it pays off.'],
+  hot: ['Ooh, you’re warm!', 'Now we’re cooking.', 'That’s a lot of colour. Nice.'],
+  three: ['Psychic?! 🔮', 'Three on the first go? Suspicious.'],
+  grey: ['We already broke up with that letter. Let it go. 💔', 'That letter ghosted you already 👻', 'Déjà vu? That one’s not in there.'],
+  near: ['SO close I can smell it. One letter, friend.', 'One. Letter. Away.'],
+  near2: ['Four greens and a dream.', 'Still one letter off. The suspense!'],
+  lose: ['It was hiding, not you failing.', 'We don’t talk about this one.', 'Rematch? I’ll pretend this never happened.'],
+  robbed: ['Robbed. Absolutely robbed. I’m filing a complaint.', 'So close it hurts. My feathers hurt.'],
+  invalid: ['Lovely letters. Not a word, though.', 'Is that… a word? Not in my dictionary.', 'Nice try, wordsmith. Not a word.'],
+  hint: ['Just a tiny nudge. I won’t tell anyone. (I’ll tell everyone.)', 'A little birdie told me… 🐦'],
+  fib: ['One of these is fibbing. I have my eyes on that tile.', 'Trust nobody. Especially that tile.', 'Someone in this row is lying. 🧐'],
+  rushFast: ['Was that a guess or a teleport?', 'Speedy! ⚡'],
+  tick: ['Tick tock! No pressure. (So much pressure.)', '10 seconds! Type something!'],
+  streak: ['streak! You’re basically a habit now.'],
+};
+let lastLine = '';
+function say(key, mood = 'idle', extra = '') {
+  const pool = LINES[key] || [key]; let l = pick(pool); if (pool.length > 1) while (l === lastLine) l = pick(pool); lastLine = l;
+  $('bubble').textContent = (extra ? extra + ' ' : '') + l; const w = $('wit'); w.dataset.mood = 'idle'; void w.offsetWidth; w.dataset.mood = mood;
+  if (mood !== 'faint') setTimeout(() => { if (w.dataset.mood === mood) w.dataset.mood = 'idle'; }, 1500);
+}
+let toastT;
+function toast(t, ms = 1600) { const el = $('toast'); el.textContent = t; el.hidden = false; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; clearTimeout(toastT); toastT = setTimeout(() => (el.hidden = true), ms); }
+
+// ---------- game state ----------
+let G = null;
+function newGame(mode, tier, opt = {}) {
+  const t = T[tier], L = t.len;
+  G = { mode, tier, L, tries: opt.tries || (mode === 'fib' ? 8 : t.tries), rules: mode === 'challenge' || mode === 'fib' ? 0 : t.rules, answer: opt.answer, rows: [], cur: '', hints: 0, hintsCost: 0, pinned: [], swept: [],
+    start: 0, elapsed: 0, done: false, won: false, busy: false, seed: opt.seed || String(Math.random()), fibMarks: new Set(), chal: opt.chal || null, daily: opt.daily || null,
+    gauntlet: opt.gauntlet || null, rush: opt.rush || null, perGuess: mode === 'rush' ? 0 : t.perGuess, guessLeft: t.perGuess, spareUsed: false };
+  showScreen('game'); layout(); render(); renderKeys(); renderRail(); topBar();
+  say(mode === 'fib' ? 'fib' : mode === 'challenge' && G.chal?.name ? `${G.chal.name} dares you to find their word!` : 'start', 'happy');
+}
+function showScreen(id) { $('home').hidden = id !== 'home'; $('game').hidden = id !== 'game'; }
+function closeSheets() { document.querySelectorAll('.sheet').forEach((s) => (s.hidden = true)); }
+document.querySelectorAll('[data-close]').forEach((b) => (b.onclick = closeSheets));
+document.querySelectorAll('.sheet').forEach((s) => s.addEventListener('click', (e) => { if (e.target === s) closeSheets(); }));
+
+// ---------- layout: tiles fill the space, no scrolling ----------
+function layout() {
+  if (!G) return;
+  const wrap = $('boardWrap').getBoundingClientRect(), gap = 6;
+  const tile = Math.floor(Math.min((wrap.width - 8 - gap * (G.L - 1)) / G.L, (wrap.height - 8 - gap * (G.tries + (G.revealRow ? 1 : 0) - 1)) / (G.tries + (G.revealRow ? 1 : 0)), 64));
+  document.documentElement.style.setProperty('--tile', Math.max(26, tile) + 'px');
+}
+new ResizeObserver(layout).observe($('boardWrap'));
+
+function render() {
+  const b = $('board'); b.innerHTML = '';
+  const rowsN = G.tries + (G.revealRow ? 1 : 0);
+  for (let r = 0; r < rowsN; r++) {
+    const row = document.createElement('div'); row.className = 'brow'; row.setAttribute('role', 'row'); row.dataset.r = r;
+    const done = G.rows[r];
+    for (let i = 0; i < G.L; i++) {
+      const t = document.createElement('div'); t.className = 'tile'; t.setAttribute('role', 'gridcell');
+      if (done) { const ch = done.guess[i].trim(); t.textContent = ch; t.classList.add(done.shown[i]); t.setAttribute('aria-label', `${ch || 'blank'}, ${{ hit: 'correct', near: 'wrong spot', miss: 'not in word' }[done.shown[i]]}`);
+        if (G.mode === 'fib') { t.dataset.fib = `${r}-${i}`; if (G.fibMarks.has(`${r}-${i}`)) t.insertAdjacentHTML('beforeend', '<span class="fib">🤥</span>'); } }
+      else if (r === G.rows.length && !G.done) { const ch = G.cur[i]; if (ch) { t.textContent = ch; t.classList.add('typed'); } else if (G.pinned.includes(i)) { t.textContent = G.answer[i]; t.classList.add('pinned'); } }
+      else if (r === G.tries && G.revealRow) { t.textContent = G.answer[i]; t.classList.add('answer'); }
+      row.appendChild(t);
+    }
+    b.appendChild(row);
+  }
+}
+const rowEl = (r) => $('board').children[r];
+function renderKeys() {
+  const ks = keyMap(), rows = ['qwertyuiop', 'asdfghjkl', '⏎zxcvbnm⌫'];
+  $('keys').innerHTML = rows.map((r) => `<div class="krow">${[...r].map((k) => k === '⏎' ? '<button class="key wide" data-k="enter" aria-label="Enter">Enter</button>' : k === '⌫' ? '<button class="key wide" data-k="back" aria-label="Backspace">⌫</button>' : `<button class="key ${ks[k] || ''}" data-k="${k}" aria-label="${k}${ks[k] ? ', ' + ks[k] : ''}">${k}</button>`).join('')}</div>`).join('');
+}
+// in Fib mode a key only shows a colour once two rows agree on it
+function keyMap() {
+  if (!G) return {};
+  if (G.mode !== 'fib') { const k = GW.keyStates(G.rows.filter((r) => !r.timeout)); for (const c of G.swept) k[c] ||= 'miss'; return k; }
+  const seen = {}; for (const r of G.rows) r.shown.forEach((s, i) => { const key = r.guess[i] + s; seen[key] = (seen[key] || 0) + 1; });
+  const k = {}; for (const [key, n] of Object.entries(seen)) if (n >= 2) { const ch = key[0], s = key.slice(1); if (!k[ch] || { miss: 1, near: 2, hit: 3 }[s] > { miss: 1, near: 2, hit: 3 }[k[ch]]) k[ch] = s; }
+  return k;
+}
+function renderRail() {
+  const t = T[G.tier], noHints = G.mode === 'rush' || G.mode === 'fib' || !t.hints, left = t.hints - G.hints, free = G.hints < t.freeHint;
+  const cost = free ? 'free' : G.mode === 'practice' || G.mode === 'challenge' ? '' : `−${Math.round(150 * t.mult)}`;
+  let h = '';
+  if (!noHints) h += `<button class="pw" id="pinB" ${left <= 0 || G.done ? 'disabled' : ''}>📍 Pin<span class="cost">${cost}</span></button><button class="pw" id="sweepB" ${left <= 0 || G.done ? 'disabled' : ''}>🧹 Sweep<span class="cost">${cost}</span></button>`;
+  if (G.mode === 'gauntlet') h += `<span class="chip">🪶 Spare rows ×${G.gauntlet.spares}</span>`;
+  if (G.mode === 'fib') h += `<span class="muted" style="font-size:12.5px">Long-press a tile to mark a liar 🤥</span>`;
+  if (G.mode === 'rush') h += `<span class="chip">⭐ ${G.rush.score} · ${G.rush.solved} solved</span>`;
+  $('rail').innerHTML = h;
+  $('pinB') && ($('pinB').onclick = () => useHint('pin')); $('sweepB') && ($('sweepB').onclick = () => useHint('sweep'));
+}
+function topBar() {
+  const name = { daily: 'DAILY', gauntlet: 'GAUNTLET', rush: 'RUSH', fib: 'FIB', practice: 'PRACTICE', challenge: 'CHALLENGE' }[G.mode];
+  $('modeChip').textContent = `${name} · ${T[G.tier].name} · ${G.L}`;
+  if (G.mode === 'gauntlet') $('topRight').textContent = `🔥 ${G.gauntlet.solved} · ${G.gauntlet.score}`;
+  else if (G.mode === 'daily') $('topRight').textContent = `🔥 ${S.dstreak}`;
+  else $('topRight').textContent = `${G.rows.length}/${G.tries}`;
+  $('timerBar').hidden = !(G.mode === 'rush' || G.perGuess);
+}
+
+// ---------- input ----------
+function type(k) {
+  if (!G || G.done || G.busy || !$('resS').hidden) return;
+  if (!G.start) G.start = performance.now();
+  if (k === 'enter') return submit();
+  if (k === 'back') { if (G.cur) { G.cur = G.cur.slice(0, -1); SFX.back(); render(); } return; }
+  if (/^[a-z]$/.test(k) && G.cur.length < G.L) { G.cur += k; SFX.type(); render(); }
+}
+$('keys').addEventListener('click', (e) => { const b = e.target.closest('[data-k]'); if (b) type(b.dataset.k); });
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'Escape') return closeSheets();
+  if (e.metaKey || e.ctrlKey || e.altKey || $('game').hidden) return;
+  if (e.key === 'Enter') { e.preventDefault(); type('enter'); } else if (e.key === 'Backspace') type('back');
+  else if (/^[a-zA-Z]$/.test(e.key)) type(e.key.toLowerCase()); else if (e.key === '1') useHint('pin'); else if (e.key === '2') useHint('sweep');
+});
+// Fib: long-press a revealed tile to mark it as a liar
+let pressT;
+$('board').addEventListener('pointerdown', (e) => { const t = e.target.closest('[data-fib]'); if (!t) return; pressT = setTimeout(() => { const k = t.dataset.fib; G.fibMarks.has(k) ? G.fibMarks.delete(k) : G.fibMarks.add(k); buzz(15); render(); }, 380); });
+['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => $('board').addEventListener(ev, () => clearTimeout(pressT)));
+$('board').addEventListener('contextmenu', (e) => e.preventDefault());
+
+function invalid(msg, line = 'invalid') {
+  const row = rowEl(G.rows.length); row.classList.remove('shake'); void row.offsetWidth; row.classList.add('shake'); SFX.bad(); buzz(30);
+  toast(msg); $('alert').textContent = msg; if (line) say(line, 'shocked');
+}
+async function submit() {
+  if (G.cur.length < G.L) return invalid('Not enough letters', null);
+  const g = G.cur;
+  if (!GW.isWord(g)) return invalid('Not in the word list');
+  const err = GW.rulesError(g, G.rows.filter((r) => !r.timeout), G.rules); if (err) return invalid(err, null);
+  await reveal(g);
+}
+async function reveal(g, timeout = false) {
+  G.busy = true;
+  const res = timeout ? Array(G.L).fill('miss') : GW.evaluate(g, G.answer);
+  let shown = res, lie = -1; if (G.mode === 'fib' && !timeout) ({ shown, lie } = GW.fib(res, G.seed, G.rows.length));
+  const r = G.rows.length, row = { guess: timeout ? ' '.repeat(G.L) : g, res, shown, lie, timeout };
+  // animate the flip tile by tile, then commit
+  const tiles = [...rowEl(r).children], stagger = Math.min(280, 1400 / G.L);
+  const knownGrey = new Set(Object.entries(GW.keyStates(G.rows.filter((x) => !x.timeout))).filter(([, s]) => s === 'miss').map(([c]) => c));
+  for (let i = 0; i < G.L; i++) {
+    const t = tiles[i]; t.classList.add('flip'); await sleep(160);
+    t.classList.remove('flip', 'typed'); t.classList.add(shown[i], 'flip2'); t.textContent = timeout ? '' : g[i]; SFX.flip(shown[i], i);
+    await sleep(Math.max(0, stagger - 160));
+  }
+  G.rows.push(row); G.cur = ''; G.pinned = G.pinned.filter((i) => res[i] !== 'hit');
+  G.guessLeft = G.perGuess;
+  $('live').textContent = `Guess ${r + 1}: ` + (timeout ? 'time ran out' : [...g].map((c, i) => `${c.toUpperCase()} ${{ hit: 'correct', near: 'wrong spot', miss: 'absent' }[shown[i]]}`).join(', '));
+  render(); renderKeys(); topBar();
+  const won = !timeout && res.every((s) => s === 'hit'), used = G.rows.length;
+  G.busy = false;
+  if (won) return win(used);
+  // reactions
+  const hits = res.filter((s) => s === 'hit').length, colours = shown.filter((s) => s !== 'miss').length;
+  const reusedGrey = !timeout && [...g].some((c) => knownGrey.has(c));
+  if (used >= G.tries) {
+    if (G.mode === 'gauntlet' && G.gauntlet.spares > 0) return offerSpare(hits);
+    return lose(hits);
+  }
+  if (timeout) say('Time’s up! That row is gone. ⏰', 'shocked');
+  else if (G.mode === 'fib') say('fib', 'sus');
+  else if (hits === G.L - 1) say(G.nearOnce ? 'near2' : 'near', 'shocked', ''), (G.nearOnce = true);
+  else if (reusedGrey) say('grey', 'sus');
+  else if (!colours) say('blank', 'sus');
+  else if (used === 1 && hits >= 3) say('three', 'shocked');
+  else if (colours >= Math.ceil(G.L * 0.6)) say('hot', 'happy');
+  else say(pick(['Hmm. Keep going.', 'Info is info!', 'Every guess teaches me something about you.', 'Interesting choice…']), 'idle');
+}
+function offerSpare(hits) {
+  G.gauntlet.spares--; G.tries++; G.gauntlet.score = Math.max(0, G.gauntlet.score - 50); G.spareUsed = true;
+  say(`Phew! Used a spare row (−50). ${hits === G.L - 1 ? 'You’re SO close.' : 'Make it count!'}`, 'shocked');
+  layout(); render(); renderRail(); topBar();
+}
+
+// ---------- hints ----------
+function useHint(kind) {
+  if (!G || G.done || G.busy) return; const t = T[G.tier];
+  if (G.mode === 'rush' || G.mode === 'fib' || G.hints >= t.hints) return;
+  if (G.hints >= t.freeHint) G.hintsCost++;
+  G.hints++; SFX.hint();
+  if (kind === 'pin') { const i = GW.pin(G.answer, G.rows, G.pinned); if (i >= 0) G.pinned.push(i); }
+  else { G.swept.push(...GW.sweep(G.answer, G.rows.concat(G.swept.length ? [{ guess: G.swept.join(''), res: G.swept.map(() => 'miss'), shown: G.swept.map(() => 'miss') }] : []), 3)); }
+  say('hint', 'smug'); render(); renderKeys(); renderRail();
+}
+
+// ---------- timers (Rush clock, Brutal per-guess clock) ----------
+setInterval(() => {
+  if (!G || G.done || G.busy || !$('resS').hidden || document.hidden) return;
+  if (G.mode === 'rush' && G.rush.started) {
+    G.rush.left -= 0.25; const k = Math.max(0, G.rush.left / 180);
+    $('timerBar').firstChild.style.transform = `scaleX(${Math.min(1, k)})`; $('timerBar').firstChild.style.background = G.rush.left < 15 ? 'var(--pink)' : 'var(--violet)';
+    $('topRight').textContent = `⏱ ${Math.ceil(G.rush.left)}s`;
+    if (G.rush.left <= 0) rushOver();
+  }
+  if (G.perGuess && G.start) {
+    G.guessLeft -= 0.25; $('timerBar').firstChild.style.transform = `scaleX(${Math.max(0, G.guessLeft / G.perGuess)})`;
+    $('timerBar').firstChild.style.background = G.guessLeft < 10 ? 'var(--pink)' : 'var(--violet)';
+    if (Math.abs(G.guessLeft - 10) < 0.13) say('tick', 'shocked');
+    if (G.guessLeft <= 0) { G.cur = ''; reveal('', true); }
+  }
+}, 250);
+
+// ---------- end of a word ----------
+async function win(used) {
+  G.done = true; G.won = true; G.elapsed = (performance.now() - G.start) / 1000; G.elapsedWord = G.elapsed;
+  const tiles = [...rowEl(used - 1).children];
+  if (!reduced()) tiles.forEach((t, i) => setTimeout(() => { t.classList.remove('flip2'); t.classList.add('hop'); }, i * 90));
+  SFX.win(); buzz([20, 40, 20]);
+  const key = used === 1 ? 'solve1' : used === 2 ? 'solve2' : used === G.tries ? 'clutch' : 'solve';
+  say(G.mode === 'rush' && G.elapsedWord < 10 ? 'rushFast' : key, 'happy');
+  confetti(used <= 2 ? 120 : 70);
+  if (used <= 2) combo(used === 1 ? 'FIRST TRY!' : 'TWO-SHOT!');
+  checkAch('win', used);
+  if (G.mode === 'rush') return rushNext(true, used);
+  if (G.mode === 'gauntlet') return gauntletNext(used);
+  await sleep(1100); finish();
+}
+async function lose(hits) {
+  G.done = true; G.won = false; G.elapsed = (performance.now() - G.start) / 1000;
+  SFX.lose(); say(hits === G.L - 1 ? 'robbed' : 'lose', 'faint', `The word was ${G.answer.toUpperCase()}.`);
+  [...$('board').children].forEach((r) => r.classList.add('faded'));
+  if (G.mode === 'rush') return rushNext(false);
+  G.revealRow = true; layout(); render();
+  await sleep(1300); finish();
+}
+
+// ---------- modes ----------
+function startDaily(tier, kind = '') {
+  const d = today(), key = `${kind}${tier}`, rec = S.daily[d]?.[key];
+  const answer = GW.dailyWord(kind ? 'normal' : tier, d, kind);
+  if (rec) { G = { mode: kind ? 'fib' : 'daily', tier: kind ? 'normal' : tier, L: answer.length, tries: kind ? 8 : T[tier].tries, answer, rows: rec.rows, done: true, won: rec.won, daily: { key, date: d }, fibMarks: new Set(), pinned: [], swept: [], cur: '' };
+    showScreen('game'); layout(); render(); renderKeys(); $('rail').innerHTML = ''; topBar(); say('You already played this one today. Come back tomorrow!', 'smug'); return showResults(rec.score, true); }
+  newGame(kind ? 'fib' : 'daily', kind ? 'normal' : tier, { answer, seed: `daily-${d}-${key}`, daily: { key, date: d } });
+}
+function startGauntlet() { const g = { solved: 0, score: 0, spares: 0 }; newGame('gauntlet', 'easy', { answer: GW.randomWord('easy'), gauntlet: g }); }
+async function gauntletNext(used) {
+  const g = G.gauntlet, t = G.tier;
+  g.score += GW.solveScore(t, used, G.hintsCost, G.tries); g.solved++; g.spares = Math.min(5, g.spares + (G.tries - used));
+  topBar(); await sleep(1200);
+  if (g.solved % 3 === 0 && g.solved / 3 < TIER_IDS.length) toast(`Level up! Now ${T[GW.gauntletTier(g.solved)].name}: ${T[GW.gauntletTier(g.solved)].len} letters`, 2200);
+  const nt = GW.gauntletTier(g.solved); newGame('gauntlet', nt, { answer: GW.randomWord(nt), gauntlet: g });
+}
+function startRush() { newGame('rush', 'normal', { answer: GW.randomWord('normal'), rush: { score: 0, solved: 0, left: 180, started: false } }); G.rush.wordStart = performance.now(); G.rush.started = true; toast('3 minutes. Go go go! ⏱️'); }
+async function rushNext(won, used) {
+  const r = G.rush;
+  if (won) { r.score += 100 + 20 * (G.tries - used); r.solved++; r.left += used <= 3 ? 20 : 10; toast(`+${100 + 20 * (G.tries - used)} · +${used <= 3 ? 20 : 10}s`); }
+  else { r.left -= 15; toast(`It was ${G.answer.toUpperCase()} · −15s`); }
+  await sleep(won ? 700 : 1100);
+  if (r.left <= 0) return rushOver();
+  newGame('rush', 'normal', { answer: GW.randomWord('normal'), rush: r });
+}
+function rushOver() { if (G.over) return; G.over = true; G.done = true; G.won = G.rush.solved > 0; finish(); }
+
+// ---------- results ----------
+const statKey = () => G.mode === 'daily' ? `daily-${G.tier}` : G.mode === 'fib' ? 'fib' : G.mode === 'practice' ? `practice-${G.tier}` : G.mode;
+function record(won, used) {
+  const k = statKey(), st = S.stats[k] ||= { played: 0, won: 0, cur: 0, best: 0, dist: {} };
+  st.played++; if (won) { st.won++; st.cur++; st.best = Math.max(st.best, st.cur); st.dist[used] = (st.dist[used] || 0) + 1; } else st.cur = 0;
+  S.games++;
+}
+function finish() {
+  const used = G.rows.length; let score = 0;
+  if (G.mode === 'daily' || (G.mode === 'fib' && G.daily)) {
+    score = G.won ? GW.dailyScore(G.tier, used, G.elapsed, G.hintsCost) : 0;
+    const d = G.daily.date; (S.daily[d] ||= {})[G.daily.key] = { won: G.won, used, score, rows: G.rows.map(({ guess, res, shown }) => ({ guess, res, shown })) };
+    if (G.won && G.mode === 'daily') { if (S.dlast !== d) { const y = new Date(Date.parse(d + 'T12:00:00Z') - 864e5).toISOString().slice(0, 10); S.dstreak = S.dlast === y ? S.dstreak + 1 : 1; S.dlast = d; S.dbest = Math.max(S.dbest, S.dstreak); } }
+    record(G.won, used);
+  } else if (G.mode === 'gauntlet') { score = G.gauntlet.score; S.gBest = Math.max(S.gBest, score); record(G.gauntlet.solved > 0, G.gauntlet.solved); }
+  else if (G.mode === 'rush') { score = G.rush.score; S.rBest = Math.max(S.rBest, score); record(G.rush.solved > 0, G.rush.solved); }
+  else record(G.won, used);
+  checkAch('end', used, score); save();
+  showResults(score, false);
+}
+function boardName() {
+  const d = (G.daily?.date || today()).replace(/-/g, '');
+  if (G.mode === 'daily') return `gridwit_d${d}_${G.tier}`;
+  if (G.mode === 'fib' && G.daily) return `gridwit_d${d}_fib`;
+  if (G.mode === 'gauntlet') return 'gridwit_gauntlet';
+  if (G.mode === 'rush') return 'gridwit_rush';
+  return null;
+}
+function showResults(score, replay) {
+  const used = G.rows.length, rush = G.mode === 'rush', gaunt = G.mode === 'gauntlet';
+  $('resT').textContent = rush ? `⏱️ Time! ${G.rush.solved} solved` : gaunt ? `🔥 Gauntlet over: ${G.gauntlet.solved} words` : G.won ? pick(['🎉 Solved!', '🦉 Outwitted!', '✨ Nailed it!']) : '😵 So close';
+  $('resAns').innerHTML = [...G.answer].map((c) => `<span>${c}</span>`).join('');
+  $('resD').innerHTML = rush || gaunt ? `Score <b class="num" style="font-size:22px;color:var(--amber)">${score.toLocaleString()}</b>` : `${G.won ? `Solved in ${used}/${G.tries}` : 'Not this time'}${score ? ` · <b style="color:var(--amber)">${score.toLocaleString()} pts</b>` : ''}`;
+  $('resGrid').textContent = rush || gaunt ? '' : gridText();
+  const st = S.stats[statKey()] || { played: 0, won: 0, cur: 0, best: 0, dist: {} };
+  $('resStats').innerHTML = [[st.played, 'Played'], [st.played ? Math.round(st.won / st.played * 100) + '%' : '0%', 'Win %'], [G.mode === 'daily' ? S.dstreak : st.cur, 'Streak'], [G.mode === 'daily' ? S.dbest : st.best, 'Best']].map(([a, b]) => `<div><b>${a}</b><span>${b}</span></div>`).join('');
+  $('resHist').innerHTML = rush || gaunt ? '' : hist(st, G.won ? used : 0);
+  const bn = boardName(); $('lb').hidden = !bn; if (bn) leaderboard($('lb'), bn).show(replay ? 0 : score);
+  const nextLabel = { daily: 'Another difficulty', fib: 'More Fib', practice: 'Next word', gauntlet: 'Run again', rush: 'Rush again', challenge: 'Make your own' }[G.mode];
+  $('nextB').textContent = nextLabel; $('defB').href = `https://en.wiktionary.org/wiki/${G.answer}`;
+  $('resS').hidden = false;
+}
+function hist(st, me) { const max = Math.max(1, ...Object.values(st.dist)); let h = ''; for (let i = 1; i <= Math.max(G.tries, 6); i++) { const n = st.dist[i] || 0; h += `<div><span>${i}</span><i class="${i === me ? 'me' : ''}" style="width:${8 + 92 * n / max}%">${n}</i></div>`; } return h; }
+function gridText() { return G.rows.map((r) => r.shown.map((s) => ({ hit: '🟩', near: '🟧', miss: '⬛' }[s])).join('')).join('\n'); }
+$('menuB').onclick = () => { closeSheets(); goHome(); };
+$('nextB').onclick = () => { closeSheets(); const m = G.mode;
+  if (m === 'daily') return openTier('daily'); if (m === 'fib') return newGame('fib', 'normal', { answer: GW.randomWord('normal') });
+  if (m === 'practice') return newGame('practice', G.tier, { answer: GW.randomWord(G.tier) }); if (m === 'gauntlet') return startGauntlet();
+  if (m === 'rush') return startRush(); if (m === 'challenge') { goHome(); return openChallenge(); } };
+$('shareB').onclick = async () => {
+  const head = G.mode === 'rush' ? `Gridwit Rush ⏱️ ${G.rush.score} pts · ${G.rush.solved} words` : G.mode === 'gauntlet' ? `Gridwit Gauntlet 🔥 ${G.gauntlet.score} pts · ${G.gauntlet.solved} words`
+    : `Gridwit ${G.mode === 'daily' ? 'Daily #' + (GW.dayIndex(G.daily.date) + 1) : G.mode === 'fib' ? '🤥 Fib' : G.mode === 'challenge' ? 'Challenge' : 'Practice'} · ${T[G.tier].name} ${G.won ? G.rows.length : 'X'}/${G.tries}${G.mode === 'daily' && S.dstreak > 1 ? ` 🔥${S.dstreak}` : ''}`;
+  const url = 'https://rank-game.com/games/gridwit' + (G.mode === 'challenge' && G.chal ? `#c=${G.chal.code}` : '');
+  const text = `${head}\n${G.mode === 'rush' || G.mode === 'gauntlet' ? '' : gridText() + '\n'}${url}`;
+  try { if (navigator.share) return await navigator.share({ text }); } catch { return; }
+  try { await navigator.clipboard.writeText(text); toast('Copied! Paste it anywhere 📋'); } catch { toast('Couldn’t copy'); }
+};
+
+// ---------- effects ----------
+function confetti(n) {
+  if (reduced()) return; if (devicePixelRatio > 2 && innerWidth < 500) n = Math.min(n, 40);
+  const cols = ['var(--hit)', 'var(--near)', 'var(--violet)', 'var(--pink)', '#fff'], ps = [];
+  for (let i = 0; i < n; i++) { const el = document.createElement('i'); el.className = 'confetti'; el.style.background = cols[i % cols.length]; document.body.appendChild(el); ps.push({ el, x: innerWidth / 2 + (Math.random() - 0.5) * 120, y: innerHeight * 0.35, vx: (Math.random() - 0.5) * 14, vy: -6 - Math.random() * 10, r: Math.random() * 360, vr: (Math.random() - 0.5) * 30 }); }
+  const t0 = performance.now(); (function f(now) { const t = (now - t0) / 1000; for (const p of ps) { p.vy += 0.45; p.x += p.vx; p.y += p.vy; p.r += p.vr; p.el.style.transform = `translate(${p.x}px,${p.y}px) rotate(${p.r}deg)`; p.el.style.opacity = 1 - Math.max(0, t - 1.1) / 0.5; } if (t < 1.6) requestAnimationFrame(f); else ps.forEach((p) => p.el.remove()); })(t0);
+}
+function combo(text) { const el = document.createElement('div'); el.className = 'combo'; el.textContent = text; document.body.appendChild(el); setTimeout(() => el.remove(), 1300); }
+
+// ---------- achievements (each unlocks a look) ----------
+const ACH = {
+  mind: ['Mind Reader', 'Solve a word on the first guess', 'gold'], showoff: ['Showoff', 'Solve in two guesses'], whisker: ['By a Whisker', 'Solve on the very last row'],
+  grey: ['Grey Matters', 'Win without reusing a grey letter'], lie: ['Lie Detector', 'Win Fib in 4 guesses or fewer'], rush: ['Rush Hour', 'Score 1,000+ in Rush', 'neon'],
+  marathon: ['Marathon', 'Solve 10 words in one Gauntlet', 'candy'], octopus: ['Octopus', 'Win on Brutal (8 letters)', 'retro'], week: ['Week Warrior', 'A 7-day Daily streak', 'chalk'],
+  penpal: ['Pen Pal', 'Send a friend a challenge'], allfive: ['Full Spectrum', 'Win every difficulty at least once'], ten: ['Regular', 'Play 10 games'],
+};
+const THEMES = { classic: 'Classic', neon: 'Neon', candy: 'Candy', chalk: 'Chalk', retro: 'Retro', gold: 'Gold' };
+const unlockedThemes = () => ['classic', ...Object.entries(ACH).filter(([k, a]) => a[2] && S.ach[k]).map(([, a]) => a[2])];
+function grant(k) { if (S.ach[k]) return; S.ach[k] = today(); save(); const a = ACH[k]; setTimeout(() => toast(`🏅 ${a[0]}${a[2] ? ` · unlocked ${THEMES[a[2]]} tiles!` : ''}`, 2600), 900); }
+function checkAch(when, used, score) {
+  if (when === 'win') {
+    if (used === 1) grant('mind'); if (used === 2) grant('showoff'); if (used === G.tries && G.tries > 1) grant('whisker');
+    if (G.mode === 'fib' && used <= 4) grant('lie'); if (G.tier === 'brutal' && G.mode !== 'challenge') grant('octopus');
+    const greys = new Set(); let reused = false; for (const r of G.rows) { [...r.guess].forEach((c) => { if (greys.has(c)) reused = true; }); r.res.forEach((s, i) => { if (s === 'miss' && !r.guess.slice(0, i).includes(r.guess[i]) && !G.answer.includes(r.guess[i])) greys.add(r.guess[i]); }); }
+    if (!reused && used >= 3) grant('grey');
+    (S.wonTiers ||= {})[G.tier] = 1; if (TIER_IDS.every((t) => S.wonTiers[t])) grant('allfive');
+    if (G.mode === 'gauntlet' && G.gauntlet.solved + 1 >= 10) grant('marathon');
+  }
+  if (when === 'end') { if (G.mode === 'rush' && score >= 1000) grant('rush'); if (S.dstreak >= 7) grant('week'); if (S.games >= 10) grant('ten'); }
+}
+
+// ---------- menus ----------
+const L_OF = (n) => TIER_IDS.find((t) => T[t].len === n);
+function renderHome() {
+  const tiles = 'GRIDWIT'.split(''), cols = ['--hit', '--near', '--violet', '--hit', '--pink', '--near', '--hit'];
+  $('mark').innerHTML = tiles.map((c, i) => `<span style="--c:var(${cols[i]});animation-delay:${i * 70}ms">${c}</span>`).join('');
+  const done = Object.keys(S.daily[today()] || {}).filter((k) => T[k]).length; $('dailyDone').textContent = done ? `${done}/5 ✓` : '';
+  $('gBest').textContent = S.gBest ? `Best ${S.gBest}` : ''; $('rBest').textContent = S.rBest ? `Best ${S.rBest}` : '';
+}
+function goHome() { G = null; showScreen('home'); renderHome(); }
+$('backB').onclick = () => { if (G && !G.done && G.rows.length && (G.mode === 'daily' || G.mode === 'gauntlet' || G.mode === 'rush') && !confirm('Leave this game? It will count as a loss.')) return; if (G && !G.done && G.rows.length && G.mode === 'daily') { G.won = false; G.elapsed = 0; G.done = true; finish(); closeSheets(); } goHome(); };
+function openTier(mode) {
+  const d = S.daily[today()] || {};
+  $('tierT').textContent = mode === 'daily' ? '📅 Today’s words' : '🎲 Practice';
+  $('tierD').textContent = mode === 'daily' ? 'One scored try per difficulty each day. Same words for everyone.' : 'Unlimited random words. Nothing on the line.';
+  $('tierList').innerHTML = TIER_IDS.map((t) => { const x = T[t], rec = d[t]; return `<button class="tier" data-t="${t}"><span class="lt">${x.len}</span><div><b>${x.name}</b><small>${x.len} letters · ${x.tries} tries${x.rules === 1 ? ' · keep your clues' : x.rules === 2 ? ' · strict clues' : ''}${x.perGuess ? ' · 60s per guess' : ''}${mode === 'daily' ? ` · ×${x.mult} points` : ''}</small></div>${mode === 'daily' && rec ? `<span class="st">${rec.won ? `✓ ${rec.used}/${x.tries} · ${rec.score}` : '✗'}</span>` : ''}</button>`; }).join('');
+  $('tierList').onclick = (e) => { const b = e.target.closest('[data-t]'); if (!b) return; closeSheets(); mode === 'daily' ? startDaily(b.dataset.t) : newGame('practice', b.dataset.t, { answer: GW.randomWord(b.dataset.t) }); };
+  $('tierS').hidden = false;
+}
+document.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => {
+  const m = b.dataset.go;
+  if (m === 'daily' || m === 'practice') return openTier(m);
+  if (m === 'gauntlet') return startGauntlet(); if (m === 'rush') return startRush();
+  if (m === 'fib') return startDaily('normal', 'fib');
+  if (m === 'challenge') return openChallenge();
+}));
+function openChallenge() { $('chalIn').value = ''; $('chalS').hidden = false; setTimeout(() => $('chalIn').focus(), 100); }
+$('chalIn').oninput = () => { $('chalIn').value = $('chalIn').value.toLowerCase().replace(/[^a-z]/g, ''); };
+$('chalMake').onclick = async () => {
+  const w = $('chalIn').value;
+  if (w.length < 4 || w.length > 8) return toast('Use 4 to 8 letters');
+  if (!GW.isWord(w) || GW.isBlocked(w)) return toast('Wit doesn’t know that one 🤷');
+  const name = (window.rgAuth?.user?.nick || '').slice(0, 14), url = `https://rank-game.com/games/gridwit#c=${GW.encode(w)}${name ? '&n=' + encodeURIComponent(name) : ''}`;
+  const text = `Can you crack my ${w.length}-letter word? 🦉 Gridwit challenge: ${url}`;
+  grant('penpal'); closeSheets();
+  try { if (navigator.share) return await navigator.share({ text }); } catch { return; }
+  try { await navigator.clipboard.writeText(text); toast('Challenge link copied! Send it to a friend 📋', 2400); } catch { toast(url, 6000); }
+};
+$('howB').onclick = () => ($('howS').hidden = false);
+// stats sheet
+let statSel = 'daily-normal';
+function renderStats() {
+  const keys = [...TIER_IDS.map((t) => [`daily-${t}`, `Daily ${T[t].name}`]), ['fib', 'Fib'], ['gauntlet', 'Gauntlet'], ['rush', 'Rush']];
+  $('statsSeg').innerHTML = keys.map(([k, l]) => `<button data-s="${k}" class="${k === statSel ? 'on' : ''}">${l}</button>`).join('');
+  const st = S.stats[statSel] || { played: 0, won: 0, cur: 0, best: 0, dist: {} };
+  $('stStats').innerHTML = [[st.played, 'Played'], [st.played ? Math.round(st.won / st.played * 100) + '%' : '0%', 'Win %'], [statSel.startsWith('daily') ? S.dstreak : st.cur, 'Streak'], [statSel.startsWith('daily') ? S.dbest : st.best, 'Best']].map(([a, b]) => `<div><b>${a}</b><span>${b}</span></div>`).join('');
+  const tries = statSel.startsWith('daily-') ? T[statSel.slice(6)].tries : statSel === 'fib' ? 8 : 0;
+  if (tries) { const max = Math.max(1, ...Object.values(st.dist)); let h = ''; for (let i = 1; i <= tries; i++) { const n = st.dist[i] || 0; h += `<div><span>${i}</span><i style="width:${8 + 92 * n / max}%">${n}</i></div>`; } $('stHist').innerHTML = h; }
+  else $('stHist').innerHTML = `<p class="muted">Best score: <b>${statSel === 'rush' ? S.rBest : S.gBest}</b></p>`;
+  $('achList').innerHTML = Object.entries(ACH).map(([k, [n, d, th]]) => `<div class="${S.ach[k] ? '' : 'no'}"><b>${S.ach[k] ? '🏅' : '🔒'} ${n}</b>${d}${th ? ` · ${THEMES[th]} tiles` : ''}</div>`).join('');
+}
+$('statsSeg').onclick = (e) => { const b = e.target.closest('[data-s]'); if (b) { statSel = b.dataset.s; renderStats(); } };
+$('statsB').onclick = () => { renderStats(); $('statsS').hidden = false; };
+// settings
+function renderSettings() {
+  $('themeSeg').innerHTML = [['auto', 'Auto'], ['dark', 'Dark'], ['light', 'Light']].map(([k, l]) => `<button data-th="${k}" class="${S.theme === k ? 'on' : ''}">${l}</button>`).join('');
+  const un = unlockedThemes(); $('tileSeg').innerHTML = Object.entries(THEMES).map(([k, l]) => `<button data-ti="${k}" class="${S.tiles === k ? 'on' : ''}" ${un.includes(k) ? '' : 'disabled'}>${un.includes(k) ? '' : '🔒 '}${l}</button>`).join('');
+  $('optHc').checked = S.hc; $('optMotion').checked = S.motion === 'off'; $('optSound').checked = S.sound; $('optHaptic').checked = S.haptic;
+}
+$('themeSeg').onclick = (e) => { const b = e.target.closest('[data-th]'); if (b) { S.theme = b.dataset.th; save(); applySettings(); renderSettings(); } };
+$('tileSeg').onclick = (e) => { const b = e.target.closest('[data-ti]'); if (b && !b.disabled) { S.tiles = b.dataset.ti; save(); applySettings(); renderSettings(); } };
+$('optHc').onchange = () => { S.hc = $('optHc').checked; save(); applySettings(); };
+$('optMotion').onchange = () => { S.motion = $('optMotion').checked ? 'off' : 'auto'; save(); applySettings(); };
+$('optSound').onchange = () => { S.sound = $('optSound').checked; save(); };
+$('optHaptic').onchange = () => { S.haptic = $('optHaptic').checked; save(); };
+$('setB').onclick = () => { renderSettings(); $('setS').hidden = false; };
+
+// ---------- start ----------
+const lbWarm = leaderboard(document.createElement('div'), 'gridwit_rush'); // tells the site this game has leaderboards
+renderHome();
+const h = location.hash.slice(1), params = new URLSearchParams(h);
+if (params.get('c')) {
+  const w = GW.decode(params.get('c'));
+  if (w && w.length >= 4 && w.length <= 8 && GW.isWord(w) && !GW.isBlocked(w)) { const tier = L_OF(w.length); newGame('challenge', tier, { answer: w, chal: { code: params.get('c'), name: params.get('n') || '' } }); }
+  else toast('That challenge link looks broken 🤔', 3000);
+} else if (!S.seenHow) { $('howS').hidden = false; S.seenHow = true; save(); }
+// for tests and the preview recorder
+window.gwState = () => G;
+window.startDemo = async () => {
+  closeSheets(); newGame('practice', 'normal', { answer: 'crane' });
+  for (const g of ['story', 'plain', 'crane']) { await sleep(500); for (const c of g) { type(c); await sleep(140); } await sleep(250); type('enter'); await sleep(2200); }
+};
+</script>
+</body>
+</html>
