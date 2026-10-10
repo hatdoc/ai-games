@@ -98,6 +98,15 @@
     else parent.postMessage({ type: 'rg-cloud-status', game, ok: true }, SITE);
     if (changed) typeof window.cloudSaveChanged === 'function' ? window.cloudSaveChanged() : location.reload();
   }
+  if (!window.rgKeys && parent !== window) {
+    window.rgKeys = true;
+  // a key pressed on rank-game.com while this frame didn't have focus: replay it here
+  addEventListener('message', (e) => {
+    if (e.origin !== 'https://rank-game.com' || e.source !== parent || e.data?.type !== 'rg-key') return;
+    const { kind, key, code } = e.data;
+    (document.activeElement || document.body).dispatchEvent(new KeyboardEvent(kind === 'keyup' ? 'keyup' : 'keydown', { key, code, bubbles: true, cancelable: true }));
+  });
+  }
   addEventListener('message', (e) => {
     if (e.origin !== SITE || e.source !== parent) return;
     if (e.data?.type === 'rg-cloud-hello') { if (window.rgHasBoard) parent.postMessage({ type: 'rg-board' }, SITE); return ask(); } // the page loaded after us and missed our first messages

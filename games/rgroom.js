@@ -3,6 +3,15 @@
 (() => {
   const SITE = 'https://rank-game.com';
   if (parent === window) { window.rgInvite = () => {}; return; }
+  if (!window.rgKeys) {
+    window.rgKeys = true;
+    // a key pressed on rank-game.com while this frame didn't have focus: replay it here
+    addEventListener('message', (e) => {
+      if (e.origin !== 'https://rank-game.com' || e.source !== parent || e.data?.type !== 'rg-key') return;
+      const { kind, key, code } = e.data;
+      (document.activeElement || document.body).dispatchEvent(new KeyboardEvent(kind === 'keyup' ? 'keyup' : 'keydown', { key, code, bubbles: true, cancelable: true }));
+  });
+  }
   let last = null, custom = null;
   const post = (hash, label) => parent.postMessage({ type: 'rg-room', hash, label }, SITE);
   const check = () => {
