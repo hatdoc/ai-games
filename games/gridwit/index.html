@@ -244,6 +244,7 @@
 <script src="engine.js"></script>
 <script src="../cloudsave.js" data-game="gridwit" data-keys="gridwit"></script>
 <script src="../leaderboard.js"></script>
+<script src="../rgroom.js"></script>
 <script>
 GW.load(GW_WORDS);
 const $ = (id) => document.getElementById(id);
@@ -661,6 +662,7 @@ $('chalMake').onclick = async () => {
   const name = (window.rgAuth?.user?.nick || '').slice(0, 14), url = `https://rank-game.com/games/gridwit#c=${GW.encode(w)}${name ? '&n=' + encodeURIComponent(name) : ''}`;
   const text = `Can you crack my ${w.length}-letter word? 🦉 Gridwit challenge: ${url}`;
   grant('penpal'); closeSheets();
+  window.rgInvite?.(`c=${GW.encode(w)}${name ? '&n=' + encodeURIComponent(name) : ''}`, `my ${w.length}-letter challenge`); // friends on rank-game.com can be invited straight from the page
   try { if (navigator.share) return await navigator.share({ text }); } catch { return; }
   try { await navigator.clipboard.writeText(text); toast('Challenge link copied! Send it to a friend 📋', 2400); } catch { toast(url, 6000); }
 };
