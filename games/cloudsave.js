@@ -55,6 +55,12 @@
   Object.assign(window.rgAuth, {
     onSite: anc ? anc[anc.length - 1] === SITE : document.referrer.startsWith(SITE),
     login: () => parent.postMessage({ type: 'rg-login' }, SITE),
+    // signed-in Firestore call for games (friends leagues): suffix goes after .../documents, e.g. '/leagues/abc' or ':commit'
+    async api(suffix, init = {}) {
+      if (!this.user) throw new Error('signed out');
+      if (Date.now() - tokenAt > 45 * 60e3) await waitToken();
+      return fetch(`${FS}${suffix}${suffix.includes('?') ? '&' : '?'}key=${KEY}`, { ...init, headers: auth() });
+    },
     // collection: e.g. 'games/snake/scores'. Keeps the higher of old and new; returns the previous best (or null)
     async submit(collection, score, extra = {}) {
       const { uid, nick } = this.user;
