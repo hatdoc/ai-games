@@ -134,6 +134,16 @@
   .lgr.me { outline: 2px solid var(--violet); } .lgr b { font: 700 16px 'Space Grotesk'; } .lgr small { color: var(--ink-dim); font-weight: 600; } .lgr .rk { text-align: center; }
   .banner { padding: 12px 14px; border-radius: 14px; background: linear-gradient(135deg, var(--violet), var(--pink)); color: #fff; font-weight: 700; line-height: 1.35; }
   .today { padding: 14px; border-radius: 16px; background: var(--surface); display: grid; gap: 8px; }
+  /* wide screens (laptops): three columns so the whole menu fits in a short frame without scrolling */
+  @media (min-width: 680px) {
+    #app { max-width: 800px; }
+    #home { padding: 12px 4px 16px; gap: 12px; }
+    .modes { grid-template-columns: repeat(3, 1fr); }
+    .mode, .mode.wide { grid-column: auto; min-height: 118px; flex-direction: column; align-items: flex-start; gap: 4px; }
+    .mode.wide .em { display: block; }
+  }
+  @media (max-width: 679px) and (max-height: 800px) { #home { padding-top: 10px; gap: 10px; } .mode { min-height: 100px; padding: 12px; } .mode.wide { min-height: 0; } .credit { display: none; } }
+  @media (max-height: 700px) { .mark span { width: 30px; height: 36px; font-size: 20px; } .mode, .mode.wide { min-height: 100px; padding: 11px 12px; } .mode .em { font-size: 22px; } .tagline { font-size: 14px; } }
   .credit { font-size: 11px; color: var(--ink-dim); text-align: center; opacity: .7; }
   @media (max-height: 640px) { .mascot { height: 36px; } #wit { font-size: 24px; } .key { height: 48px; } #rail { height: 44px; } }
   @media (max-height: 560px) { .mascot { display: none; } }
@@ -222,6 +232,7 @@
   <p class="muted"><b>Friends League:</b> create a league and invite friends (or a saved group). Everyone gets the same random word each day, you included, with one game per day and no hints. Points add up Monday to Sunday and the league announces the weekly winner.</p>
   <p class="muted"><b>Fib mode:</b> in every row exactly one tile shows the wrong colour (never on a correct answer). Long-press a tile to mark it as a liar 🤥.</p>
   <p class="muted">Daily scores go on the leaderboard when you're signed in on rank-game.com. Invalid words never cost a try.</p>
+  <p class="credit">Word lists: ENABLE (public domain), SCOWL © Kevin Atkinson, wordfreq by Robyn Speer (CC BY-SA 4.0).</p>
   <button class="btn cta" data-close>Let's play</button>
 </div></div>
 
