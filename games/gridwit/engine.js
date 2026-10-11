@@ -67,6 +67,23 @@
     return { shown, lie: i };
   }
 
+  // ---------- friends leagues ----------
+  // a league's "day" follows the creator's time zone (tz = minutes east of UTC); weeks run Monday to Sunday
+  const leagueDay = (tz, now = Date.now()) => Math.floor((now + tz * 60000) / 864e5);
+  const weekStart = (day) => Math.floor((day + 3) / 7) * 7 - 3;
+  // same random word for every member each day; no repeats until the list runs out
+  function leagueWord(tier, id, day) { const list = shuffled(W.answers[tier], `gridwit-league-${id}-${tier}`); return list[((day % list.length) + list.length) % list.length]; }
+  // weekly table: points, then wins, then fewer guesses on those wins
+  function standings(plays) {
+    const by = {};
+    for (const p of plays) {
+      if (!p.done) continue;
+      const r = (by[p.uid] ||= { uid: p.uid, nick: p.nick, score: 0, wins: 0, played: 0, used: 0 });
+      r.nick = p.nick; r.score += p.score; r.played++; if (p.won) { r.wins++; r.used += p.used; }
+    }
+    return Object.values(by).sort((a, b) => b.score - a.score || b.wins - a.wins || a.used - b.used || a.nick.localeCompare(b.nick));
+  }
+
   // ---------- points ----------
   function dailyScore(tier, used, seconds, hintsCost) {
     const T = TIERS[tier]; if (!used) return 0;
@@ -86,5 +103,5 @@
   const encode = (w) => btoa([...w].map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ KEY.charCodeAt(i % KEY.length))).join('')).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
   const decode = (s) => { try { const b = atob(s.replace(/-/g, '+').replace(/_/g, '/')); return [...b].map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ KEY.charCodeAt(i % KEY.length))).join(''); } catch { return ''; } };
 
-  globalThis.GW = { TIERS, TIER_IDS, load, isWord, isBlocked, dailyWord, randomWord, dayIndex, evaluate, rulesError, keyStates, fib, dailyScore, solveScore, gauntletTier, pin, sweep, encode, decode, shuffled, hash, mulberry };
+  globalThis.GW = { TIERS, TIER_IDS, load, isWord, isBlocked, dailyWord, randomWord, dayIndex, evaluate, rulesError, keyStates, fib, dailyScore, solveScore, gauntletTier, pin, sweep, encode, decode, shuffled, hash, mulberry, leagueDay, weekStart, leagueWord, standings };
 })();

@@ -19,7 +19,7 @@
     const h = location.hash.slice(1), code = /^[A-Z0-9]{5}$/i.test(h) ? h.toUpperCase() : '';
     if (code !== last) { last = code; post(code); }
   };
-  window.rgInvite = (hash, label) => { custom = { hash, label }; post(hash, label); };
+  window.rgInvite = (hash, label) => { custom = hash ? { hash, label } : null; post(hash || '', label); };
   setInterval(check, 700); // games set the hash when they open or join a room, and clear it when they leave
   addEventListener('message', (e) => { if (e.origin === SITE && e.data?.type === 'rg-cloud-hello') { if (custom) post(custom.hash, custom.label); else if (last) post(last); } });
 })();

@@ -129,6 +129,11 @@
   .seg { display: flex; gap: 6px; flex-wrap: wrap; } .seg button { border: 0; padding: 8px 12px; border-radius: 999px; background: var(--surface); font-weight: 700; font-size: 13px; }
   .seg button.on { background: var(--violet); color: #fff; } .seg button:disabled { opacity: .35; }
   input.word { width: 100%; padding: 14px; border-radius: 14px; border: 2px solid var(--tile-edge); background: var(--tile-empty); font: 700 22px 'Space Grotesk'; letter-spacing: 6px; text-transform: uppercase; text-align: center; -webkit-user-select: text; user-select: text; }
+  .lgt { display: grid; gap: 6px; }
+  .lgr { display: grid; grid-template-columns: 34px 1fr auto auto; gap: 8px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--surface); font-weight: 600; }
+  .lgr.me { outline: 2px solid var(--violet); } .lgr b { font: 700 16px 'Space Grotesk'; } .lgr small { color: var(--ink-dim); font-weight: 600; } .lgr .rk { text-align: center; }
+  .banner { padding: 12px 14px; border-radius: 14px; background: linear-gradient(135deg, var(--violet), var(--pink)); color: #fff; font-weight: 700; line-height: 1.35; }
+  .today { padding: 14px; border-radius: 16px; background: var(--surface); display: grid; gap: 8px; }
   .credit { font-size: 11px; color: var(--ink-dim); text-align: center; opacity: .7; }
   @media (max-height: 640px) { .mascot { height: 36px; } #wit { font-size: 24px; } .key { height: 48px; } #rail { height: 44px; } }
   @media (max-height: 560px) { .mascot { display: none; } }
@@ -148,7 +153,7 @@
       <button class="mode" data-go="rush"><span class="em">⏱️</span><b>Rush</b><small>3 minutes. Solve fast to earn more time.</small><span class="done" id="rBest"></span></button>
       <button class="mode" data-go="fib"><span class="em">🤥</span><b>Fib</b><small>One tile in every row is lying. Trust nobody.</small></button>
       <button class="mode wide" data-go="practice"><span class="em">🎲</span><span><b>Practice</b><br><small>Any difficulty, unlimited words, no pressure.</small></span></button>
-      <button class="mode wide" data-go="challenge"><span class="em">🔗</span><span><b>Challenge a friend</b><br><small>Pick a word, send the link, see if they crack it.</small></span></button>
+      <button class="mode wide" data-go="challenge"><span class="em">🏆</span><span><b>Challenge friends</b><br><small>A weekly league: same random word every day (you play too), one game each, and a winner every week.</small></span></button>
     </div>
     <div class="row-btns"><button class="btn" id="howB">❓ How to play</button><button class="btn" id="statsB">📊 Stats</button><button class="btn" id="setB">⚙️</button></div>
     <p class="credit">Word lists: ENABLE (public domain), SCOWL © Kevin Atkinson, wordfreq by Robyn Speer (CC BY-SA 4.0).</p>
@@ -169,6 +174,9 @@
   </section>
 </div>
 <div class="sr" id="live" aria-live="polite"></div><div class="sr" id="alert" aria-live="assertive"></div>
+
+<!-- friends league -->
+<div class="sheet" id="lgS" hidden><div id="lgBox"></div></div>
 
 <!-- difficulty -->
 <div class="sheet" id="tierS" hidden><div>
@@ -211,6 +219,7 @@
   </div>
   <p class="muted"><b>Difficulties:</b> Easy 4 letters / 7 tries · Normal 5 / 6 · Hard 6 letters, and you must keep greens and use ambers · Expert 7, and ambers can't go back where they were ruled out · Brutal 8 letters with 60 seconds per guess.</p>
   <p class="muted"><b>Hints:</b> 📍 Pin shows one letter in place, 🧹 Sweep greys out 3 letters. They cost points in scored modes.</p>
+  <p class="muted"><b>Friends League:</b> create a league and invite friends (or a saved group). Everyone gets the same random word each day, you included, with one game per day and no hints. Points add up Monday to Sunday and the league announces the weekly winner.</p>
   <p class="muted"><b>Fib mode:</b> in every row exactly one tile shows the wrong colour (never on a correct answer). Long-press a tile to mark it as a liar 🤥.</p>
   <p class="muted">Daily scores go on the leaderboard when you're signed in on rank-game.com. Invalid words never cost a try.</p>
   <button class="btn cta" data-close>Let's play</button>
@@ -317,9 +326,9 @@ function newGame(mode, tier, opt = {}) {
   const t = T[tier], L = t.len;
   G = { mode, tier, L, tries: opt.tries || (mode === 'fib' ? 8 : t.tries), rules: mode === 'challenge' || mode === 'fib' ? 0 : t.rules, answer: opt.answer, rows: [], cur: '', hints: 0, hintsCost: 0, pinned: [], swept: [],
     start: 0, elapsed: 0, done: false, won: false, busy: false, seed: opt.seed || String(Math.random()), fibMarks: new Set(), chal: opt.chal || null, daily: opt.daily || null,
-    gauntlet: opt.gauntlet || null, rush: opt.rush || null, perGuess: mode === 'rush' ? 0 : t.perGuess, guessLeft: t.perGuess, spareUsed: false };
+    gauntlet: opt.gauntlet || null, rush: opt.rush || null, league: opt.league || null, perGuess: mode === 'rush' ? 0 : t.perGuess, guessLeft: t.perGuess, spareUsed: false };
   showScreen('game'); layout(); render(); renderKeys(); renderRail(); topBar();
-  say(mode === 'fib' ? 'fib' : mode === 'challenge' && G.chal?.name ? `${G.chal.name} dares you to find their word!` : 'start', 'happy');
+  say(mode === 'league' ? `${opt.league.name}: same word for everyone today. No pressure. (Some pressure.)` : mode === 'fib' ? 'fib' : mode === 'challenge' && G.chal?.name ? `${G.chal.name} dares you to find their word!` : 'start', 'happy');
 }
 function showScreen(id) { $('home').hidden = id !== 'home'; $('game').hidden = id !== 'game'; }
 function closeSheets() { document.querySelectorAll('.sheet').forEach((s) => (s.hidden = true)); }
@@ -366,18 +375,19 @@ function keyMap() {
   return k;
 }
 function renderRail() {
-  const t = T[G.tier], noHints = G.mode === 'rush' || G.mode === 'fib' || !t.hints, left = t.hints - G.hints, free = G.hints < t.freeHint;
+  const t = T[G.tier], noHints = G.mode === 'rush' || G.mode === 'fib' || G.mode === 'league' || !t.hints, left = t.hints - G.hints, free = G.hints < t.freeHint;
   const cost = free ? 'free' : G.mode === 'practice' || G.mode === 'challenge' ? '' : `−${Math.round(150 * t.mult)}`;
   let h = '';
   if (!noHints) h += `<button class="pw" id="pinB" ${left <= 0 || G.done ? 'disabled' : ''}>📍 Pin<span class="cost">${cost}</span></button><button class="pw" id="sweepB" ${left <= 0 || G.done ? 'disabled' : ''}>🧹 Sweep<span class="cost">${cost}</span></button>`;
   if (G.mode === 'gauntlet') h += `<span class="chip">🪶 Spare rows ×${G.gauntlet.spares}</span>`;
+  if (G.mode === 'league') h += `<span class="chip">🏆 ${esc(G.league.name)}</span>`;
   if (G.mode === 'fib') h += `<span class="muted" style="font-size:12.5px">Long-press a tile to mark a liar 🤥</span>`;
   if (G.mode === 'rush') h += `<span class="chip">⭐ ${G.rush.score} · ${G.rush.solved} solved</span>`;
   $('rail').innerHTML = h;
   $('pinB') && ($('pinB').onclick = () => useHint('pin')); $('sweepB') && ($('sweepB').onclick = () => useHint('sweep'));
 }
 function topBar() {
-  const name = { daily: 'DAILY', gauntlet: 'GAUNTLET', rush: 'RUSH', fib: 'FIB', practice: 'PRACTICE', challenge: 'CHALLENGE' }[G.mode];
+  const name = { daily: 'DAILY', gauntlet: 'GAUNTLET', rush: 'RUSH', fib: 'FIB', practice: 'PRACTICE', challenge: 'CHALLENGE', league: 'LEAGUE' }[G.mode];
   $('modeChip').textContent = `${name} · ${T[G.tier].name} · ${G.L}`;
   if (G.mode === 'gauntlet') $('topRight').textContent = `🔥 ${G.gauntlet.solved} · ${G.gauntlet.score}`;
   else if (G.mode === 'daily') $('topRight').textContent = `🔥 ${S.dstreak}`;
@@ -431,7 +441,7 @@ async function reveal(g, timeout = false) {
     t.classList.remove('flip', 'typed'); t.classList.add(shown[i], 'flip2'); t.textContent = timeout ? '' : g[i]; SFX.flip(shown[i], i);
     await sleep(Math.max(0, stagger - 160));
   }
-  G.rows.push(row); G.cur = ''; G.pinned = G.pinned.filter((i) => res[i] !== 'hit');
+  G.rows.push(row); if (G.mode === 'league') lgSaveProgress(); G.cur = ''; G.pinned = G.pinned.filter((i) => res[i] !== 'hit');
   G.guessLeft = G.perGuess;
   $('live').textContent = `Guess ${r + 1}: ` + (timeout ? 'time ran out' : [...g].map((c, i) => `${c.toUpperCase()} ${{ hit: 'correct', near: 'wrong spot', miss: 'absent' }[shown[i]]}`).join(', '));
   render(); renderKeys(); topBar();
@@ -463,7 +473,7 @@ function offerSpare(hits) {
 // ---------- hints ----------
 function useHint(kind) {
   if (!G || G.done || G.busy) return; const t = T[G.tier];
-  if (G.mode === 'rush' || G.mode === 'fib' || G.hints >= t.hints) return;
+  if (G.mode === 'rush' || G.mode === 'fib' || G.mode === 'league' || G.hints >= t.hints) return;
   if (G.hints >= t.freeHint) G.hintsCost++;
   G.hints++; SFX.hint();
   if (kind === 'pin') { const i = GW.pin(G.answer, G.rows, G.pinned); if (i >= 0) G.pinned.push(i); }
@@ -555,6 +565,7 @@ function finish() {
     record(G.won, used);
   } else if (G.mode === 'gauntlet') { score = G.gauntlet.score; S.gBest = Math.max(S.gBest, score); record(G.gauntlet.solved > 0, G.gauntlet.solved); }
   else if (G.mode === 'rush') { score = G.rush.score; S.rBest = Math.max(S.rBest, score); record(G.rush.solved > 0, G.rush.solved); }
+  else if (G.mode === 'league') { score = G.won ? GW.dailyScore(G.tier, used, G.elapsed, 0) : 0; record(G.won, used); lgSubmit(G.league, G.won, used, score); }
   else record(G.won, used);
   checkAch('end', used, score); save();
   showResults(score, false);
@@ -577,7 +588,8 @@ function showResults(score, replay) {
   $('resStats').innerHTML = [[st.played, 'Played'], [st.played ? Math.round(st.won / st.played * 100) + '%' : '0%', 'Win %'], [G.mode === 'daily' ? S.dstreak : st.cur, 'Streak'], [G.mode === 'daily' ? S.dbest : st.best, 'Best']].map(([a, b]) => `<div><b>${a}</b><span>${b}</span></div>`).join('');
   $('resHist').innerHTML = rush || gaunt ? '' : hist(st, G.won ? used : 0);
   const bn = boardName(); $('lb').hidden = !bn; if (bn) leaderboard($('lb'), bn).show(replay ? 0 : score);
-  const nextLabel = { daily: 'Another difficulty', fib: 'More Fib', practice: 'Next word', gauntlet: 'Run again', rush: 'Rush again', challenge: 'Make your own' }[G.mode];
+  if (G.mode === 'league') { $('lb').hidden = false; $('lb').innerHTML = '<p>Saving your result…</p>'; } // lgSubmit fills in the standings
+  const nextLabel = { daily: 'Another difficulty', fib: 'More Fib', practice: 'Next word', gauntlet: 'Run again', rush: 'Rush again', challenge: 'Make your own', league: 'League standings' }[G.mode];
   $('nextB').textContent = nextLabel; $('defB').href = `https://en.wiktionary.org/wiki/${G.answer}`;
   $('resS').hidden = false;
 }
@@ -587,10 +599,10 @@ $('menuB').onclick = () => { closeSheets(); goHome(); };
 $('nextB').onclick = () => { closeSheets(); const m = G.mode;
   if (m === 'daily') return openTier('daily'); if (m === 'fib') return newGame('fib', 'normal', { answer: GW.randomWord('normal') });
   if (m === 'practice') return newGame('practice', G.tier, { answer: GW.randomWord(G.tier) }); if (m === 'gauntlet') return startGauntlet();
-  if (m === 'rush') return startRush(); if (m === 'challenge') { goHome(); return openChallenge(); } };
+  if (m === 'rush') return startRush(); if (m === 'challenge') { goHome(); return openChallenge(); } if (m === 'league') return openLeague(G.league.id); };
 $('shareB').onclick = async () => {
   const head = G.mode === 'rush' ? `Gridwit Rush ⏱️ ${G.rush.score} pts · ${G.rush.solved} words` : G.mode === 'gauntlet' ? `Gridwit Gauntlet 🔥 ${G.gauntlet.score} pts · ${G.gauntlet.solved} words`
-    : `Gridwit ${G.mode === 'daily' ? 'Daily #' + (GW.dayIndex(G.daily.date) + 1) : G.mode === 'fib' ? '🤥 Fib' : G.mode === 'challenge' ? 'Challenge' : 'Practice'} · ${T[G.tier].name} ${G.won ? G.rows.length : 'X'}/${G.tries}${G.mode === 'daily' && S.dstreak > 1 ? ` 🔥${S.dstreak}` : ''}`;
+    : `Gridwit ${G.mode === 'daily' ? 'Daily #' + (GW.dayIndex(G.daily.date) + 1) : G.mode === 'fib' ? '🤥 Fib' : G.mode === 'challenge' ? 'Challenge' : G.mode === 'league' ? `League “${G.league.name}”` : 'Practice'} · ${T[G.tier].name} ${G.won ? G.rows.length : 'X'}/${G.tries}${G.mode === 'daily' && S.dstreak > 1 ? ` 🔥${S.dstreak}` : ''}`;
   const url = 'https://rank-game.com/games/gridwit' + (G.mode === 'challenge' && G.chal ? `#c=${G.chal.code}` : '');
   const text = `${head}\n${G.mode === 'rush' || G.mode === 'gauntlet' ? '' : gridText() + '\n'}${url}`;
   try { if (navigator.share) return await navigator.share({ text }); } catch { return; }
@@ -637,7 +649,7 @@ function renderHome() {
   $('gBest').textContent = S.gBest ? `Best ${S.gBest}` : ''; $('rBest').textContent = S.rBest ? `Best ${S.rBest}` : '';
 }
 function goHome() { G = null; showScreen('home'); renderHome(); }
-$('backB').onclick = () => { if (G && !G.done && G.rows.length && (G.mode === 'daily' || G.mode === 'gauntlet' || G.mode === 'rush') && !confirm('Leave this game? It will count as a loss.')) return; if (G && !G.done && G.rows.length && G.mode === 'daily') { G.won = false; G.elapsed = 0; G.done = true; finish(); closeSheets(); } goHome(); };
+$('backB').onclick = () => { if (G && G.mode === 'league') { goHome(); return; } /* saved: you can pick it up again today */ if (G && !G.done && G.rows.length && (G.mode === 'daily' || G.mode === 'gauntlet' || G.mode === 'rush') && !confirm('Leave this game? It will count as a loss.')) return; if (G && !G.done && G.rows.length && G.mode === 'daily') { G.won = false; G.elapsed = 0; G.done = true; finish(); closeSheets(); } goHome(); };
 function openTier(mode) {
   const d = S.daily[today()] || {};
   $('tierT').textContent = mode === 'daily' ? '📅 Today’s words' : '🎲 Practice';
@@ -651,7 +663,7 @@ document.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => {
   if (m === 'daily' || m === 'practice') return openTier(m);
   if (m === 'gauntlet') return startGauntlet(); if (m === 'rush') return startRush();
   if (m === 'fib') return startDaily('normal', 'fib');
-  if (m === 'challenge') return openChallenge();
+  if (m === 'challenge') return openHub();
 }));
 function openChallenge() { $('chalIn').value = ''; $('chalS').hidden = false; setTimeout(() => $('chalIn').focus(), 100); }
 $('chalIn').oninput = () => { $('chalIn').value = $('chalIn').value.toLowerCase().replace(/[^a-z]/g, ''); };
@@ -695,6 +707,196 @@ $('optSound').onchange = () => { S.sound = $('optSound').checked; save(); };
 $('optHaptic').onchange = () => { S.haptic = $('optHaptic').checked; save(); };
 $('setB').onclick = () => { renderSettings(); $('setS').hidden = false; };
 
+// ---------- friends leagues ----------
+// A league is a private group on rank-game.com. Everyone gets the same random word each day (the league's own time zone),
+// one game each, and the points add up from Monday to Sunday. Data lives in Firestore (rules: leagues/{id}, plays/{day}_{uid}).
+const FSR = 'projects/hatdoc-blog-1048/databases/(default)/documents';
+const A_ = () => window.rgAuth || {};
+const fsv = { s: (v) => ({ stringValue: v }), i: (n) => ({ integerValue: String(n) }), b: (v) => ({ booleanValue: v }) };
+const AT = [{ fieldPath: 'at', setToServerValue: 'REQUEST_TIME' }];
+const esc = (t) => String(t).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const unpack = (d) => ({ id: d.name.split('/').pop(), ...Object.fromEntries(Object.entries(d.fields || {}).map(([k, v]) => [k, v.stringValue ?? (v.integerValue != null ? +v.integerValue : v.booleanValue)])) });
+async function fsGet(path) { const r = await A_().api('/' + path); if (r.status === 404) return null; if (!r.ok) throw new Error('get ' + r.status); return r.json(); }
+async function fsList(path) { const r = await A_().api(`/${path}?pageSize=100`); if (!r.ok) throw new Error('list ' + r.status); return ((await r.json()).documents || []).map(unpack); }
+async function fsPlays(id, from, to) {
+  const f = (op, n) => ({ fieldFilter: { field: { fieldPath: 'day' }, op, value: fsv.i(n) } });
+  const r = await A_().api(`/leagues/${id}:runQuery`, { method: 'POST', body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'plays' }], where: { compositeFilter: { op: 'AND', filters: [f('GREATER_THAN_OR_EQUAL', from), f('LESS_THAN_OR_EQUAL', to)] } } } }) });
+  if (!r.ok) throw new Error('query ' + r.status); return (await r.json()).filter((x) => x.document).map((x) => unpack(x.document));
+}
+async function fsCommit(writes) { const r = await A_().api(':commit', { method: 'POST', body: JSON.stringify({ writes }) }); if (!r.ok) throw new Error('commit ' + r.status); }
+const pct = (s) => encodeURIComponent(s).replace(/[!'()*~]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+const lgHash = (L) => `l=${L.id}.${L.code}&n=${pct(L.name)}`;
+const rid = (n) => Array.from(crypto.getRandomValues(new Uint32Array(n)), (x) => 'abcdefghijklmnopqrstuvwxyz0123456789'[x % 36]).join('');
+const LG = { list: [], cur: null, join: null, view: '' };
+const lgShow = (view, html) => { LG.view = view; $('lgBox').innerHTML = html; $('lgS').hidden = false; };
+const lgGate = () => !A_().onSite ? '<p class="muted">🏠 Leagues are played on <a href="https://rank-game.com/games/gridwit" target="_blank" rel="noopener" style="color:var(--violet)">rank-game.com</a>. Open Gridwit there to create or join one.</p>'
+  : !A_().user ? '<p class="muted">Sign in on rank-game.com to create or join a league.</p><button class="btn cta" data-act="login">Sign in with Google</button>'
+  : !A_().user.nick ? '<p class="muted">Pick a nickname first (under the game on rank-game.com). Your friends will see it in the table.</p>' : '';
+
+async function openHub() {
+  const gate = lgGate();
+  if (gate) return lgShow('hub', `<h2>🏆 Friends League</h2>${gate}<button class="btn" data-act="close">Close</button>`);
+  lgShow('hub', '<h2>🏆 Friends League</h2><p class="muted">Loading your leagues…</p>');
+  try { LG.list = await fsList(`userLeagues/${A_().user.uid}/list`); } catch { LG.list = null; }
+  lgShow('hub', `<h2>🏆 Friends League</h2>
+    <p class="muted">Create a league and invite friends. Everyone gets the <b>same random word every day</b> (you too!), one game each per day. Points add up from Monday to Sunday, and the winner is announced every week.</p>
+    ${LG.list === null ? '<p class="muted">Couldn’t load your leagues right now.</p>' : LG.list.map((l) => `<button class="tier" data-act="open" data-id="${esc(l.id)}"><span class="lt">🏆</span><div><b>${esc(l.name)}</b><small>Tap to open</small></div></button>`).join('')}
+    <button class="btn cta" data-act="new">＋ Create a league</button>
+    <button class="btn" data-act="custom">🔗 Send one custom word instead</button>
+    <button class="btn" data-act="close">Close</button>`);
+}
+function renderNew() {
+  lgShow('new', `<h2>＋ New league</h2>
+    <input class="word" id="lgName" maxlength="30" placeholder="League name, e.g. Friday squad" style="letter-spacing:0;text-transform:none;font-size:18px" autocomplete="off">
+    <div class="muted">Difficulty</div>
+    <div class="seg" id="lgTier">${['easy', 'normal', 'hard', 'expert'].map((t) => `<button data-tier="${t}" class="${t === 'normal' ? 'on' : ''}">${T[t].name} · ${T[t].len} letters</button>`).join('')}</div>
+    <p class="muted">Everyone plays the same random word each day with the same rules, and hints are off so it's fair. A new day starts at midnight in your time zone.</p>
+    <button class="btn cta" data-act="create">Create league</button><button class="btn" data-act="hub">Back</button>`);
+  setTimeout(() => $('lgName')?.focus(), 80);
+}
+async function createLeague() {
+  const name = $('lgName').value.replace(/\s+/g, ' ').trim().slice(0, 30); if (!name) return toast('Give your league a name');
+  const tier = $('lgTier').querySelector('.on')?.dataset.tier || 'normal', { uid, nick } = A_().user, id = rid(12), code = rid(10), tz = -new Date().getTimezoneOffset();
+  try {
+    await fsCommit([
+      { update: { name: `${FSR}/leagues/${id}`, fields: { name: fsv.s(name), owner: fsv.s(uid), code: fsv.s(code), tz: fsv.i(tz), tier: fsv.s(tier) } }, updateTransforms: AT, currentDocument: { exists: false } },
+      { update: { name: `${FSR}/leagues/${id}/members/${uid}`, fields: { nick: fsv.s(nick), code: fsv.s(code) } }, updateTransforms: AT, currentDocument: { exists: false } },
+      { update: { name: `${FSR}/userLeagues/${uid}/list/${id}`, fields: { name: fsv.s(name) } } },
+    ]);
+  } catch { return toast('Couldn’t create the league. Try again.'); }
+  await openLeague(id, true);
+}
+async function openLeague(id, fresh) {
+  lgShow('league', '<h2>🏆 League</h2><p class="muted">Loading…</p>');
+  try {
+    const L = unpack(await fsGet(`leagues/${id}`)), day = GW.leagueDay(L.tz), ws = GW.weekStart(day);
+    await lgFlush();
+    const [members, plays] = await Promise.all([fsList(`leagues/${id}/members`), fsPlays(id, ws - 7, ws + 6)]);
+    LG.cur = { ...L, members, plays, day, ws };
+  } catch { return lgShow('hub', '<h2>🏆 League</h2><p class="muted">Couldn’t open this league. You may have left it, or you’re offline.</p><button class="btn" data-act="hub">Back</button>'); }
+  renderLeague(fresh);
+}
+const inTime = (ms) => { const m = Math.max(1, Math.round(ms / 60000)); return m >= 1440 ? `${Math.floor(m / 1440)}d ${Math.floor(m % 1440 / 60)}h` : m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; };
+function renderLeague(fresh) {
+  const L = LG.cur, me = A_().user.uid, x = T[L.tier], inWeek = (p) => p.day >= L.ws && p.day <= L.ws + 6;
+  const week = GW.standings(L.plays.filter(inWeek)), prev = GW.standings(L.plays.filter((p) => p.day >= L.ws - 7 && p.day < L.ws));
+  const rows = [...week, ...L.members.filter((m) => !week.some((r) => r.uid === m.id)).map((m) => ({ uid: m.id, nick: m.nick, score: 0, wins: 0, played: 0 }))];
+  const todays = L.plays.filter((p) => p.day === L.day), mine = todays.find((p) => p.uid === me);
+  const newWordIn = (L.day + 1) * 864e5 - (Date.now() + L.tz * 60000), weekLeft = L.ws + 7 - L.day;
+  let banner = '';
+  const w = prev[0];
+  if (w && w.score > 0) {
+    banner = `<div class="banner">🏆 Last week’s winner: ${esc(w.nick)}${w.uid === me ? ' (that’s you! 🎉)' : ''}<br><small>${w.score.toLocaleString()} pts · ${w.wins} win${w.wins === 1 ? '' : 's'} in ${w.played} game${w.played === 1 ? '' : 's'}</small></div>`;
+    if (w.uid === me) { let seen = false; try { seen = localStorage.getItem(`gw-lg-won-${L.id}-${L.ws}`); localStorage.setItem(`gw-lg-won-${L.id}-${L.ws}`, '1'); } catch {} if (!seen) { confetti(120); combo('WEEKLY CHAMPION!'); } }
+  }
+  const medal = (i, r) => (r.score > 0 ? ['🥇', '🥈', '🥉'][i] || i + 1 : '·');
+  const status = !mine ? '<button class="btn cta" data-act="play">▶ Play today’s word</button>'
+    : mine.done ? `<b>${mine.won ? `✓ Solved in ${mine.used}/${x.tries} · ${mine.score.toLocaleString()} pts` : '✗ Not this time · 0 pts'}</b><small class="muted">Next word in ${inTime(newWordIn)}</small>`
+    : '<button class="btn cta" data-act="play">▶ Continue today’s word</button>';
+  lgShow('league', `<h2>🏆 ${esc(L.name)}</h2>
+    <p class="muted" style="margin-top:-6px">${x.name} · ${x.len} letters · ${L.members.length} player${L.members.length === 1 ? '' : 's'} · week ends ${weekLeft === 1 ? 'today' : 'in ' + weekLeft + ' days'}</p>
+    ${banner}
+    <div class="today"><span class="muted">Today’s word (one game each)</span>${status}</div>
+    <h3 style="margin:4px 0 0;font:700 16px 'Space Grotesk'">This week</h3>
+    <div class="lgt">${rows.map((r, i) => `<div class="lgr ${r.uid === me ? 'me' : ''}"><span class="rk">${medal(i, r)}</span><span>${esc(r.nick)}</span><small>${todays.some((p) => p.uid === r.uid && p.done) ? '✓ today' : todays.some((p) => p.uid === r.uid) ? '⏳ playing' : ''}</small><b>${r.score.toLocaleString()}</b></div>`).join('')}</div>
+    <div class="row-btns"><button class="btn cta" data-act="invite">📨 Invite friends</button><button class="btn" data-act="link">🔗 Copy link</button></div>
+    <div class="row-btns"><button class="btn" data-act="hub">All leagues</button><button class="btn" data-act="close">Close</button></div>
+    <button class="btn" data-act="leave" style="font-size:12px;opacity:.7">Leave this league</button>`);
+  if (fresh) lgInvite(true);
+}
+function lgInvite(quiet) {
+  const L = LG.cur; window.rgInvite?.(lgHash(L), `league “${L.name}”`);
+  toast(quiet ? 'League created! 🎉 Scroll down under the game to invite friends 👇' : 'Scroll down under the game and pick friends to invite 👇', 4200); if (!quiet) closeSheets();
+}
+async function lgCopy() {
+  const L = LG.cur, text = `Join my Gridwit league “${L.name}”! Same random word every day, a winner every week 🏆 https://rank-game.com/games/gridwit#${lgHash(L)}`;
+  try { if (navigator.share) return await navigator.share({ text }); } catch { return; }
+  try { await navigator.clipboard.writeText(text); toast('Invite link copied! 📋'); } catch { toast('Couldn’t copy'); }
+}
+async function lgLeave() {
+  const L = LG.cur, uid = A_().user.uid; if (!confirm(`Leave “${L.name}”? You can rejoin with an invite link.`)) return;
+  try { await fsCommit([{ delete: `${FSR}/leagues/${L.id}/members/${uid}` }, { delete: `${FSR}/userLeagues/${uid}/list/${L.id}` }]); toast('You left the league'); } catch { toast('Couldn’t leave, try again'); }
+  openHub();
+}
+// ---- joining from an invite link (#l=id.code&n=name)
+function openJoin(id, code, name) {
+  LG.join = { id, code, name }; const gate = lgGate();
+  lgShow('join', `<h2>🏆 League invite</h2><p style="font-size:18px;margin:0"><b>${esc(name || 'A friends league')}</b></p>
+    <p class="muted">Everyone gets the same random word every day, one game each. Points add up Monday to Sunday and a winner is announced every week.</p>
+    ${gate || '<button class="btn cta" data-act="join">Join league</button>'}<button class="btn" data-act="close">Not now</button>`);
+}
+async function joinLeague() {
+  const { id, code } = LG.join, { uid, nick } = A_().user;
+  try {
+    try { await fsCommit([{ update: { name: `${FSR}/leagues/${id}/members/${uid}`, fields: { nick: fsv.s(nick), code: fsv.s(code) } }, updateTransforms: AT, currentDocument: { exists: false } }]); }
+    catch (e) { if (!String(e.message).endsWith('409')) throw e; } // already a member
+    const L = unpack(await fsGet(`leagues/${id}`));
+    await fsCommit([{ update: { name: `${FSR}/userLeagues/${uid}/list/${id}`, fields: { name: fsv.s(L.name) } } }]);
+  } catch { return toast('Couldn’t join. Check the invite link and try again.'); }
+  try { history.replaceState(null, '', location.pathname + location.search); } catch {}
+  toast('You’re in! 🎉'); openLeague(id);
+}
+// ---- today's game: one per league member per day (a play doc is created when you start, finished once)
+async function playToday() {
+  const L = LG.cur, { uid, nick } = A_().user, day = GW.leagueDay(L.tz);
+  if (day !== L.day) return openLeague(L.id); // midnight passed while this was open
+  const pid = `${day}_${uid}`, key = `gw-lg-${L.id}-${day}`; let prog = null;
+  try { prog = JSON.parse(localStorage.getItem(key)); } catch {}
+  const play = L.plays.find((p) => p.id === pid);
+  if (play?.done) { toast('You already played today. New word tomorrow!'); return openLeague(L.id); }
+  if (play && !prog?.rows) { // started on another device or cleared: counts as a loss, like walking away from a match
+    try { await lgFinalize({ id: L.id, day }, false, 0, 0); } catch {}
+    toast('You started today’s word but didn’t finish it, so it counts as 0 points.', 4000); return openLeague(L.id);
+  }
+  if (!play) {
+    try { await fsCommit([{ update: { name: `${FSR}/leagues/${L.id}/plays/${pid}`, fields: { uid: fsv.s(uid), nick: fsv.s(nick), day: fsv.i(day), won: fsv.b(false), used: fsv.i(0), score: fsv.i(0), done: fsv.b(false) } }, updateTransforms: AT, currentDocument: { exists: false } }]); }
+    catch { toast('Couldn’t start today’s game. Check your connection.'); return openLeague(L.id); }
+  }
+  closeSheets();
+  newGame('league', L.tier, { answer: GW.leagueWord(L.tier, L.id, day), league: { id: L.id, name: L.name, code: L.code, tz: L.tz, day, key } });
+  if (prog?.rows?.length) lgResume(prog);
+}
+function lgSaveProgress() { const t0 = Date.now() - (performance.now() - G.start); try { localStorage.setItem(G.league.key, JSON.stringify({ rows: G.rows.map((r) => (r.timeout ? '' : r.guess)), t0 })); } catch {} }
+function lgResume(prog) {
+  G.start = performance.now() - (Date.now() - prog.t0);
+  for (const g of prog.rows) { const timeout = !g.trim(), res = timeout ? Array(G.L).fill('miss') : GW.evaluate(g, G.answer); G.rows.push({ guess: timeout ? ' '.repeat(G.L) : g, res, shown: res, lie: -1, timeout }); }
+  const last = G.rows[G.rows.length - 1], won = last && !last.timeout && last.res.every((s) => s === 'hit');
+  G.elapsed = (Date.now() - prog.t0) / 1000;
+  if (won || G.rows.length >= G.tries) { G.done = true; G.won = won; G.revealRow = !won; layout(); }
+  render(); renderKeys(); topBar();
+  if (G.done) return finish();
+  say('Welcome back! Your game was saved.', 'happy');
+}
+async function lgFinalize(lg, won, used, score) {
+  const uid = A_().user.uid;
+  await fsCommit([{ update: { name: `${FSR}/leagues/${lg.id}/plays/${lg.day}_${uid}`, fields: { won: fsv.b(won), used: fsv.i(used), score: fsv.i(score), done: fsv.b(true) } }, updateMask: { fieldPaths: ['won', 'used', 'score', 'done'] }, updateTransforms: AT, currentDocument: { exists: true } }]);
+}
+// if saving the result fails (offline), keep it and retry the next time a league is opened
+const lgPending = () => { try { return JSON.parse(localStorage.getItem('gw-lg-pending') || '[]'); } catch { return []; } };
+const lgSetPending = (a) => { try { localStorage.setItem('gw-lg-pending', JSON.stringify(a)); } catch {} };
+async function lgFlush() { const keep = []; for (const p of lgPending()) { try { await lgFinalize(p.lg, p.won, p.used, p.score); } catch (e) { if (!/commit 4\d\d/.test(e.message)) keep.push(p); } } lgSetPending(keep); }
+async function lgSubmit(lg, won, used, score) {
+  G.lgSaved = false;
+  try { await lgFinalize(lg, won, used, score); G.lgSaved = true; try { localStorage.removeItem(lg.key); } catch {} }
+  catch (e) { if (!/commit 4\d\d/.test(e.message)) { lgSetPending([...lgPending(), { lg: { id: lg.id, day: lg.day }, won, used, score }]); toast('Couldn’t save your result yet. It will be sent next time you open the league.', 4000); } }
+  lgResult();
+}
+async function lgResult() { // standings under the result
+  const lg = G?.league, box = $('lb'); if (!lg) return; box.hidden = false;
+  box.innerHTML = `<h3 style="margin:6px 0">🏆 ${esc(lg.name)}</h3><p class="muted" style="color:inherit;opacity:.7">${G.lgSaved === undefined ? 'Saving…' : 'Loading standings…'}</p>`;
+  if (G.lgSaved === undefined) return; // lgSubmit calls this again when it's done
+  try {
+    const day = GW.leagueDay(lg.tz), ws = GW.weekStart(day), plays = await fsPlays(lg.id, ws, ws + 6), rows = GW.standings(plays), me = A_().user.uid;
+    box.innerHTML = `<h3 style="margin:6px 0">🏆 ${esc(lg.name)} · this week</h3><div class="lgt">${rows.slice(0, 5).map((r, i) => `<div class="lgr ${r.uid === me ? 'me' : ''}" style="color:var(--ink)"><span class="rk">${['🥇', '🥈', '🥉'][i] || i + 1}</span><span>${esc(r.nick)}</span><small></small><b>${r.score.toLocaleString()}</b></div>`).join('')}</div>${G.lgSaved ? '' : '<p class="muted" style="color:inherit;opacity:.7">Your result will appear once it’s saved.</p>'}`;
+  } catch { box.innerHTML = `<h3 style="margin:6px 0">🏆 ${esc(lg.name)}</h3><p>Open the league to see the standings.</p>`; }
+}
+$('lgBox').addEventListener('click', (e) => {
+  const t = e.target.closest('[data-tier]'); if (t) { $('lgTier').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b === t)); return; }
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  ({ close: closeSheets, hub: openHub, new: renderNew, open: () => openLeague(b.dataset.id), create: createLeague, custom: () => { closeSheets(); openChallenge(); }, play: playToday, join: joinLeague, invite: () => lgInvite(false), link: lgCopy, leave: lgLeave, login: () => A_().login?.() })[b.dataset.act]?.();
+});
+addEventListener('rg-auth', () => { if ($('lgS').hidden) return; if (LG.view === 'join' && LG.join) openJoin(LG.join.id, LG.join.code, LG.join.name); else if (LG.view === 'hub') openHub(); });
+
 // ---------- start ----------
 const lbWarm = leaderboard(document.createElement('div'), 'gridwit_rush'); // tells the site this game has leaderboards
 renderHome();
@@ -703,6 +905,10 @@ if (params.get('c')) {
   const w = GW.decode(params.get('c'));
   if (w && w.length >= 4 && w.length <= 8 && GW.isWord(w) && !GW.isBlocked(w)) { const tier = L_OF(w.length); newGame('challenge', tier, { answer: w, chal: { code: params.get('c'), name: params.get('n') || '' } }); }
   else toast('That challenge link looks broken 🤔', 3000);
+} else if (params.get('l')) {
+  const [lid, lcode] = params.get('l').split('.');
+  if (/^[a-z0-9]{8,24}$/.test(lid || '') && /^[a-z0-9]{10}$/.test(lcode || '')) setTimeout(() => openJoin(lid, lcode, (params.get('n') || '').slice(0, 30)), 500);
+  else toast('That league link looks broken 🤔', 3000);
 } else if (!S.seenHow) { $('howS').hidden = false; S.seenHow = true; save(); }
 // for tests and the preview recorder
 window.gwState = () => G;
