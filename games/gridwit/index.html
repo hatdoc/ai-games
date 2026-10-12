@@ -94,6 +94,7 @@
   .key { flex: 1; max-width: 46px; height: 56px; border: 0; border-radius: 12px; background: var(--key); color: var(--key-ink); font: 600 16px Inter; text-transform: uppercase; box-shadow: inset 0 -3px 0 rgb(0 0 0/.25), 0 2px 0 rgb(0 0 0/.2); transition: background-color .2s; }
   .key.wide { max-width: 70px; flex: 1.5; font-size: 12px; }
   .key:active { transform: translateY(2px); box-shadow: none; }
+  .key.maybe { box-shadow: inset 0 0 0 2px rgb(255 255 255/.6), 0 2px 0 rgb(0 0 0/.2); }
   .key.hit { background: var(--hit); color: var(--hit-ink); } .key.near { background: var(--near); color: var(--near-ink); } .key.miss { background: var(--miss); color: var(--miss-ink); opacity: .75; }
   .combo { position: fixed; left: 50%; top: 28%; transform: translate(-50%, 0) scale(0); z-index: 40; font: 700 34px 'Space Grotesk'; color: var(--amber); text-shadow: 0 3px 0 rgb(0 0 0/.35), 0 0 24px rgb(245 158 11/.6); pointer-events: none; animation: comboIn 1.2s forwards; white-space: nowrap; }
   @keyframes comboIn { 20% { transform: translate(-50%, 0) scale(1.25); } 35%, 80% { transform: translate(-50%, 0) scale(1); opacity: 1; } 100% { transform: translate(-50%, -20px) scale(1); opacity: 0; } }
@@ -230,7 +231,7 @@
   <p class="muted"><b>Difficulties:</b> Easy 4 letters / 7 tries · Normal 5 / 6 · Hard 6 letters, and you must keep greens and use ambers · Expert 7, and ambers can't go back where they were ruled out · Brutal 8 letters with 60 seconds per guess.</p>
   <p class="muted"><b>Hints:</b> 📍 Pin shows one letter in place, 🧹 Sweep greys out 3 letters. They cost points in scored modes.</p>
   <p class="muted"><b>Friends League:</b> create a league and invite friends (or a saved group). Everyone gets the same random word each day, you included, with one game per day and no hints. Points add up Monday to Sunday and the league announces the weekly winner.</p>
-  <p class="muted"><b>Fib mode:</b> in every row exactly one tile shows the wrong colour (never on a correct answer). Long-press a tile to mark it as a liar 🤥.</p>
+  <p class="muted"><b>Fib mode:</b> in every row exactly one tile shows the wrong colour (never on a correct answer). Long-press a tile to mark it as a liar 🤥. Keyboard colours show what most of your rows agree on, so treat them as best guesses.</p>
   <p class="muted">Daily scores go on the leaderboard when you're signed in on rank-game.com. Invalid words never cost a try.</p>
   <p class="credit">Word lists: ENABLE (public domain), SCOWL © Kevin Atkinson, wordfreq by Robyn Speer (CC BY-SA 4.0).</p>
   <button class="btn cta" data-close>Let's play</button>
@@ -375,15 +376,13 @@ function render() {
 const rowEl = (r) => $('board').children[r];
 function renderKeys() {
   const ks = keyMap(), rows = ['qwertyuiop', 'asdfghjkl', '⏎zxcvbnm⌫'];
-  $('keys').innerHTML = rows.map((r) => `<div class="krow">${[...r].map((k) => k === '⏎' ? '<button class="key wide" data-k="enter" aria-label="Enter">Enter</button>' : k === '⌫' ? '<button class="key wide" data-k="back" aria-label="Backspace">⌫</button>' : `<button class="key ${ks[k] || ''}" data-k="${k}" aria-label="${k}${ks[k] ? ', ' + ks[k] : ''}">${k}</button>`).join('')}</div>`).join('');
+  $('keys').innerHTML = rows.map((r) => `<div class="krow">${[...r].map((k) => k === '⏎' ? '<button class="key wide" data-k="enter" aria-label="Enter">Enter</button>' : k === '⌫' ? '<button class="key wide" data-k="back" aria-label="Backspace">⌫</button>' : `<button class="key ${ks[k] || ''}${ks[k] && G.mode === 'fib' ? ' maybe' : ''}" data-k="${k}" aria-label="${k}${ks[k] ? ', ' + ks[k] : ''}">${k}</button>`).join('')}</div>`).join('');
 }
-// in Fib mode a key only shows a colour once two rows agree on it
+// in Fib mode a key shows the colour most rows agree on (a best guess, since one tile per row lies)
 function keyMap() {
   if (!G) return {};
   if (G.mode !== 'fib') { const k = GW.keyStates(G.rows.filter((r) => !r.timeout)); for (const c of G.swept) k[c] ||= 'miss'; return k; }
-  const seen = {}; for (const r of G.rows) r.shown.forEach((s, i) => { const key = r.guess[i] + s; seen[key] = (seen[key] || 0) + 1; });
-  const k = {}; for (const [key, n] of Object.entries(seen)) if (n >= 2) { const ch = key[0], s = key.slice(1); if (!k[ch] || { miss: 1, near: 2, hit: 3 }[s] > { miss: 1, near: 2, hit: 3 }[k[ch]]) k[ch] = s; }
-  return k;
+  return GW.fibKeys(G.rows.filter((r) => !r.timeout));
 }
 function renderRail() {
   const t = T[G.tier], noHints = G.mode === 'rush' || G.mode === 'fib' || G.mode === 'league' || !t.hints, left = t.hints - G.hints, free = G.hints < t.freeHint;
@@ -392,7 +391,7 @@ function renderRail() {
   if (!noHints) h += `<button class="pw" id="pinB" ${left <= 0 || G.done ? 'disabled' : ''}>📍 Pin<span class="cost">${cost}</span></button><button class="pw" id="sweepB" ${left <= 0 || G.done ? 'disabled' : ''}>🧹 Sweep<span class="cost">${cost}</span></button>`;
   if (G.mode === 'gauntlet') h += `<span class="chip">🪶 Spare rows ×${G.gauntlet.spares}</span>`;
   if (G.mode === 'league') h += `<span class="chip">🏆 ${esc(G.league.name)}</span>`;
-  if (G.mode === 'fib') h += `<span class="muted" style="font-size:12.5px">Long-press a tile to mark a liar 🤥</span>`;
+  if (G.mode === 'fib') h += `<span class="muted" style="font-size:12.5px">Long-press a tile to mark a liar 🤥 · keys with a white ring are best guesses</span>`;
   if (G.mode === 'rush') h += `<span class="chip">⭐ ${G.rush.score} · ${G.rush.solved} solved</span>`;
   $('rail').innerHTML = h;
   $('pinB') && ($('pinB').onclick = () => useHint('pin')); $('sweepB') && ($('sweepB').onclick = () => useHint('sweep'));

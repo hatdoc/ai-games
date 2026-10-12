@@ -58,6 +58,14 @@
   // keyboard: each key shows its best known state
   const RANK = { miss: 1, near: 2, hit: 3 };
   function keyStates(rows) { const k = {}; for (const r of rows) r.shown.forEach((s, i) => { const ch = r.guess[i]; if (!k[ch] || RANK[s] > RANK[k[ch]]) k[ch] = s; }); return k; }
+  // Fib keyboard: one tile per row lies, so a key shows the colour most rows agree on (needs 2+ rows and no tie)
+  function fibKeys(rows) {
+    const v = {};
+    for (const r of rows) r.shown.forEach((s, i) => { const c = r.guess[i]; if (c && c.trim()) (v[c] ||= { hit: 0, near: 0, miss: 0 })[s]++; });
+    const k = {};
+    for (const [c, n] of Object.entries(v)) { const s = Object.entries(n).sort((a, b) => b[1] - a[1]); if (s[0][1] >= 2 && s[0][1] > s[1][1]) k[c] = s[0][0]; }
+    return k;
+  }
   // Fib mode: in every row (except a win) exactly one tile shows a wrong colour
   function fib(res, seed, row) {
     if (res.every((s) => s === 'hit')) return { shown: res.slice(), lie: -1 };
@@ -103,5 +111,5 @@
   const encode = (w) => btoa([...w].map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ KEY.charCodeAt(i % KEY.length))).join('')).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
   const decode = (s) => { try { const b = atob(s.replace(/-/g, '+').replace(/_/g, '/')); return [...b].map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ KEY.charCodeAt(i % KEY.length))).join(''); } catch { return ''; } };
 
-  globalThis.GW = { TIERS, TIER_IDS, load, isWord, isBlocked, dailyWord, randomWord, dayIndex, evaluate, rulesError, keyStates, fib, dailyScore, solveScore, gauntletTier, pin, sweep, encode, decode, shuffled, hash, mulberry, leagueDay, weekStart, leagueWord, standings };
+  globalThis.GW = { TIERS, TIER_IDS, load, isWord, isBlocked, dailyWord, randomWord, dayIndex, evaluate, rulesError, keyStates, fibKeys, fib, dailyScore, solveScore, gauntletTier, pin, sweep, encode, decode, shuffled, hash, mulberry, leagueDay, weekStart, leagueWord, standings };
 })();
