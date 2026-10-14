@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Ideal Type World Cup</title>
+<style>
+  :root { --bg:#14111f; --card:#221c36; --ink:#fff; --dim:#b5aad6; --a:#ff4f81; --b:#3d8bff; --gold:#ffd23f; color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--ink); font: 700 16px/1.25 system-ui, sans-serif; overflow: hidden; }
+  [hidden] { display: none !important; }
+  #app { height: 100dvh; max-width: 760px; margin: 0 auto; padding: 12px 12px max(12px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; }
+  h1 { margin: 0; font-size: 22px; } h2 { margin: 0; font-size: 20px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .btn { border: 3px solid #000; border-radius: 14px; background: var(--gold); color: #111; font: inherit; font-weight: 900; padding: 11px 16px; box-shadow: 0 4px 0 #000; cursor: pointer; }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #000; }
+  .btn.alt { background: var(--card); color: var(--ink); border-color: #000; }
+  .btn.sm { padding: 6px 12px; font-size: 14px; }
+  .muted { color: var(--dim); font-weight: 600; font-size: 14px; margin: 0; }
+  .chips { display: flex; gap: 8px; align-items: center; }
+  .chip { border: 3px solid #000; border-radius: 999px; background: var(--card); color: var(--ink); font: inherit; font-weight: 800; padding: 6px 14px; cursor: pointer; }
+  .chip.on { background: var(--gold); color: #111; }
+  .view { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+  /* home */
+  .themes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; overflow: auto; align-content: start; }
+  .theme { position: relative; aspect-ratio: 4/3; border: 3px solid #000; border-radius: 18px; overflow: hidden; background: var(--card) center/cover; color: #fff; text-align: left; font: inherit; cursor: pointer; padding: 0; box-shadow: 0 5px 0 #000; }
+  .theme:active { transform: translateY(4px); box-shadow: 0 1px 0 #000; }
+  .theme .cap { position: absolute; inset: auto 0 0 0; padding: 26px 10px 8px; background: linear-gradient(transparent, rgb(0 0 0 / .8)); font-size: 17px; text-shadow: 0 2px 0 rgb(0 0 0 / .4); }
+  .theme .rk { position: absolute; top: 8px; right: 8px; font-size: 12px; padding: 4px 9px; }
+  /* match */
+  .bar { height: 10px; border: 2px solid #000; border-radius: 6px; background: var(--card); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .3s; }
+  .arena { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; position: relative; }
+  @media (min-width: 640px) { .arena { flex-direction: row; } .themes { grid-template-columns: repeat(4, 1fr); } }
+  .pick { position: relative; flex: 1; min-height: 0; border: 4px solid #000; border-radius: 22px; overflow: hidden; padding: 0; background: var(--card); cursor: pointer; box-shadow: 0 6px 0 #000; transition: transform .25s, opacity .25s, filter .25s; color: #fff; font: inherit; }
+  .pick .cap { position: absolute; inset: auto 0 0 0; padding: 40px 14px 12px; font-size: clamp(22px, 5vw, 32px); font-weight: 900; text-align: left; background: linear-gradient(transparent, rgb(0 0 0 / .85)); text-shadow: 0 2px 0 rgb(0 0 0 / .5); }
+  .pick .cap small { display: block; font-size: 14px; font-weight: 600; opacity: .8; }
+  .pick .key { position: absolute; top: 10px; left: 10px; background: #000; border-radius: 8px; padding: 2px 8px; font-size: 13px; opacity: .8; }
+  .pick:hover:not(:disabled), .pick:focus-visible { outline: 4px solid var(--gold); outline-offset: -4px; }
+  .pick.win { transform: scale(1.04); z-index: 1; outline: 5px solid var(--gold); outline-offset: -5px; }
+  .pick.lose { opacity: .25; filter: grayscale(1); transform: scale(.94); }
+  .vs { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; background: #000; color: var(--gold); border-radius: 50%; width: 54px; height: 54px; display: grid; place-items: center; font-size: 20px; pointer-events: none; }
+  .art { position: absolute; inset: 0; container-type: size; display: grid; place-items: center; overflow: hidden; }
+  .crowd { line-height: 1; text-align: center; word-break: break-all; padding: 4cqmin; filter: drop-shadow(0 1cqmin 0 rgb(0 0 0 / .25)); }
+  .stk { position: absolute; bottom: 4cqmin; font-size: 34cqmin; line-height: 1; filter: drop-shadow(0 1cqmin 0 rgb(0 0 0 / .35)); transform: rotate(-8deg); }
+  .rank > .th, .top4 .th { position: relative; flex: none; overflow: hidden; border-radius: 10px; }
+  /* result */
+  .champ { flex: 1; min-height: 0; position: relative; border: 4px solid #000; border-radius: 22px; overflow: hidden; background: var(--card); box-shadow: 0 6px 0 #000; }
+  .champ img, .pick img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .champ .cap { position: absolute; inset: auto 0 0 0; padding: 60px 16px 14px; background: linear-gradient(transparent, rgb(0 0 0 / .9)); }
+  .champ .cap b { display: block; font-size: 34px; } .champ .cap span { color: var(--gold); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row .btn { flex: 1; min-width: 120px; }
+  .top4 { display: flex; gap: 6px; } .top4 div { flex: 1; font-size: 12px; text-align: center; } .top4 .th { border-radius: 10px; }
+  /* ranking */
+  .ranks { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+  .rank { display: flex; align-items: center; gap: 10px; background: var(--card); border: 3px solid #000; border-radius: 14px; padding: 6px 10px 6px 6px; }
+  .rank.me { outline: 3px solid var(--gold); }
+    .rank .n { width: 28px; text-align: center; color: var(--dim); }
+  .rank .nm { flex: 1; min-width: 0; } .rank .nm div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rank .meter { height: 6px; border-radius: 3px; background: #000; margin-top: 4px; } .rank .meter i { display: block; height: 100%; border-radius: 3px; background: var(--a); }
+  .rank .st { text-align: right; font-size: 13px; color: var(--dim); font-variant-numeric: tabular-nums; } .rank .st b { color: var(--ink); font-size: 16px; display: block; }
+  dialog { background: var(--card); color: var(--ink); border: 3px solid #000; border-radius: 18px; max-width: min(560px, 92vw); max-height: 80dvh; font-weight: 500; font-size: 13px; }
+  dialog::backdrop { background: rgb(0 0 0 / .6); } dialog li { margin: 3px 0; }
+  :focus-visible { outline: 4px solid var(--gold); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header><h1>🏆 Ideal Type World Cup</h1><button class="btn alt sm" id="credits">Photo credits</button></header>
+  <section class="view" id="home">
+    <p class="muted">Pick a theme. Choose the winner of every match until one is left. Every pick counts toward the world ranking.</p>
+    <div class="chips" id="size"><span class="muted">Candidates:</span></div>
+    <div class="themes" id="themes"></div>
+  </section>
+  <section class="view" id="play" hidden>
+    <div class="chips"><button class="btn alt sm" id="quit">← Quit</button><span class="muted" id="round" style="flex:1;text-align:right"></span></div>
+    <div class="bar"><i id="prog"></i></div>
+    <div class="arena" id="arena"></div>
+  </section>
+  <section class="view" id="result" hidden></section>
+  <section class="view" id="rank" hidden></section>
+</div>
+<dialog id="dlg"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:16px">Photo credits</b><button class="btn sm" id="dclose">Close</button></div><p class="muted">Photos (Prettiest country) are from Wikimedia Commons, under the licences shown. Everything else is drawn with emoji.</p><ul id="clist"></ul></dialog>
+<script src="data.js"></script>
+<script src="art.js"></script>
+<script>
+const FS = 'https://firestore.googleapis.com/v1/projects/hatdoc-blog-1048/databases/(default)/documents';
+const DOC = 'projects/hatdoc-blog-1048/databases/(default)/documents';
+const FKEY = 'AIzaSyDz5J34ahi7fP48CU2cPrp1FNmqK-20D5E';
+const SITE = 'https://rank-game.com/games/ideal-world-cup';
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const views = ['home', 'play', 'result', 'rank'];
+const go = (v) => views.forEach((x) => ($('#' + x).hidden = x !== v));
+const theme = (id) => THEMES.find((t) => t.id === id);
+const slug = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+const THEMES = [...ART_THEMES.map((t) => ({ ...t, items: t.items.map(([label, e, n]) => ({ id: slug(label), label, art: { e, n } })) })), ...PHOTO_THEMES];
+// a candidate is a photo, or an emoji scene: a crowd of n tiny ones, or one big emoji plus stickers
+const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+function art(it) {
+  if (it.img) return `<img src="${it.img}" alt="">`;
+  const [main, ...rest] = Array.from(new Intl.Segmenter().segment(it.art.e), (x) => x.segment), h = hue(it.label), n = it.art.n || 1;
+  const fs = n > 1 ? `${(88 / Math.sqrt(n)).toFixed(1)}cqmin` : '62cqmin';
+  return `<div class="art" style="background:linear-gradient(135deg,hsl(${h} 70% 45%),hsl(${(h + 50) % 360} 75% 28%))" role="img" aria-label="${esc(it.label)}">
+    <div class="crowd" style="font-size:${fs}">${n > 1 ? Array(n).fill(main).join('') : main}</div>${rest.map((r, i) => `<span class="stk" style="right:${6 + i * 26}cqmin">${r}</span>`).join('')}</div>`;
+}
+let size = 16, G = null;
+
+// --- home
+function home() {
+  go('home');
+  $('#size').innerHTML = '<span class="muted">Candidates:</span>' + [16, 32].map((n) => `<button class="chip ${n === size ? 'on' : ''}" data-n="${n}">${n}</button>`).join('');
+  $('#size').querySelectorAll('.chip').forEach((b) => b.onclick = () => { size = +b.dataset.n; home(); });
+  $('#themes').innerHTML = THEMES.map((t) => `<button class="theme" data-id="${t.id}"><div class="th" style="position:absolute;inset:0">${art(t.items[0])}</div>
+    <span class="chip rk btn alt" data-rank="${t.id}" role="link">Ranking</span><span class="cap">${t.emoji} ${esc(t.name)}</span></button>`).join('');
+  $('#themes').querySelectorAll('.theme').forEach((b) => b.onclick = (e) => e.target.dataset.rank ? ranking(e.target.dataset.rank) : start(b.dataset.id));
+}
+
+// --- tournament
+const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const roundName = (n) => ({ 2: 'Final', 4: 'Semifinal', 8: 'Quarterfinal' }[n] || `Round of ${n}`);
+function start(id) {
+  const t = theme(id), n = Math.min(size, t.items.length);
+  G = { t, field: shuffle(t.items).slice(0, n), next: [], i: 0, total: n - 1, done: 0, busy: false, tally: {}, out: [] };
+  for (const it of G.field) G.tally[it.id] = { n: 0, w: 0, c: 0 };
+  go('play'); match();
+}
+function match() {
+  G.busy = false;
+  const a = G.field[G.i * 2], b = G.field[G.i * 2 + 1], left = G.field.length;
+  $('#round').textContent = `${G.t.emoji} ${G.t.name} · ${roundName(left)} · ${G.i + 1}/${left / 2}`;
+  $('#prog').style.width = G.done / G.total * 100 + '%';
+  $('#arena').innerHTML = [a, b].map((it, s) => `<button class="pick" data-s="${s}">${art(it)}<span class="key">${s ? '→ / 2' : '← / 1'}</span>
+    <span class="cap">${esc(it.label)}${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span></button>`).join('') + '<div class="vs">VS</div>';
+  $('#arena').querySelectorAll('.pick').forEach((el) => el.onclick = () => choose(+el.dataset.s));
+  for (const it of G.field.slice(G.i * 2 + 2, G.i * 2 + 6)) if (it.img) new Image().src = it.img; // warm the next pair
+}
+function choose(s) {
+  if (!G || G.busy) return; G.busy = true; navigator.vibrate?.(15);
+  const pair = [G.field[G.i * 2], G.field[G.i * 2 + 1]], win = pair[s], lose = pair[1 - s];
+  G.tally[win.id].n++; G.tally[win.id].w++; G.tally[lose.id].n++;
+  G.out.push(lose); G.next.push(win); G.done++;
+  $('#arena').querySelectorAll('.pick').forEach((el) => el.classList.add(+el.dataset.s === s ? 'win' : 'lose'));
+  setTimeout(() => {
+    if (++G.i * 2 < G.field.length) return match();
+    if (G.next.length === 1) return finish(G.next[0]);
+    G.field = G.next; G.next = []; G.i = 0; match();
+  }, 550);
+}
+async function finish(champ) {
+  G.tally[champ.id].c = 1;
+  const t = G.t, top4 = [champ, ...G.out.slice(-1), ...G.out.slice(-3, -1).reverse()].slice(0, 4); // champ, runner-up, then the two semifinal losers
+  go('result'); $('#prog').style.width = '100%';
+  $('#result').innerHTML = `<p class="muted">${t.emoji} ${esc(t.name)} — your winner</p>
+    <div class="champ">${art(champ)}<div class="cap"><span>🏆 WINNER</span><b>${esc(champ.label)}</b></div></div>
+    <div class="top4">${top4.map((it, i) => `<div><div class="th" style="aspect-ratio:1;border:2px solid #000">${art(it)}</div>${['🥇', '🥈', '🥉', '4th'][i]} ${esc(it.label)}</div>`).join('')}</div>
+    <p class="muted" id="sent">Counting your picks…</p>
+    <div class="row"><button class="btn" id="rk">World ranking</button><button class="btn alt" id="sh">Share</button><button class="btn alt" id="again">Play again</button></div>`;
+  $('#rk').onclick = () => ranking(t.id, champ.id); $('#again').onclick = home;
+  $('#sh').onclick = async (e) => {
+    const text = `${champ.label} is my pick for “${t.name}” 🏆 What's yours? ${SITE}`;
+    try { if (navigator.share) return await navigator.share({ text }); await navigator.clipboard.writeText(text); e.target.textContent = 'Copied! ✅'; } catch {}
+  };
+  try { await submit(t.id, G.tally); $('#sent').textContent = 'Your picks are counted in the world ranking ✅'; }
+  catch { $('#sent').textContent = "Couldn't reach the ranking — your picks weren't counted this time."; }
+}
+
+// --- real counting: one document per candidate, incremented atomically (never overwritten)
+async function submit(themeId, tally) {
+  const writes = Object.entries(tally).map(([id, v]) => ({ transform: { document: `${DOC}/worldcup/${themeId}/items/${id}`,
+    fieldTransforms: ['n', 'w', 'c'].map((f) => ({ fieldPath: f, increment: { integerValue: String(v[f]) } })) } }));
+  const res = await fetch(`${FS}:commit?key=${FKEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ writes }) });
+  if (!res.ok) throw new Error('commit ' + res.status);
+}
+async function ranking(id, mine) {
+  const t = theme(id); go('rank');
+  $('#rank').innerHTML = `<div class="chips"><button class="btn alt sm" id="back">← Back</button><h2 style="flex:1;text-align:right">${t.emoji} ${esc(t.name)}</h2></div><p class="muted" id="rinfo">Loading…</p><div class="ranks" id="rlist"></div>`;
+  $('#back').onclick = home;
+  let stats = {};
+  try {
+    const res = await fetch(`${FS}/worldcup/${id}:runQuery?key=${FKEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'items' }], limit: 100 } }) });
+    if (!res.ok) throw 0;
+    for (const r of await res.json()) if (r.document) { const f = r.document.fields, k = r.document.name.split('/').pop(); stats[k] = { n: +f.n.integerValue, w: +f.w.integerValue, c: +f.c.integerValue }; }
+  } catch { $('#rinfo').textContent = "Couldn't load the ranking right now."; return; }
+  const rows = t.items.map((it) => ({ it, ...(stats[it.id] || { n: 0, w: 0, c: 0 }) }));
+  rows.forEach((r) => (r.score = (r.w + 1) / (r.n + 2))); // smoothed win rate so 1-for-1 doesn't beat 90-for-100
+  rows.sort((a, b) => b.score - a.score || b.c - a.c);
+  const games = rows.reduce((s, r) => s + r.c, 0);
+  $('#rinfo').textContent = games ? `${games.toLocaleString()} tournament${games > 1 ? 's' : ''} played · ranked by match win rate` : 'No one has played yet. Be the first!';
+  $('#rlist').innerHTML = rows.map((r, i) => `<div class="rank ${r.it.id === mine ? 'me' : ''}"><span class="n">${i + 1}</span><div class="th" style="width:48px;height:48px">${art(r.it)}</div>
+    <div class="nm"><div>${esc(r.it.label)}</div><div class="meter"><i style="width:${r.n ? Math.round(r.w / r.n * 100) : 0}%"></i></div></div>
+    <div class="st"><b>${r.n ? Math.round(r.w / r.n * 100) + '%' : '–'}</b>🏆 ${r.c} · ${r.n} matches</div></div>`).join('');
+}
+
+// --- misc
+addEventListener('keydown', (e) => {
+  if ($('#play').hidden) return;
+  if (['ArrowLeft', 'a', 'A', '1'].includes(e.key)) choose(0);
+  else if (['ArrowRight', 'd', 'D', '2'].includes(e.key)) choose(1);
+});
+$('#quit').onclick = () => { G = null; home(); };
+$('#credits').onclick = () => {
+  $('#clist').innerHTML = PHOTO_THEMES.flatMap((t) => t.items.map((i) => `<li>${esc(i.label)} — ${esc(i.credit)}</li>`)).join('');
+  $('#dlg').showModal();
+};
+$('#dclose').onclick = () => $('#dlg').close();
+home();
+</script>
+</body>
+</html>
