@@ -125,6 +125,15 @@ const BOTS = {
       await page.waitForTimeout(560);
     }
   } },
+  'dumbsync': { skip: 1, len: 8, poster: 4, async play(page, until) { // start, then answer each daily question
+    await page.evaluate(() => localStorage.clear()); await page.reload(); await page.waitForTimeout(400);
+    await page.click('#go');
+    for (let i = 0; i < 5 && Date.now() < until; i++) {
+      await page.waitForTimeout(900);
+      await page.click(`.screen:last-child .opt[data-s="${i % 2}"]`).catch(() => {});
+      await page.waitForTimeout(1300);
+    }
+  } },
   'beat-bloom': { skip: 2.5, len: 8, poster: 4, async play(page) { // Neon Avenue (Normal), jumped to the chorus, played perfectly
     await page.evaluate(() => {
       start(SONGS[1], 'normal');
