@@ -161,6 +161,17 @@ const BOTS = {
   'skillshot-gym': { skip: 3, len: 8, poster: 5, async play(page) { // the skillshot drill, with a bot that leads its shots
     await page.evaluate(() => startDemo());
   } },
+  'dead-air': { skip: 5, len: 9, poster: 6, async play(page) { // skip the intro, take Priya's call, glance at the lot, flash the lot light
+    const t0 = Date.now(), at = async (ms) => page.waitForTimeout(Math.max(0, ms - (Date.now() - t0)));
+    await page.fill('#nameIn', 'Sam'); await page.click('#bStart');
+    for (let i = 0; i < 5; i++) { await page.keyboard.press('Space'); await page.waitForTimeout(120); }
+    await page.click('#bNoteGo');
+    await page.evaluate(() => { G.queue = [CALLS[3]]; G.T = 150; G.nextAt = 150; G.D = G.shownD = 3; G.pose = 3; G.nextFlick = 99; });
+    await at(5000); await page.keyboard.press('KeyA');
+    await at(9200); await page.keyboard.press('Space');
+    await at(12400); await page.keyboard.press('KeyF');
+    await at(13800); await page.keyboard.press('Space');
+  } },
   'line-mafia': { skip: 1.5, len: 9, poster: 7, async play(page) { // multiplayer: play the built-in demo room (bots draw a cat, one is the mafia)
     await page.evaluate(() => startDemo());
   } },
