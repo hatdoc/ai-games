@@ -134,6 +134,14 @@ const BOTS = {
       await page.waitForTimeout(1300);
     }
   } },
+  'ideal-world-cup': { skip: 1, len: 8, poster: 3, async play(page, until) { // Who would win?, picking quickly
+    await page.evaluate(() => { submit = async () => {}; }); // don't count the recorder's picks
+    await page.click('.theme[data-id="fight"]');
+    for (let i = 0; Date.now() < until; i++) {
+      await page.waitForTimeout(1100);
+      await page.click(`.pick[data-s="${i % 2}"]`).catch(() => {});
+    }
+  } },
   'beat-bloom': { skip: 2.5, len: 8, poster: 4, async play(page) { // Neon Avenue (Normal), jumped to the chorus, played perfectly
     await page.evaluate(() => {
       start(SONGS[1], 'normal');
