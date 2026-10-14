@@ -58,7 +58,7 @@
   .onair.on { color: #ff6a5e; border-color: #ff3b30; text-shadow: 0 0 10px #ff3b30, 0 0 28px #ff1a0a; box-shadow: 0 0 22px rgba(255, 40, 30, .5), inset 0 0 12px rgba(255, 40, 30, .35); animation: buzz 1.7s infinite; }
   @keyframes buzz { 0%, 100% { opacity: 1; } 47% { opacity: 1; } 49% { opacity: .55; } 52% { opacity: 1; } 80% { opacity: .85; } }
   .lamps { display: flex; gap: 14px; font: 700 11px var(--mono); letter-spacing: .12em; color: var(--mut); }
-  .lamps span { display: inline-flex; align-items: center; gap: 6px; } .lamps b { width: 11px; height: 11px; border-radius: 50%; background: #1b1713; box-shadow: inset 0 0 0 1px #000; }
+  .lamps span { display: inline-flex; align-items: center; gap: 6px; } .lamps em { font-style: normal; } .lamps b { width: 11px; height: 11px; border-radius: 50%; background: #1b1713; box-shadow: inset 0 0 0 1px #000; }
   .lamps .on b { background: #ffb454; box-shadow: 0 0 10px #ffb454; } #l2.on b { background: #ff4a3a; box-shadow: 0 0 12px #ff3b30; animation: blink .5s steps(2) infinite; } @keyframes blink { 50% { opacity: .25; } }
   .dk-main { display: grid; grid-template-columns: minmax(150px, 210px) 1fr 74px; gap: clamp(10px, 2vw, 22px); min-height: 0; }
   .paper { align-self: start; margin-top: 8px; position: relative; padding: 16px 14px 18px; background: linear-gradient(#ebdfba, #d9cb9f); color: #2a2118; font: 14px/1.35 var(--hand); transform: rotate(-2.2deg); box-shadow: 0 10px 24px rgba(0, 0, 0, .6), inset 0 0 30px rgba(120, 90, 30, .25); border: 0; text-align: left; }
@@ -103,7 +103,7 @@
 
   /* ---- full-screen overlays ---- */
   .screen { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
-  #title { background: linear-gradient(rgba(0, 0, 0, .25), rgba(0, 0, 0, .78) 70%); gap: 14px; }
+  #title { background: linear-gradient(rgba(0, 0, 0, .25), rgba(0, 0, 0, .78) 70%); gap: 12px; overflow-y: auto; justify-content: safe center; }
   .logo { position: relative; margin: 0; font: 900 clamp(54px, 15vw, 132px)/.95 Georgia, "Times New Roman", serif; letter-spacing: .06em; color: #f3ece0; text-shadow: 0 0 40px rgba(255, 60, 40, .35), 0 4px 0 #000; animation: flick 7s infinite; }
   .logo::before, .logo::after { content: attr(data-t); position: absolute; inset: 0; mix-blend-mode: screen; opacity: .7; animation: glitch 5s infinite steps(1); }
   .logo::before { color: #ff2a1a; transform: translateX(-2px); clip-path: inset(0 0 100% 0); } .logo::after { color: #1ad7ff; transform: translateX(2px); clip-path: inset(100% 0 0 0); }
@@ -112,6 +112,12 @@
   .tagline { font: italic clamp(15px, 2.6vw, 21px) Georgia, serif; color: #b9c4bd; margin: 0; }
   .warn { max-width: 440px; font-size: 12.5px; color: #c6a676; border: 1px solid rgba(255, 180, 84, .3); background: rgba(40, 24, 6, .5); padding: 9px 14px; border-radius: 10px; }
   .field { display: flex; flex-direction: column; gap: 8px; width: min(340px, 90vw); }
+  #scns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } #scnBlurb { font: italic 13px Georgia, serif; color: #b5c0ba; min-height: 2.6em; margin: -2px 0 4px; }
+  .scn { display: flex; flex-direction: column; gap: 3px; padding: 10px 6px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .15); background: rgba(0, 0, 0, .55); cursor: pointer; transition: all .2s; }
+  .scn b { font: 800 13px Georgia, serif; letter-spacing: .08em; color: #d9d0bf; } .scn span { font-size: 11px; color: var(--mut); }
+  .scn.on { border-color: var(--amber); background: rgba(60, 36, 8, .65); box-shadow: 0 0 18px rgba(255, 170, 60, .25); } .scn.on b { color: #ffc77a; }
+  .ln.glitch { color: #ff5a4d; text-shadow: 0 0 12px #ff2a1a; font-size: 1.6em; letter-spacing: .2em; text-align: center; animation: gl .12s steps(2) infinite; } @keyframes gl { 50% { transform: translateX(5px) skewX(-8deg); opacity: .7; } }
+  .mon.shake { animation: shk .1s steps(2) 6; } @keyframes shk { 50% { transform: translate(3px, -2px); filter: hue-rotate(40deg); } }
   .field label { font-size: 12px; letter-spacing: .12em; color: var(--mut); }
   #nameIn { font: 700 20px var(--mono); text-align: center; padding: 13px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .25); background: rgba(0, 0, 0, .65); color: #fff; outline: none; user-select: text; -webkit-user-select: text; } #nameIn:focus { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(255, 180, 84, .2); }
   .chk { font-size: 13px; color: var(--mut); display: flex; gap: 8px; align-items: center; justify-content: center; cursor: pointer; }
@@ -149,11 +155,11 @@
 <section id="desk" aria-label="Studio desk">
   <header class="dk-top">
     <div class="onair" id="onair">ON AIR</div>
-    <div class="lamps"><span id="l1"><b></b>LINE 1</span><span id="l2"><b></b>LINE 2</span></div>
+    <div class="lamps"><span id="l1"><b></b><em id="l1t">LINE 1</em></span><span id="l2"><b></b><em id="l2t">LINE 2</em></span></div>
   </header>
   <main class="dk-main">
-    <button class="paper" id="noteBtn" aria-label="Read Ray's rules"><b>RAY'S RULES.</b>1. It only moves when you aren't looking.<br>2. Real callers never say your name.<br>3. . . .<br><u>(tap to read)</u></button>
-    <div class="mon">
+    <button class="paper" id="noteBtn" aria-label="Read the rules"><b>RAY'S RULES.</b>1. It only moves when you aren't looking.<br>2. Real callers never say your name.<br>3. . . .<br><u>(tap to read)</u></button>
+    <div class="mon" id="mon">
       <div class="mon-top"><span class="tag" id="lineTag">LINE —</span><span id="cid">STANDBY</span></div>
       <div id="txt"></div>
       <div class="pat"><i id="pat"></i></div>
@@ -196,7 +202,8 @@
   <p class="tagline">Night shift. One host. Something is listening.</p>
   <div class="warn">⚠ Jump scares, loud sounds and flashing lights. Headphones and a dark room recommended. About 6 minutes.</div>
   <div class="field">
-    <label for="nameIn">WHAT'S YOUR NAME? THE STATION LOGS IT.</label>
+    <label>CHOOSE A NIGHT</label><div id="scns"></div><div id="scnBlurb"></div>
+    <label for="nameIn">WHAT'S YOUR NAME? IT WILL REMEMBER IT.</label>
     <input id="nameIn" maxlength="12" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="first name">
     <button class="btn red" id="bStart" disabled>START THE SHIFT</button>
     <label class="chk"><input type="checkbox" id="calm"> Reduce flashing and screen shake</label>

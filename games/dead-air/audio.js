@@ -91,11 +91,15 @@ const A = (() => {
   const knock = (n = 3, loud = 1, to) => { if (!ctx) return; to = to || rv; for (let i = 0; i < n; i++) { const t = now() + i * .5; tn(95, t, .002, .16, .8 * loud, 'sine', out, 45); nz(t, .1, .5 * loud, 'lowpass', 400, .7, out); nz(t, .1, .3 * loud, 'lowpass', 400, .7, to); } };
   const flood = () => { if (!ctx) return; const t = now(); nz(t, .03, .9, 'highpass', 3000); tn(110, t + .05, .01, .15, .4, 'square'); tn(90, t + .1, .3, .9, .12, 'sawtooth', out, 380); nz(t + .1, 1.2, .05, 'bandpass', 2000, 4); };
   const flicker = () => { if (!ctx) return; const t = now(); for (let i = 0; i < 5; i++) { nz(t + i * .07, .04, .3, 'bandpass', 2000, 2); tn(120, t + i * .07, .002, .04, .15, 'square'); } };
-  const sting = () => { // jump scare: noise swell + dissonant cluster + sub drop
-    if (!ctx) return; const t = now(); nz(t, .6, .9, 'bandpass', 800, .8, out, 3600); nz(t, .6, .5, 'bandpass', 800, .8, rv, 3600);
-    for (const f of [466, 493, 740, 987]) { tn(f, t, .005, .9, .16, 'sawtooth', out, f * .5); tn(f, t, .005, .9, .1, 'sawtooth', rv, f * .5); }
-    tn(60, t, .01, 1.2, .8, 'sine', out, 28);
+  const sting = (k = 1) => { // jump scare: noise swell + dissonant cluster + sub drop (k scales the volume)
+    if (!ctx) return; const t = now(); nz(t, .6, .9 * k, 'bandpass', 800, .8, out, 3600); nz(t, .6, .5 * k, 'bandpass', 800, .8, rv, 3600);
+    for (const f of [466, 493, 740, 987]) { tn(f, t, .005, .9, .16 * k, 'sawtooth', out, f * .5); tn(f, t, .005, .9, .1 * k, 'sawtooth', rv, f * .5); }
+    tn(60, t, .01, 1.2, .8 * k, 'sine', out, 28);
   };
+  // small dread: something walking on the roof, a board creaking, someone breathing close to the mic
+  const roof = () => { if (!ctx) return; const t = now(); for (const [d, v] of [[0, .5], [.7, .45], [1.6, .55], [2.2, .4]]) { tn(72, t + d, .004, .16, v, 'sine', out, 40); nz(t + d, .12, v * .5, 'lowpass', 260, .7, rv); } };
+  const creak = () => { if (!ctx) return; const t = now(); nz(t, 1.4, .12, 'bandpass', 180, 14, rv, 520); nz(t + .1, 1.2, .07, 'bandpass', 240, 18, out, 600); };
+  const breath = () => { if (!ctx) return; const t = now(); nz(t, 1.1, .1, 'bandpass', 1000, 1.4, out, 1500); nz(t + 1.3, 1.5, .13, 'bandpass', 1300, 1.2, rv, 700); };
   const death = () => { // rising scream, then a hard cut to silence and an ear ring
     if (!ctx) return; const t = now();
     for (let i = 0; i < 8; i++) tn(200 + i * 37, t, .01, .55, .2, 'sawtooth', out, 2400 + i * 180);
@@ -147,5 +151,5 @@ const A = (() => {
   const level = () => { if (!vAn) return 0; vAn.getByteTimeDomainData(vBuf); let s = 0; for (const b of vBuf) { const x = (b - 128) / 128; s += x * x; } return Math.sqrt(s / vBuf.length); };
   const mute = (m) => { muted = m; if (out) out.gain.setTargetAtTime(m ? 0 : .85, ctx.currentTime, .05); if (m) try { speechSynthesis.cancel(); } catch {} };
   const suspend = (s) => { if (ctx) s ? ctx.suspend() : ctx.resume(); };
-  return { init, mix, ring, stopRing, click, pick, step, tap, knock, flood, flicker, sting, death, dawn, say, plan, voice, level, mute, suspend, get muted() { return muted; } };
+  return { init, mix, roof, creak, breath, ring, stopRing, click, pick, step, tap, knock, flood, flicker, sting, death, dawn, say, plan, voice, level, mute, suspend, get muted() { return muted; } };
 })();
