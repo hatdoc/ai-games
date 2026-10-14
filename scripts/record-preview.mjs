@@ -136,7 +136,7 @@ const BOTS = {
   } },
   'ideal-world-cup': { skip: 1, len: 8, poster: 3, async play(page, until) { // Who would win?, picking quickly
     await page.evaluate(() => { submit = async () => {}; }); // don't count the recorder's picks
-    await page.click('.theme[data-id="fight"]');
+    await page.click('.theme[data-id="brawl"]');
     for (let i = 0; Date.now() < until; i++) {
       await page.waitForTimeout(1100);
       await page.click(`.pick[data-s="${i % 2}"]`).catch(() => {});
