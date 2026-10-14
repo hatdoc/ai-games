@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>DumbSync</title>
+<style>
+  :root { --bg:#fff7e6; --ink:#111; --a:#ff5c8a; --b:#3d7bff; --card:#fff; --accent:#ffd23f; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#16131f; --ink:#fff; --card:#241f33; color-scheme: dark; } }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--ink); font: 700 16px/1.25 system-ui, sans-serif; overflow: hidden; }
+  #app { height: 100dvh; max-width: 520px; margin: 0 auto; padding: 14px 14px max(14px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; }
+  h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; }
+  header { display: flex; justify-content: space-between; align-items: center; }
+  .pill { background: var(--accent); color: #111; border: 3px solid #111; border-radius: 999px; padding: 4px 12px; box-shadow: 3px 3px 0 #111; font-size: 14px; }
+  .pips { display: flex; gap: 6px; }
+  .pips i { flex: 1; height: 10px; border: 3px solid #111; border-radius: 6px; background: var(--card); transition: background .2s; }
+  .pips i.on { background: var(--accent); } .pips i.hit { background: #2ecc71; } .pips i.miss { background: #ff5c5c; }
+  main { flex: 1; position: relative; overflow: hidden; min-height: 0; }
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px; transition: transform .35s cubic-bezier(.6,0,.2,1), opacity .35s; }
+  .screen.in { transform: translateX(110%); opacity: 0; } .screen.out { transform: translateX(-110%); opacity: 0; }
+  .tag { align-self: flex-start; background: #111; color: #fff; border-radius: 8px; padding: 4px 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
+  .vs { text-align: center; font-size: 22px; margin: -6px 0; z-index: 1; }
+  .opt { position: relative; flex: 1; border: 4px solid #111; border-radius: 22px; box-shadow: 0 6px 0 #111; color: #fff; font: inherit; font-size: clamp(20px, 5.4vw, 28px); font-weight: 900; padding: 18px; text-align: left; overflow: hidden; cursor: pointer; background: var(--c); transition: transform .08s, box-shadow .08s; }
+  .opt:active:not(:disabled) { transform: translateY(5px); box-shadow: 0 1px 0 #111; }
+  .opt:disabled { cursor: default; }
+  .opt .bar { position: absolute; inset: auto 0 0 0; height: 0; background: rgb(0 0 0 / .28); transition: height .8s cubic-bezier(.2,.9,.2,1); }
+  .opt .txt { position: relative; text-shadow: 0 2px 0 rgb(0 0 0 / .25); }
+  .opt .pct { position: absolute; right: 16px; top: 10px; font-size: 40px; opacity: 0; transition: opacity .3s; text-shadow: 0 3px 0 rgb(0 0 0 / .3); }
+  .opt.show .pct { opacity: 1; } .opt.pick { outline: 5px solid var(--accent); outline-offset: -9px; }
+  .opt.dim { filter: saturate(.4) brightness(.85); }
+  .card { background: var(--card); border: 4px solid #111; border-radius: 22px; box-shadow: 0 6px 0 #111; padding: 18px; }
+  .big { font-size: 64px; font-weight: 900; line-height: 1; margin: 0; }
+  .rows { display: flex; flex-direction: column; gap: 6px; font-size: 14px; max-height: 30vh; overflow: auto; }
+  .rows div { display: flex; gap: 8px; align-items: center; } .rows span { flex: 1; font-weight: 600; }
+  .btn { border: 4px solid #111; border-radius: 16px; background: var(--accent); color: #111; font: inherit; font-weight: 900; padding: 14px; box-shadow: 0 5px 0 #111; cursor: pointer; }
+  .btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #111; }
+  .btn.alt { background: var(--card); color: var(--ink); }
+  input { font: inherit; border: 4px solid #111; border-radius: 14px; padding: 12px; width: 100%; background: var(--card); color: var(--ink); }
+  .muted { font-weight: 600; opacity: .7; font-size: 14px; margin: 0; }
+  :focus-visible { outline: 4px solid var(--b); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header><h1>🧠 DumbSync</h1><span class="pill" id="day"></span></header>
+  <div class="pips" id="pips" aria-hidden="true"></div>
+  <main id="main"></main>
+</div>
+<script>
+// ponytail: vote counts are mock baselines (your own vote is added locally). 41 questions = 8 days before the cycle shifts; add more to extend.
+const POOL = [
+  { tag: "Inconvenient Superpower", a: "Always speak in rhymes", b: "Lag by 3 seconds in real life", va: 6800, vb: 3200 },
+  { tag: "Absurd Battle", a: "Fight 100 pigeon-sized horses", b: "Fight 1 horse-sized pigeon", va: 4300, vb: 5700 },
+  { tag: "Daily Micro-Torture", a: "Popcorn kernel stuck in your teeth forever", b: "Always feel like you are about to sneeze", va: 3900, vb: 6100 },
+  { tag: "Social Nightmare", a: "Everyone can hear your internal monologue", b: "You must say every thought out loud", va: 3300, vb: 6700 },
+  { tag: "Food Rule", a: "Eat only freezing cold food forever", b: "Eat only flaming spicy food forever", va: 5400, vb: 4600 },
+  { tag: "Tiny Tragedy", a: "Every sock you wear is wet", b: "Every pillow is permanently warm", va: 3500, vb: 6500 },
+  { tag: "Weird Talent", a: "Talk to pigeons", b: "Understand every dog's bark as a sarcastic comment", va: 4100, vb: 5900 },
+  { tag: "Awkward Future", a: "Your phone autocorrects everything to 'ducks'", b: "Your phone reads every text aloud in public", va: 3000, vb: 7000 },
+  { tag: "Strange Job", a: "Be a professional line-sitter", b: "Be a professional food-sniffer", va: 5200, vb: 4800 },
+  { tag: "Bad Weather", a: "It drizzles only on you", b: "Wind always blows your hair into your face", va: 4700, vb: 5300 },
+  { tag: "Pet Chaos", a: "A pet T-rex the size of a cat", b: "A pet cat the size of a T-rex", va: 3800, vb: 6200 },
+  { tag: "Tech Curse", a: "Wi-Fi that works only when you stand on one leg", b: "Phone at 1% battery forever, but it never dies", va: 4400, vb: 5600 },
+  { tag: "Kitchen Crime", a: "Pineapple on every pizza, forever", b: "No cheese on any pizza, forever", va: 3400, vb: 6600 },
+  { tag: "Sound Torture", a: "Hear a squeaky shoe with every step", b: "Hear a distant ice cream truck constantly", va: 6000, vb: 4000 },
+  { tag: "Time Trouble", a: "Every meeting starts 10 minutes late", b: "Every meeting ends 10 minutes early with no notes", va: 3700, vb: 6300 },
+  { tag: "Body Glitch", a: "Hiccup every time you laugh", b: "Yawn every time you speak", va: 5500, vb: 4500 },
+  { tag: "Smell Dilemma", a: "Everything smells like wet dog", b: "Everything smells like burnt toast", va: 3600, vb: 6400 },
+  { tag: "Fashion Doom", a: "Wear clown shoes everywhere", b: "Wear a tuxedo to the beach every day", va: 5700, vb: 4300 },
+  { tag: "Sleep Fail", a: "Always dream in elevator music", b: "Always wake up 5 minutes before your alarm", va: 6200, vb: 3800 },
+  { tag: "Elevator Hell", a: "Every elevator ride, someone starts singing", b: "Every elevator ride is silent but 3x longer", va: 5800, vb: 4200 },
+  { tag: "Mini Mayhem", a: "Sneeze glitter", b: "Cry tiny confetti", va: 5100, vb: 4900 },
+  { tag: "Birthday Blues", a: "Everyone sings to you every day", b: "Nobody remembers your birthday, but you get cake daily", va: 4600, vb: 5400 },
+  { tag: "Communication", a: "Text only in emoji", b: "Talk only in questions", va: 4200, vb: 5800 },
+  { tag: "Fear Factor", a: "Tiny spiders on your ceiling forever", b: "One giant spider in the garden forever", va: 5600, vb: 4400 },
+  { tag: "Gym Shame", a: "Squeaky treadmill, quiet gym", b: "Silent gym, but everyone watches you stretch", va: 4000, vb: 6000 },
+  { tag: "Street Fame", a: "Everyone you meet calls you 'Chief'", b: "Everyone you meet high-fives you", va: 4900, vb: 5100 },
+  { tag: "Snack Law", a: "Salty ice cream only", b: "Sweet fries only", va: 4500, vb: 5500 },
+  { tag: "Travel Torment", a: "Window seat, no legroom, forever", b: "Middle seat, infinite legroom, forever", va: 5300, vb: 4700 },
+  { tag: "Gravity Joke", a: "Float 1 inch off the ground", b: "Be permanently 2 inches shorter", va: 6400, vb: 3600 },
+  { tag: "Shower Thoughts", a: "Shower always lukewarm", b: "Shower either freezing or boiling at random", va: 6700, vb: 3300 },
+  { tag: "Dance Curse", a: "Break into dance when you hear any beep", b: "Freeze like a statue when anyone says your name", va: 5900, vb: 4100 },
+  { tag: "Pillow Politics", a: "Fluff only, no support", b: "Rock-hard pillow, perfect support", va: 3100, vb: 6900 },
+  { tag: "Name Game", a: "Everyone mispronounces your name, kindly", b: "Everyone gets your name right, but adds 'the Great'", va: 3200, vb: 6800 },
+  { tag: "Money Mess", a: "Find a coin every day, but it's always a penny", b: "Win a lottery of $100 every year", va: 2900, vb: 7100 },
+  { tag: "Silent Treatment", a: "Never use a stopwatch again", b: "Never see a clock again", va: 4800, vb: 5200 },
+  { tag: "Hair Horror", a: "Hair that grows 1 inch daily", b: "Eyebrows that grow 1 inch daily", va: 6100, vb: 3900 },
+  { tag: "Door Dilemma", a: "Every door is push when it says pull", b: "Every door is pull when it says push", va: 5050, vb: 4950 },
+  { tag: "Laugh Track", a: "Everything you do gets a sitcom laugh track", b: "Everything you do gets dramatic movie music", va: 4400, vb: 5600 },
+  { tag: "Cloud Watching", a: "Clouds shaped like your mistakes", b: "Stars that spell your embarrassing nicknames", va: 3700, vb: 6300 },
+  { tag: "Snooze Hell", a: "Alarm that sings your to-do list", b: "Alarm that screams 'one more minute!'", va: 6600, vb: 3400 },
+  { tag: "Rainy Day", a: "Rain only falls on your lunch", b: "Sun only shines on your commute", va: 5500, vb: 4500 },
+];
+const SITE = 'https://rank-game.com/games/dumbsync';
+const $ = (s) => document.querySelector(s);
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem('dumbsync.' + k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('dumbsync.' + k, JSON.stringify(v)); } catch {} },
+};
+const today = new Date().toISOString().slice(0, 10);
+const dayNum = (d) => Math.floor(Date.parse(d) / 864e5);
+const params = new URLSearchParams(location.search);
+const friendVotes = (params.get('votes') || '').split(',').map(Number);
+const friend = friendVotes.length === 5 && friendVotes.every((v) => v === 0 || v === 1)
+  ? { name: (params.get('ref') || 'A friend').slice(0, 20), votes: friendVotes, day: /^\d{4}-\d\d-\d\d$/.test(params.get('d')) ? params.get('d') : today } : null;
+const day = friend ? friend.day : today; // a challenge replays the day it was sent
+const QS = Array.from({ length: 5 }, (_, i) => POOL[(dayNum(day) * 5 + i) % POOL.length]);
+
+let name = store.get('name', ''), idx = 0, mine = [], busy = false;
+
+// --- sound: tiny WebAudio blips, silent if unavailable
+let ac;
+function blip(f, d = .08, type = 'square', when = 0) {
+  try {
+    ac ||= new AudioContext();
+    const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + when;
+    o.type = type; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 1.5, t + d);
+    g.gain.setValueAtTime(.06, t); g.gain.exponentialRampToValueAtTime(.001, t + d);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d);
+  } catch {}
+}
+const buzz = (ms) => navigator.vibrate?.(ms);
+
+// --- screens
+function show(html, onMount) {
+  const old = $('#main .screen'), el = document.createElement('div');
+  el.className = 'screen in'; el.innerHTML = html; $('#main').append(el);
+  requestAnimationFrame(() => requestAnimationFrame(() => { el.className = 'screen'; old?.classList.add('out'); setTimeout(() => old?.remove(), 400); }));
+  onMount?.(el);
+}
+function pips() {
+  $('#pips').innerHTML = QS.map((_, i) => `<i class="${i < mine.length ? (isMajor(i, mine[i]) ? 'hit' : 'miss') : i === idx ? 'on' : ''}"></i>`).join('');
+}
+const share = (i, side) => { const q = QS[i], t = q.va + q.vb + 1; return Math.round(((side ? q.vb : q.va) + (mine[i] === side ? 1 : 0)) / t * 100); };
+const isMajor = (i, side) => share(i, side) >= 50;
+
+function start() {
+  $('#day').textContent = day;
+  const saved = !friend && store.get('done', null);
+  if (saved?.date === today) { mine = saved.votes; return results(true); }
+  mine = []; idx = 0; pips();
+  show(`<div class="card"><p class="muted">${friend ? `<b>${esc(friend.name)}</b> challenged you!` : 'Today\'s 5 dumb choices — fresh ones every day'}</p>
+    <p style="margin:8px 0 14px;font-size:22px">Pick a side. Match the world. Don't overthink it.</p>
+    <input id="nm" maxlength="20" placeholder="Your name (for challenge links)" value="${esc(name)}" aria-label="Your name"></div>
+    <button class="btn" id="go" style="margin-top:auto">Let's go →</button>`,
+  (el) => el.querySelector('#go').onclick = () => { name = el.querySelector('#nm').value.trim(); store.set('name', name); blip(520); question(); });
+}
+
+function question() {
+  const q = QS[idx]; busy = false; pips();
+  show(`<span class="tag">${idx + 1}/5 · ${q.tag}</span>
+    <button class="opt" data-s="0" style="--c:var(--a)"><div class="bar"></div><span class="pct"></span><span class="txt">${q.a}</span></button>
+    <div class="vs">VS</div>
+    <button class="opt" data-s="1" style="--c:var(--b)"><div class="bar"></div><span class="pct"></span><span class="txt">${q.b}</span></button>`,
+  (el) => el.querySelectorAll('.opt').forEach((b) => b.onclick = () => pick(el, +b.dataset.s)));
+}
+
+function pick(el, side) {
+  if (busy) return; busy = true; buzz(25); blip(330);
+  mine.push(side);
+  const i = idx;
+  el.querySelectorAll('.opt').forEach((b) => {
+    const s = +b.dataset.s, p = share(i, s);
+    b.disabled = true; b.classList.add('show', s === side ? 'pick' : 'dim');
+    b.querySelector('.pct').textContent = p + '%';
+    b.querySelector('.bar').style.height = p + '%';
+  });
+  setTimeout(() => { const hit = isMajor(i, side); blip(hit ? 660 : 200, .2, hit ? 'triangle' : 'sawtooth'); buzz(hit ? 15 : [30, 40, 30]); pips(); }, 250);
+  setTimeout(() => ++idx < QS.length ? question() : finish(), 1300); // 0.8s fill + ~1s beat
+}
+
+function finish() {
+  if (!friend) store.set('done', { date: today, votes: mine });
+  results(false);
+}
+
+const RANKS = ['Lone Wolf 🐺', 'Chaos Gremlin 👹', 'Slightly Unhinged 🌀', 'Mostly Normal 🙂', 'Hive Adjacent 🐝', 'Hivemind Master 🧠'];
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function results(fromSaved) {
+  idx = 5; pips();
+  const hits = mine.filter((s, i) => isMajor(i, s)).length, pct = hits * 20;
+  const compat = friend && Math.round(mine.filter((s, i) => s === friend.votes[i]).length / 5 * 100);
+  const link = `${SITE}?ref=${encodeURIComponent(name || 'A friend')}&d=${day}&votes=${mine.join(',')}`;
+  const text = `I scored ${pct}% Hivemind on today's Dumb Choices 🧠. See if our brains work the same way: ${link}`;
+  if (!fromSaved) { blip(523, .15, 'triangle'); blip(659, .15, 'triangle', .12); blip(784, .25, 'triangle', .24); }
+  show(`<div class="card"><p class="muted">Hivemind Score</p><p class="big">${pct}%</p>
+      <p style="font-size:22px;margin:6px 0 0">${RANKS[hits]}</p><p class="muted">${hits}/5 matched the majority</p></div>
+    ${friend ? `<div class="card" style="background:var(--accent);color:#111"><p class="muted">Brain Compatibility</p>
+      <p style="font-size:22px;margin:4px 0 0">You and ${esc(friend.name)} are ${compat}% weird together!</p></div>` : ''}
+    <div class="card rows">${QS.map((q, i) => `<div>${isMajor(i, mine[i]) ? '✅' : '❌'}<span>${esc(mine[i] ? q.b : q.a)}</span>${share(i, mine[i])}%${friend ? (friend.votes[i] === mine[i] ? ' 🤝' : ' ✂️') : ''}</div>`).join('')}</div>
+    <button class="btn" id="sh" style="margin-top:auto">Challenge a Friend 🔗</button>
+    <p class="muted" style="text-align:center">${fromSaved ? 'Come back tomorrow for 5 new ones.' : ''}</p>`,
+  (el) => el.querySelector('#sh').onclick = async (e) => {
+    blip(600); buzz(20);
+    try { await navigator.clipboard.writeText(text); e.target.textContent = 'Copied! Paste it anywhere ✅'; }
+    catch { prompt('Copy this challenge:', text); }
+  });
+}
+
+start();
+</script>
+</body>
+</html>
