@@ -9,12 +9,22 @@ const store = {
   set(o) { try { localStorage.setItem('dead-air-save', JSON.stringify({ ...store.get(), ...o })); } catch {} },
 };
 const sv = store.get();
-const G = { state: 'title', name: sv.name || '', night: 1, calm: !!sv.calm, view: 1, cam: 1, D: 5, shownD: Math.max(2, 5 - (sv.plays || 0)), pose: 0, gaze: 0, flood: 0, dark: 0, dawn: 0, glitch: 0, face: 0, spike: 0, T: 0, time: 0, holding: false, tips: {}, steps: 0 };
+const G = { state: 'title', scen: SCEN[sv.scen] ? sv.scen : 'radio', name: sv.name || '', night: 1, calm: !!sv.calm, view: 1, cam: 1, D: 5, shownD: Math.max(2, 5 - (sv.plays || 0)), pose: 0, gaze: 0, flood: 0, dark: 0, dawn: 0, glitch: 0, face: 0, spike: 0, T: 0, time: 0, holding: false, tips: {}, steps: 0 };
 const fmt = (s) => s.replace(/\{n\}/g, G.name).replace(/\{N\}/g, G.name.toUpperCase());
 const clock = (m) => { m = Math.floor(m); const h = m / 60 | 0; return `${h % 12 || 12}:${String(m % 60).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`; };
 const interval = () => (30 - 11 * G.T / 360) / (1 + .18 * (G.night - 1)); // seconds of being unseen per step
-const IDLE = ['NO CALLS WAITING.', 'LINE CLEAR. KEEP AN EYE ON THE WINDOW.', 'STATIC ON LINE 2. (NOBODY CALLS LINE 2.)', 'ON AIR: DEAD AIR.', 'THE PHONE IS QUIET. THE LOT IS NOT.'];
-const lb = leaderboard($('lb'), 'dead-air', (s) => s >= 500 ? `🌅 Night ${(s - 400) / 100}` : clock(s));
+const idleMsgs = () => ['NO CALLS WAITING.', 'LINE CLEAR. KEEP AN EYE ON THE WINDOW.', `STATIC ON ${S.lines[1]}. (NOBODY CALLS ${S.lines[1]}.)`, S.shout, 'THE PHONE IS QUIET. THE LOT IS NOT.'];
+let S = SCEN[G.scen];
+function setScen(id) {
+  G.scen = id; S = SCEN[id]; Scene.setTheme(S.theme); sv.scen = id; store.set({ scen: id });
+  $('onair').textContent = S.sign; $('l1t').textContent = S.lines[0]; $('l2t').textContent = S.lines[1]; $('noteBtn').querySelector('b').textContent = S.paper;
+  $('bLight').firstChild.textContent = '🔦 ' + S.light; document.title = S.name === 'DEAD AIR' ? 'Dead Air' : `Dead Air: ${S.pick}`;
+  for (const b of document.querySelectorAll('.scn')) b.classList.toggle('on', b.dataset.id === id);
+  $('scnBlurb').textContent = S.blurb; $('best').textContent = sv.bestT ? `Longest night: ${clock(sv.bestT)} · survived: ${sv.won || 0}` : '';
+}
+$('scns').innerHTML = Object.values(SCEN).map((x) => `<button class="scn" data-id="${x.id}"><b>${x.name}</b><span>${x.pick}</span></button>`).join('');
+for (const b of document.querySelectorAll('.scn')) b.onclick = () => setScen(b.dataset.id);
+const mkBoard = () => leaderboard($('lb'), S.board, (s) => s >= 500 ? `🌅 Night ${(s - 400) / 100}` : clock(s));
 
 function toast(msg, ms = 3200) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), ms); }
 function tip(k, msg) { if (!G.tips[k]) { G.tips[k] = 1; toast(msg, 4200); } }
@@ -22,8 +32,7 @@ const setState = (s) => { G.state = s; document.body.dataset.s = s; };
 
 // ---------- title / intro ----------
 function openTitle() {
-  setState('title'); $('title').hidden = false; G.view = 1; G.cam = 1; G.D = G.shownD = Math.max(2, 5 - (sv.plays || 0)); G.face = 0; $('nameIn').value = G.name; $('calm').checked = G.calm; $('best').textContent = sv.bestT ? `Longest night: ${clock(sv.bestT)} · survived: ${sv.won || 0}` : '';
-  checkName();
+  setState('title'); $('title').hidden = false; G.view = 1; G.cam = 1; G.D = G.shownD = Math.max(2, 5 - (sv.plays || 0)); G.face = 0; $('nameIn').value = G.name; $('calm').checked = G.calm; setScen(G.scen); checkName();
 }
 const checkName = () => { $('bStart').disabled = !$('nameIn').value.trim(); };
 $('nameIn').oninput = checkName;
@@ -31,7 +40,7 @@ $('nameIn').onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter' && !
 $('bStart').onclick = () => {
   G.name = $('nameIn').value.trim().replace(/[<>&"]/g, '').slice(0, 12); G.calm = $('calm').checked; G.night = 1;
   $('title').hidden = true; store.set({ name: G.name, calm: G.calm, plays: (sv.plays = (sv.plays || 0) + 1) }); A.init();
-  cards(['HARLOW RIDGE · 11:54 PM', 'WVKR 1340 AM. Night Lines, with you.\nYour first overnight on the air.', 'The last host, Ray Dellow, stopped showing up three weeks ago.\nNobody at the agency will say why.', 'There is a note taped under the console.'], () => showNote(false, () => startGame()));
+  cards(S.intro, () => showNote(false, () => startGame()));
 };
 
 let cardT = 0, cardRun = 0, cardGo = null;
@@ -46,23 +55,24 @@ function cards(lines, cb, dim) {
 }
 
 function showNote(epi, cb) {
-  $('noteH').textContent = epi ? `${G.name.toUpperCase()}'S RULES.` : 'RAY\'S RULES.';
-  $('noteList').innerHTML = RULES.map((r) => `<li>${r}</li>`).join('') + (epi ? '<li class="r7">See you at midnight.</li>' : '');
-  $('noteSig').textContent = epi ? `— ${G.name}` : '— Ray'; $('noteSig').classList.toggle('swap', !!epi);
+  $('noteH').textContent = epi ? `${G.name.toUpperCase()}'S RULES.` : S.noteH;
+  $('noteList').innerHTML = S.rules.map((r) => `<li>${r}</li>`).join('') + (epi ? `<li class="r7">${S.r7}</li>` : '');
+  $('noteSig').textContent = epi ? `— ${G.name}` : `— ${S.sig}`; $('noteSig').classList.toggle('swap', !!epi);
   $('note').hidden = false; $('bNoteGo').textContent = cb ? (epi ? 'CLOCK OUT' : 'START THE SHIFT') : 'CLOSE'; $('bNoteGo').onclick = () => { $('note').hidden = true; cb && cb(); };
 }
 
 // ---------- the night ----------
 function startGame() {
-  Object.assign(G, { state: 'play', T: 0, time: 0, D: 5, shownD: 5, view: 0, cam: 0, gaze: 0, contact: 0, unseen: 0, slowUntil: 0, charges: Math.max(3, 5 - G.night), cd: 0, flood: 0, dark: 0, dawn: 0, glitch: 0, face: 0, spike: 0, call: null, queue: CALLS.slice(), nextAt: CALLS[0].at, notes: [], real: 0, fooled: 0, steps: 0, onair: false, final: null, flick: null, nextFlick: rnd(30, 50), pose: 0, holding: false });
+  Object.assign(G, { state: 'play', T: 0, time: 0, D: 5, shownD: 5, view: 0, cam: 0, gaze: 0, contact: 0, unseen: 0, slowUntil: 0, charges: Math.max(3, 5 - G.night), cd: 0, nextPhantom: rnd(70, 110), nextOdd: rnd(25, 45), nextGlitch: rnd(30, 50), flood: 0, dark: 0, dawn: 0, glitch: 0, face: 0, spike: 0, call: null, queue: S.calls.slice(), nextAt: S.calls[0].at, notes: [], real: 0, fooled: 0, steps: 0, onair: false, final: null, flick: null, nextFlick: rnd(30, 50), pose: 0, holding: false });
   setState('play'); $('onair').classList.remove('on'); idle(); setBtns(); ledBar();
   A.mix({ view: 0, fear: 0 }); toast('Tap ▲ WINDOW (or press Space) to look outside, and again to come back to the desk', 5000);
 }
-function idle(msg) { $('txt').innerHTML = `<p class="ln idle">${msg || IDLE[Math.random() * IDLE.length | 0]}</p>`; $('lineTag').textContent = 'LINE —'; $('lineTag').className = 'tag'; $('cid').textContent = 'STANDBY'; $('pat').parentElement.style.opacity = 0; }
+function idle(msg) { $('txt').innerHTML = `<p class="ln idle">${msg || idleMsgs()[Math.random() * 5 | 0]}</p>`; $('lineTag').textContent = '—'; $('lineTag').className = 'tag'; $('cid').textContent = 'STANDBY'; $('pat').parentElement.style.opacity = 0; }
 
 function look(on) {
-  if (G.state !== 'play' || G.final) return; G.view = on === undefined ? (G.view ? 0 : 1) : on ? 1 : 0;
-  if (G.view) { tip('look', 'It only moves while you are not looking. Don\'t stare back, either.'); if (G.D <= 3) tip('flood', 'Use the LOT LIGHT (or press F) to push it back. You only get a few.'); }
+  if (G.state !== 'play' || G.final) return; const was = G.view; G.view = on === undefined ? (G.view ? 0 : 1) : on ? 1 : 0;
+  if (G.view && !was && G.D <= 2 && G.seenAt !== G.D) { G.seenAt = G.D; G.spike = 1; G.glitch = .7; G.gaze = Math.max(G.gaze, 1.8); A.sting(.4); } // it was already looking at you
+  if (G.view) { tip('look', 'It only moves while you are not looking. Don\'t stare back, either.'); if (G.D <= 3) tip('flood', `Use the ${S.light} (or press F) to push it back. You only get a few.`); }
 }
 function useLight() {
   if (G.state !== 'play' || G.final || G.cam < .5) return;
@@ -88,13 +98,13 @@ function die(kind) {
 // ---------- calls ----------
 function setBtns() {
   const ph = G.call?.phase, open = ph === 'ring' || ph === 'live' || ph === 'decide';
-  $('bAir').disabled = $('bHang').disabled = !open; $('bAir').querySelector('b').textContent = ph === 'ring' ? 'ANSWER' : 'PUT ON AIR'; $('bHang').querySelector('b').textContent = ph === 'ring' ? 'DECLINE' : 'HANG UP';
+  $('bAir').disabled = $('bHang').disabled = !open; $('bAir').querySelector('b').textContent = ph === 'ring' ? 'ANSWER' : S.air; $('bHang').querySelector('b').textContent = ph === 'ring' ? 'DECLINE' : 'HANG UP';
 }
 function startRing() {
   const def = G.queue.shift(), thing = def.line === 2;
   G.call = { def, phase: 'ring', pat: 1, i: -1, cur: null, done: false, read: 0 };
-  $('txt').innerHTML = ''; $('lineTag').textContent = `LINE ${def.line}`; $('lineTag').className = `tag ring l${def.line}`;
-  $('cid').textContent = thing ? `INTERNAL · ${fmt(def.id)}` : fmt(def.id); $('pat').parentElement.style.opacity = 1;
+  $('txt').innerHTML = ''; $('lineTag').textContent = S.lines[def.line - 1]; $('lineTag').className = `tag ring l${def.line}`;
+  $('cid').textContent = thing ? `${S.l2} · ${fmt(def.id)}` : fmt(def.id); $('pat').parentElement.style.opacity = 1;
   addLine('☎ INCOMING CALL…', 'idle'); A.ring(thing); setBtns();
   tip('ring', 'It\'s ringing. Tap ANSWER (or press A) at the desk.');
 }
@@ -104,7 +114,7 @@ function answer() {
 }
 function nextLine() {
   const c = G.call, d = c.def; c.i++;
-  if (c.i >= d.lines.length) { c.phase = 'decide'; c.done = true; c.pat = 1; return tip('decide', 'Real, or not? Put it on air, or hang up.'); }
+  if (c.i >= d.lines.length) { c.phase = 'decide'; c.done = true; c.pat = 1; return tip('decide', `Real, or not? ${S.air.toLowerCase()}, or hang up.`); }
   const text = fmt(d.lines[c.i]), thing = d.who === 'thing', p = A.voice(d.f0, text, thing);
   c.cur = { el: addLine('', 'live'), text, n: 0, t: 0, dur: p.dur };
   if (thing && c.i > 0) G.unseen += 5; // it hears you listening
@@ -115,8 +125,8 @@ function putOnAir() {
   if (c.cur) c.cur.el.textContent = c.cur.text; c.cur = null; c.phase = 'closing'; c.done = true;
   const text = '▶ ' + fmt(d.air); addLine(text, 'air'); const p = A.voice(d.f0, fmt(d.air), thing); c.endAt = G.time + p.dur + 1.2;
   G.onair = true; $('onair').classList.add('on'); setBtns();
-  if (!thing) { G.slowUntil = G.time + 32; G.real++; toast('A real voice on the air. It slows down.', 2600); }
-  else { G.fooled++; A.sting(); G.spike = 1; G.glitch = 1; G.flick = { t: 0, dur: .9, step: false }; setTimeout(() => A.say(G.name), 700); stepFigure(2); toast('You let it on the air.', 2600); }
+  if (!thing) { G.slowUntil = G.time + 32; G.real++; toast(S.slow, 2600); }
+  else { G.fooled++; A.sting(); G.spike = 1; G.glitch = 1; G.flick = { t: 0, dur: .9, step: false }; setTimeout(() => A.say(G.name), 700); stepFigure(2); toast(S.fooled, 2600); }
 }
 function hangUp() {
   const c = G.call, d = c.def; A.click(); if (c.phase === 'ring') { A.stopRing(); return endCall(); }
@@ -130,8 +140,13 @@ function endCall() {
   G.call = null; G.onair = false; $('onair').classList.remove('on'); setBtns(); idle();
   G.nextAt = Math.max(G.T + 9, G.queue.length ? G.queue[0].at : 1e9);
 }
+function monitorSpeaks() {
+  const old = $('txt').innerHTML, N = G.name.toUpperCase(), m = [N, 'I SEE YOU', 'BEHIND YOU', 'LOOK UP', `${N} ${N} ${N}`, 'IT IS CLOSER'][Math.random() * 6 | 0];
+  $('txt').innerHTML = `<p class="ln glitch">${m}</p>`; $('mon').classList.add('shake'); A.creak();
+  setTimeout(() => { if (!G.call) $('txt').innerHTML = old; $('mon').classList.remove('shake'); }, 650);
+}
 function callTick(dt) {
-  const c = G.call; $('l2').classList.toggle('on', !!c && c.def.line === 2); $('l1').classList.toggle('on', !!c && c.def.line === 1);
+  const c = G.call; $('l2').classList.toggle('on', (!!c && c.def.line === 2) || G.time < (G.phantom || 0)); $('l1').classList.toggle('on', !!c && c.def.line === 1);
   if (!c) { if (G.queue.length && G.T >= G.nextAt) startRing(); return; }
   if (c.phase === 'ring') { c.pat -= dt / 12; if (c.pat <= 0) { A.stopRing(); toast('Missed call.', 1800); endCall(); } }
   else if (c.phase === 'live' && c.cur) {
@@ -151,8 +166,8 @@ function startFinal() {
 function doorShake() { const s = $('slab'); s.classList.remove('knock'); void s.offsetWidth; s.classList.add('knock'); }
 function finalTick(dt) {
   const f = G.final; f.t += dt; G.T = Math.min(360, 350 + f.t * .3); G.dawn = 0;
-  while (f.i < FINAL.length && FINAL[f.i][0] <= f.t) {
-    const [, k, a] = FINAL[f.i++];
+  while (f.i < S.final.length && S.final[f.i][0] <= f.t) {
+    const [, k, a] = S.final[f.i++];
     if (k === 'knock') { A.knock(a, 1.1); for (let j = 0; j < a; j++) setTimeout(doorShake, j * 500); }
     else if (k === 'say') { const text = fmt(a), p = A.voice(135, text, true); f.type = { text, t: 0, dur: p.dur }; if (/\{n\}/.test(a) && !f.said) { f.said = 1; setTimeout(() => A.say(G.name), 900); } }
     else if (k === 'listen') { f.lis = { start: f.t, end: f.t + a }; $('listen').hidden = false; }
@@ -168,24 +183,24 @@ function signOff() {
 }
 function dawnTick(dt) {
   G.dawnT += dt; G.cam = Math.min(1, G.cam + dt * 2); G.dawn = clamp(G.dawnT / 8); G.T = 360;
-  if (G.dawnT > 10 && !G.cardsOn) { G.cardsOn = true; cards(['6:00 AM.', 'You signed off. The knocking stopped.', 'The lot is empty in the daylight. Your car is where you left it.\nSo is Ray\'s truck.', 'On the way out, you read the note one more time.\nThe handwriting looks familiar.'], () => showNote(true, () => { G.cardsOn = false; showEnd('dawn'); }), true); }
+  if (G.dawnT > 10 && !G.cardsOn) { G.cardsOn = true; cards(S.epi, () => showNote(true, () => { G.cardsOn = false; showEnd('dawn'); }), true); }
 }
 
 // ---------- ending ----------
 function finish(kind) {
   if (G.state === 'over') return; G.kind = kind; setState('over'); A.stopRing(); $('door').hidden = true; A.mix({ view: 0, fear: 0, quiet: 1 });
-  const lines = kind === 'door' ? ['You turned the lock.', 'It was warm outside. It smelled like rain and coffee.\nIt sounded exactly like you.'] : ['You breathed.', 'Just once.', 'The knocking stopped.\nThe door was never locked.'];
+  const lines = kind === 'door' ? S.doorCards : S.heardCards;
   if (kind !== 'caught') { A.sting(); cards(lines, () => showEnd(kind)); } else setTimeout(() => showEnd(kind), 900);
 }
 function showEnd(kind) {
-  setState('over'); const win = kind === 'dawn', e = END[kind], t = clock(G.T), score = win ? 400 + 100 * Math.min(G.night, 5) : Math.min(Math.floor(G.T), 359);
+  setState('over'); const win = kind === 'dawn', e = S.end[kind], t = clock(G.T), score = win ? 400 + 100 * Math.min(G.night, 5) : Math.min(Math.floor(G.T), 359);
   const f = (s) => s.replace(/\{t\}/g, t).replace(/\{k\}/g, G.night).replace(/\{n\}/g, G.name);
   $('endH').textContent = e.h; $('endSub').textContent = f(e.sub);
   $('endStats').innerHTML = `<span>🕒 <b>${t}</b></span><span>📞 real on air <b>${G.real}</b></span><span>👤 fooled <b>${G.fooled}</b></span><span>🔦 lights left <b>${G.charges}</b></span>`;
   $('notes').innerHTML = G.notes.length ? '<h4>WHAT YOU LEARNED</h4>' + G.notes.map((n) => `<p>📝 ${n}</p>`).join('') : '';
   $('bAgain').textContent = win ? `NIGHT ${G.night + 1} →` : 'TRY AGAIN'; $('end').hidden = false; $('end').classList.toggle('win', win);
   const s = { bestT: Math.max(sv.bestT || 0, Math.floor(G.T)) }; if (win) s.won = (sv.won || 0) + 1; Object.assign(sv, s); store.set(s);
-  lb.show(score); adBanner($('ad')); $('end').scrollTop = 0;
+  mkBoard().show(score); adBanner($('ad')); $('end').scrollTop = 0;
 }
 $('bAgain').onclick = () => { $('end').hidden = true; if (G.kind === 'dawn') G.night++; startGame(); A.init(); };
 $('bMenu').onclick = () => { $('end').hidden = true; openTitle(); };
@@ -197,14 +212,14 @@ function shareCard() {
   const lg = x.createRadialGradient(850, 80, 0, 850, 80, 520); lg.addColorStop(0, 'rgba(255,200,130,.35)'); lg.addColorStop(1, 'rgba(255,200,130,0)'); x.fillStyle = lg; x.fillRect(0, 0, 1200, 630);
   const pg = x.createLinearGradient(0, 480, 0, 630); pg.addColorStop(0, '#0a1317'); pg.addColorStop(1, '#030506'); x.fillStyle = pg; x.fillRect(0, 520, 1200, 110);
   Scene.figure(x, 905, 560, 520, { lit: .85, pose: G.pose, gaze: .9 });
-  x.fillStyle = '#f3ece0'; x.font = '900 118px Georgia, serif'; x.fillText('DEAD AIR', 60, 190); x.fillStyle = '#ff5a4d'; x.font = '800 30px ui-monospace, Menlo, monospace'; x.fillText('● ON AIR · WVKR 1340 AM', 64, 250);
-  const e = END[G.kind]; x.fillStyle = '#fff'; x.font = '800 54px system-ui, sans-serif'; x.fillText(e.h, 60, 360);
+  x.fillStyle = '#f3ece0'; x.font = '900 118px Georgia, serif'; x.fillText('DEAD AIR', 60, 190); x.fillStyle = '#ff5a4d'; x.font = '800 30px ui-monospace, Menlo, monospace'; x.fillText(`● ${S.name} · ${S.pick.toUpperCase()}`, 64, 250);
+  const e = S.end[G.kind]; x.fillStyle = '#fff'; x.font = '800 54px system-ui, sans-serif'; x.fillText(e.h, 60, 360);
   x.fillStyle = '#ffb454'; x.font = '700 40px ui-monospace, Menlo, monospace'; x.fillText(`${clock(G.T)} · night ${G.night}`, 62, 425);
   x.fillStyle = '#a9b8b2'; x.font = '600 28px system-ui, sans-serif'; x.fillText('Can you outlast it? rank-game.com', 62, 570);
   return c;
 }
 $('bShare').onclick = async (ev) => {
-  const e = END[G.kind], text = e.share.replace(/\{t\}/g, clock(G.T)).replace(/\{k\}/g, G.night), b = ev.currentTarget;
+  const e = S.end[G.kind], text = e.share.replace(/\{t\}/g, clock(G.T)).replace(/\{k\}/g, G.night), b = ev.currentTarget;
   try {
     const blob = await new Promise((r) => shareCard().toBlob(r, 'image/png')), file = new File([blob], 'dead-air.png', { type: 'image/png' });
     if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], text: `${text} ${SITE}` });
@@ -235,6 +250,10 @@ function update(dt) {
     else if (G.gaze >= 5) { G.contact += dt; if (G.contact >= 2) { G.contact = 0; stepFigure(1, true); } } else G.contact = 0;
     // the lot light stutters now and then; if you are watching when it goes out, it may come closer in the dark
     G.nextFlick -= dt; if (G.nextFlick <= 0 && !G.flick) { G.nextFlick = rnd(30, 55); G.flick = { t: 0, dur: rnd(.6, .95), step: G.D <= 4 && G.D > 1 && Math.random() < .55 }; A.flicker(); }
+    // small scares: a ring on the internal line with nobody on it, noises in the building, the monitor speaking
+    G.nextPhantom -= dt; if (G.nextPhantom <= 0 && !G.call && G.T > 90) { G.nextPhantom = rnd(60, 100); G.phantom = G.time + 3.4; A.ring(true); setTimeout(A.stopRing, 3300); tip('phantom', `${S.lines[1]} just rang. Nobody calls ${S.lines[1]}. Let it ring.`); }
+    G.nextOdd -= dt; if (G.nextOdd <= 0 && G.T > 25) { G.nextOdd = rnd(14, 34) * (G.D <= 3 ? .6 : 1); const k = Math.random(); (k < .4 ? A.creak : k < .75 || G.D > 3 ? A.roof : A.breath)(); }
+    G.nextGlitch -= dt; if (G.nextGlitch <= 0 && G.D <= 4 && G.cam < .3 && !G.call) { G.nextGlitch = rnd(24, 48); monitorSpeaks(); }
     callTick(dt); if (G.T >= 350 && !G.call) startFinal();
   }
   if (G.flick) { const k = G.flick; k.t += dt; G.dark = Math.sin(k.t * 55) > -.2 ? clamp(Math.sin(k.t / k.dur * Math.PI) * 1.4) : .15; if (k.t >= k.dur) { G.dark = 0; if (k.step && watching) stepFigure(1, true); G.flick = null; } }
@@ -252,7 +271,7 @@ function render(dt) {
   const st = G.state, fear = clamp(Math.max(clamp((5 - G.D) / 4) * .9, clamp(G.gaze / 5) * .8) + G.spike * .5 + (G.final ? .45 : 0)) * (st === 'play' || st === 'dying' ? 1 : 0);
   document.documentElement.style.setProperty('--fear', fear.toFixed(3)); fearNow = fear;
   if (st === 'play' || st === 'dying') A.mix({ view: G.cam, fear, quiet: G.final?.lis ? 1 : 0 });
-  if (G.cam > .01 || st !== 'play') Scene.draw({ D: G.shownD, T: G.T, pose: G.pose, gaze: clamp(G.gaze / 4), flood: G.flood * (G.calm ? .5 : 1), dark: G.calm ? G.dark * .5 : G.dark, dawn: G.dawn, glitch: G.calm ? 0 : G.glitch, face: G.face, breath: 1, onair: G.onair }, dt);
+  if (G.cam > .01 || st !== 'play') Scene.draw({ D: G.shownD, T: G.T, pose: G.pose, gaze: clamp(G.gaze / 4), flood: G.flood * (G.calm ? .5 : 1), dark: G.calm ? G.dark * .5 : G.dark, dawn: G.dawn, glitch: G.calm ? 0 : G.glitch, ghost: G.flick && G.D > 1 ? G.dark : 0, face: G.face, breath: 1, onair: G.onair }, dt);
   const d = $('desk'); d.style.transform = `translateY(${(G.cam * 104).toFixed(1)}%)`; d.style.visibility = G.cam > .985 ? 'hidden' : 'visible';
   $('scene').style.transform = `scale(${(1.1 - .1 * G.cam).toFixed(3)})`;
   document.body.classList.toggle('final', !!G.final); document.body.dataset.v = G.cam > .5 ? 'win' : 'desk'; $('bLook').querySelector('b').textContent = G.view ? '▼ DESK' : '▲ WINDOW';

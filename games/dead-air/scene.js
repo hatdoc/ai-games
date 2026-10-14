@@ -2,7 +2,7 @@
 // whose width follows the screen's aspect ratio. Everything is procedural.
 const Scene = (() => {
   const H = 360, HOR = 150;
-  let W = 640, U = 1, cv, g, bg, glass, fogT, rain = [], drops = [], t = 0, tw = [], lights = [];
+  let theme = 'radio', W = 640, U = 1, cv, g, bg, glass, fogT, rain = [], drops = [], t = 0, tw = [], lights = [];
   const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), lerp = (a, b, k) => a + (b - a) * k;
   const rng = (s) => () => (s = (s * 16807) % 2147483647) / 2147483647;
   const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
@@ -84,12 +84,15 @@ const Scene = (() => {
     tw = []; for (let i = 0; i < 90; i++) { const s = [r() * W, r() * HOR * .8, .15 + r() * .5]; tw.push(s); c.fillStyle = `rgba(210,230,255,${s[2]})`; c.fillRect(s[0], s[1], 1, 1); }
     c.fillStyle = '#0a1a21'; c.beginPath(); c.moveTo(0, HOR); for (let x = 0; x <= W; x += 6) c.lineTo(x, HOR - 12 - 9 * Math.sin(x * .013 + 1) - 5 * Math.sin(x * .041)); c.lineTo(W, HOR); c.fill();
     pines(c, HOR + 2, 8, 22, '#071216', 9, r); pines(c, HOR + 4, 12, 36, '#03080a', 14, r);
-    // radio tower
+    // radio tower (the motel gets a neon sign pylon instead)
     const tx = W * .8, tb = HOR; c.strokeStyle = '#020507'; c.lineWidth = 1.6;
+    if (theme === 'motel') { c.fillStyle = '#020507'; c.fillRect(tx - 2, 70, 4, tb - 70); c.fillRect(tx - 34 * U - 4, 38, 68 * U + 8, 40); c.fillStyle = '#0a0406'; c.fillRect(tx - 34 * U, 42, 68 * U, 32); }
+    else {
     for (const s of [-1, 1]) { c.beginPath(); c.moveTo(tx + s * 9 * U, tb); c.lineTo(tx + s * 1.2, 26); c.stroke(); }
     c.lineWidth = .9; for (let y = tb, k = 0; y > 34; y -= 14, k++) { const w = 9 * U * (y - 26) / (tb - 26), w2 = 9 * U * (y - 14 - 26) / (tb - 26); c.beginPath(); c.moveTo(tx - w, y); c.lineTo(tx + w2, y - 14); c.moveTo(tx + w, y); c.lineTo(tx - w2, y - 14); c.moveTo(tx - w, y); c.lineTo(tx + w, y); c.stroke(); }
+    }
     // lot
-    gr = c.createLinearGradient(0, HOR, 0, H); gr.addColorStop(0, '#0b161c'); gr.addColorStop(.25, '#060d10'); gr.addColorStop(1, '#020304'); c.fillStyle = gr; c.fillRect(0, HOR + 1, W, H - HOR);
+    gr = c.createLinearGradient(0, HOR, 0, H); if (theme === 'dispatch') { gr.addColorStop(0, '#1c2c36'); gr.addColorStop(.25, '#0f1b22'); gr.addColorStop(1, '#04080b'); } else { gr.addColorStop(0, '#0b161c'); gr.addColorStop(.25, '#060d10'); gr.addColorStop(1, '#020304'); } c.fillStyle = gr; c.fillRect(0, HOR + 1, W, H - HOR);
     c.strokeStyle = 'rgba(190,210,220,.07)'; c.lineWidth = 1.2;
     for (let k = -6; k <= 6; k++) { c.beginPath(); c.moveTo(W / 2 + k * 9, HOR + 2); c.lineTo(W / 2 + k * W * .3, H); c.stroke(); }
     c.strokeStyle = 'rgba(190,210,220,.04)'; for (const y of [190, 240, 300]) { c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); }
@@ -117,6 +120,8 @@ const Scene = (() => {
     drops = []; for (let i = 0; i < 7; i++) drops.push([r() * W, r() * H * .8, 1.4 + r() * 1.4, 4 + r() * 9, r() * 6]);
   }
 
+  const LAMP = { radio: [255, 214, 150], motel: [255, 190, 130], dispatch: [205, 228, 255] };
+  function setTheme(n) { theme = n; if (bg) build(); }
   function init(canvas) { cv = canvas; g = cv.getContext('2d'); resize(); addEventListener('resize', resize); }
   function resize() {
     const w = Math.max(200, Math.min(800, Math.round(H * innerWidth / Math.max(1, innerHeight))));
@@ -132,26 +137,29 @@ const Scene = (() => {
     for (const [x, y, off] of lights) if (s.T < off) { g.fillStyle = 'rgba(255,196,120,.85)'; g.fillRect(x, y, 1.6, 1.6); }
     const mg = g.createRadialGradient(W * .22, 52, 2, W * .22, 52, 60); mg.addColorStop(0, `rgba(205,222,230,${.5 * (1 - dawn)})`); mg.addColorStop(.25, `rgba(150,180,195,${.16 * (1 - dawn)})`); mg.addColorStop(1, 'rgba(150,180,195,0)'); g.fillStyle = mg; g.fillRect(0, 0, W, 130);
     g.globalAlpha = .8; g.drawImage(fogT, -((t * 4) % W), HOR - 38); g.globalAlpha = .5; g.drawImage(fogT, -(W - ((t * 2.4) % W)), HOR + 4); g.globalAlpha = 1;
-    const tx = W * .8; if (t % 1.5 < .35) { const rg = g.createRadialGradient(tx, 27, 0, tx, 27, 22); rg.addColorStop(0, 'rgba(255,50,40,.9)'); rg.addColorStop(1, 'rgba(255,40,30,0)'); g.fillStyle = rg; g.fillRect(tx - 24, 3, 48, 48); }
-    g.fillStyle = 'rgba(255,60,50,.5)'; g.fillRect(tx - .8, 82, 1.6, 1.6);
+    const tx = W * .8; if (theme === 'motel') { const fl = (Math.sin(t * 9) * Math.sin(t * 2.3) > .85 || (s.T | 0) % 53 === 0 && t % 1 < .3) ? .25 : 1, ng = g.createRadialGradient(tx, 58, 0, tx, 58, 90); ng.addColorStop(0, `rgba(255,40,120,${.4 * fl})`); ng.addColorStop(1, 'rgba(255,40,120,0)'); g.fillStyle = ng; g.fillRect(tx - 90, 0, 180, 170); g.fillStyle = `rgba(255,90,160,${.95 * fl})`; g.font = '700 ' + Math.round(13 * Math.max(.7, U)) + 'px monospace'; g.textAlign = 'center'; g.fillText('VACANCY', tx, 63); g.fillStyle = `rgba(120,10,20,${.5})`; g.fillText('NO', tx - 30 * U, 51); g.textAlign = 'start'; } else if (t % 1.5 < .35) { const rg = g.createRadialGradient(tx, 27, 0, tx, 27, 22); rg.addColorStop(0, 'rgba(255,50,40,.9)'); rg.addColorStop(1, 'rgba(255,40,30,0)'); g.fillStyle = rg; g.fillRect(tx - 24, 3, 48, 48); }
+    if (theme !== 'motel') { g.fillStyle = 'rgba(255,60,50,.5)'; g.fillRect(tx - .8, 82, 1.6, 1.6); }
     // lamp light
+    const LC = LAMP[theme].join(','), LC2 = LAMP[theme].map((v) => Math.min(255, v + 30)).join(',');
     const lx = W * .27, fx = lx + 22 * U, fy = 46, ly = 262;
     if (lamp > .02) {
-      for (let k = 0; k < 6; k++) { const w = (125 - k * 17) * U, a = .028 * lamp * (1 + k * .15); g.fillStyle = `rgba(255,214,150,${a})`; g.beginPath(); g.moveTo(fx - 4, fy + 4); g.lineTo(fx + 4, fy + 4); g.lineTo(fx + w, ly + 8); g.lineTo(fx - w, ly + 8); g.fill(); }
-      g.save(); g.translate(fx, ly); g.scale(1, .22); const pg = g.createRadialGradient(0, 0, 0, 0, 0, 160 * U + 20); pg.addColorStop(0, `rgba(255,205,140,${.55 * lamp})`); pg.addColorStop(.5, `rgba(255,190,110,${.18 * lamp})`); pg.addColorStop(1, 'rgba(255,190,110,0)');
+      for (let k = 0; k < 6; k++) { const w = (125 - k * 17) * U, a = .028 * lamp * (1 + k * .15); g.fillStyle = `rgba(${LC},${a})`; g.beginPath(); g.moveTo(fx - 4, fy + 4); g.lineTo(fx + 4, fy + 4); g.lineTo(fx + w, ly + 8); g.lineTo(fx - w, ly + 8); g.fill(); }
+      g.save(); g.translate(fx, ly); g.scale(1, .22); const pg = g.createRadialGradient(0, 0, 0, 0, 0, 160 * U + 20); pg.addColorStop(0, `rgba(${LC},${.55 * lamp})`); pg.addColorStop(.5, `rgba(${LC},${.18 * lamp})`); pg.addColorStop(1, `rgba(${LC},0)`);
       g.fillStyle = pg; g.beginPath(); g.arc(0, 0, 160 * U + 20, 0, 7); g.fill(); g.restore();
-      const sg = g.createLinearGradient(0, ly, 0, H); sg.addColorStop(0, `rgba(255,205,140,${.14 * lamp})`); sg.addColorStop(1, 'rgba(255,205,140,0)'); g.fillStyle = sg; g.fillRect(fx - 7, ly, 14, H - ly);
-      const hg = g.createRadialGradient(fx, fy, 0, fx, fy, 44); hg.addColorStop(0, `rgba(255,236,200,${.95 * lamp})`); hg.addColorStop(.12, `rgba(255,214,150,${.5 * lamp})`); hg.addColorStop(1, 'rgba(255,200,120,0)'); g.fillStyle = hg; g.fillRect(fx - 46, fy - 46, 92, 92);
+      const sg = g.createLinearGradient(0, ly, 0, H); sg.addColorStop(0, `rgba(${LC},${.14 * lamp})`); sg.addColorStop(1, `rgba(${LC},0)`); g.fillStyle = sg; g.fillRect(fx - 7, ly, 14, H - ly);
+      const hg = g.createRadialGradient(fx, fy, 0, fx, fy, 44); hg.addColorStop(0, `rgba(${LC2},${.95 * lamp})`); hg.addColorStop(.12, `rgba(${LC},${.5 * lamp})`); hg.addColorStop(1, 'rgba(255,200,120,0)'); g.fillStyle = hg; g.fillRect(fx - 46, fy - 46, 92, 92);
     }
     // the figure
     if (dawn < .55 && D < 6 && !s.hideFig) {
       const p = place(D), lit = clamp((4 - D) / 3.2) * (.25 + lamp * .75) + flood * .7;
       figure(g, p.x, p.y, p.h, { lit: clamp(lit), pose: s.pose | 0, gaze: s.gaze || 0, bleach: flood > .4, alpha: p.a * (1 - dawn * 1.8) });
     }
+    if (s.ghost > .02 && D > 1 && D < 6) { const p = place(D - 1); figure(g, p.x, p.y, p.h, { lit: .5, pose: (s.pose | 0) + 2, gaze: 1, alpha: s.ghost * .9 }); }
     // rain
-    g.strokeStyle = 'rgba(180,205,225,.15)'; g.lineWidth = 1; g.beginPath();
-    for (const d of rain) { d[1] += d[2] * dt; d[0] -= d[2] * dt * .12; if (d[1] > H) { d[1] = -10; d[0] = Math.random() * (W + 40); } g.moveTo(d[0], d[1]); g.lineTo(d[0] - d[3] * .12, d[1] + d[3]); }
-    g.stroke();
+    if (theme === 'dispatch') { g.fillStyle = 'rgba(235,245,255,.55)'; for (const d of rain) { d[1] += d[2] * dt * .13; d[0] += Math.sin(t * .8 + d[3]) * dt * 14; if (d[1] > H) { d[1] = -6; d[0] = Math.random() * W; } g.fillRect(d[0], d[1], d[3] > 10 ? 2 : 1.3, d[3] > 10 ? 2 : 1.3); } }
+    else { g.strokeStyle = 'rgba(180,205,225,.15)'; g.lineWidth = 1; g.beginPath();
+      for (const d of rain) { d[1] += d[2] * dt; d[0] -= d[2] * dt * .12; if (d[1] > H) { d[1] = -10; d[0] = Math.random() * (W + 40); } g.moveTo(d[0], d[1]); g.lineTo(d[0] - d[3] * .12, d[1] + d[3]); }
+      g.stroke(); }
     if (flood > .01) { // the lot light: a hard white wash from above
       const fg = g.createLinearGradient(0, 0, 0, H); fg.addColorStop(0, `rgba(255,248,225,${.15 * flood})`); fg.addColorStop(.4, `rgba(255,244,210,${.6 * flood})`); fg.addColorStop(1, `rgba(255,236,190,${.3 * flood})`);
       g.globalCompositeOperation = 'lighter'; g.fillStyle = fg; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over';
@@ -176,5 +184,5 @@ const Scene = (() => {
     if (s.glitch > .02) for (let i = 0; i < 6; i++) { const y = Math.random() * H, h = 4 + Math.random() * 26, dx = (Math.random() - .5) * 70 * s.glitch; g.drawImage(cv, 0, y, W, h, dx, y, W, h); }
     if (s.face > 0) face(g, s.face);
   }
-  return { init, draw, figure, face, resize, get W() { return W; }, H };
+  return { init, draw, figure, face, resize, setTheme, get W() { return W; }, H };
 })();

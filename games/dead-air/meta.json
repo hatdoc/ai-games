@@ -1,6 +1,12 @@
 {
   "title": "Dead Air",
-  "description": "A night-shift horror game. You are the new late-night radio host, and something stands in the parking lot that only moves when you aren't looking. Answer the callers, decide who is real, push it back with the lot light, and follow Ray's rules until 6 AM. Short, loud and made for headphones.",
-  "tags": ["horror", "scary", "story", "survival", "atmospheric"],
-  "emoji": "📻"
+  "description": "A horror game in three nights: a late-night radio host, a motel night clerk, a 911 dispatcher. Something stands outside and only moves when you aren't looking. Decide which callers are real, push it back with the light, and survive until 6 AM. Short, loud and made for headphones.",
+  "tags": [
+    "horror",
+    "scary",
+    "story",
+    "survival",
+    "atmospheric"
+  ],
+  "emoji": "\ud83d\udcfb"
 }
