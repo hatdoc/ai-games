@@ -73,19 +73,67 @@
   #modal { position: fixed; inset: 0; z-index: 60; background: #000b; display: flex; align-items: center; justify-content: center; padding: 12px; }
   #modal .box { max-height: 100%; overflow-y: auto; text-align: center; }
   #lb { margin: 0 auto; }
+
+  /* ---- mystic theme ---- */
+  :root { --serif: "Cormorant Garamond", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif; --foil: linear-gradient(135deg, #fff3c4, #e6c35c 30%, #8a5a12 55%, #f7e2a0 80%, #c8932a); }
+  #sky { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; background: radial-gradient(ellipse at 50% 120%, #1a0b3d, #05030f 70%); }
+  .screen { background: transparent !important; animation: rise .8s cubic-bezier(.2, .8, .2, 1) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px) scale(.985); filter: blur(6px); } }
+  body { font-family: var(--serif), system-ui; letter-spacing: .2px; }
+  h1, h2, .grade, .arena b, .vs, button, label { font-family: var(--serif); }
+  h1 { font-weight: 700; letter-spacing: 8px; font-size: clamp(34px, 9vw, 60px); background: linear-gradient(100deg, #8a5a12 10%, #fff3c4 30%, #e6c35c 45%, #8a5a12 60%, #fff3c4 80%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: foil 6s linear infinite; filter: drop-shadow(0 0 18px #e6c35c66) drop-shadow(0 2px 0 #000a); }
+  @keyframes foil { to { background-position: -250% 0; } }
+  h1::after { content: "✦  ☽  ✦"; display: block; font-size: 16px; letter-spacing: 10px; margin-top: 10px; color: var(--gold); -webkit-text-fill-color: var(--gold); }
+  h2 { font-weight: 700; letter-spacing: 4px; text-transform: uppercase; font-size: 20px; color: #f7e2a0; text-shadow: 0 0 14px #e6c35c66; }
+  h2::before, h2::after { content: "✧"; margin: 0 12px; color: var(--gold); opacity: .8; }
+  .tag { font-style: italic; font-size: 17px; color: #cfc4f2; }
+  .sigil { position: absolute; top: -30px; left: 50%; width: 420px; height: 420px; margin-left: -210px; pointer-events: none; opacity: .3; animation: spin 90s linear infinite; z-index: -1; }
+  .sigil i { position: absolute; inset: 0; border: 1px dashed #e6c35c; border-radius: 50%; }
+  .sigil i + i { inset: 34px; border-style: solid; border-color: #e6c35c66; }
+  .sigil b { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px; text-align: center; line-height: 30px; font-size: 22px; color: #ffe9a8; font-weight: 400; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .box, .arena, #modal .box { position: relative; background: linear-gradient(160deg, rgba(40, 22, 84, .78), rgba(9, 6, 28, .88)); backdrop-filter: blur(10px); border: 1px solid transparent; border-radius: 16px;
+    background-clip: padding-box; box-shadow: 0 0 0 1px rgba(230, 195, 92, .35), 0 0 36px #6a3df033, inset 0 0 30px #00000066; }
+  .box::before, .box::after { content: "◆"; position: absolute; font-size: 10px; color: var(--gold); text-shadow: 0 0 8px var(--gold); top: -7px; left: -5px; }
+  .box::after { left: auto; right: -5px; bottom: -7px; top: auto; }
+  button { background: rgba(20, 12, 50, .6); border: 1px solid rgba(230, 195, 92, .5); letter-spacing: .6px; font-size: 16px; backdrop-filter: blur(6px); }
+  button:hover:not(:disabled) { border-color: #ffe9a8; box-shadow: 0 0 18px #e6c35c55; transform: translateY(-1px); }
+  button.cta { background: linear-gradient(110deg, #5a2fd0, #c23fa0, #5a2fd0); background-size: 220% 100%; border: 1px solid #ffe9a8aa; text-transform: uppercase; letter-spacing: 3px; font-size: 17px; animation: pulse 3s ease-in-out infinite, flow 5s linear infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 34px #c23fa0aa, 0 0 6px #ffe9a8 inset; } } @keyframes flow { to { background-position: -220% 0; } }
+  button.gold { background: var(--foil); background-size: 200% 200%; color: #2a1a00; text-shadow: 0 1px 0 #fff6; letter-spacing: 1px; animation: flow 6s linear infinite; }
+  input, select { background: rgba(5, 3, 20, .7); font-family: system-ui, sans-serif; border-color: rgba(230, 195, 92, .35); }
+  input:focus, select:focus { outline: 0; border-color: #ffe9a8; box-shadow: 0 0 16px #e6c35c55; }
+  label { letter-spacing: 2px; color: #cdb878; }
+  .arena { cursor: pointer; transition: transform .25s, box-shadow .25s; }
+  .arena:hover:not(:disabled) { transform: translateY(-4px) rotate(-.6deg); }
+  .arena big { filter: drop-shadow(0 0 12px #ffe9a8aa); font-size: 40px; }
+  .arena.sel { background: linear-gradient(160deg, rgba(120, 80, 10, .45), rgba(30, 14, 60, .9)); box-shadow: 0 0 0 2px #ffe9a8, 0 0 36px #e6c35c66; }
+  .vs span { background: rgba(20, 12, 50, .7); font-family: var(--serif); letter-spacing: 1px; }
+  .vs em { text-shadow: 0 0 16px var(--pink); font-size: 24px; }
+  #mycard { filter: drop-shadow(0 0 28px #6a3df088); animation: float 6s ease-in-out infinite; }
+  @keyframes float { 50% { transform: translateY(-8px); } }
+  .stat i { height: 6px; } .stat i b { background: linear-gradient(90deg, #5a2fd0, #e6c35c); box-shadow: 0 0 10px #e6c35c88; }
+  .pill, .banner { font-family: var(--serif); letter-spacing: .5px; }
+  .grade { animation: glow 3s ease-in-out infinite; } @keyframes glow { 50% { filter: drop-shadow(0 0 34px #ffe28a); } }
+  #res { background: radial-gradient(ellipse at 50% 30%, #1a0b3dd9, #02010bf2); }
+  .read { font-size: 16px; font-style: italic; color: #e6defa; }
+  .read div:first-child::first-letter { font-size: 30px; color: var(--gold); font-style: normal; }
+  @media (prefers-reduced-motion: reduce) { .screen, h1, .sigil, button.cta, button.gold, #mycard, .grade { animation: none !important; } }
 </style>
 </head>
 <body>
+<canvas id="sky"></canvas>
 <a id="home" href="https://rank-game.com/">← Home</a>
 <button id="mute" title="Sound">🔊</button>
 <script>if (top !== self) home.remove();</script>
 
 <div class="screen" id="create" hidden>
   <h1>Astrology<br>Wars</h1>
-  <div class="tag" id="createTag">Enter your birth details. Your Saju (Four Pillars) and Western chart become a cosmic fighter, then go to war with friends, rivals and the daily boss.</div>
+  <div class="tag" id="createTag">The stars wrote your name before you did. Give us the hour you arrived and we will forge your fate into a fighter.</div>
   <div class="banner" id="challenge" hidden></div>
   <form class="box" id="form" autocomplete="off">
-    <h2 id="formTitle" style="margin:0">Create your fighter</h2>
+    <h2 id="formTitle" style="margin:0">Unveil your fate</h2>
     <label>Name / nickname<input id="fName" maxlength="14" required placeholder="Star Slayer"></label>
     <label>Date of birth<input id="fDate" type="date" required min="1900-01-01"></label>
     <div class="row">
@@ -94,7 +142,7 @@
     </div>
     <label class="chk"><input id="fUnk" type="checkbox"> Birth time unknown (no Hour Pillar, no Rising sign)</label>
     <label>Birth city<select id="fCity"></select></label>
-    <button class="cta" id="fGo" type="submit">Summon fighter ✨</button>
+    <button class="cta" id="fGo" type="submit">Consult the stars ✨</button>
     <button type="button" id="fBack" hidden>Cancel</button>
     <div class="hint">Nothing is stored on a server. Your details stay in this browser, and only go into a link if you share it.</div>
   </form>
@@ -102,7 +150,7 @@
 
 <div class="screen" id="hub" hidden>
   <h1>Astrology<br>Wars</h1>
-  <div class="tag">Pick your opponent. Every fight is decided by real Saju pillars and sun, moon and rising signs.</div>
+  <div class="tag">Choose who dares to meet your fate. The pillars never lie.</div>
   <div class="hubgrid">
     <div style="display:grid;gap:10px;justify-items:center;width:100%">
       <canvas id="mycard" width="580" height="870"></canvas>
@@ -135,7 +183,7 @@
   <h2>Choose your arena</h2>
   <div class="vs"><span id="vsA"></span><em>VS</em><span id="vsB"></span></div>
   <div class="arenas" id="arenas"></div>
-  <button class="cta" id="go" style="margin-top:18px;font-size:20px;padding:14px 26px;letter-spacing:2px">⚔️ INITIATE WAR</button>
+  <button class="cta" id="go" style="margin-top:18px;font-size:20px;padding:14px 26px;letter-spacing:2px">⚔️ Initiate war</button>
   <div class="hint" id="arenaHint" style="margin-top:10px"></div>
   <button id="arBack" style="margin-top:10px">← Back</button>
 </div>
@@ -205,30 +253,38 @@ function drawCard(c, f, x, y, w, h, o = {}) {
   rr(c, 0, 0, w, h, 14 * u); c.fillStyle = g; c.fill(); c.shadowBlur = 0;
   c.lineWidth = 2.5 * u; c.strokeStyle = col; c.stroke();
   rr(c, 7 * u, 7 * u, w - 14 * u, h - 14 * u, 9 * u); c.lineWidth = 1 * u; c.strokeStyle = '#e6c35c99'; c.stroke();
-  c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillStyle = '#fff'; c.font = `900 ${Math.min(19, 190 / Math.max(8, f.name.length) * 1.5) * u}px system-ui, sans-serif`; c.fillText(f.name, w / 2, 26 * u, w - 30 * u);
-  c.fillStyle = '#e6c35c'; c.font = `800 ${9 * u}px system-ui, sans-serif`; c.fillText((o.sub || `${dmName(f)} Day Master`).toUpperCase(), w / 2, 42 * u, w - 24 * u);
+  c.textBaseline = 'middle';
+  // starfield + constellation inside the card, like a tarot print
+  { const r = AW.mulberry(AW.hash(f.name + f.sun)); c.fillStyle = '#fff';
+    for (let i = 0; i < 26; i++) { c.globalAlpha = .2 + r() * .6; c.fillRect(14 * u + r() * (w - 28 * u), 50 * u + r() * (h * .52), 1.2 * u, 1.2 * u); } c.globalAlpha = o.dim ? .45 : 1;
+    const pts = Array.from({ length: 7 }, (_, i) => { const a = i / 7 * 6.283 + r() * .5, d = w * (.34 + r() * .08); return [w / 2 + Math.cos(a) * d, h * .33 + Math.sin(a) * d * .9]; });
+    c.strokeStyle = col + '77'; c.lineWidth = .8 * u; c.beginPath(); pts.forEach((p, i) => c[i ? 'lineTo' : 'moveTo'](...p)); c.stroke();
+    c.fillStyle = '#ffe9a8'; pts.forEach((p) => { c.beginPath(); c.arc(p[0], p[1], 1.8 * u, 0, 7); c.fill(); }); }
+  c.fillStyle = '#e6c35c'; for (const [px, py] of [[7, 7], [w / u - 7, 7], [7, h / u - 7], [w / u - 7, h / u - 7]]) { c.beginPath(); c.moveTo(px * u, py * u - 5 * u); c.lineTo(px * u + 4 * u, py * u); c.lineTo(px * u, py * u + 5 * u); c.lineTo(px * u - 4 * u, py * u); c.fill(); }
+  c.textAlign = 'center';
+  c.fillStyle = '#fff'; c.font = `900 ${Math.min(19, 190 / Math.max(8, f.name.length) * 1.5) * u}px Palatino, 'Palatino Linotype', Georgia, serif`; c.fillText(f.name, w / 2, 26 * u, w - 30 * u);
+  c.fillStyle = '#e6c35c'; c.font = `800 ${9 * u}px Palatino, 'Palatino Linotype', Georgia, serif`; c.fillText((o.sub || `${dmName(f)} Day Master`).toUpperCase(), w / 2, 42 * u, w - 24 * u);
   // sigil: sun-sign glyph in an element-coloured ring
   const cy = h * .33, R = w * .27, rg = c.createRadialGradient(w / 2, cy, 2, w / 2, cy, R * 1.5);
   rg.addColorStop(0, col + 'aa'); rg.addColorStop(1, '#0000'); c.fillStyle = rg; c.fillRect(0, cy - R * 1.6, w, R * 3.2);
   c.strokeStyle = col; c.lineWidth = 2 * u; c.beginPath(); c.arc(w / 2, cy, R, 0, 7); c.stroke();
   c.setLineDash([3 * u, 5 * u]); c.strokeStyle = '#e6c35caa'; c.beginPath(); c.arc(w / 2, cy, R * 1.15, 0, 7); c.stroke(); c.setLineDash([]);
   c.fillStyle = '#fff'; c.font = `${R * 1.15}px "Apple Symbols", "Segoe UI Symbol", system-ui, sans-serif`; c.fillText(GLYPH[f.sun] + '︎', w / 2, cy + R * .06);
-  c.fillStyle = '#e6c35c'; c.font = `800 ${10 * u}px system-ui, sans-serif`; c.fillText(`Sun in ${SIGNS[f.sun]}  ·  Year of the ${ANIMALS[f.pillars.year[1]]}`, w / 2, cy + R * 1.45, w - 20 * u);
+  c.fillStyle = '#e6c35c'; c.font = `800 ${10 * u}px Palatino, 'Palatino Linotype', Georgia, serif`; c.fillText(`Sun in ${SIGNS[f.sun]}  ·  Year of the ${ANIMALS[f.pillars.year[1]]}`, w / 2, cy + R * 1.45, w - 20 * u);
   // four pillars
   const P = [['Hour', f.pillars.hour], ['Day', f.pillars.day], ['Month', f.pillars.month], ['Year', f.pillars.year]], pw = (w - 28 * u) / 4, py = h * .6;
   P.forEach(([lab, p], i) => {
     const px = 14 * u + i * pw;
     c.fillStyle = '#ffffff10'; rr(c, px + 2 * u, py, pw - 4 * u, h * .2, 6 * u); c.fill();
-    c.fillStyle = '#a99fcf'; c.font = `800 ${7.5 * u}px system-ui, sans-serif`; c.fillText(lab.toUpperCase(), px + pw / 2, py + 9 * u);
-    if (!p) { c.fillStyle = '#a99fcf'; c.font = `900 ${20 * u}px system-ui, sans-serif`; c.fillText('?', px + pw / 2, py + h * .1 + 4 * u); return; }
-    c.fillStyle = EL_COLOR[Math.floor(p[0] / 2)]; c.font = `900 ${10.5 * u}px system-ui, sans-serif`; c.fillText(STEMS[p[0]], px + pw / 2, py + h * .075);
+    c.fillStyle = '#a99fcf'; c.font = `800 ${7.5 * u}px Palatino, 'Palatino Linotype', Georgia, serif`; c.fillText(lab.toUpperCase(), px + pw / 2, py + 9 * u);
+    if (!p) { c.fillStyle = '#a99fcf'; c.font = `900 ${20 * u}px Palatino, 'Palatino Linotype', Georgia, serif`; c.fillText('?', px + pw / 2, py + h * .1 + 4 * u); return; }
+    c.fillStyle = EL_COLOR[Math.floor(p[0] / 2)]; c.font = `900 ${10.5 * u}px Palatino, 'Palatino Linotype', Georgia, serif`; c.fillText(STEMS[p[0]], px + pw / 2, py + h * .075);
     c.fillStyle = EL_COLOR[[4, 2, 0, 0, 2, 1, 1, 2, 3, 3, 2, 4][p[1]]]; c.fillText(BRANCHES[p[1]], px + pw / 2, py + h * .135);
   });
   // element bar + signs
   const ey = h * .85, tot = f.counts.reduce((s, n) => s + n, 0) || 1; let ex = 16 * u;
   f.counts.forEach((n, i) => { const bw = (w - 32 * u) * n / tot; if (n) { c.fillStyle = EL_COLOR[i]; c.fillRect(ex, ey, bw, 5 * u); ex += bw; } });
-  c.fillStyle = '#f4f0ff'; c.font = `700 ${9 * u}px system-ui, sans-serif`;
+  c.fillStyle = '#f4f0ff'; c.font = `700 ${9 * u}px Palatino, 'Palatino Linotype', Georgia, serif`;
   c.fillText(`☽ ${SIGNS[f.moon]}${f.moonApprox ? '~' : ''}   ↑ ${f.asc === null ? 'Rising ?' : SIGNS[f.asc]}`, w / 2, ey + 18 * u, w - 16 * u);
   c.restore();
 }
@@ -245,8 +301,8 @@ function showHub() {
 function goCreate(mode) { // mode: 'me' | 'friend'
   addMode = mode === 'friend';
   show('create');
-  $('formTitle').textContent = addMode ? "Enter your friend's details" : me ? 'Edit your fighter' : 'Create your fighter';
-  $('fGo').textContent = addMode ? 'Fight them ⚔️' : 'Summon fighter ✨';
+  $('formTitle').textContent = addMode ? "Enter your friend's details" : me ? 'Edit your fighter' : 'Unveil your fate';
+  $('fGo').textContent = addMode ? 'Fight them ⚔️' : 'Consult the stars ✨';
   $('fBack').hidden = !(me || addMode); $('challenge').hidden = !chal || addMode;
   if (chal) $('challenge').innerHTML = `⚔️ <b>${esc(chal.name)}</b> has challenged you to Astrology Wars. Enter your birth details to fight back.`;
   const f = addMode ? null : meRaw;
@@ -451,6 +507,30 @@ async function sharePoster() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'astrology-wars.png'; a.click(); toast('Score card saved 📸');
 }
 function wrap(g, text, x, y, mw, lh) { let line = '', yy = y; for (const w of text.split(' ')) { const t = line + w + ' '; if (g.measureText(t).width > mw && line) { g.fillText(line.trim(), x, yy); line = w + ' '; yy += lh; } else line = t; } g.fillText(line.trim(), x, yy); }
+
+
+// ---- mystic background: drifting nebulae, twinkling stars, shooting stars, pointer sparkles ----------------------------
+const sky = $('sky'), sc = sky.getContext('2d'), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let SW = 0, SH = 0, sstars = [], shoot = null, sparks = [];
+const skyFit = () => { SW = sky.width = innerWidth; SH = sky.height = innerHeight; sstars = Array.from({ length: Math.round(SW * SH / 5500) }, () => ({ x: Math.random() * SW, y: Math.random() * SH, r: Math.random() * 1.5 + .2, p: Math.random() * 9, s: .5 + Math.random() * 1.5 })); };
+skyFit(); addEventListener('resize', skyFit);
+addEventListener('pointermove', (e) => { if (!still && sparks.length < 60) sparks.push({ x: e.clientX, y: e.clientY, vx: (Math.random() - .5) * 30, vy: Math.random() * 30 + 10, l: .9 }); });
+const NEB = [['#5b2fd8', .22, .3, .2], ['#c23fa0', .16, .75, .35], ['#1f7ad6', .18, .5, .85]];
+(function skyLoop(ms) {
+  if ($('war').hidden) {
+    const t = ms / 1000; sc.clearRect(0, 0, SW, SH);
+    NEB.forEach(([c, a, bx, by], i) => { const x = SW * (bx + .08 * Math.sin(t * .05 + i * 2)), y = SH * (by + .06 * Math.cos(t * .07 + i)), r = Math.max(SW, SH) * .5, g = sc.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, c + Math.round(a * 255).toString(16).padStart(2, '0')); g.addColorStop(1, c + '00'); sc.fillStyle = g; sc.fillRect(0, 0, SW, SH); });
+    for (const s of sstars) { sc.globalAlpha = .25 + .75 * Math.abs(Math.sin(t * s.s + s.p)); sc.fillStyle = s.r > 1.2 ? '#ffe9a8' : '#fff'; sc.fillRect(s.x, s.y, s.r, s.r); } sc.globalAlpha = 1;
+    if (!still) {
+      if (!shoot && Math.random() < .004) shoot = { x: Math.random() * SW, y: Math.random() * SH * .4, l: 1 };
+      if (shoot) { shoot.x += 14; shoot.y += 6; shoot.l -= .02; const g = sc.createLinearGradient(shoot.x - 120, shoot.y - 50, shoot.x, shoot.y); g.addColorStop(0, '#fff0'); g.addColorStop(1, '#fff'); sc.strokeStyle = g; sc.globalAlpha = Math.max(0, shoot.l); sc.lineWidth = 2; sc.beginPath(); sc.moveTo(shoot.x - 120, shoot.y - 50); sc.lineTo(shoot.x, shoot.y); sc.stroke(); sc.globalAlpha = 1; if (shoot.l <= 0) shoot = null; }
+      for (const p of sparks) { p.x += p.vx / 60; p.y += p.vy / 60; p.l -= .025; sc.globalAlpha = Math.max(0, p.l); sc.fillStyle = '#ffe9a8'; sc.fillRect(p.x, p.y, 2.5, 2.5); } sc.globalAlpha = 1; sparks = sparks.filter((p) => p.l > 0);
+    }
+  }
+  requestAnimationFrame(skyLoop);
+})(0);
+// slowly turning zodiac wheel behind each title
+document.querySelectorAll('.screen').forEach((sc2) => { if (sc2.querySelector('h1')) sc2.insertAdjacentHTML('afterbegin', `<div class="sigil"><i></i><i></i>${GLYPH.map((g, i) => `<b style="transform:rotate(${i * 30}deg) translateY(-196px) rotate(${-i * 30}deg)">${g}\uFE0E</b>`).join('')}</div>`); });
 
 // ---- boot --------------------------------------------------------------------------------------------------------------------------------------------
 (function boot() {
