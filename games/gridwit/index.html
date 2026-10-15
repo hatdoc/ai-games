@@ -160,7 +160,7 @@
     <p class="tagline">Guess the word. Outwit the owl. 🦉</p>
     <div class="modes">
       <button class="mode" data-go="daily"><span class="em">📅</span><b>Daily</b><small>5 fresh words a day, one per difficulty. Leaderboards!</small><span class="done" id="dailyDone"></span></button>
-      <button class="mode" data-go="gauntlet"><span class="em">🔥</span><b>Gauntlet</b><small>Endless words that get longer. One miss ends it.</small><span class="done" id="gBest"></span></button>
+      <button class="mode" data-go="gauntlet"><span class="em">🔥</span><b>Gauntlet</b><small>Endless words that get longer. One spare row, then one miss ends it.</small><span class="done" id="gBest"></span></button>
       <button class="mode" data-go="rush"><span class="em">⏱️</span><b>Rush</b><small>3 minutes. Solve fast to earn more time.</small><span class="done" id="rBest"></span></button>
       <button class="mode" data-go="fib"><span class="em">🤥</span><b>Fib</b><small>One tile in every row is lying. Trust nobody.</small></button>
       <button class="mode wide" data-go="practice"><span class="em">🎲</span><span><b>Practice</b><br><small>Any difficulty, unlimited words, no pressure.</small></span></button>
@@ -389,11 +389,12 @@ function renderRail() {
   const cost = free ? 'free' : G.mode === 'practice' || G.mode === 'challenge' ? '' : `−${Math.round(150 * t.mult)}`;
   let h = '';
   if (!noHints) h += `<button class="pw" id="pinB" ${left <= 0 || G.done ? 'disabled' : ''}>📍 Pin<span class="cost">${cost}</span></button><button class="pw" id="sweepB" ${left <= 0 || G.done ? 'disabled' : ''}>🧹 Sweep<span class="cost">${cost}</span></button>`;
-  if (G.mode === 'gauntlet') h += `<span class="chip">🪶 Spare rows ×${G.gauntlet.spares}</span>`;
+  if (G.mode === 'gauntlet') h += `<span class="chip">🪶 Spare rows ×${G.gauntlet.spares}</span><button class="pw" id="giveB" ${G.done ? 'disabled' : ''}>🏳️ Give up</button>`;
   if (G.mode === 'league') h += `<span class="chip">🏆 ${esc(G.league.name)}</span>`;
   if (G.mode === 'fib') h += `<span class="muted" style="font-size:12.5px">Long-press a tile to mark a liar 🤥 · keys with a white ring are best guesses</span>`;
   if (G.mode === 'rush') h += `<span class="chip">⭐ ${G.rush.score} · ${G.rush.solved} solved</span>`;
   $('rail').innerHTML = h;
+  $('giveB') && ($('giveB').onclick = () => { if (!G.done && !G.busy && confirm('End the run and rank with your current score?')) lose(0); });
   $('pinB') && ($('pinB').onclick = () => useHint('pin')); $('sweepB') && ($('sweepB').onclick = () => useHint('sweep'));
 }
 function topBar() {
@@ -540,10 +541,10 @@ function startDaily(tier, kind = '') {
     showScreen('game'); layout(); render(); renderKeys(); $('rail').innerHTML = ''; topBar(); say('You already played this one today. Come back tomorrow!', 'smug'); return showResults(rec.score, true); }
   newGame(kind ? 'fib' : 'daily', kind ? 'normal' : tier, { answer, seed: `daily-${d}-${key}`, daily: { key, date: d } });
 }
-function startGauntlet() { const g = { solved: 0, score: 0, spares: 0 }; newGame('gauntlet', 'easy', { answer: GW.randomWord('easy'), gauntlet: g }); }
+function startGauntlet() { const g = { solved: 0, score: 0, spares: 1 }; newGame('gauntlet', 'easy', { answer: GW.randomWord('easy'), gauntlet: g }); }
 async function gauntletNext(used) {
   const g = G.gauntlet, t = G.tier;
-  g.score += GW.solveScore(t, used, G.hintsCost, G.tries); g.solved++; g.spares = Math.min(5, g.spares + (G.tries - used));
+  g.score += GW.solveScore(t, used, G.hintsCost, G.tries); g.solved++; 
   topBar(); await sleep(1200);
   if (g.solved % 3 === 0 && g.solved / 3 < TIER_IDS.length) toast(`Level up! Now ${T[GW.gauntletTier(g.solved)].name}: ${T[GW.gauntletTier(g.solved)].len} letters`, 2200);
   const nt = GW.gauntletTier(g.solved); newGame('gauntlet', nt, { answer: GW.randomWord(nt), gauntlet: g });
