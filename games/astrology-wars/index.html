@@ -488,13 +488,13 @@ function showResult() {
     <div class="hint">${SECTORS[r.sec].icon} ${SECTORS[r.sec].name} · ${esc(me.name)} <b>${r.a}</b> vs <b>${r.b}</b> ${esc(opp.name)}</div>
     <div><span class="pill">${esc(r.compat.line)}</span></div>
     <div class="read">${rd.body.map((l) => `<div>${esc(l)}</div>`).join('')}</div>
-    ${daily ? '<div id="lb"></div>' : ''}
+    ${daily ? '<div class="hint">🌑 Today\'s boss</div><div id="lb"></div><div class="hint">🏆 All-time &amp; weekly best damage</div><div id="lb2"></div>' : ''}
     <button class="gold" id="rPoster">📸 Share score card</button>
     ${oppKind === 'friend' || chal ? '<button id="rLink">🔗 Send my challenge link</button>' : ''}
     <button class="${lose ? 'cta' : ''}" id="rRe">${lose ? '🔥 REVENGE: pick a new arena' : win ? '⚔️ Rematch in another arena' : '🔄 Try another arena'}</button>
     <button id="rDone">Done</button></div>`;
   $('res').hidden = false; $('res').scrollTop = 0;
-  if (daily) { const lb = leaderboard($('lb'), 'astrology-wars_d' + dayKey()); lb.show(Math.round(r.a * 10)); }
+  if (daily) { const lb = leaderboard($('lb'), 'astrology-wars_d' + dayKey()); lb.show(Math.round(r.a * 10)); leaderboard($('lb2'), 'astrology-wars').show(Math.round(r.a * 10)); }
   $('rPoster').onclick = sharePoster;
   if ($('rLink')) $('rLink').onclick = () => $('mFriend').click();
   $('rRe').onclick = () => { cancelAnimationFrame(startWar.raf); $('war').hidden = true; toArena(); };
@@ -554,7 +554,7 @@ document.querySelectorAll('.screen').forEach((sc2) => { if (sc2.querySelector('h
   const m = /[#&]c=([A-Za-z0-9_-]+)/.exec(location.hash), p = m && AW.unpack(m[1]);
   if (p) { const raw = { ...p, city: CITIES[p.city] ? p.city : -1, g: p.g }; chal = { name: p.n, chart: mk(raw) }; }
   if (location.hash === '#demo') return startDemo();
-  leaderboard(document.createElement('div'), 'astrology-wars_d' + dayKey()); // tells the site this game has a board
+  leaderboard(document.createElement('div'), 'astrology-wars'); // tells the site this game has a board
   if (me && chal) { opp = chal.chart; oppKind = 'friend'; toArena(); } else if (me) showHub(); else goCreate('me');
 })();
 function startDemo() { // for the preview clip: auto-plays a fight against the daily boss
