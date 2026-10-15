@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Astrology Wars</title>
+<style>
+  :root { --bg: #070516; --ink: #f4f0ff; --mut: #a99fcf; --panel: rgba(24, 16, 52, .92); --line: rgba(230, 195, 92, .28); --gold: #e6c35c; --blue: #5ad1ff; --pink: #ff4fa3; }
+  [hidden] { display: none !important; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden;
+    font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 1px solid var(--line); background: rgba(255, 255, 255, .06); border-radius: 12px; padding: 11px 14px; font-weight: 800; transition: transform .12s, background .2s; }
+  button:active { transform: scale(.96); }
+  button:disabled { opacity: .4; cursor: default; }
+  button.cta { background: linear-gradient(90deg, #7b4dff, #ff4fa3); border: 0; color: #fff; box-shadow: 0 0 22px #7b4dff66; }
+  button.gold { background: linear-gradient(90deg, #e6c35c, #ffdf8a); border: 0; color: #2a1d00; }
+  input, select { width: 100%; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, .4); font-weight: 700; color-scheme: dark; }
+  label { display: grid; gap: 4px; font-size: 12px; font-weight: 800; color: var(--mut); letter-spacing: .5px; text-transform: uppercase; }
+  label.chk { display: flex; align-items: center; gap: 8px; text-transform: none; font-size: 13px; }
+  label.chk input { width: auto; }
+  .screen { position: fixed; inset: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 44px 12px 40px; z-index: 10;
+    background: radial-gradient(ellipse at 20% -10%, #3b1a7a 0%, transparent 55%), radial-gradient(ellipse at 90% 110%, #0d3a6b 0%, transparent 50%), var(--bg); }
+  .screen > * { flex-shrink: 0; }
+  #home { position: fixed; top: 10px; left: 10px; color: var(--ink); text-decoration: none; font-weight: 800; font-size: 13px; padding: 6px 10px; z-index: 40; }
+  #mute { position: fixed; top: 8px; right: 10px; z-index: 40; padding: 5px 10px; background: #0006; }
+  h1 { margin: 6px 0 0; font-size: clamp(38px, 10vw, 66px); font-weight: 900; letter-spacing: 3px; text-align: center; line-height: 1; text-transform: uppercase;
+    background: linear-gradient(180deg, #fff3c4, #e6c35c 55%, #a8741a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 14px #e6c35c55); }
+  h2 { margin: 6px 0 8px; font-size: 24px; text-align: center; letter-spacing: 1px; }
+  .tag { color: var(--mut); text-align: center; margin: 10px 0 14px; font-weight: 600; max-width: 480px; line-height: 1.45; }
+  .box { width: min(480px, 100%); padding: 16px; display: grid; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 0 40px #5b2fd822; }
+  .row { display: flex; gap: 8px; } .row > * { flex: 1; }
+  .banner { width: min(480px, 100%); text-align: center; padding: 10px 14px; border-radius: 14px; background: linear-gradient(90deg, #ff4fa355, #7b4dff55); border: 1px solid var(--pink); font-weight: 800; margin-bottom: 10px; }
+  .hubgrid { display: grid; grid-template-columns: minmax(0, 290px) minmax(0, 1fr); gap: 16px; width: min(820px, 100%); align-items: start; }
+  @media (max-width: 700px) { .hubgrid { grid-template-columns: 1fr; justify-items: center; } }
+  #mycard { width: min(290px, 78vw); aspect-ratio: 2 / 3; display: block; border-radius: 16px; }
+  .stat { display: grid; grid-template-columns: 78px 1fr 30px; gap: 8px; align-items: center; font-size: 13px; font-weight: 800; }
+  .stat i { display: block; height: 8px; border-radius: 4px; background: #ffffff18; overflow: hidden; }
+  .stat i b { display: block; height: 100%; background: linear-gradient(90deg, #7b4dff, #5ad1ff); border-radius: 4px; }
+  .els { display: flex; gap: 6px; flex-wrap: wrap; }
+  .els span { padding: 3px 9px; border-radius: 99px; font-size: 12px; font-weight: 800; background: #ffffff12; border: 1px solid #ffffff22; }
+  .menu { display: grid; gap: 10px; width: 100%; }
+  .menu button { text-align: left; display: grid; gap: 2px; padding: 12px 14px; }
+  .menu button small { font-weight: 600; color: var(--mut); font-size: 12px; }
+  .bosses { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; width: min(760px, 100%); }
+  .bosses button { display: grid; gap: 2px; text-align: left; }
+  .bosses small { font-weight: 600; color: var(--mut); }
+  .arenas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: min(560px, 100%); }
+  .arena { display: grid; gap: 4px; justify-items: center; padding: 18px 8px; text-align: center; border-radius: 18px; background: var(--panel); border: 2px solid var(--line); }
+  .arena big { font-size: 34px; } .arena b { font-size: 15px; } .arena small { color: var(--mut); font-weight: 600; font-size: 12px; }
+  .arena.sel { border-color: var(--gold); background: rgba(230, 195, 92, .14); box-shadow: 0 0 24px #e6c35c44; }
+  .arena.edge { border-color: #4dff9d; box-shadow: 0 0 20px #4dff9d55; }
+  .vs { display: flex; align-items: center; gap: 14px; margin: 4px 0 14px; font-weight: 900; font-size: 18px; }
+  .vs span { padding: 6px 12px; border-radius: 12px; background: #ffffff12; border: 1px solid var(--line); max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vs em { color: var(--pink); font-style: normal; }
+  .hint { color: var(--mut); font-size: 12px; text-align: center; font-weight: 600; line-height: 1.5; }
+  details { color: var(--mut); font-size: 13px; line-height: 1.55; } details summary { cursor: pointer; font-weight: 800; color: var(--ink); }
+  abbr { text-decoration: underline dotted var(--gold); cursor: help; }
+  #toast { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); background: #000d; border: 1px solid var(--line); padding: 10px 16px; border-radius: 12px; font-weight: 700; z-index: 90; max-width: 90vw; text-align: center; }
+  #war { position: fixed; inset: 0; z-index: 30; background: #000; }
+  #cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #skip { position: absolute; bottom: 14px; right: 14px; z-index: 3; background: #0008; padding: 6px 12px; font-size: 13px; }
+  #res { position: absolute; inset: 0; z-index: 4; overflow-y: auto; padding: 14px 10px 30px; display: flex; flex-direction: column; align-items: center; background: #05030fe6; animation: fade .7s both; }
+  @keyframes fade { from { opacity: 0; transform: translateY(14px); } }
+  #res .box { gap: 10px; text-align: center; margin: auto 0; }
+  .grade { font-size: 84px; line-height: .95; font-weight: 900; background: linear-gradient(180deg, #fff3c4, #e6c35c 55%, #a8741a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 18px #e6c35c88); }
+  .read { text-align: left; font-size: 14px; line-height: 1.55; display: grid; gap: 7px; }
+  .pill { display: inline-block; padding: 7px 14px; border-radius: 99px; font-weight: 900; background: #ffffff14; border: 1px solid var(--line); }
+  .qrbox { display: grid; justify-items: center; gap: 8px; }
+  .qrbox canvas { background: #fff; padding: 8px; border-radius: 10px; width: 200px; height: 200px; image-rendering: pixelated; }
+  .qrbox input { font-size: 12px; }
+  #modal { position: fixed; inset: 0; z-index: 60; background: #000b; display: flex; align-items: center; justify-content: center; padding: 12px; }
+  #modal .box { max-height: 100%; overflow-y: auto; text-align: center; }
+  #lb { margin: 0 auto; }
+</style>
+</head>
+<body>
+<a id="home" href="https://rank-game.com/">← Home</a>
+<button id="mute" title="Sound">🔊</button>
+<script>if (top !== self) home.remove();</script>
+
+<div class="screen" id="create" hidden>
+  <h1>Astrology<br>Wars</h1>
+  <div class="tag" id="createTag">Enter your birth details. Your Saju (Four Pillars) and Western chart become a cosmic fighter, then go to war with friends, rivals and the daily boss.</div>
+  <div class="banner" id="challenge" hidden></div>
+  <form class="box" id="form" autocomplete="off">
+    <h2 id="formTitle" style="margin:0">Create your fighter</h2>
+    <label>Name / nickname<input id="fName" maxlength="14" required placeholder="Star Slayer"></label>
+    <label>Date of birth<input id="fDate" type="date" required min="1900-01-01"></label>
+    <div class="row">
+      <label>Time of birth<input id="fTime" type="time" value="12:00"></label>
+      <label>Gender<select id="fGender"><option value="f">Female</option><option value="m">Male</option><option value="x">Non-binary</option><option value="n">Prefer not to say</option></select></label>
+    </div>
+    <label class="chk"><input id="fUnk" type="checkbox"> Birth time unknown (no Hour Pillar, no Rising sign)</label>
+    <label>Birth city<select id="fCity"></select></label>
+    <button class="cta" id="fGo" type="submit">Summon fighter ✨</button>
+    <button type="button" id="fBack" hidden>Cancel</button>
+    <div class="hint">Nothing is stored on a server. Your details stay in this browser, and only go into a link if you share it.</div>
+  </form>
+</div>
+
+<div class="screen" id="hub" hidden>
+  <h1>Astrology<br>Wars</h1>
+  <div class="tag">Pick your opponent. Every fight is decided by real Saju pillars and sun, moon and rising signs.</div>
+  <div class="hubgrid">
+    <div style="display:grid;gap:10px;justify-items:center;width:100%">
+      <canvas id="mycard" width="580" height="870"></canvas>
+      <button id="editMe">✏️ Edit my chart</button>
+    </div>
+    <div style="display:grid;gap:12px;min-width:0">
+      <div class="box" id="statsBox"></div>
+      <div class="menu">
+        <button class="cta" id="mFriend">🔗 Battle a Friend<small>Get a challenge link or QR code. They enter their birth info and fight you.</small></button>
+        <button id="mAdd">👥 Add a friend's data<small>Type in their birth details and fight them right now.</small></button>
+        <button id="mBoss">🏛️ Random boss<small>Face a historical legend or a random rival.</small></button>
+        <button class="gold" id="mDaily">🌑 Daily Cosmic Boss<small id="dailySub"></small></button>
+      </div>
+      <details class="box"><summary>How does this work?</summary>
+        <p><b><abbr title="Saju (사주, Four Pillars of Destiny): a Korean/Chinese system that reads the year, month, day and hour of birth as four pairs of Heavenly Stem + Earthly Branch.">Saju</abbr></b> gives you four pillars. Each stem and branch belongs to one of the <b><abbr title="Wu Xing / Ohaeng: Wood feeds Fire, Fire makes Earth, Earth bears Metal, Metal carries Water, Water grows Wood. Wood breaks Earth, Earth dams Water, Water douses Fire, Fire melts Metal, Metal cuts Wood.">Five Elements</abbr></b>. Your <b><abbr title="Day Master (일간): the stem of your Day Pillar. It stands for 'you' and every other character is read against it.">Day Master</abbr></b> is the heart of the chart.</p>
+        <p>Stats: <b>Charm</b> comes from Fire/Water and the <abbr title="Peach Blossom (도화살, Do-hwa): a Saju star of magnetism and romance.">Peach Blossom</abbr> star. <b>Wealth</b> is what your Day Master controls. <b>Intellect</b> is what it creates plus what feeds it. <b>Grit</b> is your own element. <b>Influence</b> is what controls you. Sun, Moon and Rising signs add a little extra.</p>
+        <p>When one Day Master controls the other (Water douses Fire), the attacker gets +6% power. Month boundaries use approximate solar-term dates, and the Moon is accurate to about a degree. Entertainment, not prophecy.</p>
+      </details>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="bossScr" hidden>
+  <h2>Choose a boss</h2>
+  <div class="bosses" id="bossList"></div>
+  <div class="row" style="width:min(480px,100%);margin-top:14px"><button id="rival">🎲 Random rival</button><button id="bossBack">← Back</button></div>
+</div>
+
+<div class="screen" id="arena" hidden>
+  <h2>Choose your arena</h2>
+  <div class="vs"><span id="vsA"></span><em>VS</em><span id="vsB"></span></div>
+  <div class="arenas" id="arenas"></div>
+  <button class="cta" id="go" style="margin-top:18px;font-size:20px;padding:14px 26px;letter-spacing:2px">⚔️ INITIATE WAR</button>
+  <div class="hint" id="arenaHint" style="margin-top:10px"></div>
+  <button id="arBack" style="margin-top:10px">← Back</button>
+</div>
+
+<div id="war" hidden>
+  <canvas id="cv"></canvas>
+  <button id="skip">Skip ⏭</button>
+  <div id="res" hidden></div>
+</div>
+<div id="modal" hidden><div class="box" id="modalBox"></div></div>
+<div id="toast" hidden></div>
+
+<script src="engine.js"></script>
+<script src="../cloudsave.js" data-game="astrology-wars" data-keys="aw-me"></script>
+<script src="../leaderboard.js"></script>
+<script>
+const $ = (id) => document.getElementById(id), { SECTORS, STATS, STAT_NAME, EL, EL_COLOR, SIGNS, GLYPH, STEMS, BRANCHES, ANIMALS } = AW;
+const SHARE = 'https://rank-game.com/games/astrology-wars';
+const CITIES = [['New York', 'America/New_York', 40.7, -74], ['Los Angeles', 'America/Los_Angeles', 34.05, -118.2], ['Chicago', 'America/Chicago', 41.9, -87.6], ['Houston', 'America/Chicago', 29.8, -95.4], ['Denver', 'America/Denver', 39.7, -105], ['Seattle', 'America/Los_Angeles', 47.6, -122.3], ['Miami', 'America/New_York', 25.8, -80.2], ['Anchorage', 'America/Anchorage', 61.2, -149.9], ['Honolulu', 'Pacific/Honolulu', 21.3, -157.9],
+  ['Toronto', 'America/Toronto', 43.7, -79.4], ['Vancouver', 'America/Vancouver', 49.3, -123.1], ['Mexico City', 'America/Mexico_City', 19.4, -99.1], ['Bogotá', 'America/Bogota', 4.7, -74.1], ['Lima', 'America/Lima', -12, -77], ['Santiago', 'America/Santiago', -33.4, -70.7], ['São Paulo', 'America/Sao_Paulo', -23.5, -46.6], ['Buenos Aires', 'America/Argentina/Buenos_Aires', -34.6, -58.4],
+  ['London', 'Europe/London', 51.5, -0.1], ['Dublin', 'Europe/Dublin', 53.3, -6.3], ['Lisbon', 'Europe/Lisbon', 38.7, -9.1], ['Madrid', 'Europe/Madrid', 40.4, -3.7], ['Paris', 'Europe/Paris', 48.9, 2.35], ['Amsterdam', 'Europe/Amsterdam', 52.4, 4.9], ['Berlin', 'Europe/Berlin', 52.5, 13.4], ['Rome', 'Europe/Rome', 41.9, 12.5], ['Stockholm', 'Europe/Stockholm', 59.3, 18.1], ['Kyiv', 'Europe/Kyiv', 50.45, 30.5], ['Istanbul', 'Europe/Istanbul', 41, 29], ['Moscow', 'Europe/Moscow', 55.75, 37.6],
+  ['Cairo', 'Africa/Cairo', 30, 31.2], ['Lagos', 'Africa/Lagos', 6.5, 3.4], ['Nairobi', 'Africa/Nairobi', -1.3, 36.8], ['Johannesburg', 'Africa/Johannesburg', -26.2, 28], ['Tehran', 'Asia/Tehran', 35.7, 51.4], ['Dubai', 'Asia/Dubai', 25.2, 55.3], ['Karachi', 'Asia/Karachi', 24.9, 67], ['Delhi', 'Asia/Kolkata', 28.6, 77.2], ['Mumbai', 'Asia/Kolkata', 19.1, 72.9], ['Dhaka', 'Asia/Dhaka', 23.8, 90.4], ['Bangkok', 'Asia/Bangkok', 13.75, 100.5], ['Jakarta', 'Asia/Jakarta', -6.2, 106.8], ['Singapore', 'Asia/Singapore', 1.35, 103.8], ['Manila', 'Asia/Manila', 14.6, 121], ['Hong Kong', 'Asia/Hong_Kong', 22.3, 114.2], ['Shanghai', 'Asia/Shanghai', 31.2, 121.5], ['Beijing', 'Asia/Shanghai', 39.9, 116.4], ['Seoul', 'Asia/Seoul', 37.55, 127], ['Tokyo', 'Asia/Tokyo', 35.7, 139.7],
+  ['Sydney', 'Australia/Sydney', -33.9, 151.2], ['Melbourne', 'Australia/Melbourne', -37.8, 145], ['Auckland', 'Pacific/Auckland', -36.85, 174.8]];
+$('fCity').innerHTML = CITIES.map((c, i) => `<option value="${i}">${c[0]}</option>`).join('') + '<option value="-1">Other (use my device time zone, no Rising sign)</option>';
+
+const BOSSES = [ // [name, title, y, m, d, h, mi, tz hours (LMT/standard), lat, lon]
+  ['Albert Einstein', 'The Relativity Rebel', 1879, 3, 14, 11, 30, .667, 48.4, 10], ['Napoleon', 'The Little Emperor', 1769, 8, 15, null, 0, 0, 0, 0], ['Marie Curie', 'The Radiant Mind', 1867, 11, 7, null, 0, 0, 0, 0],
+  ['Frida Kahlo', 'The Fierce Painter', 1907, 7, 6, 8, 30, -6, 19.35, -99.16], ['Mozart', 'The Prodigy', 1756, 1, 27, null, 0, 0, 0, 0], ['Nikola Tesla', 'The Lightning Wizard', 1856, 7, 10, null, 0, 0, 0, 0],
+  ['Queen Victoria', 'The Iron Empress', 1819, 5, 24, null, 0, 0, 0, 0], ['Muhammad Ali', 'The Greatest', 1942, 1, 17, 18, 35, -6, 38.25, -85.76], ['Bruce Lee', 'The Dragon', 1940, 11, 27, 7, 12, -8, 37.77, -122.42],
+  ['Steve Jobs', 'The Reality Bender', 1955, 2, 24, 19, 15, -8, 37.77, -122.42], ['Elvis Presley', 'The King', 1935, 1, 8, 4, 35, -6, 34.26, -88.7], ['Mahatma Gandhi', 'The Quiet Giant', 1869, 10, 2, null, 0, 0, 0, 0]];
+const bossChart = (b) => AW.chart({ n: b[0], y: b[2], m: b[3], d: b[4], h: b[5], mi: b[6], tz: b[7], lat: b[5] === null ? null : b[8], lon: b[9], g: 'x' });
+
+// ---- state --------------------------------------------------------------------------------------------------
+let me = null, meRaw = null, opp = null, oppKind = 'friend', sector = 'total', lastLoss = false, addMode = false, chal = null;
+const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+const toast = (t, ms = 2400) => { const e = $('toast'); e.textContent = t; e.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (e.hidden = true), ms); };
+const show = (id) => { for (const s of ['create', 'hub', 'bossScr', 'arena']) $(s).hidden = s !== id; $('war').hidden = true; $('modal').hidden = true; };
+const toBirth = (f) => { const c = CITIES[f.city]; return { n: f.n, y: f.y, m: f.m, d: f.d, h: f.h, mi: f.mi, g: f.g, tz: c ? c[1] : Intl.DateTimeFormat().resolvedOptions().timeZone, lat: c && f.h !== null ? c[2] : null, lon: c ? c[3] : 0 }; };
+const mk = (f) => AW.chart(toBirth(f));
+const dayKey = () => new Date().toISOString().slice(0, 10).replace(/-/g, '');
+const dmName = (c) => `${c.dmStem % 2 ? 'Yin' : 'Yang'} ${EL[c.dm]}`;
+
+// ---- audio ----------------------------------------------------------------------------------------------------
+let ac = null, muted = ls.get('aw-mute') === '1';
+$('mute').textContent = muted ? '🔇' : '🔊';
+$('mute').onclick = () => { muted = !muted; ls.set('aw-mute', muted ? '1' : '0'); $('mute').textContent = muted ? '🔇' : '🔊'; };
+const tone = (f1, f2, dur, type = 'sine', vol = .12, delay = 0) => {
+  if (muted) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur);
+  } catch {}
+};
+const buzz = (p) => { try { navigator.vibrate && navigator.vibrate(p); } catch {} };
+
+// ---- card drawing (hub, battle, poster) ------------------------------------------------------------------------
+const rr = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+function drawCard(c, f, x, y, w, h, o = {}) {
+  const u = w / 200, col = EL_COLOR[f.dm];
+  c.save(); c.translate(x, y);
+  if (o.dim) c.globalAlpha = .45;
+  c.shadowColor = o.glow ? col : '#000'; c.shadowBlur = (o.glow ? 30 : 12) * u;
+  const g = c.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#2a1560'); g.addColorStop(.55, '#120a2e'); g.addColorStop(1, '#0b2a4a');
+  rr(c, 0, 0, w, h, 14 * u); c.fillStyle = g; c.fill(); c.shadowBlur = 0;
+  c.lineWidth = 2.5 * u; c.strokeStyle = col; c.stroke();
+  rr(c, 7 * u, 7 * u, w - 14 * u, h - 14 * u, 9 * u); c.lineWidth = 1 * u; c.strokeStyle = '#e6c35c99'; c.stroke();
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = '#fff'; c.font = `900 ${Math.min(19, 190 / Math.max(8, f.name.length) * 1.5) * u}px system-ui, sans-serif`; c.fillText(f.name, w / 2, 26 * u, w - 30 * u);
+  c.fillStyle = '#e6c35c'; c.font = `800 ${9 * u}px system-ui, sans-serif`; c.fillText((o.sub || `${dmName(f)} Day Master`).toUpperCase(), w / 2, 42 * u, w - 24 * u);
+  // sigil: sun-sign glyph in an element-coloured ring
+  const cy = h * .33, R = w * .27, rg = c.createRadialGradient(w / 2, cy, 2, w / 2, cy, R * 1.5);
+  rg.addColorStop(0, col + 'aa'); rg.addColorStop(1, '#0000'); c.fillStyle = rg; c.fillRect(0, cy - R * 1.6, w, R * 3.2);
+  c.strokeStyle = col; c.lineWidth = 2 * u; c.beginPath(); c.arc(w / 2, cy, R, 0, 7); c.stroke();
+  c.setLineDash([3 * u, 5 * u]); c.strokeStyle = '#e6c35caa'; c.beginPath(); c.arc(w / 2, cy, R * 1.15, 0, 7); c.stroke(); c.setLineDash([]);
+  c.fillStyle = '#fff'; c.font = `${R * 1.15}px "Apple Symbols", "Segoe UI Symbol", system-ui, sans-serif`; c.fillText(GLYPH[f.sun] + '︎', w / 2, cy + R * .06);
+  c.fillStyle = '#e6c35c'; c.font = `800 ${10 * u}px system-ui, sans-serif`; c.fillText(`Sun in ${SIGNS[f.sun]}  ·  Year of the ${ANIMALS[f.pillars.year[1]]}`, w / 2, cy + R * 1.45, w - 20 * u);
+  // four pillars
+  const P = [['Hour', f.pillars.hour], ['Day', f.pillars.day], ['Month', f.pillars.month], ['Year', f.pillars.year]], pw = (w - 28 * u) / 4, py = h * .6;
+  P.forEach(([lab, p], i) => {
+    const px = 14 * u + i * pw;
+    c.fillStyle = '#ffffff10'; rr(c, px + 2 * u, py, pw - 4 * u, h * .2, 6 * u); c.fill();
+    c.fillStyle = '#a99fcf'; c.font = `800 ${7.5 * u}px system-ui, sans-serif`; c.fillText(lab.toUpperCase(), px + pw / 2, py + 9 * u);
+    if (!p) { c.fillStyle = '#a99fcf'; c.font = `900 ${20 * u}px system-ui, sans-serif`; c.fillText('?', px + pw / 2, py + h * .1 + 4 * u); return; }
+    c.fillStyle = EL_COLOR[Math.floor(p[0] / 2)]; c.font = `900 ${10.5 * u}px system-ui, sans-serif`; c.fillText(STEMS[p[0]], px + pw / 2, py + h * .075);
+    c.fillStyle = EL_COLOR[[4, 2, 0, 0, 2, 1, 1, 2, 3, 3, 2, 4][p[1]]]; c.fillText(BRANCHES[p[1]], px + pw / 2, py + h * .135);
+  });
+  // element bar + signs
+  const ey = h * .85, tot = f.counts.reduce((s, n) => s + n, 0) || 1; let ex = 16 * u;
+  f.counts.forEach((n, i) => { const bw = (w - 32 * u) * n / tot; if (n) { c.fillStyle = EL_COLOR[i]; c.fillRect(ex, ey, bw, 5 * u); ex += bw; } });
+  c.fillStyle = '#f4f0ff'; c.font = `700 ${9 * u}px system-ui, sans-serif`;
+  c.fillText(`☽ ${SIGNS[f.moon]}${f.moonApprox ? '~' : ''}   ↑ ${f.asc === null ? 'Rising ?' : SIGNS[f.asc]}`, w / 2, ey + 18 * u, w - 16 * u);
+  c.restore();
+}
+
+// ---- hub -----------------------------------------------------------------------------------------------------------
+function showHub() {
+  show('hub');
+  const cv = $('mycard'), c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height);
+  drawCard(c, me, 4, 4, cv.width - 8, cv.height - 8, { glow: true });
+  $('statsBox').innerHTML = STATS.map((k) => `<div class="stat"><span>${STAT_NAME[k]}</span><i><b style="width:${me.stats[k]}%"></b></i><span>${me.stats[k]}</span></div>`).join('')
+    + `<div class="els">${EL.map((e, i) => `<span style="color:${EL_COLOR[i]}">${e} ${me.counts[i]}</span>`).join('')}<span>☯ Yang ${me.yang}/${me.yinTotal}</span>${me.peach ? '<span style="color:#ff8fc8">🌸 Peach Blossom</span>' : ''}</div>`;
+  $('dailySub').textContent = `Today's boss: ${AW.dailyBoss(dayKey()).name}. Ranked by damage.`;
+}
+function goCreate(mode) { // mode: 'me' | 'friend'
+  addMode = mode === 'friend';
+  show('create');
+  $('formTitle').textContent = addMode ? "Enter your friend's details" : me ? 'Edit your fighter' : 'Create your fighter';
+  $('fGo').textContent = addMode ? 'Fight them ⚔️' : 'Summon fighter ✨';
+  $('fBack').hidden = !(me || addMode); $('challenge').hidden = !chal || addMode;
+  if (chal) $('challenge').innerHTML = `⚔️ <b>${esc(chal.name)}</b> has challenged you to Astrology Wars. Enter your birth details to fight back.`;
+  const f = addMode ? null : meRaw;
+  $('fName').value = f ? f.n : ''; $('fDate').value = f ? `${f.y}-${String(f.m).padStart(2, '0')}-${String(f.d).padStart(2, '0')}` : '';
+  $('fUnk').checked = !!f && f.h === null; $('fTime').value = f && f.h !== null ? `${String(f.h).padStart(2, '0')}:${String(f.mi).padStart(2, '0')}` : '12:00';
+  $('fCity').value = f ? f.city : 17; $('fGender').value = f ? f.g : 'f'; $('fTime').disabled = $('fUnk').checked;
+}
+const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => `&#${ch.charCodeAt(0)};`);
+$('fUnk').onchange = () => ($('fTime').disabled = $('fUnk').checked);
+$('fBack').onclick = () => (me ? showHub() : null);
+$('form').onsubmit = (e) => {
+  e.preventDefault();
+  const [y, m, d] = $('fDate').value.split('-').map(Number), unk = $('fUnk').checked || !$('fTime').value, [h, mi] = $('fTime').value.split(':').map(Number);
+  if (!y || y < 1900 || new Date(y, m - 1, d) > new Date()) return toast('Pick a real birth date.');
+  const f = { n: $('fName').value.trim().replace(/[<>]/g, '') || 'Fighter', y, m, d, h: unk ? null : h, mi: unk ? 0 : mi, city: +$('fCity').value, g: $('fGender').value };
+  if (addMode) { opp = mk(f); oppKind = 'friend'; toArena(); return; }
+  meRaw = f; me = mk(f); ls.set('aw-me', JSON.stringify(f));
+  if (chal) { opp = chal.chart; oppKind = 'friend'; toArena(); } else showHub();
+};
+$('editMe').onclick = () => goCreate('me');
+$('mAdd').onclick = () => goCreate('friend');
+$('mBoss').onclick = () => { show('bossScr'); $('bossList').innerHTML = BOSSES.map((b, i) => `<button class="box" style="padding:12px" data-i="${i}"><b>${b[0]}</b><small>${b[1]}</small></button>`).join(''); };
+$('bossList').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; opp = bossChart(BOSSES[b.dataset.i]); opp.title = BOSSES[b.dataset.i][1]; oppKind = 'boss'; toArena(); };
+$('rival').onclick = () => { opp = AW.rivalChart((Math.random() * 1e9) | 0); oppKind = 'boss'; toArena(); };
+$('bossBack').onclick = showHub;
+$('mDaily').onclick = () => { opp = AW.dailyBoss(dayKey()); oppKind = 'daily'; sector = 'total'; toArena(); };
+
+// ---- friend link + QR -------------------------------------------------------------------------------------------------
+const linkFor = () => `${SHARE}#c=${AW.pack(meRaw, meRaw.city)}`;
+$('mFriend').onclick = () => {
+  const url = linkFor(), q = AW.qr(url);
+  $('modalBox').innerHTML = `<h2 style="margin:0">Challenge a friend</h2><div class="hint">Send this link. They enter their birth details and the war begins. Two people in a cafe? Scan the QR on the other phone.</div>
+    <div class="qrbox"><canvas id="qr"></canvas><input id="lnk" readonly value="${url}"></div>
+    <div class="row"><button class="cta" id="cp">📋 Copy link</button><button id="sh">📤 Share</button></div><button id="mx">Close</button>`;
+  $('modal').hidden = false;
+  if (q) { const cv = $('qr'), n = q.length, s = 8; cv.width = cv.height = (n + 2) * s; const c = cv.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.width); c.fillStyle = '#000'; q.forEach((r, y) => r.forEach((v, x) => v && c.fillRect((x + 1) * s, (y + 1) * s, s, s))); }
+  $('lnk').onfocus = () => $('lnk').select();
+  $('cp').onclick = async () => { try { await navigator.clipboard.writeText(url); toast('Challenge link copied! 📋'); } catch { $('lnk').select(); toast('Press Ctrl/Cmd+C to copy'); } };
+  $('sh').onclick = async () => { try { if (navigator.share) return await navigator.share({ title: 'Astrology Wars', text: `${meRaw.n} challenges you to Astrology Wars ✨ Enter your birth details and fight back.`, url }); } catch { return; } $('cp').click(); };
+  $('mx').onclick = () => ($('modal').hidden = true);
+};
+$('modal').onclick = (e) => { if (e.target === $('modal')) $('modal').hidden = true; };
+
+// ---- arena -----------------------------------------------------------------------------------------------------------------
+function toArena() {
+  show('arena'); $('vsA').textContent = me.name; $('vsB').textContent = opp.name;
+  const daily = oppKind === 'daily';
+  $('arenas').innerHTML = Object.entries(SECTORS).map(([k, s]) => {
+    const edge = lastLoss && AW.battle(me, opp, k).winner === 'a';
+    return `<button class="arena${k === sector ? ' sel' : ''}${edge ? ' edge' : ''}" data-k="${k}" ${daily && k !== 'total' ? 'disabled' : ''}><big>${s.icon}</big><b>${s.name}</b><small>${edge ? '🔥 Fate favors you here' : k === 'total' ? 'All five stats' : STAT_NAME[Object.keys(s.w)[0]] + ' + ' + (s.els.map((e) => EL[e]).join('/'))}</small></button>`;
+  }).join('');
+  $('arenaHint').textContent = daily ? 'The Daily Boss is always fought in the Total Destiny War.' : lastLoss ? 'Revenge mode: arenas glowing green are where your chart beats theirs.' : '';
+}
+$('arenas').onclick = (e) => { const b = e.target.closest('.arena'); if (!b || b.disabled) return; sector = b.dataset.k; toArena(); };
+$('arBack').onclick = () => { lastLoss = false; chal = null; showHub(); };
+$('go').onclick = () => startWar();
+
+// ---- the war: animated sequence on one canvas ------------------------------------------------------------------------------------
+const cv = $('cv'), cx = cv.getContext('2d');
+let W = 0, H = 0, run = null, res = null, stars = [], parts = [];
+const fit = () => { const d = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * d; cv.height = H * d; cx.setTransform(d, 0, 0, d, 0, 0); };
+addEventListener('resize', fit);
+const ease = (x) => 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), 3), clamp01 = (x) => Math.max(0, Math.min(1, x));
+const T_ALIGN = 3.4, T_BARS = 4.6, T_END_CLASH = 8.6, T_VICT = 10.6;
+
+function startWar() {
+  res = AW.battle(me, opp, sector); res.compat = AW.compat(me, opp);
+  fit(); stars = Array.from({ length: 140 }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() * 1.4 + .3, p: Math.random() * 7 }));
+  parts = []; $('res').hidden = true; $('war').hidden = false; $('skip').hidden = false;
+  run = { t0: performance.now(), skip: 0, flags: {}, beamAt: 0 };
+  tone(80, 300, 3.2, 'sawtooth', .05); tone(220, 440, 3, 'sine', .06);
+  cancelAnimationFrame(startWar.raf); frame();
+}
+$('skip').onclick = () => { run.skip += T_VICT + .2 - (performance.now() - run.t0) / 1000 - run.skip; };
+function layout() {
+  const port = H > W * 1.05, cw = port ? Math.min(W * .44, 230) : Math.min(W * .25, H * .5, 270), ch = cw * 1.5;
+  if (port) return { port, cw, ch, ax: W * .25 - cw / 2, bx: W * .75 - cw / 2, cy: Math.max(40, H * .06), bx0: W * .07, bx1: W * .93, by: Math.max(40, H * .06) + ch + 44 };
+  return { port, cw, ch, ax: W * .05, bx: W * .95 - cw, cy: (H - ch) / 2 - 10, bx0: W * .05 + cw + 30, bx1: W * .95 - cw - 30, by: (H - ch) / 2 - 10 + ch * .33 + 34 };
+}
+function burst(x, y, col, n = 14, sp = 160) { for (let i = 0; i < n; i++) { const a = Math.random() * 7, v = Math.random() * sp + 30; parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: .5 + Math.random() * .6, max: 1.1, col, r: 1.5 + Math.random() * 2.5 }); } }
+function frame() {
+  const t = (performance.now() - run.t0) / 1000 + run.skip, dt = 1 / 60;
+  draw(t, dt);
+  if (t >= T_VICT && $('res').hidden) showResult();
+  startWar.raf = requestAnimationFrame(frame);
+}
+function draw(t, dt) {
+  const L = layout(), mx = W / 2, my = H / 2, F = run.flags;
+  cx.save(); cx.fillStyle = '#04020d'; cx.fillRect(0, 0, W, H);
+  const bg = cx.createRadialGradient(mx, my, 10, mx, my, Math.max(W, H) * .7); bg.addColorStop(0, '#2a1160'); bg.addColorStop(1, '#04020d'); cx.fillStyle = bg; cx.globalAlpha = t < T_ALIGN ? 1 : .8; cx.fillRect(0, 0, W, H); cx.globalAlpha = 1;
+  for (const s of stars) { cx.globalAlpha = .4 + .6 * Math.abs(Math.sin(t * 1.5 + s.p)); cx.fillStyle = '#fff'; cx.fillRect(s.x * W, s.y * H, s.r, s.r); } cx.globalAlpha = 1;
+  const shake = (t > 2.4 && t < 3.1) || (t > T_END_CLASH - .5 && t < T_END_CLASH + .2) ? 7 : 0; if (shake) cx.translate((Math.random() - .5) * shake, (Math.random() - .5) * shake);
+  cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  if (t < T_ALIGN + .6) { // 1) cosmic alignment: zodiac ring + five-element wheel
+    const fade = 1 - clamp01((t - T_ALIGN) / .6), R = Math.min(W, H) * .34 * (.6 + .4 * ease(t / 1.2));
+    cx.globalAlpha = fade; cx.strokeStyle = '#e6c35c'; cx.lineWidth = 2;
+    cx.beginPath(); cx.arc(mx, my, R, 0, 7); cx.stroke(); cx.beginPath(); cx.arc(mx, my, R * .82, 0, 7); cx.stroke();
+    for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283 + t * .35; cx.beginPath(); cx.moveTo(mx + Math.cos(a) * R * .82, my + Math.sin(a) * R * .82); cx.lineTo(mx + Math.cos(a) * R, my + Math.sin(a) * R); cx.stroke();
+      const b = a + .26; cx.fillStyle = '#ffe9a8'; cx.font = `${R * .12}px "Apple Symbols", "Segoe UI Symbol", sans-serif`; cx.fillText(GLYPH[i] + '︎', mx + Math.cos(b) * R * .91, my + Math.sin(b) * R * .91); }
+    const r2 = R * .6, pts = EL.map((_, i) => { const a = -1.5708 + i / 5 * 6.283 - t * .5; return [mx + Math.cos(a) * r2, my + Math.sin(a) * r2]; });
+    cx.lineWidth = 1.5; cx.strokeStyle = '#ffffff55'; cx.beginPath(); pts.forEach((p, i) => cx[i ? 'lineTo' : 'moveTo'](...p)); cx.closePath(); cx.stroke(); // generating cycle
+    cx.strokeStyle = '#ff4fa3aa'; cx.beginPath(); [0, 2, 4, 1, 3, 0].forEach((k, i) => cx[i ? 'lineTo' : 'moveTo'](...pts[k])); cx.stroke(); // controlling cycle
+    pts.forEach((p, i) => { cx.fillStyle = EL_COLOR[i]; cx.shadowColor = EL_COLOR[i]; cx.shadowBlur = 18; cx.beginPath(); cx.arc(p[0], p[1], R * .06 * (1 + .2 * Math.sin(t * 4 + i)), 0, 7); cx.fill(); cx.shadowBlur = 0;
+      cx.fillStyle = '#fff'; cx.font = `800 ${Math.max(10, R * .06)}px system-ui`; cx.fillText(EL[i], p[0] + (p[0] - mx) * .28, p[1] + (p[1] - my) * .28); });
+    cx.globalAlpha = fade; cx.fillStyle = '#fff'; cx.font = `900 ${Math.max(16, Math.min(W * .06, 30))}px system-ui`;
+    const msg = t < 1.2 ? 'Summoning Celestial Chart…' : t < 2.4 ? 'Analyzing Yin-Yang Balance…' : '⚡ CONFLICT DETECTED! ⚡';
+    cx.fillStyle = t < 2.4 ? '#fff' : '#ff6b8a'; cx.shadowColor = cx.fillStyle; cx.shadowBlur = 14; cx.fillText(msg, mx, Math.min(H - 60, my + R * 1.28)); cx.shadowBlur = 0; cx.globalAlpha = 1;
+    if (t > 2.4 && !F.conf) { F.conf = 1; tone(60, 40, .7, 'square', .15); buzz([40, 30, 60]); burst(mx, my, '#ff4fa3', 30, 260); }
+    if (t > 2.4 && t < 2.6) { cx.fillStyle = '#ff4fa355'; cx.fillRect(0, 0, W, H); }
+  }
+  if (t > T_ALIGN) { // 2) clash: holographic cards, elemental beams, stat bars
+    const k = ease((t - T_ALIGN) / .9), bob = Math.sin(t * 2) * 4, win = t > T_END_CLASH;
+    const A = res.winner === 'b' && t > T_VICT - 1.2, B = res.winner === 'a' && t > T_VICT - 1.2;
+    cx.globalAlpha = k;
+    drawCard(cx, me, L.ax - (1 - k) * 160, L.cy + bob, L.cw, L.ch, { glow: !A, dim: A });
+    drawCard(cx, opp, L.bx + (1 - k) * 160, L.cy - bob, L.cw, L.ch, { glow: !B, dim: B, sub: oppKind === 'friend' ? undefined : opp.title || (opp.boss ? 'Cosmic Boss' : undefined) });
+    cx.globalAlpha = 1;
+    const ya = L.cy + L.ch * .33, sx = L.ax + L.cw, ex = L.bx, midx = (sx + ex) / 2;
+    if (t > T_ALIGN + .8 && t < T_END_CLASH) { // beams meet in the middle; wobble sells the force
+      const wob = Math.sin(t * 30) * 4, ca = EL_COLOR[me.dm], cb = EL_COLOR[opp.dm], push = Math.sin(t * 1.3) * (ex - sx) * .08;
+      for (const [x0, x1, col] of [[sx - 4, midx + push, ca], [ex + 4, midx + push, cb]]) {
+        cx.strokeStyle = col; cx.shadowColor = col; cx.shadowBlur = 22; cx.lineWidth = 6 + Math.sin(t * 20) * 2; cx.beginPath(); cx.moveTo(x0, ya); cx.lineTo((x0 + x1) / 2, ya + wob); cx.lineTo(x1, ya); cx.stroke();
+        cx.strokeStyle = '#fff'; cx.lineWidth = 2; cx.stroke(); }
+      cx.shadowBlur = 0; cx.fillStyle = '#fff'; cx.shadowColor = '#fff'; cx.shadowBlur = 30; cx.beginPath(); cx.arc(midx + push, ya, 10 + Math.random() * 6, 0, 7); cx.fill(); cx.shadowBlur = 0;
+      if (t - run.beamAt > .05) { run.beamAt = t; burst(midx + push, ya, Math.random() < .5 ? ca : cb, 3, 180); }
+      if (!F.beam) { F.beam = 1; tone(300, 900, 1.2, 'sawtooth', .07); tone(900, 200, 3.5, 'triangle', .05, 1.2); }
+    }
+    // stat bars grow outward from the centre line
+    const rows = [...STATS.map((s) => [STAT_NAME[s], me.stats[s], opp.stats[s], !!SECTORS[sector].w[s]]), ['POWER', res.a, res.b, true]];
+    const bw = L.bx1 - L.bx0, rh = Math.min(34, ((L.port ? H - 16 : L.cy + L.ch) - L.by) / 6.9), gap = Math.max(46, Math.min(74, bw * .17)), half = bw / 2 - gap - 34;
+    rows.forEach(([lab, a, b, hot], i) => {
+      const p = clamp01((t - T_BARS - i * .5) / .6), kk = ease(p), y = L.by + i * rh * 1.15 + rh / 2, last = i === rows.length - 1; if (p <= 0) return;
+      if (p > 0 && !F['b' + i]) { F['b' + i] = 1; tone(300 + i * 90, 340 + i * 90, .18, 'square', .05); }
+      const sa = a / 100 * half * kk, sb = b / 100 * half * kk, cxm = (L.bx0 + L.bx1) / 2, hh = rh * .5;
+      cx.fillStyle = '#ffffff10'; cx.fillRect(cxm - gap - half, y - hh / 2, half, hh); cx.fillRect(cxm + gap, y - hh / 2, half, hh);
+      const ga = cx.createLinearGradient(cxm - gap - sa, 0, cxm - gap, 0); ga.addColorStop(0, EL_COLOR[me.dm]); ga.addColorStop(1, '#fff'); cx.fillStyle = ga; cx.fillRect(cxm - gap - sa, y - hh / 2, sa, hh);
+      const gb = cx.createLinearGradient(cxm + gap, 0, cxm + gap + sb, 0); gb.addColorStop(0, '#fff'); gb.addColorStop(1, EL_COLOR[opp.dm]); cx.fillStyle = gb; cx.fillRect(cxm + gap, y - hh / 2, sb, hh);
+      cx.fillStyle = hot ? '#e6c35c' : '#a99fcf'; cx.font = `900 ${Math.max(8, rh * .3)}px system-ui`; cx.fillText(last ? 'POWER' : lab.toUpperCase(), cxm, y);
+      cx.fillStyle = '#fff'; cx.font = `900 ${Math.max(11, rh * (last ? .5 : .4))}px system-ui`; cx.textAlign = 'right'; cx.fillText((a * kk).toFixed(last ? 1 : 0), cxm - gap - half - 6, y); cx.textAlign = 'left'; cx.fillText((b * kk).toFixed(last ? 1 : 0), cxm + gap + half + 6, y); cx.textAlign = 'center';
+      if (p > .95 && !F['s' + i]) { F['s' + i] = 1; burst(a > b ? cxm - gap - sa : cxm + gap + sb, y, a > b ? EL_COLOR[me.dm] : EL_COLOR[opp.dm], 8, 120); }
+    });
+    if (t > T_END_CLASH && !F.end) { F.end = 1; tone(70, 35, .9, 'sine', .25); buzz(80); burst(mx, my, '#e6c35c', 60, 360); }
+  }
+  if (t > T_END_CLASH) { // 3) victory reveal in slow motion
+    const p = clamp01((t - T_END_CLASH) / 2), zoom = 3 - 2 * ease(p), g = res.winner === 'b' ? res.gb : res.ga, L2 = layout();
+    cx.fillStyle = `rgba(3,1,10,${.55 * ease(p)})`; cx.fillRect(0, 0, W, H);
+    cx.save(); cx.translate(mx, my); cx.scale(zoom, zoom); cx.globalAlpha = ease(p * 1.5);
+    const fs = Math.min(W, H) * .3; cx.font = `900 ${fs}px system-ui, sans-serif`; cx.fillStyle = '#ffe28a'; cx.shadowColor = '#e6c35c'; cx.shadowBlur = 50;
+    cx.fillText(res.winner ? g : '=', 0, 0); cx.shadowBlur = 0; cx.restore();
+    cx.globalAlpha = ease((p - .4) * 2); cx.fillStyle = '#fff'; cx.font = `900 ${Math.min(34, W * .07)}px system-ui`;
+    cx.fillText(res.winner ? (res.winner === 'a' ? me : opp).name + ' WINS' : 'COSMIC STALEMATE', mx, my + Math.min(W, H) * .24); cx.globalAlpha = 1;
+    if (res.winner) { const wx = res.winner === 'a' ? L2.ax + L2.cw / 2 : L2.bx + L2.cw / 2; cx.font = `${L2.cw * .35}px system-ui`; cx.globalAlpha = ease((p - .3) * 2); cx.fillText('👑', wx, L2.cy - 6 + (1 - ease(p)) * -30); cx.globalAlpha = 1; }
+    if (p > .1 && !F.v) { F.v = 1; [523, 659, 784, 1047].forEach((f, i) => tone(f, f, .5, 'triangle', .09, i * .12)); buzz([30, 40, 30, 40, 100]); }
+    if (res.winner && Math.random() < .5) parts.push({ x: Math.random() * W, y: -10, vx: (Math.random() - .5) * 60, vy: 120 + Math.random() * 160, life: 4, max: 4, col: ['#e6c35c', '#ff4fa3', '#5ad1ff', '#fff'][(Math.random() * 4) | 0], r: 2 + Math.random() * 3 });
+  }
+  for (const q of parts) { q.x += q.vx * dt; q.y += q.vy * dt; q.life -= dt; cx.globalAlpha = clamp01(q.life / q.max * 1.4); cx.fillStyle = q.col; cx.fillRect(q.x, q.y, q.r, q.r); } cx.globalAlpha = 1;
+  parts = parts.filter((q) => q.life > 0);
+  cx.restore();
+}
+
+// ---- result panel, poster, revenge -------------------------------------------------------------------------------------------------------------
+function showResult() {
+  $('skip').hidden = true;
+  const r = res, rd = AW.reading(me, opp, r), win = r.winner === 'a', lose = r.winner === 'b', grade = lose ? r.gb : r.ga, daily = oppKind === 'daily';
+  lastLoss = lose;
+  $('res').innerHTML = `<div class="box"><div class="grade">${r.winner ? grade : '='}</div><h2 style="margin:0">${esc(rd.head)}</h2>
+    <div class="hint">${SECTORS[r.sec].icon} ${SECTORS[r.sec].name} · ${esc(me.name)} <b>${r.a}</b> vs <b>${r.b}</b> ${esc(opp.name)}</div>
+    <div><span class="pill">${esc(r.compat.line)}</span></div>
+    <div class="read">${rd.body.map((l) => `<div>${esc(l)}</div>`).join('')}</div>
+    ${daily ? '<div id="lb"></div>' : ''}
+    <button class="gold" id="rPoster">📸 Share score card</button>
+    ${oppKind === 'friend' || chal ? '<button id="rLink">🔗 Send my challenge link</button>' : ''}
+    <button class="${lose ? 'cta' : ''}" id="rRe">${lose ? '🔥 REVENGE: pick a new arena' : win ? '⚔️ Rematch in another arena' : '🔄 Try another arena'}</button>
+    <button id="rDone">Done</button></div>`;
+  $('res').hidden = false; $('res').scrollTop = 0;
+  if (daily) { const lb = leaderboard($('lb'), 'astrology-wars_d' + dayKey()); lb.show(Math.round(r.a * 10)); }
+  $('rPoster').onclick = sharePoster;
+  if ($('rLink')) $('rLink').onclick = () => $('mFriend').click();
+  $('rRe').onclick = () => { cancelAnimationFrame(startWar.raf); $('war').hidden = true; toArena(); };
+  $('rDone').onclick = () => { cancelAnimationFrame(startWar.raf); lastLoss = false; chal = null; $('war').hidden = true; showHub(); };
+}
+async function sharePoster() {
+  const c = document.createElement('canvas'); c.width = 1080; c.height = 1920; const g = c.getContext('2d'), r = res;
+  const bg = g.createLinearGradient(0, 0, 0, 1920); bg.addColorStop(0, '#2a1160'); bg.addColorStop(.5, '#0a0420'); bg.addColorStop(1, '#0b2a4a'); g.fillStyle = bg; g.fillRect(0, 0, 1080, 1920);
+  const rnd = AW.mulberry(AW.hash(me.name + opp.name)); for (let i = 0; i < 160; i++) { g.globalAlpha = .3 + rnd() * .7; g.fillStyle = '#fff'; g.fillRect(rnd() * 1080, rnd() * 1920, 2 + rnd() * 2, 2 + rnd() * 2); } g.globalAlpha = 1;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '900 84px system-ui, sans-serif'; const tg = g.createLinearGradient(0, 100, 0, 200); tg.addColorStop(0, '#fff3c4'); tg.addColorStop(1, '#c8932a'); g.fillStyle = tg; g.fillText('ASTROLOGY WARS', 540, 150);
+  g.fillStyle = '#a99fcf'; g.font = '700 34px system-ui'; g.fillText(`${SECTORS[r.sec].icon} ${SECTORS[r.sec].name}`, 540, 225);
+  drawCard(g, me, 70, 290, 440, 660, { glow: r.winner === 'a', dim: r.winner === 'b' });
+  drawCard(g, opp, 570, 290, 440, 660, { glow: r.winner === 'b', dim: r.winner === 'a' });
+  g.font = '900 70px system-ui'; g.fillStyle = '#ff4fa3'; g.fillText('VS', 540, 620);
+  if (r.winner) { g.font = '120px system-ui'; g.fillText('👑', r.winner === 'a' ? 290 : 790, 270); }
+  g.fillStyle = '#ffe28a'; g.font = '900 360px system-ui'; g.shadowColor = '#e6c35c'; g.shadowBlur = 60; g.fillText(r.winner ? (r.winner === 'a' ? r.ga : r.gb) : '=', 540, 1180); g.shadowBlur = 0;
+  g.fillStyle = '#fff'; g.font = '900 56px system-ui'; g.fillText(r.winner ? `${(r.winner === 'a' ? me : opp).name} wins` : 'Cosmic stalemate', 540, 1390, 960);
+  g.fillStyle = '#a99fcf'; g.font = '700 38px system-ui'; g.fillText(`${me.name} ${r.a}  ·  ${r.b} ${opp.name}`, 540, 1455, 960);
+  rr(g, 70, 1520, 940, 190, 36); g.fillStyle = '#ffffff14'; g.fill(); g.strokeStyle = '#e6c35c88'; g.lineWidth = 3; g.stroke();
+  g.fillStyle = r.compat.pct >= 60 ? '#7dffb2' : r.compat.pct < 45 ? '#ff7a8a' : '#ffe28a'; g.font = '900 48px system-ui'; g.fillText(r.compat.title.toUpperCase(), 540, 1580);
+  g.fillStyle = '#fff'; g.font = '700 36px system-ui'; wrap(g, r.compat.line, 540, 1650, 860, 44);
+  g.fillStyle = '#e6c35c'; g.font = '800 40px system-ui'; g.fillText('Fight me: rank-game.com/games/astrology-wars', 540, 1810, 980);
+  const blob = await new Promise((ok) => c.toBlob(ok, 'image/png')), file = new File([blob], 'astrology-wars.png', { type: 'image/png' });
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) return await navigator.share({ files: [file], title: 'Astrology Wars', text: r.compat.line + ' ' + SHARE, url: SHARE }); } catch { return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'astrology-wars.png'; a.click(); toast('Score card saved 📸');
+}
+function wrap(g, text, x, y, mw, lh) { let line = '', yy = y; for (const w of text.split(' ')) { const t = line + w + ' '; if (g.measureText(t).width > mw && line) { g.fillText(line.trim(), x, yy); line = w + ' '; yy += lh; } else line = t; } g.fillText(line.trim(), x, yy); }
+
+// ---- boot --------------------------------------------------------------------------------------------------------------------------------------------
+(function boot() {
+  try { meRaw = JSON.parse(ls.get('aw-me')); if (meRaw) me = mk(meRaw); } catch { meRaw = me = null; }
+  const m = /[#&]c=([A-Za-z0-9_-]+)/.exec(location.hash), p = m && AW.unpack(m[1]);
+  if (p) { const raw = { ...p, city: CITIES[p.city] ? p.city : -1, g: p.g }; chal = { name: p.n, chart: mk(raw) }; }
+  if (location.hash === '#demo') return startDemo();
+  leaderboard(document.createElement('div'), 'astrology-wars_d' + dayKey()); // tells the site this game has a board
+  if (me && chal) { opp = chal.chart; oppKind = 'friend'; toArena(); } else if (me) showHub(); else goCreate('me');
+})();
+function startDemo() { // for the preview clip: auto-plays a fight against the daily boss
+  meRaw = { n: 'Nova', y: 1994, m: 8, d: 21, h: 18, mi: 30, city: 17, g: 'f' }; me = mk(meRaw); showHub();
+  setTimeout(() => $('mDaily').click(), 800); setTimeout(() => $('go').click(), 1700);
+}
+</script>
+</body>
+</html>
