@@ -43,15 +43,16 @@ function tzOffset(tz, y, m, d, h, mi) {
   return off;
 }
 
-// --- astronomy (low precision: Sun ~0.01°, Moon ~0.3°, enough for signs) --------
+// --- astronomy (low precision: Sun ~0.01°, Moon ~0.03°, enough for signs) --------
 const sunLon = (jd) => {
   const n = jd - 2451545, L = 280.460 + 0.9856474 * n, g = (357.528 + 0.9856003 * n) * D2R;
   return mod(L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g), 360);
 };
-const moonLon = (jd) => {
-  const T = (jd - 2451545) / 36525, s = (a, b) => Math.sin((a + b * T) * D2R);
-  return mod(218.32 + 481267.881 * T + 6.29 * s(135.0, 477198.87) - 1.27 * s(259.3, -413335.36) + 0.66 * s(235.7, 890534.22)
-    + 0.21 * s(269.9, 954397.74) - 0.19 * s(357.5, 35999.05) - 0.11 * s(186.5, 966404.03), 360);
+const moonLon = (jd) => { // Meeus ch. 47, 13 largest terms (~0.03°)
+  const T = (jd - 2451545) / 36525, r = (x) => x * D2R;
+  const Lp = 218.3164477 + 481267.88123421 * T, D = r(297.8501921 + 445267.1114034 * T), M = r(357.5291092 + 35999.0502909 * T), Mp = r(134.9633964 + 477198.8675055 * T), F = r(93.272095 + 483202.0175233 * T);
+  return mod(Lp + 6.288774 * Math.sin(Mp) + 1.274027 * Math.sin(2 * D - Mp) + .658314 * Math.sin(2 * D) + .213618 * Math.sin(2 * Mp) - .185116 * Math.sin(M) - .114332 * Math.sin(2 * F)
+    + .058793 * Math.sin(2 * D - 2 * Mp) + .057066 * Math.sin(2 * D - M - Mp) + .053322 * Math.sin(2 * D + Mp) + .045758 * Math.sin(2 * D - M) - .040923 * Math.sin(M - Mp) - .03472 * Math.sin(D) - .030383 * Math.sin(M + Mp), 360);
 };
 const ascLon = (jd, lat, lon) => {
   const T = (jd - 2451545) / 36525, eps = (23.4393 - 0.013 * T) * D2R;
@@ -60,16 +61,16 @@ const ascLon = (jd, lat, lon) => {
 };
 
 // --- Saju -------------------------------------------------------------------
-// Pillar = [stem 0-9, branch 0-11]. Month boundaries use fixed approximate solar-term dates (±1 day).
-const TERM = [6, 4, 6, 5, 6, 6, 7, 7, 8, 8, 7, 7]; // day each civil month's solar term starts (Jan..Dec)
-function pillars(y, m, d, h) {
-  const sy = m < 2 || (m === 2 && d < TERM[1]) ? y - 1 : y;
+// Pillar = [stem 0-9, branch 0-11]. Year and month turn at the exact moment the Sun reaches 315° (Lichun) and every 30° after,
+// so `sun` is the Sun's ecliptic longitude at birth. The hour stem for 23:00-24:00 (late Zi) follows the next day's stem.
+function pillars(y, m, d, h, sun) {
+  const sy = m <= 2 && sun < 315 ? y - 1 : y;
   const year = [mod(sy - 4, 10), mod(sy - 4, 12)];
-  const mb = d >= TERM[m - 1] ? m % 12 : (m - 1) % 12; // Yin(2) month starts at Lichun
-  const month = [mod(mod(year[0], 5) * 2 + 2 + mod(mb - 2, 12), 10), mb];
+  const k = Math.floor(mod(sun - 315, 360) / 30), mb = mod(k + 2, 12); // k 0 = Yin month
+  const month = [mod(mod(year[0], 5) * 2 + 2 + k, 10), mb];
   const di = mod(jdn(y, m, d) + 49, 60), day = [di % 10, di % 12];
   let hour = null;
-  if (h !== null) { const hb = Math.floor(((h + 1) % 24) / 2); hour = [mod(mod(day[0], 5) * 2 + hb, 10), hb]; }
+  if (h !== null) { const hb = Math.floor(((h + 1) % 24) / 2); hour = [mod(mod(day[0] + (h >= 23 ? 1 : 0), 5) * 2 + hb, 10), hb]; }
   return { year, month, day, hour };
 }
 
@@ -83,7 +84,9 @@ function chart(b) {
   const h = known ? b.h : 12, mi = known ? b.mi || 0 : 0;
   const off = tzOffset(b.tz, b.y, b.m, b.d, h, mi);
   const jd = julday(b.y, b.m, b.d, h + mi / 60 - off);
-  const P = pillars(b.y, b.m, b.d, known ? b.h : null);
+  // hour pillar uses local mean time when the birthplace longitude is known (daylight saving and zone width shift civil clocks)
+  const lmt = known ? mod(h + mi / 60 - off + (b.lon !== null && b.lon !== undefined ? b.lon / 15 : off), 24) : null;
+  const P = pillars(b.y, b.m, b.d, lmt, sunLon(jd));
   const sun = Math.floor(sunLon(jd) / 30), moon = Math.floor(moonLon(jd) / 30);
   const asc = known && b.lat !== null && b.lat !== undefined ? Math.floor(ascLon(jd, b.lat, b.lon) / 30) : null;
   const chars = []; // [element, weight, isYang]

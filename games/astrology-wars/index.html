@@ -161,20 +161,21 @@
       <div class="menu">
         <button class="cta" id="mFriend">🔗 Battle a Friend<small>Get a challenge link or QR code. They enter their birth info and fight you.</small></button>
         <button id="mAdd">👥 Add a friend's data<small>Type in their birth details and fight them right now.</small></button>
-        <button id="mBoss">🏛️ Random boss<small>Face a historical legend or a random rival.</small></button>
+        <button id="mBoss">🏛️ Random boss<small>Face one of 49 historical legends or a random rival.</small></button>
         <button class="gold" id="mDaily">🌑 Daily Cosmic Boss<small id="dailySub"></small></button>
       </div>
       <details class="box"><summary>How does this work?</summary>
         <p><b><abbr title="Saju (사주, Four Pillars of Destiny): a Korean/Chinese system that reads the year, month, day and hour of birth as four pairs of Heavenly Stem + Earthly Branch.">Saju</abbr></b> gives you four pillars. Each stem and branch belongs to one of the <b><abbr title="Wu Xing / Ohaeng: Wood feeds Fire, Fire makes Earth, Earth bears Metal, Metal carries Water, Water grows Wood. Wood breaks Earth, Earth dams Water, Water douses Fire, Fire melts Metal, Metal cuts Wood.">Five Elements</abbr></b>. Your <b><abbr title="Day Master (일간): the stem of your Day Pillar. It stands for 'you' and every other character is read against it.">Day Master</abbr></b> is the heart of the chart.</p>
         <p>Stats: <b>Charm</b> comes from Fire/Water and the <abbr title="Peach Blossom (도화살, Do-hwa): a Saju star of magnetism and romance.">Peach Blossom</abbr> star. <b>Wealth</b> is what your Day Master controls. <b>Intellect</b> is what it creates plus what feeds it. <b>Grit</b> is your own element. <b>Influence</b> is what controls you. Sun, Moon and Rising signs add a little extra.</p>
-        <p>When one Day Master controls the other (Water douses Fire), the attacker gets +6% power. Month boundaries use approximate solar-term dates, and the Moon is accurate to about a degree. Entertainment, not prophecy.</p>
+        <p>When one Day Master controls the other (Water douses Fire), the attacker gets +6% power. Pillars follow the exact solar terms (the Sun's real position), the hour pillar uses local mean solar time when you pick a city, and planet signs are computed astronomically (Moon within a fraction of a degree). Entertainment, not prophecy.</p>
       </details>
     </div>
   </div>
 </div>
 
 <div class="screen" id="bossScr" hidden>
-  <h2>Choose a boss</h2>
+  <h2>Choose a legend</h2>
+  <input id="bossQ" placeholder="Search legends…" style="width:min(480px,100%);margin-bottom:12px">
   <div class="bosses" id="bossList"></div>
   <div class="row" style="width:min(480px,100%);margin-top:14px"><button id="rival">🎲 Random rival</button><button id="bossBack">← Back</button></div>
 </div>
@@ -213,7 +214,20 @@ const BOSSES = [ // [name, title, y, m, d, h, mi, tz hours (LMT/standard), lat, 
   ['Albert Einstein', 'The Relativity Rebel', 1879, 3, 14, 11, 30, .667, 48.4, 10], ['Napoleon', 'The Little Emperor', 1769, 8, 15, null, 0, 0, 0, 0], ['Marie Curie', 'The Radiant Mind', 1867, 11, 7, null, 0, 0, 0, 0],
   ['Frida Kahlo', 'The Fierce Painter', 1907, 7, 6, 8, 30, -6, 19.35, -99.16], ['Mozart', 'The Prodigy', 1756, 1, 27, null, 0, 0, 0, 0], ['Nikola Tesla', 'The Lightning Wizard', 1856, 7, 10, null, 0, 0, 0, 0],
   ['Queen Victoria', 'The Iron Empress', 1819, 5, 24, null, 0, 0, 0, 0], ['Muhammad Ali', 'The Greatest', 1942, 1, 17, 18, 35, -6, 38.25, -85.76], ['Bruce Lee', 'The Dragon', 1940, 11, 27, 7, 12, -8, 37.77, -122.42],
-  ['Steve Jobs', 'The Reality Bender', 1955, 2, 24, 19, 15, -8, 37.77, -122.42], ['Elvis Presley', 'The King', 1935, 1, 8, 4, 35, -6, 34.26, -88.7], ['Mahatma Gandhi', 'The Quiet Giant', 1869, 10, 2, null, 0, 0, 0, 0]];
+  ['Steve Jobs', 'The Reality Bender', 1955, 2, 24, 19, 15, -8, 37.77, -122.42], ['Elvis Presley', 'The King', 1935, 1, 8, 4, 35, -6, 34.26, -88.7], ['Mahatma Gandhi', 'The Quiet Giant', 1869, 10, 2, null, 0, 0, 0, 0],
+  ['Leonardo da Vinci', 'The Renaissance Mind', 1452, 4, 23, null, 0, 0, 0, 0], ['Isaac Newton', 'The Gravity Alchemist', 1643, 1, 4, null, 0, 0, 0, 0], ['Charles Darwin', 'The Evolution Explorer', 1809, 2, 12, null, 0, 0, 0, 0],
+  ['Abraham Lincoln', 'The Rail-Splitter', 1809, 2, 12, null, 0, 0, 0, 0], ['Edgar Allan Poe', 'The Raven', 1809, 1, 19, null, 0, 0, 0, 0], ['Jane Austen', 'The Sharp Wit', 1775, 12, 16, null, 0, 0, 0, 0],
+  ['Mark Twain', 'The River Prophet', 1835, 11, 30, null, 0, 0, 0, 0], ['Oscar Wilde', 'The Flamboyant Wit', 1854, 10, 16, null, 0, 0, 0, 0], ['Sigmund Freud', 'The Dream Reader', 1856, 5, 6, null, 0, 0, 0, 0],
+  ['Carl Jung', 'The Archetype Hunter', 1875, 7, 26, null, 0, 0, 0, 0], ['Aleister Crowley', 'The Great Beast', 1875, 10, 12, null, 0, 0, 0, 0], ['Harry Houdini', 'The Escape Artist', 1874, 3, 24, null, 0, 0, 0, 0],
+  ['Thomas Edison', 'The Bulb Baron', 1847, 2, 11, null, 0, 0, 0, 0], ['Vincent van Gogh', 'The Starry Soul', 1853, 3, 30, null, 0, 0, 0, 0], ['Pablo Picasso', 'The Shape Breaker', 1881, 10, 25, null, 0, 0, 0, 0],
+  ['Coco Chanel', 'The Icon of Elegance', 1883, 8, 19, null, 0, 0, 0, 0], ['Winston Churchill', 'The Bulldog', 1874, 11, 30, null, 0, 0, 0, 0], ['Sun Yat-sen', 'The Revolutionary', 1866, 11, 12, null, 0, 0, 0, 0],
+  ['Charlie Chaplin', 'The Little Tramp', 1889, 4, 16, null, 0, 0, 0, 0], ['Ernest Hemingway', 'The Old Warrior', 1899, 7, 21, null, 0, 0, 0, 0], ['Agatha Christie', 'The Queen of Mystery', 1890, 9, 15, null, 0, 0, 0, 0],
+  ['Amelia Earhart', 'The Sky Wanderer', 1897, 7, 24, null, 0, 0, 0, 0], ['Helen Keller', 'The Unbreakable', 1880, 6, 27, null, 0, 0, 0, 0], ['Martin Luther King Jr.', 'The Dreamer', 1929, 1, 15, null, 0, 0, 0, 0],
+  ['Nelson Mandela', 'The Unbowed', 1918, 7, 18, null, 0, 0, 0, 0], ['Akira Kurosawa', 'The Master of Samurai Film', 1910, 3, 23, null, 0, 0, 0, 0], ['Yuri Gagarin', 'First in Orbit', 1934, 3, 9, null, 0, 0, 0, 0],
+  ['Neil Armstrong', 'The Moon Walker', 1930, 8, 5, null, 0, 0, 0, 0], ['Stephen Hawking', 'The Black Hole Whisperer', 1942, 1, 8, null, 0, 0, 0, 0], ['Freddie Mercury', 'The Showman', 1946, 9, 5, null, 0, 0, 0, 0],
+  ['Jim Morrison', 'The Lizard King', 1943, 12, 8, null, 0, 0, 0, 0], ['Walt Disney', 'The Dream Weaver', 1901, 12, 5, null, 0, 0, 0, 0],
+  ['Marilyn Monroe', 'The Icon', 1926, 6, 1, 9, 30, -8, 34.05, -118.24], ['Michael Jackson', 'The King of Pop', 1958, 8, 29, 19, 33, -6, 41.59, -87.35], ['Princess Diana', "The People's Princess", 1961, 7, 1, 19, 45, 1, 52.83, .5],
+  ['Jimi Hendrix', 'The Guitar Wizard', 1942, 11, 27, 10, 15, -8, 47.61, -122.33], ['Kurt Cobain', 'The Grunge Prophet', 1967, 2, 20, 19, 20, -8, 46.98, -123.81]];
 const bossChart = (b) => AW.chart({ n: b[0], y: b[2], m: b[3], d: b[4], h: b[5], mi: b[6], tz: b[7], lat: b[5] === null ? null : b[8], lon: b[9], g: 'x' });
 
 // ---- state --------------------------------------------------------------------------------------------------
@@ -324,7 +338,9 @@ $('form').onsubmit = (e) => {
 };
 $('editMe').onclick = () => goCreate('me');
 $('mAdd').onclick = () => goCreate('friend');
-$('mBoss').onclick = () => { show('bossScr'); $('bossList').innerHTML = BOSSES.map((b, i) => `<button class="box" style="padding:12px" data-i="${i}"><b>${b[0]}</b><small>${b[1]}</small></button>`).join(''); };
+const listBosses = () => { const q = $('bossQ').value.trim().toLowerCase(); $('bossList').innerHTML = BOSSES.map((b, i) => (b[0] + b[1]).toLowerCase().includes(q) ? `<button class="box" style="padding:12px" data-i="${i}"><b>${b[0]}</b><small>${b[1]} · ${b[2]}</small></button>` : '').join('') || '<div class="hint">No legend by that name.</div>'; };
+$('mBoss').onclick = () => { show('bossScr'); $('bossQ').value = ''; listBosses(); };
+$('bossQ').oninput = listBosses;
 $('bossList').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; opp = bossChart(BOSSES[b.dataset.i]); opp.title = BOSSES[b.dataset.i][1]; oppKind = 'boss'; toArena(); };
 $('rival').onclick = () => { opp = AW.rivalChart((Math.random() * 1e9) | 0); oppKind = 'boss'; toArena(); };
 $('bossBack').onclick = showHub;
