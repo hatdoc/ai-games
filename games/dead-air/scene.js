@@ -165,6 +165,9 @@ const Scene = (() => {
       g.globalCompositeOperation = 'lighter'; g.fillStyle = fg; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over';
     }
     g.drawImage(glass, 0, 0);
+    for (let i = 0; i < (s.prints | 0); i++) { // hand prints it left on the glass; they stay after you push it back
+      const [px, py, ro] = [[.47, .46, -.3], [.56, .33, .25], [.4, .58, -.1]][i]; g.save(); g.translate(px * W, py * H); g.rotate(ro); g.fillStyle = 'rgba(214,224,228,.16)'; g.strokeStyle = 'rgba(214,224,228,.16)'; g.lineWidth = 3.2; g.lineCap = 'round';
+      g.beginPath(); g.ellipse(0, 0, 15, 17, 0, 0, 7); g.fill(); for (const [fx, fy, fl] of [[-13, -9, 26], [-6, -15, 32], [2, -17, 34], [10, -14, 30], [17, -3, 20]]) { g.beginPath(); g.moveTo(fx * .6, fy * .6); g.lineTo(fx * .6 + fx * .12, fy * .6 - fl); g.stroke(); } g.restore(); }
     for (const d of drops) { d[4] -= dt; if (d[4] < 0) { d[1] += 22 * dt; if (d[1] > H - 40) { d[1] = Math.random() * 60; d[0] = Math.random() * W; d[4] = 2 + Math.random() * 6; } }
       g.fillStyle = 'rgba(200,225,240,.22)'; g.beginPath(); g.arc(d[0], d[1], d[2], 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(d[0] - d[2] * .4, d[1] - d[2] * .5, 1, 1);
       if (d[4] < 0) { g.fillStyle = 'rgba(200,225,240,.06)'; g.fillRect(d[0] - .5, d[1] - d[3] * 2, 1, d[3] * 2); } }

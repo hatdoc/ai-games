@@ -17,7 +17,7 @@ const idleMsgs = () => ['NO CALLS WAITING.', 'LINE CLEAR. KEEP AN EYE ON THE WIN
 let S = SCEN[G.scen];
 function setScen(id) {
   G.scen = id; S = SCEN[id]; Scene.setTheme(S.theme); sv.scen = id; store.set({ scen: id });
-  $('onair').textContent = S.sign; $('l1t').textContent = S.lines[0]; $('l2t').textContent = S.lines[1]; $('noteBtn').querySelector('b').textContent = S.paper;
+  $('onair').textContent = S.sign; $('l1t').textContent = S.lines[0]; $('l2t').textContent = S.lines[1]; $('noteBtn').innerHTML = `<b>${S.paper}</b>1. ${S.rules[0].split('.')[0]}.<br>2. ${S.rules[1].split('.')[0]}.<br>3. . . .<br><u>(tap to read)</u>`;
   $('bLight').firstChild.textContent = '🔦 ' + S.light; document.title = S.name === 'DEAD AIR' ? 'Dead Air' : `Dead Air: ${S.pick}`;
   for (const b of document.querySelectorAll('.scn')) b.classList.toggle('on', b.dataset.id === id);
   $('scnBlurb').textContent = S.blurb; $('best').textContent = sv.bestT ? `Longest night: ${clock(sv.bestT)} · survived: ${sv.won || 0}` : '';
@@ -58,14 +58,21 @@ function showNote(epi, cb) {
   $('noteH').textContent = epi ? `${G.name.toUpperCase()}'S RULES.` : S.noteH;
   $('noteList').innerHTML = S.rules.map((r) => `<li>${r}</li>`).join('') + (epi ? `<li class="r7">${S.r7}</li>` : '');
   $('noteSig').textContent = epi ? `— ${G.name}` : `— ${S.sig}`; $('noteSig').classList.toggle('swap', !!epi);
-  $('note').hidden = false; $('bNoteGo').textContent = cb ? (epi ? 'CLOCK OUT' : 'START THE SHIFT') : 'CLOSE'; $('bNoteGo').onclick = () => { $('note').hidden = true; cb && cb(); };
+  $('note').hidden = false; if (epi) setTimeout(() => { A.sting(.3); A.say(G.name); }, 2000); $('bNoteGo').textContent = cb ? (epi ? 'CLOCK OUT' : 'START THE SHIFT') : 'CLOSE'; $('bNoteGo').onclick = () => { $('note').hidden = true; cb && cb(); };
 }
 
 // ---------- the night ----------
 function startGame() {
-  Object.assign(G, { state: 'play', T: 0, time: 0, D: 5, shownD: 5, view: 0, cam: 0, gaze: 0, contact: 0, unseen: 0, slowUntil: 0, charges: Math.max(3, 5 - G.night), cd: 0, nextPhantom: rnd(70, 110), nextOdd: rnd(25, 45), nextGlitch: rnd(30, 50), flood: 0, dark: 0, dawn: 0, glitch: 0, face: 0, spike: 0, call: null, queue: S.calls.slice(), nextAt: S.calls[0].at, notes: [], real: 0, fooled: 0, steps: 0, onair: false, final: null, flick: null, nextFlick: rnd(30, 50), pose: 0, holding: false });
+  Object.assign(G, { state: 'play', T: 0, time: 0, D: 5, shownD: 5, view: 0, cam: 0, gaze: 0, contact: 0, unseen: 0, slowUntil: 0, charges: Math.max(3, 5 - G.night), cd: 0, nextPhantom: rnd(70, 110), nextOdd: rnd(25, 45), nextGlitch: rnd(30, 50), signAt: 2.5, prints: 0, flood: 0, dark: 0, dawn: 0, glitch: 0, face: 0, spike: 0, call: null, queue: S.calls.slice(), nextAt: S.calls[0].at, notes: [], real: 0, fooled: 0, steps: 0, onair: false, final: null, flick: null, nextFlick: rnd(30, 50), pose: 0, holding: false });
   setState('play'); $('onair').classList.remove('on'); idle(); setBtns(); ledBar();
   A.mix({ view: 0, fear: 0 }); toast('Tap ▲ WINDOW (or press Space) to look outside, and again to come back to the desk', 5000);
+}
+// you say your name on the air / sign the register / speak on a recorded line: that is how it learns it
+function signOn() {
+  if (G.state !== 'play') return; const text = fmt(S.signon), p = A.voice(S.f0, text, false);
+  $('txt').innerHTML = ''; $('lineTag').textContent = '—'; $('cid').textContent = 'YOU'; addLine('▶ ' + text, 'air');
+  setTimeout(() => { if (G.state !== 'play') return; A.roof(); G.spike = .8; toast(S.said, 4600); }, (p.dur + .9) * 1000 / SPEED);
+  setTimeout(() => { if (G.state === 'play' && !G.call) idle(); }, (p.dur + 5.5) * 1000 / SPEED);
 }
 function idle(msg) { $('txt').innerHTML = `<p class="ln idle">${msg || idleMsgs()[Math.random() * 5 | 0]}</p>`; $('lineTag').textContent = '—'; $('lineTag').className = 'tag'; $('cid').textContent = 'STANDBY'; $('pat').parentElement.style.opacity = 0; }
 
@@ -88,7 +95,7 @@ function stepFigure(n, seen) {
   if (G.cam <= .55) G.shownD = G.D;
   A.step(G.D); G.spike = Math.max(G.spike, .3 + (5 - G.D) * .09);
   if (G.steps === 1) tip('step', 'Something shifted outside.');
-  if (G.D === 1) { A.tap(3); tip('glass', 'tap. tap. tap. . .'); }
+  if (G.D === 1) { G.prints = Math.min(3, G.prints + 1); A.tap(3); tip('glass', 'tap. tap. tap. . .'); }
 }
 
 function die(kind) {
@@ -241,7 +248,7 @@ function update(dt) {
   if (G.state === 'dying') return dieTick(dt);
   if (G.state === 'dawnseq') return dawnTick(dt);
   if (G.state !== 'play') { G.shownD += (G.D - G.shownD) * Math.min(1, dt * 4); return; }
-  G.time += dt;
+  G.time += dt; if (G.signAt && G.time >= G.signAt) { G.signAt = 0; signOn(); }
   if (G.final) finalTick(dt); else G.T = Math.min(350, G.T + dt * CLOCK);
   G.cam += clamp(G.view - G.cam, -dt * 3.6, dt * 3.6); const watching = G.cam > .55 && !G.final;
   if (watching && G.D <= 4) G.gaze = Math.min(6, G.gaze + dt); else G.gaze = Math.max(0, G.gaze - dt * .5);
@@ -252,8 +259,8 @@ function update(dt) {
     G.nextFlick -= dt; if (G.nextFlick <= 0 && !G.flick) { G.nextFlick = rnd(30, 55); G.flick = { t: 0, dur: rnd(.6, .95), step: G.D <= 4 && G.D > 1 && Math.random() < .55 }; A.flicker(); }
     // small scares: a ring on the internal line with nobody on it, noises in the building, the monitor speaking
     G.nextPhantom -= dt; if (G.nextPhantom <= 0 && !G.call && G.T > 90) { G.nextPhantom = rnd(60, 100); G.phantom = G.time + 3.4; A.ring(true); setTimeout(A.stopRing, 3300); tip('phantom', `${S.lines[1]} just rang. Nobody calls ${S.lines[1]}. Let it ring.`); }
-    G.nextOdd -= dt; if (G.nextOdd <= 0 && G.T > 25) { G.nextOdd = rnd(14, 34) * (G.D <= 3 ? .6 : 1); const k = Math.random(); (k < .4 ? A.creak : k < .75 || G.D > 3 ? A.roof : A.breath)(); }
-    G.nextGlitch -= dt; if (G.nextGlitch <= 0 && G.D <= 4 && G.cam < .3 && !G.call) { G.nextGlitch = rnd(24, 48); monitorSpeaks(); }
+    G.nextOdd -= dt; if (G.nextOdd <= 0 && G.T > 25) { G.nextOdd = rnd(14, 34) * (G.D <= 3 ? .6 : 1) * (G.T > 240 ? .7 : 1); const k = Math.random(); (k < .4 ? A.creak : k < .75 || G.D > 3 ? A.roof : A.breath)(); }
+    G.nextGlitch -= dt; if (G.nextGlitch <= 0 && G.D <= 4 && G.cam < .3 && !G.call) { G.nextGlitch = rnd(24, 48) * (G.T > 240 ? .65 : 1); monitorSpeaks(); }
     callTick(dt); if (G.T >= 350 && !G.call) startFinal();
   }
   if (G.flick) { const k = G.flick; k.t += dt; G.dark = Math.sin(k.t * 55) > -.2 ? clamp(Math.sin(k.t / k.dur * Math.PI) * 1.4) : .15; if (k.t >= k.dur) { G.dark = 0; if (k.step && watching) stepFigure(1, true); G.flick = null; } }
@@ -271,7 +278,7 @@ function render(dt) {
   const st = G.state, fear = clamp(Math.max(clamp((5 - G.D) / 4) * .9, clamp(G.gaze / 5) * .8) + G.spike * .5 + (G.final ? .45 : 0)) * (st === 'play' || st === 'dying' ? 1 : 0);
   document.documentElement.style.setProperty('--fear', fear.toFixed(3)); fearNow = fear;
   if (st === 'play' || st === 'dying') A.mix({ view: G.cam, fear, quiet: G.final?.lis ? 1 : 0 });
-  if (G.cam > .01 || st !== 'play') Scene.draw({ D: G.shownD, T: G.T, pose: G.pose, gaze: clamp(G.gaze / 4), flood: G.flood * (G.calm ? .5 : 1), dark: G.calm ? G.dark * .5 : G.dark, dawn: G.dawn, glitch: G.calm ? 0 : G.glitch, ghost: G.flick && G.D > 1 ? G.dark : 0, face: G.face, breath: 1, onair: G.onair }, dt);
+  if (G.cam > .01 || st !== 'play') Scene.draw({ D: G.shownD, T: G.T, pose: G.pose, gaze: clamp(G.gaze / 4), flood: G.flood * (G.calm ? .5 : 1), dark: G.calm ? G.dark * .5 : G.dark, dawn: G.dawn, prints: G.prints, glitch: G.calm ? 0 : G.glitch, ghost: G.flick && G.D > 1 ? G.dark : 0, face: G.face, breath: 1, onair: G.onair }, dt);
   const d = $('desk'); d.style.transform = `translateY(${(G.cam * 104).toFixed(1)}%)`; d.style.visibility = G.cam > .985 ? 'hidden' : 'visible';
   $('scene').style.transform = `scale(${(1.1 - .1 * G.cam).toFixed(3)})`;
   document.body.classList.toggle('final', !!G.final); document.body.dataset.v = G.cam > .5 ? 'win' : 'desk'; $('bLook').querySelector('b').textContent = G.view ? '▼ DESK' : '▲ WINDOW';
