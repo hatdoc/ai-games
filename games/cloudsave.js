@@ -61,8 +61,37 @@
       if (Date.now() - tokenAt > 45 * 60e3) await waitToken();
       return fetch(`${FS}${suffix}${suffix.includes('?') ? '&' : '?'}key=${KEY}`, { ...init, headers: auth() });
     },
-    // collection: e.g. 'games/snake/scores'. Keeps the higher of old and new; returns the previous best (or null)
+    // collection: e.g. 'games/snake/scores'. Keeps the higher of old and new; returns the previous best (or null).
+    // An all-time board (not a daily one) also gets a weekly board (games/<board>_w<week>/scores, new every Monday),
+    // and the players this score just passed get a "your score was beaten" notice (shown in the site's bell).
     async submit(collection, score, extra = {}) {
+      const m = collection.match(/^games\/([a-z0-9_-]+)\/scores$/), main = m && !/_d\d{8}|_w\d{4}$/.test(m[1]);
+      const best = await this.put(collection, score, extra);
+      if (main) {
+        const week = Math.floor((Date.now() / 864e5 + 3) / 7);
+        await this.put(`games/${m[1]}_w${week}/scores`, score).catch(() => {}); // the weekly board never blocks the real save
+        if (best === null || score > best) await this.notifyBeaten(m[1], best ?? 0, score).catch(() => {});
+      }
+      return best;
+    },
+    // tell the (up to 3) players just below the new score, who were above the old one, that they were passed
+    async notifyBeaten(board, old, score) {
+      const q = { structuredQuery: { from: [{ collectionId: 'scores' }],
+        where: { compositeFilter: { op: 'AND', filters: [
+          { fieldFilter: { field: { fieldPath: 'score' }, op: 'GREATER_THAN', value: { integerValue: String(old) } } },
+          { fieldFilter: { field: { fieldPath: 'score' }, op: 'LESS_THAN', value: { integerValue: String(score) } } }] } },
+        orderBy: [{ field: { fieldPath: 'score' }, direction: 'DESCENDING' }], limit: 4 } };
+      const rows = await (await this.api(`/games/${board}:runQuery`, { method: 'POST', body: JSON.stringify(q) })).json();
+      const { uid, nick } = this.user;
+      const writes = rows.filter((r) => r.document && !r.document.name.endsWith('/' + uid)).slice(0, 3).map((r) => ({
+        update: { name: `projects/hatdoc-blog-1048/databases/(default)/documents/notifs/${r.document.name.split('/').pop()}/in/${board}__${uid}`,
+          fields: { board: { stringValue: board }, by: { stringValue: nick }, score: { integerValue: String(score) } } },
+        updateTransforms: [{ fieldPath: 'at', setToServerValue: 'REQUEST_TIME' }],
+      }));
+      // one write per commit: a refused one (e.g. its score changed meanwhile) must not block the others
+      for (const w of writes) await this.api(':commit', { method: 'POST', body: JSON.stringify({ writes: [w] }) }).catch(() => {});
+    },
+    async put(collection, score, extra = {}) {
       const { uid, nick } = this.user;
       if (Date.now() - tokenAt > 45 * 60e3) await waitToken();
       const url = `${FS}/${collection}/${uid}?key=${KEY}`;

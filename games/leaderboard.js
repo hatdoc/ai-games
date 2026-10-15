@@ -25,6 +25,9 @@
     .lb .muted { justify-content: center; opacity: .6; background: none !important; }
     .lb .note { text-align: center; font-size: 13px; opacity: .8; margin: -2px 0 8px; }
     .lb .note[hidden] { display: none; }
+    .lb .tabs { display: flex; justify-content: center; gap: 6px; margin: 0 0 8px; }
+    .lb .tabs button { font: 700 12px system-ui, sans-serif; padding: 5px 12px; border: 1px solid #ffffff44; border-radius: 99px; background: none; color: #fff; cursor: pointer; opacity: .7; }
+    .lb .tabs button.on { background: #ffd84a; color: #111; border-color: #ffd84a; opacity: 1; }
   </style>`);
 
   // Top scores of a board, highest first (for showing a live rank while playing)
@@ -40,9 +43,13 @@
   window.leaderboard = (root, game, fmt = String) => {
     const A = window.rgAuth || { onSite: false };
     root.classList.add('lb');
-    root.innerHTML = `<h3>🏆 TOP 10</h3><div class="note" hidden></div><button class="act" hidden></button><ol></ol>`;
+    root.innerHTML = `<h3>🏆 TOP 10</h3><div class="tabs" hidden><button data-w="" class="on">All time</button><button data-w="1">This week</button></div><div class="note" hidden></div><button class="act" hidden></button><ol></ol>`;
     const btn = root.querySelector('.act'), list = root.querySelector('ol'), note = root.querySelector('.note');
-    let score = 0, done = true, busy = false;
+    let score = 0, done = true, busy = false, weekly = false;
+    // each Monday a fresh weekly board starts (cloudsave.js writes it next to the all-time one); daily boards have no tabs
+    const week = Math.floor((Date.now() / 864e5 + 3) / 7), tabs = root.querySelector('.tabs');
+    tabs.hidden = /_d\d{8}$/.test(game);
+    tabs.onclick = (e) => { const b = e.target.closest('button'); if (!b) return; weekly = !!b.dataset.w; tabs.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); load(); };
     const say = (html) => { note.innerHTML = html; note.hidden = !html; };
     const esc = (t) => t.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
     if (A.onSite) { window.rgHasBoard = true; parent.postMessage({ type: 'rg-board' }, 'https://rank-game.com'); } // page shows the nickname box / sign-in prompt
@@ -53,14 +60,14 @@
     async function load() {
       msg('Loading…');
       try {
-        const res = await fetch(`${FS}/games/${game}:runQuery?key=${FKEY}`, {
+        const res = await fetch(`${FS}/games/${weekly ? `${game}_w${week}` : game}:runQuery?key=${FKEY}`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'scores' }],
             orderBy: [{ field: { fieldPath: 'score' }, direction: 'DESCENDING' }], limit: 10 } }),
         });
         if (!res.ok) throw 0;
         const rows = (await res.json()).filter((r) => r.document);
-        if (!rows.length) return msg('No scores yet. Be the first!');
+        if (!rows.length) return msg(weekly ? 'No scores this week yet. Be the first!' : 'No scores yet. Be the first!');
         list.innerHTML = '';
         rows.forEach(({ document: d }, i) => {
           const li = document.createElement('li');
