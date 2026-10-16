@@ -389,12 +389,13 @@ function renderRail() {
   const cost = free ? 'free' : G.mode === 'practice' || G.mode === 'challenge' ? '' : `−${Math.round(150 * t.mult)}`;
   let h = '';
   if (!noHints) h += `<button class="pw" id="pinB" ${left <= 0 || G.done ? 'disabled' : ''}>📍 Pin<span class="cost">${cost}</span></button><button class="pw" id="sweepB" ${left <= 0 || G.done ? 'disabled' : ''}>🧹 Sweep<span class="cost">${cost}</span></button>`;
-  if (G.mode === 'gauntlet') h += `<span class="chip">🪶 Spare rows ×${G.gauntlet.spares}</span><button class="pw" id="giveB" ${G.done ? 'disabled' : ''}>🏳️ Give up</button>`;
+  if (G.mode === 'gauntlet') h += `<span class="chip">🪶 Spare rows ×${G.gauntlet.spares}</span>`;
   if (G.mode === 'league') h += `<span class="chip">🏆 ${esc(G.league.name)}</span>`;
   if (G.mode === 'fib') h += `<span class="muted" style="font-size:12.5px">Long-press a tile to mark a liar 🤥 · keys with a white ring are best guesses</span>`;
   if (G.mode === 'rush') h += `<span class="chip">⭐ ${G.rush.score} · ${G.rush.solved} solved</span>`;
+  h += `<button class="pw" id="giveB" ${G.done ? 'disabled' : ''}>🏳️ Give up</button>`;
   $('rail').innerHTML = h;
-  $('giveB') && ($('giveB').onclick = () => { if (!G.done && !G.busy && confirm('End the run and rank with your current score?')) lose(0); });
+  $('giveB') && ($('giveB').onclick = () => { if (!G.done && !G.busy && confirm(G.mode === 'gauntlet' || G.mode === 'rush' ? 'End the run and rank with your current score?' : 'Give up on this word? It counts as a loss.')) G.mode === 'rush' ? rushOver() : lose(0); });
   $('pinB') && ($('pinB').onclick = () => useHint('pin')); $('sweepB') && ($('sweepB').onclick = () => useHint('sweep'));
 }
 function topBar() {
