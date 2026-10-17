@@ -129,7 +129,7 @@ const $ = (id) => document.getElementById(id);
 const SHARE = 'https://rank-game.com/games/beauty-doctor';
 const WASM = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
-const MAXN = 36;
+const MAXN = 48;
 
 // ---------- sound (all synthesized) ----------
 let AC = null, muted = false;
@@ -150,13 +150,14 @@ $('mute').onclick = () => { muted = !muted; $('mute').textContent = muted ? '�
 
 // ---------- tools ----------
 const TOOLS = [
-  { icon: '💉', name: 'Lip Filler', s: [['lip', 'Volume'], ['bow', "Cupid's bow"], ['smile', 'Smile lift']] },
-  { icon: '🔪', name: 'Rhinoplasty', s: [['slim', 'Slim bridge'], ['lift', 'Tip lift']] },
+  { icon: '💉', name: 'Lip Filler', s: [['lip', 'Volume'], ['bow', "Cupid's bow"], ['smile', 'Smile lift'], ['lipw', 'Lip width']] },
+  { icon: '🔪', name: 'Rhinoplasty', s: [['slim', 'Slim bridge'], ['lift', 'Tip lift'], ['nostril', 'Nostrils']] },
   { icon: '✨', name: 'V-Line', s: [['jaw', 'Jaw sculpt'], ['chin', 'Chin lift'], ['point', 'Chin point']] },
-  { icon: '👁️', name: 'Fox Eye', s: [['fox', 'Fox slant'], ['wide', 'Open wide']] },
+  { icon: '👁️', name: 'Fox Eye', s: [['fox', 'Fox slant'], ['wide', 'Open wide'], ['close', 'Close-set'], ['under', 'Under-eye fill']] },
   { icon: '🤨', name: 'Brows', s: [['brow', 'Brow lift'], ['arch', 'Outer arch']] },
   { icon: '🍑', name: 'Cheeks', s: [['cfill', 'Cheek filler'], ['cbone', 'Cheekbones']] },
   { icon: '🫥', name: 'Face', s: [['slimf', 'Slim face'], ['fore', 'Forehead']] },
+  { icon: '💄', name: 'Makeup', s: [['lipst', 'Lipstick'], ['blush', 'Blush'], ['tan', 'Bronzer']] },
   { icon: '🪄', name: 'Skin Glow', s: [['smooth', 'Smooth'], ['glow', 'Glow']] },
 ];
 const val = {}, cur = {};
@@ -203,7 +204,7 @@ const gl = $('gl').getContext('webgl', { antialias: false, preserveDrawingBuffer
 const VS = `attribute vec2 a; varying vec2 uv; void main(){ uv = vec2(a.x*.5+.5, .5-a.y*.5); gl_Position = vec4(a, 0., 1.); }`;
 const FS = `precision highp float;
 varying vec2 uv; uniform sampler2D T; uniform vec4 A[${MAXN}]; uniform vec4 B[${MAXN}];
-uniform vec4 face, chL, chR; uniform vec2 px; uniform float smoothV, glowV, before;
+uniform vec4 face, chL, chR, lipC; uniform vec3 mk; uniform vec2 px; uniform float smoothV, glowV, before;
 float g(vec2 p, vec4 e){ vec2 d = (p - e.xy) / e.zw; return exp(-dot(d, d)); }
 void main(){
   vec2 q = uv;
@@ -219,6 +220,9 @@ void main(){
       }
       c = mix(c, s / tw, smoothV * fm * .9);
     }
+    c = mix(c, c * vec3(1.5, .45, .55), mk.x * g(q, lipC) * .85);
+    c += mk.y * (g(q, chL) + g(q, chR)) * vec3(.22, .03, .08);
+    c = mix(c, c * vec3(.82, .68, .55) + vec3(.04, .02, 0.), mk.z * fm * .6);
     c += glowV * (fm * .06 + (g(q, chL) + g(q, chR)) * vec3(.14, .045, .05));
   }
   gl_FragColor = vec4(c, 1.);
@@ -229,7 +233,7 @@ function initGL() {
   prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog); gl.useProgram(prog);
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
   const a = gl.getAttribLocation(prog, 'a'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
-  for (const n of ['A', 'B', 'face', 'chL', 'chR', 'px', 'smoothV', 'glowV', 'before', 'T']) loc[n] = gl.getUniformLocation(prog, n);
+  for (const n of ['A', 'B', 'face', 'chL', 'chR', 'lipC', 'mk', 'px', 'smoothV', 'glowV', 'before', 'T']) loc[n] = gl.getUniformLocation(prog, n);
   tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -255,6 +259,10 @@ function buildOps(L) {
   op(L[205], .13, .13, 0, 0, .3 * v('cfill')); op(L[425], .13, .13, 0, 0, .3 * v('cfill'));
   op(L[123], .1, .1, -.03 * v('cbone'), -.045 * v('cbone'), 0); op(L[352], .1, .1, .03 * v('cbone'), -.045 * v('cbone'), 0);
   op(L[234], .2, .3, .06 * v('slimf'), 0, 0); op(L[454], .2, .3, -.06 * v('slimf'), 0, 0);
+  op(L[61], .08, .06, -.05 * v('lipw'), 0, 0); op(L[291], .08, .06, .05 * v('lipw'), 0, 0);
+  op(L[129], .06, .06, .035 * v('nostril'), 0, 0); op(L[358], .06, .06, -.035 * v('nostril'), 0, 0);
+  op(mid(L[468], L[133]), .1, .1, .04 * v('close'), 0, 0); op(mid(L[473], L[362]), .1, .1, -.04 * v('close'), 0, 0);
+  op([L[145][0], L[145][1] + .03 * s], .07, .04, 0, 0, .3 * v('under')); op([L[374][0], L[374][1] + .03 * s], .07, .04, 0, 0, .3 * v('under'));
   op(mid(L[10], L[151]), .22, .12, 0, 0, .25 * v('fore'));
   for (const [o, i, e, sg] of [[33, 133, 159, 1], [263, 362, 386, -1]]) {
     op(L[o], .07, .07, -sg * .015 * v('fox'), -.035 * v('fox'), 0);
@@ -282,9 +290,11 @@ function render() {
   if (lm) {
     const s = D(lm[234], lm[454]), c = mid(lm[168], lm[2]);
     gl.uniform4f(loc.face, c[0] / W, c[1] / H, .55 * s / W, .8 * s / H);
+    const lc = mid(lm[13], lm[14]); gl.uniform4f(loc.lipC, lc[0] / W, lc[1] / H, .17 * s / W, .045 * s / H);
     gl.uniform4f(loc.chL, lm[205][0] / W, lm[205][1] / H, .09 * s / W, .09 * s / H);
     gl.uniform4f(loc.chR, lm[425][0] / W, lm[425][1] / H, .09 * s / W, .09 * s / H);
-  } else { gl.uniform4f(loc.face, 0, 0, 1, 1); gl.uniform4f(loc.chL, 0, 0, 1e-3, 1e-3); gl.uniform4f(loc.chR, 0, 0, 1e-3, 1e-3); }
+  } else { gl.uniform4f(loc.face, 0, 0, 1, 1); gl.uniform4f(loc.chL, 0, 0, 1e-3, 1e-3); gl.uniform4f(loc.chR, 0, 0, 1e-3, 1e-3); gl.uniform4f(loc.lipC, 0, 0, 1e-3, 1e-3); }
+  gl.uniform3f(loc.mk, cur.lipst / 100, cur.blush / 100, cur.tan / 100);
   gl.uniform2f(loc.px, 1 / W, 1 / H);
   gl.uniform1f(loc.smoothV, cur.smooth / 100); gl.uniform1f(loc.glowV, cur.glow / 100);
   gl.uniform1f(loc.before, showBefore || !lm ? 1 : 0);
