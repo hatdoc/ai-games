@@ -338,14 +338,16 @@ function render() {
 }
 
 // clinical grid drawn on the warped face. UI = canvas pixels per screen pixel, so lines and labels keep one size at any zoom
-let UI = 1;
+let UI = 1, gridUntil = 0; // the measuring grid only shows for a moment when the face is first locked
 function drawGrid() {
   octx.clearRect(0, 0, ov.width, ov.height);
   if (!lm || showBefore) return;
   const X = (x) => mirror ? ov.width - x : x;
   const P = (i) => { const p = warpPt(lm[i], ops); return [X(p[0]), p[1]]; };
   const line = (a, b) => { octx.moveTo(...P(a)); octx.lineTo(...P(b)); };
-  const t = performance.now() / 1000, pulse = .55 + .25 * Math.sin(t * 3);
+  const t = performance.now() / 1000, pulse = .55 + .25 * Math.sin(t * 3), ga = Math.max(0, Math.min(1, (gridUntil - performance.now()) / 700));
+  octx.globalAlpha = ga;
+  if (ga > 0) {
   octx.lineWidth = 1.6 * UI; octx.strokeStyle = `rgba(60,200,255,${pulse})`; octx.fillStyle = '#ffd9a8';
   octx.beginPath(); IDX.oval.forEach((i, n) => n ? octx.lineTo(...P(i)) : octx.moveTo(...P(i))); octx.closePath(); octx.stroke();
   octx.strokeStyle = 'rgba(255,217,168,.7)'; octx.setLineDash([6 * UI, 6 * UI]); octx.beginPath();
@@ -355,6 +357,8 @@ function drawGrid() {
   for (const i of [10, 168, 1, 61, 291, 33, 263, 133, 362, 98, 327, 172, 397, 152, 234, 454]) { const p = P(i); octx.beginPath(); octx.arc(p[0], p[1], 3.2 * UI, 0, 7); octx.fill(); }
   octx.font = `800 ${13 * UI}px system-ui`; octx.fillStyle = '#3cc8ff';
   const pl = P(234), pr = P(454); octx.fillText('φ 1.618', Math.min(pl[0], pr[0]) - 2, P(10)[1] - 8);
+  }
+  octx.globalAlpha = 1;
   // spotlight on the area being edited
   const now = performance.now(), keys = dragging ? [dragging] : now < focus.until ? focus.keys : [];
   const a = dragging ? 1 : Math.min(1, (focus.until - now) / 600), sFace = D(lm[234], lm[454]), seen = new Set();
@@ -376,7 +380,7 @@ function drawGrid() {
 }
 
 // ---------- main loop ----------
-let texDone = false, running = false;
+let texDone = false, running = false, gridShown = false;
 function fit() {
   const box = $('view').getBoundingClientRect(), k = Math.min(box.width / W, box.height / H) * .98, w = W * k, h = H * k, cw = $('cw');
   cw.style.width = w + 'px'; cw.style.height = h + 'px';
@@ -400,7 +404,7 @@ function loop() {
   let pts = isCam ? (srcEl.readyState >= 2 ? detect() : null) : photoLm;
   if (pts) { lm = lm ? pts.map((p, i) => [lm[i][0] * .45 + p[0] * .55, lm[i][1] * .45 + p[1] * .55]) : pts; }
   else if (isCam) lm = null;
-  if (!!lm !== hasFace) { hasFace = !!lm; $('hud').textContent = hasFace ? 'SURGICAL GRID LOCKED' : 'NO FACE FOUND: CENTER YOUR FACE'; $('hud').classList.toggle('warn', !hasFace); }
+  if (!!lm !== hasFace) { hasFace = !!lm; if (hasFace && !gridShown) { gridShown = true; gridUntil = performance.now() + 2800; } $('hud').textContent = hasFace ? 'SURGICAL GRID LOCKED' : 'NO FACE FOUND: CENTER YOUR FACE'; $('hud').classList.toggle('warn', !hasFace); }
   ops = lm ? buildOps(lm) : [];
   render(); drawGrid();
 }
@@ -411,7 +415,7 @@ async function startStage(el, cam) {
   for (const c of [$('gl'), ov]) { c.width = W; c.height = H; }
   $('gl').classList.toggle('mirror', mirror);
   $('flip').hidden = !cam;
-  texDone = false; lm = null; hasFace = false; frozen = false; showBefore = false; photoLm = null; ops = [];
+  texDone = false; gridShown = false; gridUntil = 0; lm = null; hasFace = false; frozen = false; showBefore = false; photoLm = null; ops = [];
   if (!cam) { for (let i = 0; i < 3 && !photoLm; i++) photoLm = detect(); if (!photoLm) throw new Error('No face found in that photo. Try a clear, front-facing selfie.'); }
   $('intro').hidden = true; $('res').hidden = true; $('stage').hidden = false;
   fit(); drawDeck(); running = true; loop();
