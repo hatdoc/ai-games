@@ -66,6 +66,13 @@
   #wire .l { stroke: var(--gold); stroke-width: 3; filter: drop-shadow(0 0 6px #ffd9a8); animation: wl 2.6s ease-in-out infinite alternate; }
   @keyframes wl { from { transform: translateY(8px) } to { transform: translateY(232px) } }
   #wire .pop { animation: bl 2.6s steps(1) infinite; } @keyframes bl { 50% { opacity: .15 } }
+  @media (min-width: 760px) and (min-aspect-ratio: 5/4) { /* wide screens: tools on the left so they never cover the face */
+    #stage { flex-direction: row; }
+    #deck { order: -1; flex: none; width: 380px; padding: 48px 14px 16px; border-radius: 0 22px 22px 0; border-top: 0; border-right: 1px solid var(--line); box-shadow: 10px 0 40px #000a; overflow-y: auto; align-content: start; gap: 14px; }
+    #tabs { flex-wrap: wrap; justify-content: center; overflow: visible; }
+    #tabs button:first-child, #tabs button:last-child { margin: 0; }
+    #acts { flex-wrap: wrap; } #acts #eval { flex: 1 1 100%; order: -1; }
+  }
   #res { z-index: 30; }
   #card { width: min(340px, 86vw); aspect-ratio: 9 / 16; border-radius: 16px; box-shadow: 0 0 40px #3cc8ff44; animation: pop .7s cubic-bezier(.2, 1.4, .4, 1); }
   @keyframes pop { from { transform: scale(.7); opacity: 0 } to { transform: none; opacity: 1 } }
