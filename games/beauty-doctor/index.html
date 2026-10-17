@@ -277,7 +277,7 @@ void main(){
     c = mix(c, c * vec3(1.5, .45, .55), mk.x * g(q, lipC) * .85);
     c += mk.y * (g(q, chL) + g(q, chR)) * vec3(.22, .03, .08);
     if (fx.x > .01) { vec3 cr = crease(q, eL, fx.x) + crease(q, eR, fx.x);
-      c = mix(c, c * vec3(.8, .7, .66), clamp(fx.x * (.95 * cr.x + .3 * cr.z), 0., 1.)); }
+      c *= 1. - .3 * clamp(fx.x * (cr.x + .2 * cr.z), 0., 1.); } // same-hue darkening, so the fold keeps the skin colour
     if (abs(fx.y) > .01) { vec2 pa = (q - br.xy) / px, ba = (br.zw - br.xy) / px; float h = clamp(dot(pa, ba) / dot(ba, ba), 0., 1.), dd = length(pa - ba * h);
       c += fx.y * (.14 * exp(-pow(dd / bwid, 2.)) - .08 * exp(-pow((dd - 2.2 * bwid) / bwid, 2.))) * smoothstep(0., .08, h) * (1. - smoothstep(.9, 1., h)); }
     if (fx.z > .01) { float lum = dot(c, vec3(.3, .59, .11)), sat = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
