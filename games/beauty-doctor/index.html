@@ -29,26 +29,33 @@
 
   #stage { position: fixed; inset: 0; display: flex; flex-direction: column; z-index: 5; }
   #view { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; }
-  #view canvas { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 14px; }
-  #gl.mirror { transform: translate(-50%, -50%) scaleX(-1); }
+  #cw { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); transition: transform .5s cubic-bezier(.2, .8, .2, 1); }
+  #cw canvas { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 14px; }
+  #gl.mirror { transform: scaleX(-1); }
   #hud { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); padding: 5px 12px; border-radius: 99px; background: #000a; border: 1px solid var(--line); font-size: 12px; font-weight: 800; letter-spacing: 1px; color: var(--blue); z-index: 3; white-space: nowrap; }
   #hud.warn { color: #ffb0bd; border-color: #ff8ea0; }
   #scan { position: absolute; inset: 0; z-index: 4; pointer-events: none; display: grid; align-items: end; justify-items: center; padding-bottom: 20px; }
   #laser { position: absolute; left: 0; right: 0; height: 3px; top: 0; background: linear-gradient(90deg, transparent, #ffd9a8, #fff, #ffd9a8, transparent); box-shadow: 0 0 24px 8px #ffd9a899; animation: sweep 3.2s ease-in-out forwards; }
   @keyframes sweep { from { top: 4% } 50% { top: 96% } to { top: 4% } }
   #scanTxt { padding: 8px 16px; border-radius: 12px; background: #000b; border: 1px solid var(--gold); color: var(--gold); font-weight: 800; letter-spacing: 1px; }
-  #deck { padding: 8px 10px calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(0deg, #060a14f2, #060a14c0); border-top: 1px solid var(--line); display: grid; gap: 8px; }
-  #tabs { display: flex; gap: 6px; overflow-x: auto; }
+  #deck { padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(0deg, #060a14, #0b1424ee); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); border-radius: 22px 22px 0 0; display: grid; gap: 8px; box-shadow: 0 -10px 40px #000a; }
+  #tabs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 4px; scrollbar-width: none; }
+  #tabs::-webkit-scrollbar { display: none; }
   #tabs button:first-child { margin-left: auto; } #tabs button:last-child { margin-right: auto; }
-  #tabs button { flex: 0 0 auto; padding: 7px 10px; font-size: 13px; }
-  #tabs button.on { background: linear-gradient(90deg, #1aa8ff55, #f0b9a455); border-color: var(--rose); }
-  #sliders { display: grid; gap: 4px; width: min(560px, 100%); margin: 0 auto; }
-  .sl { display: grid; grid-template-columns: 120px 1fr 34px; align-items: center; gap: 10px; font-size: 13px; font-weight: 800; color: var(--mut); }
+  #tabs button { flex: 0 0 auto; position: relative; width: 68px; padding: 7px 2px 6px; display: grid; justify-items: center; gap: 2px; font-size: 11px; border-radius: 14px; }
+  #tabs .ic { font-size: 20px; line-height: 1; }
+  #tabs button.on { background: linear-gradient(160deg, #1aa8ff55, #f0b9a455); border-color: var(--rose); box-shadow: 0 0 14px #f0b9a455; }
+  #tabs .dot { position: absolute; top: 5px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--rose); box-shadow: 0 0 8px var(--rose); }
+  #sliders { display: grid; gap: 6px; width: min(560px, 100%); margin: 0 auto; }
+  .sh { display: flex; justify-content: space-between; align-items: center; font-weight: 900; font-size: 14px; letter-spacing: .5px; }
+  .sh button { padding: 4px 10px; font-size: 12px; border-radius: 99px; }
+  .sl { display: grid; grid-template-columns: 112px 1fr 38px; align-items: center; gap: 10px; font-size: 13px; font-weight: 800; color: var(--mut); padding: 4px 8px; border-radius: 12px; transition: background .2s; }
+  .sl.hot { background: #3cc8ff1c; color: var(--ink); }
   .sl output { text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
   input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #1aa8ff, #f0b9a4); outline: none; }
   input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 3px solid var(--blue); box-shadow: 0 0 12px var(--blue); }
   input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 3px solid var(--blue); }
-  #acts { display: flex; gap: 8px; width: min(560px, 100%); margin: 0 auto; }
+  #acts { display: flex; gap: 8px; touch-action: manipulation; width: min(560px, 100%); margin: 0 auto; }
   #acts > * { flex: 1; padding: 11px 8px; }
   #acts #eval { flex: 2; }
 
@@ -95,8 +102,7 @@
 
 <div id="stage" hidden>
   <div id="view">
-    <canvas id="gl"></canvas>
-    <canvas id="ov"></canvas>
+    <div id="cw"><canvas id="gl"></canvas><canvas id="ov"></canvas></div>
     <div id="hud">LOOKING FOR A FACE…</div>
     <div id="scan" hidden><div id="laser"></div><div id="scanTxt"></div></div>
   </div>
@@ -105,6 +111,7 @@
     <div id="sliders"></div>
     <div id="acts">
       <button id="flip" title="Switch camera">🔄</button>
+      <button id="rst" title="Reset all tools">↺</button>
       <button id="ba">👁 Hold: BEFORE</button>
       <button id="eval" class="cta">PERFORM EVALUATION</button>
     </div>
@@ -164,15 +171,36 @@ const val = {}, cur = {};
 for (const t of TOOLS) for (const [k] of t.s) val[k] = cur[k] = 0;
 let tool = 0;
 function drawDeck() {
-  $('tabs').innerHTML = TOOLS.map((t, i) => `<button data-i="${i}" class="${i === tool ? 'on' : ''}">${t.icon} ${t.name}</button>`).join('');
-  $('sliders').innerHTML = TOOLS[tool].s.map(([k, n]) => `<label class="sl">${n}<input type="range" min="0" max="100" value="${val[k]}" data-k="${k}"><output>${val[k]}</output></label>`).join('');
+  const any = (t) => t.s.some(([k]) => val[k] > 0);
+  $('tabs').innerHTML = TOOLS.map((t, i) => `<button data-i="${i}" class="${i === tool ? 'on' : ''}"><span class="ic">${t.icon}</span>${t.name}${any(t) ? '<i class="dot"></i>' : ''}</button>`).join('');
+  const T = TOOLS[tool];
+  $('sliders').innerHTML = `<div class="sh"><span>${T.icon} ${T.name}</span><button id="rt">↺ Reset tool</button></div>` + T.s.map(([k, n]) => `<label class="sl" data-row="${k}">${n}<input type="range" min="0" max="100" value="${val[k]}" data-k="${k}"><output>${val[k]}</output></label>`).join('');
+  $('tabs').querySelector('.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
 }
-let lastBuzz = 0;
-$('tabs').onclick = (e) => { const b = e.target.closest('button'); if (b) { tool = +b.dataset.i; sClick(); drawDeck(); } };
+// which landmarks each slider touches (indices are averaged), and the glow radius as a share of face width
+const REG = {
+  lip: [[[0, 17]], .2], bow: [[[0]], .08], smile: [[[61], [291]], .07], lipw: [[[61], [291]], .07],
+  slim: [[[98], [327]], .09], lift: [[[1]], .08], nostril: [[[129], [358]], .06],
+  jaw: [[[58], [136], [288], [365]], .1], chin: [[[152]], .1], point: [[[148], [377]], .08],
+  fox: [[[33], [263]], .07], wide: [[[159, 145], [386, 374]], .08], close: [[[468, 133], [473, 362]], .08], under: [[[145], [374]], .07],
+  brow: [[[105], [334]], .09], arch: [[[70], [300]], .08], cfill: [[[205], [425]], .12], cbone: [[[123], [352]], .1],
+  slimf: [[[234], [454]], .15], fore: [[[10, 151]], .2], lipst: [[[13, 14]], .17], blush: [[[205], [425]], .12],
+  tan: [[[168, 2]], .4], smooth: [[[168, 2]], .4], glow: [[[205], [425]], .12],
+};
+const LABEL = {}; for (const t of TOOLS) for (const [k, n] of t.s) LABEL[k] = n;
+let focus = { keys: [], until: 0 }, dragging = null, lastBuzz = 0;
+const setFocus = (keys, ms = 2200) => { focus = { keys, until: performance.now() + ms }; };
+const updDot = () => { const t = TOOLS[tool], b = $('tabs').querySelector('.on'); if (!b) return; const has = t.s.some(([k]) => val[k] > 0), d = b.querySelector('.dot'); if (has && !d) b.insertAdjacentHTML('beforeend', '<i class="dot"></i>'); if (!has && d) d.remove(); };
+$('tabs').onclick = (e) => { const b = e.target.closest('button'); if (b) { tool = +b.dataset.i; sClick(); drawDeck(); setFocus(TOOLS[tool].s.map((x) => x[0])); } };
 $('sliders').oninput = (e) => {
-  const k = e.target.dataset.k; val[k] = +e.target.value; e.target.nextElementSibling.textContent = val[k];
+  const k = e.target.dataset.k; if (!k) return;
+  val[k] = +e.target.value; e.target.nextElementSibling.textContent = val[k]; updDot(); setFocus([k], 1500);
   const n = performance.now(); if (n - lastBuzz > 90) { lastBuzz = n; sClick(); navigator.vibrate?.(6); }
 };
+$('sliders').addEventListener('pointerdown', (e) => { const k = e.target.dataset?.k; if (k) { dragging = k; document.querySelector(`[data-row="${k}"]`)?.classList.add('hot'); } });
+for (const ev of ['pointerup', 'pointercancel']) addEventListener(ev, () => { dragging = null; document.querySelectorAll('.sl.hot').forEach((x) => x.classList.remove('hot')); });
+$('sliders').onclick = (e) => { if (e.target.id !== 'rt') return; for (const [k] of TOOLS[tool].s) val[k] = 0; sClick(); drawDeck(); };
+$('rst').onclick = () => { for (const k in val) val[k] = 0; sClick(); drawDeck(); };
 
 // ---------- face landmarks ----------
 let landmarker = null, srcEl = null, isCam = false, mirror = false, facing = 'user', stream = null;
@@ -302,7 +330,8 @@ function render() {
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 
-// clinical grid drawn on the warped face
+// clinical grid drawn on the warped face. UI = canvas pixels per screen pixel, so lines and labels keep one size at any zoom
+let UI = 1;
 function drawGrid() {
   octx.clearRect(0, 0, ov.width, ov.height);
   if (!lm || showBefore) return;
@@ -310,22 +339,48 @@ function drawGrid() {
   const P = (i) => { const p = warpPt(lm[i], ops); return [X(p[0]), p[1]]; };
   const line = (a, b) => { octx.moveTo(...P(a)); octx.lineTo(...P(b)); };
   const t = performance.now() / 1000, pulse = .55 + .25 * Math.sin(t * 3);
-  octx.lineWidth = Math.max(1.5, W / 640); octx.strokeStyle = `rgba(60,200,255,${pulse})`; octx.fillStyle = '#ffd9a8';
+  octx.lineWidth = 1.6 * UI; octx.strokeStyle = `rgba(60,200,255,${pulse})`; octx.fillStyle = '#ffd9a8';
   octx.beginPath(); IDX.oval.forEach((i, n) => n ? octx.lineTo(...P(i)) : octx.moveTo(...P(i))); octx.closePath(); octx.stroke();
-  octx.strokeStyle = 'rgba(255,217,168,.7)'; octx.setLineDash([6, 6]); octx.beginPath();
+  octx.strokeStyle = 'rgba(255,217,168,.7)'; octx.setLineDash([6 * UI, 6 * UI]); octx.beginPath();
   line(10, 152); line(33, 263); line(61, 291); line(234, 454); line(172, 397); line(98, 327); line(2, 2);
   line(10, 168); line(168, 2); line(2, 152);
   octx.stroke(); octx.setLineDash([]);
-  for (const i of [10, 168, 1, 61, 291, 33, 263, 133, 362, 98, 327, 172, 397, 152, 234, 454]) { const p = P(i); octx.beginPath(); octx.arc(p[0], p[1], Math.max(2.5, W / 300), 0, 7); octx.fill(); }
-  octx.font = `800 ${Math.max(11, W / 55)}px system-ui`; octx.fillStyle = '#3cc8ff';
+  for (const i of [10, 168, 1, 61, 291, 33, 263, 133, 362, 98, 327, 172, 397, 152, 234, 454]) { const p = P(i); octx.beginPath(); octx.arc(p[0], p[1], 3.2 * UI, 0, 7); octx.fill(); }
+  octx.font = `800 ${13 * UI}px system-ui`; octx.fillStyle = '#3cc8ff';
   const pl = P(234), pr = P(454); octx.fillText('φ 1.618', Math.min(pl[0], pr[0]) - 2, P(10)[1] - 8);
+  // spotlight on the area being edited
+  const now = performance.now(), keys = dragging ? [dragging] : now < focus.until ? focus.keys : [];
+  const a = dragging ? 1 : Math.min(1, (focus.until - now) / 600), sFace = D(lm[234], lm[454]), seen = new Set();
+  keys.forEach((k, ki) => {
+    const reg = REG[k]; if (!reg) return;
+    reg[0].forEach((idx, n) => {
+      const q = idx.map((i) => P(i)), c = [q.reduce((x, y) => x + y[0], 0) / q.length, q.reduce((x, y) => x + y[1], 0) / q.length], R = reg[1] * sFace * (1 + .08 * Math.sin(t * 6));
+      const g = octx.createRadialGradient(c[0], c[1], 0, c[0], c[1], R * 1.5); g.addColorStop(0, `rgba(255,217,168,${.55 * a})`); g.addColorStop(.6, `rgba(60,200,255,${.3 * a})`); g.addColorStop(1, 'rgba(60,200,255,0)');
+      octx.fillStyle = g; octx.beginPath(); octx.arc(c[0], c[1], R * 1.5, 0, 7); octx.fill();
+      octx.strokeStyle = `rgba(255,217,168,${.95 * a})`; octx.lineWidth = 2.4 * UI; octx.setLineDash([R * .35, R * .25]); octx.lineDashOffset = -t * R; octx.beginPath(); octx.arc(c[0], c[1], R, 0, 7); octx.stroke(); octx.setLineDash([]);
+      if (n === 0 && !seen.has(k)) { // label on the first spot, on the side facing away from the face centre
+        seen.add(k); const fs = 13 * UI; octx.font = `800 ${fs}px system-ui`; const txt = LABEL[k], w = octx.measureText(txt).width + fs, cx = X(lm[168][0]), side = c[0] < cx ? -1 : 1;
+        const lx = Math.max(4, Math.min(ov.width - w - 4, c[0] + side * (R + fs * .3) - (side < 0 ? w : 0))), ly = Math.max(fs, Math.min(ov.height - fs, c[1] - R - fs * .4 - ki * fs * 1.5));
+        octx.fillStyle = `rgba(6,10,20,${.82 * a})`; octx.beginPath(); octx.roundRect ? octx.roundRect(lx, ly - fs, w, fs * 1.6, fs * .8) : octx.rect(lx, ly - fs, w, fs * 1.6); octx.fill();
+        octx.fillStyle = `rgba(255,217,168,${a})`; octx.textAlign = 'left'; octx.fillText(txt, lx + fs / 2, ly + fs * .15);
+      }
+    });
+  });
 }
 
 // ---------- main loop ----------
 let texDone = false, running = false;
 function fit() {
-  const box = $('view').getBoundingClientRect(), k = Math.min(box.width / W, box.height / H) * .98;
-  for (const c of [$('gl'), ov]) { c.style.width = W * k + 'px'; c.style.height = H * k + 'px'; }
+  const box = $('view').getBoundingClientRect(), k = Math.min(box.width / W, box.height / H) * .98, w = W * k, h = H * k, cw = $('cw');
+  cw.style.width = w + 'px'; cw.style.height = h + 'px';
+  let z = 1, dx = 0, dy = 0;
+  if (!isCam && photoLm) { // photos: zoom in on the face so the surgery is visible
+    const xs = IDX.oval.map((i) => photoLm[i][0]), ys = IDX.oval.map((i) => photoLm[i][1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    z = Math.max(1, Math.min(4, .62 * box.height / ((y1 - y0) * k), .78 * box.width / ((x1 - x0) * k)));
+    dx = (.5 - (x0 + x1) / 2 / W) * w; dy = (.5 - (y0 + y1) / 2 / H) * h;
+  }
+  UI = 1 / (k * z);
+  cw.style.transform = `translate(-50%, -50%) scale(${z}) translate(${dx}px, ${dy}px)`;
 }
 addEventListener('resize', () => W && fit());
 
