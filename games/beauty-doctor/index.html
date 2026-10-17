@@ -245,9 +245,10 @@ const FS = `precision highp float;
 varying vec2 uv; uniform sampler2D T; uniform vec4 A[${MAXN}]; uniform vec4 B[${MAXN}];
 uniform vec4 face, chL, chR, lipC, teethC, eL, eR, br; uniform vec3 mk, fx; uniform float bwid; uniform vec2 px; uniform float smoothV, glowV, before;
 float g(vec2 p, vec4 e){ vec2 d = (p - e.xy) / e.zw; return exp(-dot(d, d)); }
-float crease(vec2 p, vec4 e){ // upper-eyelid fold: a thin arc above the lid, e = (eye centre uv, half width px, arc height px)
-  vec2 d = (p - e.xy) / px; float xn = d.x / e.z; if (abs(xn) > 1.) return 0.;
-  float k = 1. - xn * xn, t = (d.y + e.w * k) / max(1.2, e.w * .12); return exp(-t * t) * sqrt(k); }
+vec3 crease(vec2 p, vec4 e, float amt){ // upper-eyelid fold. e = (centre of the eye corners uv, half width px, lid arch height px); returns (fold line, lid highlight, shadow above)
+  vec2 d = (p - e.xy) / px; float xn = d.x / e.z; if (abs(xn) > 1.) return vec3(0.);
+  float k = 1. - xn * xn, lid = -e.w * k, gap = amt * e.z * .2 * pow(k, 1.2), th = max(1.5, e.z * .09), dy = d.y - (lid - gap), m = smoothstep(0., .3, k);
+  return m * vec3(exp(-pow(dy / th, 2.)), exp(-pow((d.y - lid + gap * .5) / (gap * .5 + 1.), 2.)) * step(0., dy), exp(-pow((dy + th * 2.5) / (th * 2.2), 2.))); }
 void main(){
   vec2 q = uv;
   if (before < .5) for (int i = 0; i < ${MAXN}; i++) { float w = g(uv, A[i]); q += -B[i].xy * w + (A[i].xy - uv) * B[i].z * w; }
@@ -264,7 +265,8 @@ void main(){
     }
     c = mix(c, c * vec3(1.5, .45, .55), mk.x * g(q, lipC) * .85);
     c += mk.y * (g(q, chL) + g(q, chR)) * vec3(.22, .03, .08);
-    if (fx.x > .01) c *= 1. - .55 * fx.x * (crease(q, eL) + crease(q, eR));
+    if (fx.x > .01) { vec3 cr = crease(q, eL, fx.x) + crease(q, eR, fx.x);
+      c = mix(c, c * vec3(.55, .45, .42), clamp(fx.x * (.85 * cr.x + .22 * cr.z), 0., 1.)); c += fx.x * .07 * cr.y; }
     if (abs(fx.y) > .01) { vec2 pa = (q - br.xy) / px, ba = (br.zw - br.xy) / px; float h = clamp(dot(pa, ba) / dot(ba, ba), 0., 1.), dd = length(pa - ba * h);
       c += fx.y * (.14 * exp(-pow(dd / bwid, 2.)) - .08 * exp(-pow((dd - 2.2 * bwid) / bwid, 2.))) * smoothstep(0., .08, h) * (1. - smoothstep(.9, 1., h)); }
     if (fx.z > .01) { float lum = dot(c, vec3(.3, .59, .11)), sat = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
@@ -312,7 +314,7 @@ function buildOps(L) {
   op([L[145][0], L[145][1] + .03 * s], .07, .04, 0, 0, .3 * v('under')); op([L[374][0], L[374][1] + .03 * s], .07, .04, 0, 0, .3 * v('under'));
   op(L[0], .1, .08, 0, -.035 * v('phil'), 0);
   op(L[1], .06, .06, 0, 0, -.3 * v('tip')); op(L[1], .1, .1, 0, -.045 * v('nlen'), 0); op(L[2], .1, .08, 0, -.04 * v('nlen'), 0);
-  op(L[159], .08, .05, 0, -.03 * v('lid'), 0); op(L[386], .08, .05, 0, -.03 * v('lid'), 0);
+  op(L[159], .08, .05, 0, -.03 * v('lid') - .012 * v('dbl'), 0); op(L[386], .08, .05, 0, -.03 * v('lid') - .012 * v('dbl'), 0);
   op(mid(L[10], L[151]), .22, .12, 0, 0, .25 * v('fore'));
   for (const [o, i, e, sg] of [[33, 133, 159, 1], [263, 362, 386, -1]]) {
     op(L[o], .07, .07, -sg * .015 * v('fox'), -.035 * v('fox'), 0);
@@ -341,7 +343,7 @@ function render() {
     const s = D(lm[234], lm[454]), c = mid(lm[168], lm[2]), lc0 = mid(lm[13], lm[14]);
     gl.uniform4f(loc.face, c[0] / W, c[1] / H, .55 * s / W, .8 * s / H);
     gl.uniform4f(loc.teethC, lc0[0] / W, lc0[1] / H, .1 * s / W, .03 * s / H);
-    const eye = (o, i, t) => { const m = mid(lm[o], lm[i]), lid = Math.max(0, m[1] - lm[t][1]); return [m[0] / W, m[1] / H, D(lm[o], lm[i]) / 2, lid + .028 * s]; };
+    const eye = (o, i, t) => { const m = mid(lm[o], lm[i]), lid = Math.max(0, m[1] - lm[t][1]); return [m[0] / W, m[1] / H, D(lm[o], lm[i]) / 2, lid + .006 * s]; };
     gl.uniform4f(loc.eL, ...eye(33, 133, 159)); gl.uniform4f(loc.eR, ...eye(263, 362, 386));
     gl.uniform4f(loc.br, lm[168][0] / W, lm[168][1] / H, lm[1][0] / W, lm[1][1] / H); gl.uniform1f(loc.bwid, Math.max(1.5, .03 * s));
     const lc = mid(lm[13], lm[14]); gl.uniform4f(loc.lipC, lc[0] / W, lc[1] / H, .17 * s / W, .045 * s / H);
