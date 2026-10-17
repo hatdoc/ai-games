@@ -178,6 +178,9 @@ const BOTS = {
   'astrology-wars': { skip: 0.5, len: 12, poster: 8, async play(page) { // hub, then the Daily Cosmic Boss war: alignment, clash, grade reveal
     await page.evaluate(() => startDemo());
   } },
+  'beauty-doctor': { skip: 0.5, len: 9, poster: 2, async play(page) { // operates on games/beauty-doctor/demo.jpg if present (not committed), else shows the animated intro
+    await page.evaluate(() => startDemo());
+  } },
   'dojo-duel': { skip: 3, len: 9, poster: 4, async play(page) { // CPU vs CPU on Hard: strings, launchers and specials
     await page.evaluate(() => { startDemo(); ddGame.s.p[0].meter = ddGame.s.p[1].meter = 60; });
   } },
