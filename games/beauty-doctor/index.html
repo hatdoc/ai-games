@@ -60,13 +60,13 @@
   #acts > * { flex: 1; padding: 11px 8px; }
   #acts #eval { flex: 2; }
 
-  #wire { width: min(190px, 46vw); margin-top: 14px; overflow: visible; }
-  #wire .g { fill: none; stroke: var(--blue); stroke-width: 2; stroke-linecap: round; }
-  #wire .d { stroke: var(--gold); stroke-dasharray: 5 6; stroke-width: 1.4; opacity: .7; }
-  #wire text { fill: var(--gold); font: 800 9px system-ui; }
-  #wire .l { stroke: var(--gold); stroke-width: 3; filter: drop-shadow(0 0 6px #ffd9a8); animation: wl 2.6s ease-in-out infinite alternate; }
-  @keyframes wl { from { transform: translateY(8px) } to { transform: translateY(232px) } }
-  #wire .pop { animation: bl 2.6s steps(1) infinite; } @keyframes bl { 50% { opacity: .15 } }
+  #hero { position: relative; width: min(250px, 62vw); aspect-ratio: 4 / 5; margin: 14px 0 18px; border-radius: 22px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 0 44px #3cc8ff44, 0 10px 30px #000a; }
+  #hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; }
+  #hero .after { filter: brightness(1.07) contrast(1.05) saturate(1.12); clip-path: inset(0 0 100% 0); animation: rv 3.4s ease-in-out infinite alternate; }
+  #hero .scanl { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, transparent, #ffd9a8, #fff, #ffd9a8, transparent); box-shadow: 0 0 22px 6px #ffd9a899; animation: sl 3.4s ease-in-out infinite alternate; }
+  @keyframes rv { to { clip-path: inset(0 0 0 0); } } @keyframes sl { to { top: calc(100% - 3px); } }
+  #hero .chip { position: absolute; padding: 3px 9px; border-radius: 99px; background: #050a14cc; border: 1px solid var(--line); color: var(--gold); font: 800 11px system-ui; letter-spacing: .5px; animation: cp 3.4s ease-in-out infinite alternate; }
+  @keyframes cp { from { opacity: .15; } 60% { opacity: 1; } }
   @media (min-width: 760px) and (min-aspect-ratio: 5/4) { /* wide screens: tools on the left so they never cover the face */
     #stage { flex-direction: row; }
     #deck { order: -1; flex: none; width: 380px; padding: 48px 14px 16px; border-radius: 0 22px 22px 0; border-top: 0; border-right: 1px solid var(--line); box-shadow: 10px 0 40px #000a; overflow-y: auto; align-content: start; gap: 14px; }
@@ -91,18 +91,13 @@
 <div id="intro" class="screen">
   <h1>Beauty Doctor AI</h1>
   <p class="sub">Open your own virtual clinic. Reshape a face with lip filler, rhinoplasty, V-line and fox-eye tools, then let the AI measure your handiwork against the golden ratio.</p>
-  <svg id="wire" viewBox="0 0 160 250" aria-hidden="true">
-    <ellipse class="g" cx="80" cy="120" rx="62" ry="96"/><path class="g" d="M32 150 Q50 215 80 222 Q110 215 128 150"/>
-    <path class="g" d="M44 100 Q58 92 70 100 Q58 108 44 100ZM90 100 Q102 92 116 100 Q102 108 90 100Z"/>
-    <path class="g" d="M80 104 L74 150 Q80 155 86 150Z"/><path class="g" d="M62 180 Q80 172 98 180 Q80 194 62 180Z"/>
-    <path class="d" d="M80 10 V235 M10 100 H150 M10 180 H150 M18 150 H142"/>
-    <text class="pop" x="110" y="42">φ 1.618</text><text class="pop" x="2" y="94">SYM 97%</text><text class="pop" x="118" y="174">JAW 74°</text>
-    <line class="l" x1="0" x2="160" y1="0" y2="0"/>
-  </svg>
+  <div id="hero"><img src="sample.jpg" alt="" decoding="async"><img class="after" src="sample.jpg" alt="" decoding="async"><div class="scanl"></div>
+    <span class="chip" style="left:8px;top:14%">φ 1.618</span><span class="chip" style="right:8px;top:7%">SYM 97%</span><span class="chip" style="left:8px;bottom:12%">JAW 74°</span></div>
   <div id="chal" class="banner" hidden></div>
   <div class="glass">
     <button id="cam" class="cta">📷 Start camera</button>
     <button id="up">🖼️ Upload a selfie</button>
+    <button id="samp">✨ Try a sample face</button>
     <input id="file" type="file" accept="image/*" hidden>
     <p id="err"></p>
   </div>
@@ -247,8 +242,8 @@ uniform vec4 face, chL, chR, lipC, teethC, eL, eR, br; uniform vec3 mk, fx; unif
 float g(vec2 p, vec4 e){ vec2 d = (p - e.xy) / e.zw; return exp(-dot(d, d)); }
 vec3 crease(vec2 p, vec4 e, float amt){ // upper-eyelid fold. e = (centre of the eye corners uv, half width px, lid arch height px); returns (fold line, lid highlight, shadow above)
   vec2 d = (p - e.xy) / px; float xn = d.x / e.z; if (abs(xn) > 1.) return vec3(0.);
-  float k = 1. - xn * xn, lid = -e.w * k, gap = amt * e.z * .2 * pow(k, 1.2), th = max(1.5, e.z * .09), dy = d.y - (lid - gap), m = smoothstep(0., .3, k);
-  return m * vec3(exp(-pow(dy / th, 2.)), exp(-pow((d.y - lid + gap * .5) / (gap * .5 + 1.), 2.)) * step(0., dy), exp(-pow((dy + th * 2.5) / (th * 2.2), 2.))); }
+  float k = 1. - xn * xn, lid = -e.w * k, gap = amt * e.z * .34 * pow(k, .8), th = max(1.5, e.z * .065), dy = d.y - (lid - gap), m = smoothstep(0., .3, k);
+  return m * vec3(exp(-pow(dy / th, 2.)), exp(-pow((d.y - lid + gap * .5) / (gap * .5 + 1.), 2.)) * step(0., dy), exp(-pow((dy + th * 3.) / (th * 3.), 2.))); }
 void main(){
   vec2 q = uv;
   if (before < .5) for (int i = 0; i < ${MAXN}; i++) { float w = g(uv, A[i]); q += -B[i].xy * w + (A[i].xy - uv) * B[i].z * w; }
@@ -266,7 +261,7 @@ void main(){
     c = mix(c, c * vec3(1.5, .45, .55), mk.x * g(q, lipC) * .85);
     c += mk.y * (g(q, chL) + g(q, chR)) * vec3(.22, .03, .08);
     if (fx.x > .01) { vec3 cr = crease(q, eL, fx.x) + crease(q, eR, fx.x);
-      c = mix(c, c * vec3(.55, .45, .42), clamp(fx.x * (.85 * cr.x + .22 * cr.z), 0., 1.)); c += fx.x * .07 * cr.y; }
+      c = mix(c, c * vec3(.72, .6, .56), clamp(fx.x * (.85 * cr.x + .3 * cr.z), 0., 1.)); c += fx.x * .06 * cr.y; }
     if (abs(fx.y) > .01) { vec2 pa = (q - br.xy) / px, ba = (br.zw - br.xy) / px; float h = clamp(dot(pa, ba) / dot(ba, ba), 0., 1.), dd = length(pa - ba * h);
       c += fx.y * (.14 * exp(-pow(dd / bwid, 2.)) - .08 * exp(-pow((dd - 2.2 * bwid) / bwid, 2.))) * smoothstep(0., .08, h) * (1. - smoothstep(.9, 1., h)); }
     if (fx.z > .01) { float lum = dot(c, vec3(.3, .59, .11)), sat = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
@@ -467,6 +462,7 @@ async function usePhoto(file) {
   } catch (e) { $('err').textContent = e.message || 'Could not read that photo.'; }
 }
 $('cam').onclick = () => { ac(); useCamera(); };
+$('samp').onclick = async () => { ac(); const res = await fetch('sample.jpg').catch(() => null); if (res && res.ok) usePhoto(await res.blob()); else $('err').textContent = 'Could not load the sample face.'; };
 $('up').onclick = () => $('file').click();
 $('file').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) { ac(); usePhoto(f); } };
 $('flip').onclick = () => { facing = facing === 'user' ? 'environment' : 'user'; useCamera(); };
@@ -599,13 +595,16 @@ $('again').onclick = () => { $('res').hidden = true; $('chBtn').textContent = '�
   if (b) { challengeBeat = +b[1]; $('chal').hidden = false; $('chal').textContent = `🏥 A friend scored ${challengeBeat.toFixed(1)}. Can you perform better surgery?`; }
   leaderboard(document.createElement('div'), 'beauty-doctor'); // tells the site this game has a board
 })();
-// For the preview clip: with a demo.jpg next to this file, operate on it automatically (the repo ships none, so the clip shows the intro)
+// For the preview clip: operates on the AI-generated sample face automatically
 async function startDemo() {
-  const res = await fetch('demo.jpg').catch(() => null); if (!res || !res.ok) return;
+  const res = await fetch('sample.jpg').catch(() => null); if (!res || !res.ok) return;
   await usePhoto(await res.blob());
-  const go = (k, v, ms) => setTimeout(() => { val[k] = v; }, ms);
-  [['jaw', 55, 600], ['lip', 45, 1300], ['fox', 50, 2000], ['slim', 35, 2700], ['wide', 40, 3400], ['smooth', 60, 4000], ['glow', 55, 4400]].forEach((a) => go(...a));
-  setTimeout(evaluate, 5500);
+  const go = (k, v, ms) => setTimeout(() => { // drive the real sliders so the panel moves too
+    const i = TOOLS.findIndex((t) => t.s.some((x) => x[0] === k)); if (i !== tool) { tool = i; drawDeck(); }
+    const inp = document.querySelector(`[data-k="${k}"]`); inp.value = v; inp.dispatchEvent(new Event('input', { bubbles: true }));
+  }, ms);
+  [['jaw', 55, 600], ['lip', 45, 1500], ['fox', 40, 2400], ['dbl', 90, 3300], ['slim', 35, 4200], ['smooth', 60, 5100]].forEach((a) => go(...a));
+  setTimeout(evaluate, 6600);
 }
 </script>
 </body>
