@@ -362,9 +362,9 @@ function drawGrid() {
     const reg = REG[k]; if (!reg) return;
     reg[0].forEach((idx, n) => {
       const q = idx.map((i) => P(i)), c = [q.reduce((x, y) => x + y[0], 0) / q.length, q.reduce((x, y) => x + y[1], 0) / q.length], R = reg[1] * sFace * (1 + .08 * Math.sin(t * 6));
-      const g = octx.createRadialGradient(c[0], c[1], 0, c[0], c[1], R * 1.5); g.addColorStop(0, `rgba(255,217,168,${.55 * a})`); g.addColorStop(.6, `rgba(60,200,255,${.3 * a})`); g.addColorStop(1, 'rgba(60,200,255,0)');
-      octx.fillStyle = g; octx.beginPath(); octx.arc(c[0], c[1], R * 1.5, 0, 7); octx.fill();
-      octx.strokeStyle = `rgba(255,217,168,${.95 * a})`; octx.lineWidth = 2.4 * UI; octx.setLineDash([R * .35, R * .25]); octx.lineDashOffset = -t * R; octx.beginPath(); octx.arc(c[0], c[1], R, 0, 7); octx.stroke(); octx.setLineDash([]);
+      octx.setLineDash([R * .35, R * .25]); octx.lineDashOffset = -t * R; octx.beginPath(); octx.arc(c[0], c[1], R * 1.15, 0, 7);
+      octx.strokeStyle = `rgba(0,0,0,${.6 * a})`; octx.lineWidth = 5 * UI; octx.stroke(); // dark under-stroke so the ring reads on any skin tone
+      octx.strokeStyle = `rgba(90,220,255,${a})`; octx.lineWidth = 2.5 * UI; octx.stroke(); octx.setLineDash([]);
       if (n === 0 && !seen.has(k)) { // label on the first spot, on the side facing away from the face centre
         seen.add(k); const fs = 13 * UI; octx.font = `800 ${fs}px system-ui`; const txt = LABEL[k], w = octx.measureText(txt).width + fs, cx = X(lm[168][0]), side = c[0] < cx ? -1 : 1;
         const lx = Math.max(4, Math.min(ov.width - w - 4, c[0] + side * (R + fs * .3) - (side < 0 ? w : 0))), ly = Math.max(fs, Math.min(ov.height - fs, c[1] - R - fs * .4 - ki * fs * 1.5));
