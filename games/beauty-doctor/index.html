@@ -60,13 +60,12 @@
   #acts > * { flex: 1; padding: 11px 8px; }
   #acts #eval { flex: 2; }
 
-  #hero { position: relative; width: min(250px, 62vw); aspect-ratio: 4 / 5; margin: 14px 0 18px; border-radius: 22px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 0 44px #3cc8ff44, 0 10px 30px #000a; }
-  #hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; }
-  #hero .after { filter: brightness(1.07) contrast(1.05) saturate(1.12); clip-path: inset(0 0 100% 0); animation: rv 3.4s ease-in-out infinite alternate; }
-  #hero .scanl { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, transparent, #ffd9a8, #fff, #ffd9a8, transparent); box-shadow: 0 0 22px 6px #ffd9a899; animation: sl 3.4s ease-in-out infinite alternate; }
-  @keyframes rv { to { clip-path: inset(0 0 0 0); } } @keyframes sl { to { top: calc(100% - 3px); } }
-  #hero .chip { position: absolute; padding: 3px 9px; border-radius: 99px; background: #050a14cc; border: 1px solid var(--line); color: var(--gold); font: 800 11px system-ui; letter-spacing: .5px; animation: cp 3.4s ease-in-out infinite alternate; }
-  @keyframes cp { from { opacity: .15; } 60% { opacity: 1; } }
+  #art { width: min(230px, 56vw); margin: 14px 0 18px; overflow: visible; filter: drop-shadow(0 0 28px #3cc8ff55); }
+  #art .mesh { fill: none; stroke: #7fe3ff; stroke-width: .7; opacity: .55; }
+  #art .ln { stroke: #fff; stroke-width: 2.2; filter: drop-shadow(0 0 5px #ffd9a8); animation: aw 3.2s ease-in-out infinite alternate; }
+  @keyframes aw { from { transform: translateY(14px); } to { transform: translateY(236px); } }
+  #art text { fill: #ffd9a8; font: 800 9px system-ui; animation: ac 3.2s ease-in-out infinite alternate; }
+  @keyframes ac { from { opacity: .15; } 60% { opacity: 1; } }
   @media (min-width: 760px) and (min-aspect-ratio: 5/4) { /* wide screens: tools on the left so they never cover the face */
     #stage { flex-direction: row; }
     #deck { order: -1; flex: none; width: 380px; padding: 48px 14px 16px; border-radius: 0 22px 22px 0; border-top: 0; border-right: 1px solid var(--line); box-shadow: 10px 0 40px #000a; overflow-y: auto; align-content: start; gap: 14px; }
@@ -91,8 +90,25 @@
 <div id="intro" class="screen">
   <h1>Beauty Doctor AI</h1>
   <p class="sub">Open your own virtual clinic. Reshape a face with lip filler, rhinoplasty, V-line and fox-eye tools, then let the AI measure your handiwork against the golden ratio.</p>
-  <div id="hero"><img src="sample.jpg" alt="" decoding="async"><img class="after" src="sample.jpg" alt="" decoding="async"><div class="scanl"></div>
-    <span class="chip" style="left:8px;top:14%">φ 1.618</span><span class="chip" style="right:8px;top:7%">SYM 97%</span><span class="chip" style="left:8px;bottom:12%">JAW 74°</span></div>
+  <svg id="art" viewBox="0 0 200 260" aria-hidden="true">
+    <defs>
+      <linearGradient id="sk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe9dd"/><stop offset=".55" stop-color="#f2bfa9"/><stop offset="1" stop-color="#b9788a"/></linearGradient>
+      <linearGradient id="sh" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1a3a66" stop-opacity=".55"/><stop offset=".5" stop-color="#1a3a66" stop-opacity="0"/><stop offset="1" stop-color="#6b2f4a" stop-opacity=".45"/></linearGradient>
+      <linearGradient id="lp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff9db3"/><stop offset="1" stop-color="#d4577a"/></linearGradient>
+      <clipPath id="hd"><path d="M100 14C150 14 170 66 166 118C162 172 130 214 100 220C70 214 38 172 34 118C30 66 50 14 100 14Z"/></clipPath>
+    </defs>
+    <path d="M80 196L80 236L120 236L120 196Z" fill="url(#sk)" opacity=".75"/>
+    <path d="M20 260C24 232 60 224 100 224C140 224 176 232 180 260Z" fill="url(#sk)" opacity=".8"/>
+    <path d="M100 14C150 14 170 66 166 118C162 172 130 214 100 220C70 214 38 172 34 118C30 66 50 14 100 14Z" fill="url(#sk)"/>
+    <path d="M100 14C150 14 170 66 166 118C162 172 130 214 100 220C70 214 38 172 34 118C30 66 50 14 100 14Z" fill="url(#sh)"/>
+    <g fill="none" stroke="#8b4f5c" stroke-linecap="round"><path d="M56 98Q72 90 90 97" stroke-width="3"/><path d="M110 97Q128 90 144 98" stroke-width="3"/>
+      <path d="M58 116Q73 106 90 116" stroke-width="2.4"/><path d="M110 116Q127 106 142 116" stroke-width="2.4"/>
+      <path d="M96 118Q92 150 88 160Q100 168 112 160Q108 150 104 118" stroke="#c4818a" stroke-width="1.6" opacity=".7"/></g>
+    <path d="M78 184Q100 176 122 184Q100 202 78 184Z" fill="url(#lp)"/><path d="M78 184Q100 190 122 184" fill="none" stroke="#a63d62" stroke-width="1.2"/>
+    <g class="mesh" clip-path="url(#hd)"><path d="M100 10V224M30 70H170M30 118H170M30 160H170M62 20L40 110L74 196M138 20L160 110L126 196M62 20L100 70L138 20M40 110L100 118L160 110M74 196L100 160L126 196M62 20L74 196M138 20L126 196M100 70L62 118M100 70L138 118"/></g>
+    <line class="ln" x1="10" x2="190" y1="0" y2="0"/>
+    <text x="150" y="40" style="animation-delay:-.4s">φ 1.618</text><text x="4" y="104" style="animation-delay:-1s">SYM 97%</text><text x="150" y="196" style="animation-delay:-1.8s">JAW 74°</text>
+  </svg>
   <div id="chal" class="banner" hidden></div>
   <div class="glass">
     <button id="cam" class="cta">📷 Start camera</button>
@@ -242,7 +258,7 @@ uniform vec4 face, chL, chR, lipC, teethC, eL, eR, br; uniform vec3 mk, fx; unif
 float g(vec2 p, vec4 e){ vec2 d = (p - e.xy) / e.zw; return exp(-dot(d, d)); }
 vec3 crease(vec2 p, vec4 e, float amt){ // upper-eyelid fold. e = (centre of the eye corners uv, half width px, lid arch height px); returns (fold line, lid highlight, shadow above)
   vec2 d = (p - e.xy) / px; float xn = d.x / e.z; if (abs(xn) > 1.) return vec3(0.);
-  float k = 1. - xn * xn, lid = -e.w * k, gap = amt * e.z * .34 * pow(k, .8), th = max(1.5, e.z * .065), dy = d.y - (lid - gap), m = smoothstep(0., .3, k);
+  float k = 1. - xn * xn, lid = -e.w * k, gap = amt * e.z * .34 * pow(k, .8), th = max(2., e.z * .09), dy = d.y - (lid - gap), m = smoothstep(0., .3, k);
   return m * vec3(exp(-pow(dy / th, 2.)), exp(-pow((d.y - lid + gap * .5) / (gap * .5 + 1.), 2.)) * step(0., dy), exp(-pow((dy + th * 3.) / (th * 3.), 2.))); }
 void main(){
   vec2 q = uv;
@@ -261,7 +277,7 @@ void main(){
     c = mix(c, c * vec3(1.5, .45, .55), mk.x * g(q, lipC) * .85);
     c += mk.y * (g(q, chL) + g(q, chR)) * vec3(.22, .03, .08);
     if (fx.x > .01) { vec3 cr = crease(q, eL, fx.x) + crease(q, eR, fx.x);
-      c = mix(c, c * vec3(.72, .6, .56), clamp(fx.x * (.85 * cr.x + .3 * cr.z), 0., 1.)); c += fx.x * .06 * cr.y; }
+      c = mix(c, c * vec3(.8, .7, .66), clamp(fx.x * (.95 * cr.x + .3 * cr.z), 0., 1.)); }
     if (abs(fx.y) > .01) { vec2 pa = (q - br.xy) / px, ba = (br.zw - br.xy) / px; float h = clamp(dot(pa, ba) / dot(ba, ba), 0., 1.), dd = length(pa - ba * h);
       c += fx.y * (.14 * exp(-pow(dd / bwid, 2.)) - .08 * exp(-pow((dd - 2.2 * bwid) / bwid, 2.))) * smoothstep(0., .08, h) * (1. - smoothstep(.9, 1., h)); }
     if (fx.z > .01) { float lum = dot(c, vec3(.3, .59, .11)), sat = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
@@ -309,7 +325,8 @@ function buildOps(L) {
   op([L[145][0], L[145][1] + .03 * s], .07, .04, 0, 0, .3 * v('under')); op([L[374][0], L[374][1] + .03 * s], .07, .04, 0, 0, .3 * v('under'));
   op(L[0], .1, .08, 0, -.035 * v('phil'), 0);
   op(L[1], .06, .06, 0, 0, -.3 * v('tip')); op(L[1], .1, .1, 0, -.045 * v('nlen'), 0); op(L[2], .1, .08, 0, -.04 * v('nlen'), 0);
-  op(L[159], .08, .05, 0, -.03 * v('lid') - .012 * v('dbl'), 0); op(L[386], .08, .05, 0, -.03 * v('lid') - .012 * v('dbl'), 0);
+  op(L[159], .08, .05, 0, -.03 * v('lid'), 0);
+  op([L[159][0], L[159][1] - .03 * s], .07, .025, 0, .012 * v('dbl'), 0); op([L[386][0], L[386][1] - .03 * s], .07, .025, 0, .012 * v('dbl'), 0); op(L[386], .08, .05, 0, -.03 * v('lid'), 0);
   op(mid(L[10], L[151]), .22, .12, 0, 0, .25 * v('fore'));
   for (const [o, i, e, sg] of [[33, 133, 159, 1], [263, 362, 386, -1]]) {
     op(L[o], .07, .07, -sg * .015 * v('fox'), -.035 * v('fox'), 0);
