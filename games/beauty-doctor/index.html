@@ -129,7 +129,7 @@ const $ = (id) => document.getElementById(id);
 const SHARE = 'https://rank-game.com/games/beauty-doctor';
 const WASM = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
-const MAXN = 20;
+const MAXN = 36;
 
 // ---------- sound (all synthesized) ----------
 let AC = null, muted = false;
@@ -150,10 +150,13 @@ $('mute').onclick = () => { muted = !muted; $('mute').textContent = muted ? '�
 
 // ---------- tools ----------
 const TOOLS = [
-  { icon: '💉', name: 'Lip Filler', s: [['lip', 'Volume'], ['bow', "Cupid's bow"]] },
+  { icon: '💉', name: 'Lip Filler', s: [['lip', 'Volume'], ['bow', "Cupid's bow"], ['smile', 'Smile lift']] },
   { icon: '🔪', name: 'Rhinoplasty', s: [['slim', 'Slim bridge'], ['lift', 'Tip lift']] },
-  { icon: '✨', name: 'V-Line', s: [['jaw', 'Jaw sculpt'], ['chin', 'Chin lift']] },
+  { icon: '✨', name: 'V-Line', s: [['jaw', 'Jaw sculpt'], ['chin', 'Chin lift'], ['point', 'Chin point']] },
   { icon: '👁️', name: 'Fox Eye', s: [['fox', 'Fox slant'], ['wide', 'Open wide']] },
+  { icon: '🤨', name: 'Brows', s: [['brow', 'Brow lift'], ['arch', 'Outer arch']] },
+  { icon: '🍑', name: 'Cheeks', s: [['cfill', 'Cheek filler'], ['cbone', 'Cheekbones']] },
+  { icon: '🫥', name: 'Face', s: [['slimf', 'Slim face'], ['fore', 'Forehead']] },
   { icon: '🪄', name: 'Skin Glow', s: [['smooth', 'Smooth'], ['glow', 'Glow']] },
 ];
 const val = {}, cur = {};
@@ -245,6 +248,14 @@ function buildOps(L) {
   op(L[1], .09, .08, 0, -.05 * v('lift'), 0);
   for (const [i, j, w] of [[58, 288, .09], [136, 365, .08], [150, 379, .05]]) { op(L[i], .13, .13, w * v('jaw'), 0, 0); op(L[j], .13, .13, -w * v('jaw'), 0, 0); }
   op(L[152], .12, .1, 0, -.05 * v('chin'), 0);
+  op(L[148], .09, .09, .05 * v('point'), 0, 0); op(L[377], .09, .09, -.05 * v('point'), 0, 0);
+  op(L[61], .07, .07, .01 * v('smile'), -.045 * v('smile'), 0); op(L[291], .07, .07, -.01 * v('smile'), -.045 * v('smile'), 0);
+  op(L[105], .1, .06, 0, -.04 * v('brow'), 0); op(L[334], .1, .06, 0, -.04 * v('brow'), 0);
+  op(L[70], .08, .06, -.01 * v('arch'), -.05 * v('arch'), 0); op(L[300], .08, .06, .01 * v('arch'), -.05 * v('arch'), 0);
+  op(L[205], .13, .13, 0, 0, .3 * v('cfill')); op(L[425], .13, .13, 0, 0, .3 * v('cfill'));
+  op(L[123], .1, .1, -.03 * v('cbone'), -.045 * v('cbone'), 0); op(L[352], .1, .1, .03 * v('cbone'), -.045 * v('cbone'), 0);
+  op(L[234], .2, .3, .06 * v('slimf'), 0, 0); op(L[454], .2, .3, -.06 * v('slimf'), 0, 0);
+  op(mid(L[10], L[151]), .22, .12, 0, 0, .25 * v('fore'));
   for (const [o, i, e, sg] of [[33, 133, 159, 1], [263, 362, 386, -1]]) {
     op(L[o], .07, .07, -sg * .015 * v('fox'), -.035 * v('fox'), 0);
     op(mid(L[e], L[e === 159 ? 145 : 374]), .1, .06, 0, 0, .25 * v('wide'));
