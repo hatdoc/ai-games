@@ -46,7 +46,7 @@
   #tabs .ic { font-size: 20px; line-height: 1; }
   #tabs button.on { background: linear-gradient(160deg, #1aa8ff55, #f0b9a455); border-color: var(--rose); box-shadow: 0 0 14px #f0b9a455; }
   #tabs .dot { position: absolute; top: 5px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--rose); box-shadow: 0 0 8px var(--rose); }
-  #sliders { display: grid; gap: 6px; width: min(560px, 100%); margin: 0 auto; }
+  #sliders { display: grid; gap: 6px; max-height: 30vh; overflow-y: auto; width: min(560px, 100%); margin: 0 auto; }
   .sh { display: flex; justify-content: space-between; align-items: center; font-weight: 900; font-size: 14px; letter-spacing: .5px; }
   .sh button { padding: 4px 10px; font-size: 12px; border-radius: 99px; }
   .sl { display: grid; grid-template-columns: 112px 1fr 38px; align-items: center; gap: 10px; font-size: 13px; font-weight: 800; color: var(--mut); padding: 4px 8px; border-radius: 12px; transition: background .2s; }
@@ -70,6 +70,7 @@
   @media (min-width: 760px) and (min-aspect-ratio: 5/4) { /* wide screens: tools on the left so they never cover the face */
     #stage { flex-direction: row; }
     #deck { order: -1; flex: none; width: 380px; padding: 48px 14px 16px; border-radius: 0 22px 22px 0; border-top: 0; border-right: 1px solid var(--line); box-shadow: 10px 0 40px #000a; overflow-y: auto; align-content: start; gap: 14px; }
+    #sliders { max-height: none; }
     #tabs { flex-wrap: wrap; justify-content: center; overflow: visible; }
     #tabs button:first-child, #tabs button:last-child { margin: 0; }
     #acts { flex-wrap: wrap; } #acts #eval { flex: 1 1 100%; order: -1; }
@@ -165,20 +166,20 @@ $('mute').onclick = () => { muted = !muted; $('mute').textContent = muted ? '�
 
 // ---------- tools ----------
 const TOOLS = [
-  { icon: '💉', name: 'Lip Filler', s: [['lip', 'Volume'], ['bow', "Cupid's bow"], ['smile', 'Smile lift'], ['lipw', 'Lip width']] },
-  { icon: '🔪', name: 'Rhinoplasty', s: [['slim', 'Slim bridge'], ['lift', 'Tip lift'], ['nostril', 'Nostrils']] },
+  { icon: '💉', name: 'Lip Filler', s: [['lip', 'Volume'], ['bow', "Cupid's bow"], ['smile', 'Smile lift'], ['lipw', 'Lip width'], ['phil', 'Philtrum']] },
+  { icon: '🔪', name: 'Rhinoplasty', s: [['slim', 'Slim bridge'], ['lift', 'Tip lift'], ['nostril', 'Nostrils'], ['bridge', 'Bridge height'], ['tip', 'Tip size'], ['nlen', 'Nose length']] },
   { icon: '✨', name: 'V-Line', s: [['jaw', 'Jaw sculpt'], ['chin', 'Chin lift'], ['point', 'Chin point']] },
-  { icon: '👁️', name: 'Fox Eye', s: [['fox', 'Fox slant'], ['wide', 'Open wide'], ['close', 'Close-set'], ['under', 'Under-eye fill']] },
+  { icon: '👁️', name: 'Fox Eye', s: [['fox', 'Fox slant'], ['wide', 'Open wide'], ['close', 'Close-set'], ['under', 'Under-eye fill'], ['dbl', 'Double eyelid'], ['lid', 'Lid lift']] },
   { icon: '🤨', name: 'Brows', s: [['brow', 'Brow lift'], ['arch', 'Outer arch']] },
   { icon: '🍑', name: 'Cheeks', s: [['cfill', 'Cheek filler'], ['cbone', 'Cheekbones']] },
   { icon: '🫥', name: 'Face', s: [['slimf', 'Slim face'], ['fore', 'Forehead']] },
-  { icon: '💄', name: 'Makeup', s: [['lipst', 'Lipstick'], ['blush', 'Blush'], ['tan', 'Bronzer']] },
+  { icon: '💄', name: 'Makeup', s: [['lipst', 'Lipstick'], ['blush', 'Blush'], ['tan', 'Bronzer'], ['teeth', 'Whitening']] },
   { icon: '🪄', name: 'Skin Glow', s: [['smooth', 'Smooth'], ['glow', 'Glow']] },
 ];
 const val = {}, cur = {};
 for (const t of TOOLS) for (const [k] of t.s) val[k] = cur[k] = 0;
 let tool = 0;
-const UNI = new Set(['lipst', 'blush', 'tan', 'smooth', 'glow']); // makeup and skin only go one way; every shape slider also goes negative (thinner, smaller, wider...)
+const UNI = new Set(['lipst', 'blush', 'tan', 'teeth', 'dbl', 'smooth', 'glow']); // makeup and skin only go one way; every shape slider also goes negative (thinner, smaller, wider...)
 function drawDeck() {
   const any = (t) => t.s.some(([k]) => val[k] !== 0);
   $('tabs').innerHTML = TOOLS.map((t, i) => `<button data-i="${i}" class="${i === tool ? 'on' : ''}"><span class="ic">${t.icon}</span>${t.name}${any(t) ? '<i class="dot"></i>' : ''}</button>`).join('');
@@ -194,6 +195,7 @@ const REG = {
   fox: [[[33], [263]], .07], wide: [[[159, 145], [386, 374]], .08], close: [[[468, 133], [473, 362]], .08], under: [[[145], [374]], .07],
   brow: [[[105], [334]], .09], arch: [[[70], [300]], .08], cfill: [[[205], [425]], .12], cbone: [[[123], [352]], .1],
   slimf: [[[234], [454]], .15], fore: [[[10, 151]], .2], lipst: [[[13, 14]], .17], blush: [[[205], [425]], .12],
+  phil: [[[164]], .08], bridge: [[[168, 6]], .1], tip: [[[1]], .07], nlen: [[[1], [2]], .09], dbl: [[[159], [386]], .09], lid: [[[159], [386]], .09], teeth: [[[13, 14]], .12],
   tan: [[[168, 2]], .4], smooth: [[[168, 2]], .4], glow: [[[205], [425]], .12],
 };
 const LABEL = {}; for (const t of TOOLS) for (const [k, n] of t.s) LABEL[k] = n;
@@ -241,8 +243,11 @@ const gl = $('gl').getContext('webgl', { antialias: false, preserveDrawingBuffer
 const VS = `attribute vec2 a; varying vec2 uv; void main(){ uv = vec2(a.x*.5+.5, .5-a.y*.5); gl_Position = vec4(a, 0., 1.); }`;
 const FS = `precision highp float;
 varying vec2 uv; uniform sampler2D T; uniform vec4 A[${MAXN}]; uniform vec4 B[${MAXN}];
-uniform vec4 face, chL, chR, lipC; uniform vec3 mk; uniform vec2 px; uniform float smoothV, glowV, before;
+uniform vec4 face, chL, chR, lipC, teethC, eL, eR, br; uniform vec3 mk, fx; uniform float bwid; uniform vec2 px; uniform float smoothV, glowV, before;
 float g(vec2 p, vec4 e){ vec2 d = (p - e.xy) / e.zw; return exp(-dot(d, d)); }
+float crease(vec2 p, vec4 e){ // upper-eyelid fold: a thin arc above the lid, e = (eye centre uv, half width px, arc height px)
+  vec2 d = (p - e.xy) / px; float xn = d.x / e.z; if (abs(xn) > 1.) return 0.;
+  float k = 1. - xn * xn, t = (d.y + e.w * k) / max(1.2, e.w * .12); return exp(-t * t) * sqrt(k); }
 void main(){
   vec2 q = uv;
   if (before < .5) for (int i = 0; i < ${MAXN}; i++) { float w = g(uv, A[i]); q += -B[i].xy * w + (A[i].xy - uv) * B[i].z * w; }
@@ -259,6 +264,11 @@ void main(){
     }
     c = mix(c, c * vec3(1.5, .45, .55), mk.x * g(q, lipC) * .85);
     c += mk.y * (g(q, chL) + g(q, chR)) * vec3(.22, .03, .08);
+    if (fx.x > .01) c *= 1. - .55 * fx.x * (crease(q, eL) + crease(q, eR));
+    if (abs(fx.y) > .01) { vec2 pa = (q - br.xy) / px, ba = (br.zw - br.xy) / px; float h = clamp(dot(pa, ba) / dot(ba, ba), 0., 1.), dd = length(pa - ba * h);
+      c += fx.y * (.14 * exp(-pow(dd / bwid, 2.)) - .08 * exp(-pow((dd - 2.2 * bwid) / bwid, 2.))) * smoothstep(0., .08, h) * (1. - smoothstep(.9, 1., h)); }
+    if (fx.z > .01) { float lum = dot(c, vec3(.3, .59, .11)), sat = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
+      c = mix(c, vec3(1.), fx.z * g(q, teethC) * smoothstep(.4, .7, lum) * (1. - smoothstep(.12, .3, sat)) * .85); }
     c = mix(c, c * vec3(.82, .68, .55) + vec3(.04, .02, 0.), mk.z * fm * .6);
     c += glowV * (fm * .06 + (g(q, chL) + g(q, chR)) * vec3(.14, .045, .05));
   }
@@ -270,7 +280,7 @@ function initGL() {
   prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog); gl.useProgram(prog);
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
   const a = gl.getAttribLocation(prog, 'a'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
-  for (const n of ['A', 'B', 'face', 'chL', 'chR', 'lipC', 'mk', 'px', 'smoothV', 'glowV', 'before', 'T']) loc[n] = gl.getUniformLocation(prog, n);
+  for (const n of ['A', 'B', 'face', 'chL', 'chR', 'lipC', 'teethC', 'eL', 'eR', 'br', 'fx', 'bwid', 'mk', 'px', 'smoothV', 'glowV', 'before', 'T']) loc[n] = gl.getUniformLocation(prog, n);
   tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -300,6 +310,9 @@ function buildOps(L) {
   op(L[129], .06, .06, .035 * v('nostril'), 0, 0); op(L[358], .06, .06, -.035 * v('nostril'), 0, 0);
   op(mid(L[468], L[133]), .1, .1, .04 * v('close'), 0, 0); op(mid(L[473], L[362]), .1, .1, -.04 * v('close'), 0, 0);
   op([L[145][0], L[145][1] + .03 * s], .07, .04, 0, 0, .3 * v('under')); op([L[374][0], L[374][1] + .03 * s], .07, .04, 0, 0, .3 * v('under'));
+  op(L[0], .1, .08, 0, -.035 * v('phil'), 0);
+  op(L[1], .06, .06, 0, 0, -.3 * v('tip')); op(L[1], .1, .1, 0, -.045 * v('nlen'), 0); op(L[2], .1, .08, 0, -.04 * v('nlen'), 0);
+  op(L[159], .08, .05, 0, -.03 * v('lid'), 0); op(L[386], .08, .05, 0, -.03 * v('lid'), 0);
   op(mid(L[10], L[151]), .22, .12, 0, 0, .25 * v('fore'));
   for (const [o, i, e, sg] of [[33, 133, 159, 1], [263, 362, 386, -1]]) {
     op(L[o], .07, .07, -sg * .015 * v('fox'), -.035 * v('fox'), 0);
@@ -325,13 +338,17 @@ function render() {
   ops.slice(0, MAXN).forEach((o, i) => { A.set([o.c[0] / W, o.c[1] / H, o.r[0] / W, o.r[1] / H], i * 4); B.set([o.d[0] / W, o.d[1] / H, o.m, 0], i * 4); });
   gl.uniform4fv(loc.A, A); gl.uniform4fv(loc.B, B);
   if (lm) {
-    const s = D(lm[234], lm[454]), c = mid(lm[168], lm[2]);
+    const s = D(lm[234], lm[454]), c = mid(lm[168], lm[2]), lc0 = mid(lm[13], lm[14]);
     gl.uniform4f(loc.face, c[0] / W, c[1] / H, .55 * s / W, .8 * s / H);
+    gl.uniform4f(loc.teethC, lc0[0] / W, lc0[1] / H, .1 * s / W, .03 * s / H);
+    const eye = (o, i, t) => { const m = mid(lm[o], lm[i]), lid = Math.max(0, m[1] - lm[t][1]); return [m[0] / W, m[1] / H, D(lm[o], lm[i]) / 2, lid + .028 * s]; };
+    gl.uniform4f(loc.eL, ...eye(33, 133, 159)); gl.uniform4f(loc.eR, ...eye(263, 362, 386));
+    gl.uniform4f(loc.br, lm[168][0] / W, lm[168][1] / H, lm[1][0] / W, lm[1][1] / H); gl.uniform1f(loc.bwid, Math.max(1.5, .03 * s));
     const lc = mid(lm[13], lm[14]); gl.uniform4f(loc.lipC, lc[0] / W, lc[1] / H, .17 * s / W, .045 * s / H);
     gl.uniform4f(loc.chL, lm[205][0] / W, lm[205][1] / H, .09 * s / W, .09 * s / H);
     gl.uniform4f(loc.chR, lm[425][0] / W, lm[425][1] / H, .09 * s / W, .09 * s / H);
   } else { gl.uniform4f(loc.face, 0, 0, 1, 1); gl.uniform4f(loc.chL, 0, 0, 1e-3, 1e-3); gl.uniform4f(loc.chR, 0, 0, 1e-3, 1e-3); gl.uniform4f(loc.lipC, 0, 0, 1e-3, 1e-3); }
-  gl.uniform3f(loc.mk, cur.lipst / 100, cur.blush / 100, cur.tan / 100);
+  gl.uniform3f(loc.mk, cur.lipst / 100, cur.blush / 100, cur.tan / 100); gl.uniform3f(loc.fx, cur.dbl / 100, cur.bridge / 100, cur.teeth / 100);
   gl.uniform2f(loc.px, 1 / W, 1 / H);
   gl.uniform1f(loc.smoothV, cur.smooth / 100); gl.uniform1f(loc.glowV, cur.glow / 100);
   gl.uniform1f(loc.before, showBefore || !lm ? 1 : 0);
