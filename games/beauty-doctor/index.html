@@ -337,6 +337,7 @@ async function startStage(el, cam) {
 async function useCamera() {
   $('err').textContent = ''; $('cam').disabled = true; $('cam').textContent = 'Loading face scanner…';
   try {
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera needs a secure (https) page. Open the game at rank-game.com, or upload a selfie instead.');
     await loadLandmarker();
     if (stream) stream.getTracks().forEach((t) => t.stop());
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
