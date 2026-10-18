@@ -572,7 +572,7 @@ async function drawCard() {
   c.fillStyle = tg; c.font = '900 84px system-ui'; c.fillText('BEAUTY DOCTOR AI', 540, 140);
   c.fillStyle = '#8fa6c4'; c.font = '800 32px system-ui'; c.fillText('POST-OP EVALUATION REPORT', 540, 195);
   // face crops
-  const f = L.map((p) => p), cx = (f[234][0] + f[454][0]) / 2, cy = (f[10][1] + f[152][1]) / 2, hh = D(f[10], f[152]) * 2.1, ww = hh * .75;
+  let f = L.map((p) => p), cx = (f[234][0] + f[454][0]) / 2, cy = (f[10][1] + f[152][1]) / 2, hh = D(f[10], f[152]) * 2.1, ww = hh * .75, kk = Math.min(1, H / hh, W / ww); hh *= kk; ww *= kk; // keep the 3:4 crop inside the picture
   const sx = clamp(cx - ww / 2, 0, Math.max(0, W - ww)), sy = clamp(cy - hh / 2, 0, Math.max(0, H - hh));
   const pane = (img, x, label, col) => {
     c.save(); rr(c, x, 250, 480, 640, 28); c.clip();
