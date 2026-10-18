@@ -116,7 +116,7 @@
     <input id="file" type="file" accept="image/*" hidden>
     <p id="err"></p>
   </div>
-  <p class="fine">Your camera and photos stay on your device: the face scan runs in your browser and nothing is uploaded. Scores measure proportions and symmetry for fun. They are not a medical opinion and not a judgment of anyone's real beauty.</p>
+  <p class="fine">Your camera and photos stay on your device: the face scan runs in your browser and nothing is uploaded. Use it to explore ideas before you talk to a qualified surgeon: it is a rough visual preview, real results depend on your anatomy and your surgeon, and nothing here is medical advice. Scores measure proportions and symmetry for fun, not anyone's real beauty.</p>
 </div>
 
 <div id="stage" hidden>
@@ -131,6 +131,7 @@
     <div id="acts">
       <button id="flip" title="Switch camera">🔄</button>
       <button id="rst" title="Reset all tools">↺</button>
+      <button id="nat" title="Natural keeps changes realistic; Dramatic exaggerates them">🌿 Natural</button>
       <button id="ba">👁 Hold: BEFORE</button>
       <button id="eval" class="cta">PERFORM EVALUATION</button>
     </div>
@@ -221,6 +222,7 @@ $('sliders').oninput = (e) => {
 $('sliders').addEventListener('pointerdown', (e) => { const k = e.target.dataset?.k; if (k) { dragging = k; document.querySelector(`[data-row="${k}"]`)?.classList.add('hot'); } });
 for (const ev of ['pointerup', 'pointercancel']) addEventListener(ev, () => { dragging = null; document.querySelectorAll('.sl.hot').forEach((x) => x.classList.remove('hot')); });
 $('sliders').onclick = (e) => { if (e.target.id !== 'rt') return; for (const [k] of TOOLS[tool].s) val[k] = 0; sClick(); drawDeck(); };
+$('nat').onclick = () => { NAT = NAT < 1 ? 1.1 : .7; $('nat').textContent = NAT < 1 ? '🌿 Natural' : '🔥 Dramatic'; sClick(); };
 $('rst').onclick = () => { for (const k in val) val[k] = 0; sClick(); drawDeck(); };
 
 // ---------- face landmarks ----------
@@ -261,7 +263,9 @@ vec3 crease(vec2 p, vec4 e, float amt){ // upper-eyelid fold. e = (centre of the
   return m * vec3(exp(-pow(dy / th, 2.)), exp(-pow((d.y - lid + gap * .5) / (gap * .5 + 1.), 2.)) * step(0., dy), exp(-pow((dy + th * 3.) / (th * 3.), 2.))); }
 void main(){
   vec2 q = uv;
-  if (before < .5) for (int i = 0; i < ${MAXN}; i++) { float w = g(uv, A[i]); q += -B[i].xy * w + (A[i].xy - uv) * B[i].z * w; }
+  // edits fade out beyond the face, so hair, ears and background don't bend with the jaw and cheeks
+  float fmk = 1. - smoothstep(1., 1.6, length((uv - face.xy) / face.zw));
+  if (before < .5) for (int i = 0; i < ${MAXN}; i++) { float w = g(uv, A[i]) * fmk; q += -B[i].xy * w + (A[i].xy - uv) * B[i].z * w; }
   vec3 c = texture2D(T, q).rgb;
   if (before < .5) {
     float fm = g(q, face);
@@ -271,7 +275,8 @@ void main(){
         vec3 t = texture2D(T, q + vec2(float(i), float(j)) * px * 2.2).rgb;
         float w = exp(-dot(t - c, t - c) * 14.) ; s += t * w; tw += w;
       }
-      c = mix(c, s / tw, smoothV * fm * .9);
+      vec3 bl = s / tw; float a = smoothV * fm * .9; // blur the tone but keep part of the pores and fine texture, so skin doesn't look plastic
+      c = bl + (c - bl) * (1. - a * .65);
     }
     if (toneV > .01) { // pull lid and under-eye colour toward the cheek colour, keeping each pixel's brightness
       vec3 sk = (texture2D(T, chL.xy).rgb + texture2D(T, chR.xy).rgb + texture2D(T, chL.xy + vec2(7., 0.) * px).rgb + texture2D(T, chR.xy - vec2(7., 0.) * px).rgb) * .25;
@@ -309,7 +314,7 @@ const D = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
 function buildOps(L) {
   const s = D(L[234], L[454]), v = (k) => cur[k] / 100, ops = [];
-  const op = (c, rx, ry, dx, dy, m) => { if (Math.abs(dx) + Math.abs(dy) + Math.abs(m) > 1e-4) ops.push({ c, r: [rx * s, ry * s], d: [dx * s, dy * s], m }); };
+  const op = (c, rx, ry, dx, dy, m) => { if (Math.abs(dx) + Math.abs(dy) + Math.abs(m) > 1e-4) ops.push({ c, r: [rx * s, ry * s], d: [dx * s * NAT, dy * s * NAT], m: m * NAT }); };
   const mouth = mid(L[0], L[17]);
   op(mouth, .22, .11, 0, 0, .3 * v('lip'));
   op(L[0], .07, .05, 0, 0, .35 * v('bow'));
@@ -350,7 +355,7 @@ function warpPt(p, ops) {
   return [x, y];
 }
 
-let ops = [];
+let ops = [], NAT = .7; // overall strength: .7 keeps results believable, 1.1 is the dramatic mode
 function render() {
   gl.viewport(0, 0, W, H);
   if (isCam || !texDone) { gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, srcEl); texDone = !isCam; }
@@ -594,7 +599,7 @@ async function drawCard() {
     const bar = c.createLinearGradient(90, 0, 990, 0); bar.addColorStop(0, '#1aa8ff'); bar.addColorStop(1, '#f0b9a4'); c.fillStyle = bar; rr(c, 90, y + 14, 9 * v, 16, 8); c.fill();
   });
   c.textAlign = 'center'; c.fillStyle = '#eaf4ff'; c.font = 'italic 700 38px system-ui'; wrap(c, '“' + last.diag + '”', 540, 1710, 900, 50);
-  c.fillStyle = '#8fa6c4'; c.font = '700 30px system-ui'; c.fillText('Beat me: rank-game.com/games/beauty-doctor', 540, 1860);
+  c.fillStyle = '#8fa6c4'; c.font = '700 30px system-ui'; c.fillText('Beat me: rank-game.com/games/beauty-doctor', 540, 1855); c.font = '600 24px system-ui'; c.fillText('Visual preview only. Real surgical results differ.', 540, 1895);
 }
 
 function cardBlob() { return new Promise((res) => $('card').toBlob(res, 'image/png')); }
