@@ -46,7 +46,7 @@
   #tabs .ic { font-size: 20px; line-height: 1; }
   #tabs button.on { background: linear-gradient(160deg, #1aa8ff55, #f0b9a455); border-color: var(--rose); box-shadow: 0 0 14px #f0b9a455; }
   #tabs .dot { position: absolute; top: 5px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--rose); box-shadow: 0 0 8px var(--rose); }
-  #sliders { display: grid; gap: 6px; max-height: 30vh; overflow-y: auto; width: min(560px, 100%); margin: 0 auto; }
+  #sliders { display: grid; gap: 6px; width: min(560px, 100%); margin: 0 auto; }
   .sh { display: flex; justify-content: space-between; align-items: center; font-weight: 900; font-size: 14px; letter-spacing: .5px; }
   .sh button { padding: 4px 10px; font-size: 12px; border-radius: 99px; }
   .sl { display: grid; grid-template-columns: 112px 1fr 38px; align-items: center; gap: 10px; font-size: 13px; font-weight: 800; color: var(--mut); padding: 4px 8px; border-radius: 12px; transition: background .2s; }
@@ -69,7 +69,6 @@
   @media (min-width: 760px) and (min-aspect-ratio: 5/4) { /* wide screens: tools on the left so they never cover the face */
     #stage { flex-direction: row; }
     #deck { order: -1; flex: none; width: 380px; padding: 48px 14px 16px; border-radius: 0 22px 22px 0; border-top: 0; border-right: 1px solid var(--line); box-shadow: 10px 0 40px #000a; overflow-y: auto; align-content: start; gap: 14px; }
-    #sliders { max-height: none; }
     #tabs { flex-wrap: wrap; justify-content: center; overflow: visible; }
     #tabs button:first-child, #tabs button:last-child { margin: 0; }
     #acts { flex-wrap: wrap; } #acts #eval { flex: 1 1 100%; order: -1; }
@@ -156,7 +155,7 @@ const $ = (id) => document.getElementById(id);
 const SHARE = 'https://rank-game.com/games/beauty-doctor';
 const WASM = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
-const MAXN = 48;
+const MAXN = 56;
 
 // ---------- sound (all synthesized) ----------
 let AC = null, muted = false;
@@ -183,7 +182,7 @@ const TOOLS = [
   { icon: '👁️', name: 'Fox Eye', s: [['fox', 'Fox slant'], ['wide', 'Open wide'], ['close', 'Close-set'], ['under', 'Under-eye fill'], ['dbl', 'Double eyelid'], ['lid', 'Lid lift']] },
   { icon: '🤨', name: 'Brows', s: [['brow', 'Brow lift'], ['arch', 'Outer arch']] },
   { icon: '🍑', name: 'Cheeks', s: [['cfill', 'Cheek filler'], ['cbone', 'Cheekbones']] },
-  { icon: '🫥', name: 'Face', s: [['slimf', 'Slim face'], ['fore', 'Forehead']] },
+  { icon: '🫥', name: 'Face', s: [['slimf', 'Slim face'], ['flen', 'Shorten face'], ['fore', 'Forehead']] },
   { icon: '💄', name: 'Makeup', s: [['lipst', 'Lipstick'], ['blush', 'Blush'], ['tan', 'Bronzer'], ['teeth', 'Whitening']] },
   { icon: '🪄', name: 'Skin Glow', s: [['smooth', 'Smooth'], ['glow', 'Glow'], ['tone', 'Even tone']] },
 ];
@@ -205,7 +204,7 @@ const REG = {
   jaw: [[[58], [136], [288], [365]], .1], chin: [[[152]], .1], point: [[[148], [377]], .08],
   fox: [[[33], [263]], .07], wide: [[[159, 145], [386, 374]], .08], close: [[[468, 133], [473, 362]], .08], under: [[[145], [374]], .07],
   brow: [[[105], [334]], .09], arch: [[[70], [300]], .08], cfill: [[[205], [425]], .12], cbone: [[[123], [352]], .1],
-  slimf: [[[234], [454]], .15], fore: [[[10, 151]], .2], lipst: [[[13, 14]], .17], blush: [[[205], [425]], .12],
+  slimf: [[[234], [454]], .15], flen: [[[152], [164]], .16], fore: [[[10, 151]], .2], lipst: [[[13, 14]], .17], blush: [[[205], [425]], .12],
   phil: [[[164]], .08], bridge: [[[168, 6]], .1], tip: [[[1]], .07], nlen: [[[1], [2]], .09], dbl: [[[159], [386]], .09], lid: [[[159], [386]], .09], teeth: [[[13, 14]], .12],
   tan: [[[168, 2]], .4], smooth: [[[168, 2]], .4], tone: [[[159, 145], [386, 374]], .13], glow: [[[205], [425]], .12],
 };
@@ -333,6 +332,7 @@ function buildOps(L) {
   op(L[1], .06, .06, 0, 0, -.3 * v('tip')); op(L[1], .1, .1, 0, -.045 * v('nlen'), 0); op(L[2], .1, .08, 0, -.04 * v('nlen'), 0);
   op(L[159], .08, .05, 0, -.03 * v('lid'), 0);
   op([L[159][0], L[159][1] - .03 * s], .07, .025, 0, .012 * v('dbl'), 0); op([L[386][0], L[386][1] - .03 * s], .07, .025, 0, .012 * v('dbl'), 0); op(L[386], .08, .05, 0, -.03 * v('lid'), 0);
+  op(L[152], .3, .3, 0, -.07 * v('flen'), 0); op(L[164], .3, .25, 0, -.035 * v('flen'), 0); op(L[10], .3, .2, 0, .03 * v('flen'), 0);
   op(mid(L[10], L[151]), .22, .12, 0, 0, .25 * v('fore'));
   for (const [o, i, e, sg] of [[33, 133, 159, 1], [263, 362, 386, -1]]) {
     op(L[o], .07, .07, -sg * .015 * v('fox'), -.035 * v('fox'), 0);
