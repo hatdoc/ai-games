@@ -288,8 +288,10 @@ void main(){
     c += mk.y * (g(q, chL) + g(q, chR)) * vec3(.22, .03, .08);
     if (fx.x > .01) { vec3 cr = crease(q, eL, fx.x) + crease(q, eR, fx.x);
       c *= 1. - .3 * clamp(fx.x * (cr.x + .2 * cr.z), 0., 1.); } // same-hue darkening, so the fold keeps the skin colour
-    if (abs(fx.y) > .01) { vec2 pa = (q - br.xy) / px, ba = (br.zw - br.xy) / px; float h = clamp(dot(pa, ba) / dot(ba, ba), 0., 1.), dd = length(pa - ba * h);
-      c += fx.y * (.14 * exp(-pow(dd / bwid, 2.)) - .08 * exp(-pow((dd - 2.2 * bwid) / bwid, 2.))) * smoothstep(0., .08, h) * (1. - smoothstep(.9, 1., h)); }
+    if (abs(fx.y) > .01) { // nose bridge: soft multiplicative light along the ridge, fading in below the brow and out at the tip, slightly wider toward the tip
+      vec2 pa = (q - br.xy) / px, ba = (br.zw - br.xy) / px; float h = clamp(dot(pa, ba) / dot(ba, ba), 0., 1.), dd = length(pa - ba * h), wd = bwid * (.7 + .7 * h);
+      float fade = smoothstep(.05, .45, h) * (1. - smoothstep(.7, 1., h));
+      c *= 1. + fx.y * fade * (.15 * exp(-pow(dd / (1.2 * wd), 2.)) - .08 * exp(-pow((dd - 2.4 * wd) / (1.5 * wd), 2.))); }
     if (fx.z > .01) { float lum = dot(c, vec3(.3, .59, .11)), sat = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
       c = mix(c, vec3(1.), fx.z * g(q, teethC) * smoothstep(.4, .7, lum) * (1. - smoothstep(.12, .3, sat)) * .85); }
     c = mix(c, c * vec3(.82, .68, .55) + vec3(.04, .02, 0.), mk.z * fm * .6);
@@ -373,7 +375,7 @@ function render() {
     gl.uniform4f(loc.chL, lm[205][0] / W, lm[205][1] / H, .09 * s / W, .09 * s / H);
     gl.uniform4f(loc.chR, lm[425][0] / W, lm[425][1] / H, .09 * s / W, .09 * s / H);
   } else { gl.uniform4f(loc.face, 0, 0, 1, 1); gl.uniform4f(loc.chL, 0, 0, 1e-3, 1e-3); gl.uniform4f(loc.chR, 0, 0, 1e-3, 1e-3); gl.uniform4f(loc.lipC, 0, 0, 1e-3, 1e-3); }
-  gl.uniform3f(loc.mk, cur.lipst / 100, cur.blush / 100, cur.tan / 100); gl.uniform3f(loc.fx, cur.dbl / 100, cur.bridge / 100, cur.teeth / 100);
+  gl.uniform3f(loc.mk, cur.lipst / 100, cur.blush / 100, cur.tan / 100); gl.uniform3f(loc.fx, cur.dbl / 100, cur.bridge / 100 * NAT / .7, cur.teeth / 100);
   gl.uniform2f(loc.px, 1 / W, 1 / H);
   gl.uniform1f(loc.toneV, cur.tone / 100); gl.uniform1f(loc.smoothV, cur.smooth / 100); gl.uniform1f(loc.glowV, cur.glow / 100);
   gl.uniform1f(loc.before, showBefore || !lm ? 1 : 0);
