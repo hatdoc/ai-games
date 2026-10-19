@@ -1,6 +1,12 @@
 {
   "title": "Midnight Stealth: Don't Wake Mom!",
-  "description": "A first-person stealth sim where every sound counts. Five midnight missions: sneak downstairs for instant ramen, win a secret 3 AM ranked match, intercept a food delivery before the doorbell, smuggle a friend in and out, or steal your confiscated phone from Mom's nightstand. Watch the decibel meter, read the risk on every move, and stay undetected.",
-  "tags": ["stealth", "simulation", "funny", "text", "strategy"],
+  "description": "A first-person stealth game in a 3D house at night. Walk, crouch and open doors yourself while a decibel meter and Mom's detectability bar track every creak. Five missions: sneak down for instant ramen, win a secret 3 AM ranked match, grab a food delivery before the doorbell, smuggle a friend in and out, or retrieve your confiscated phone from Mom's nightstand.",
+  "tags": [
+    "stealth",
+    "first-person",
+    "3d",
+    "simulation",
+    "funny"
+  ],
   "emoji": "🤫"
 }
