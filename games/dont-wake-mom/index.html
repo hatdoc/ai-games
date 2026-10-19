@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Midnight Stealth: Don't Wake Mom!</title>
+<script src="../cloudsave.js" data-game="dont-wake-mom" data-keys="dwm-best"></script>
+<style>
+  :root { --g: #7dffa8; --y: #ffd84a; --r: #ff5a5a; --dim: #7a8a82; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: #04070a; color: #cfe8d8; font: 14px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  body { overflow-x: hidden; }
+  /* bodycam look: vignette that reddens with Mom's alertness, film grain, scanlines */
+  #fx { position: fixed; inset: 0; pointer-events: none; z-index: 5;
+    background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.85) 100%), radial-gradient(ellipse at center, transparent 55%, rgba(255,40,40,var(--al,0)) 120%); }
+  #grain { position: fixed; inset: -50%; pointer-events: none; z-index: 4; opacity: .07; animation: grain .6s steps(4) infinite;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+  @keyframes grain { 0% { transform: translate(0,0); } 25% { transform: translate(-3%,2%); } 50% { transform: translate(2%,-3%); } 75% { transform: translate(-2%,-1%); } }
+  #scan { position: fixed; inset: 0; pointer-events: none; z-index: 4; background: repeating-linear-gradient(transparent 0 2px, rgba(0,0,0,.18) 2px 3px); }
+  #app { max-width: 760px; margin: 0 auto; padding: 56px 14px 40px; position: relative; z-index: 2; }
+  #app.s1 { animation: sh .25s; } #app.s2 { animation: sh .4s; } #app.s3 { animation: sh .7s; }
+  @keyframes sh { 0%,100% { transform: none; } 20% { transform: translate(-3px,2px); } 40% { transform: translate(4px,-2px); } 60% { transform: translate(-3px,-3px); } 80% { transform: translate(2px,3px); } }
+  #home { position: fixed; top: 12px; left: 12px; z-index: 9; color: #fffc; text-decoration: none; font: 700 13px system-ui, sans-serif; background: #0008; padding: 6px 10px; border-radius: 8px; }
+  #top { position: fixed; top: 12px; right: 12px; z-index: 9; display: flex; gap: 6px; align-items: center; }
+  #top button { font: 700 12px system-ui, sans-serif; padding: 6px 10px; border: 1px solid #fff4; border-radius: 8px; background: #0008; color: #fffc; cursor: pointer; }
+  .rec { color: var(--r); font-weight: 700; font-size: 12px; animation: blink 1.2s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  h1 { font: 800 clamp(22px, 5.5vw, 34px)/1.1 system-ui, sans-serif; margin: 6px 0 4px; color: #fff; letter-spacing: -.5px; }
+  .sub { color: var(--dim); margin: 0 0 16px; }
+  .cards { display: grid; gap: 10px; }
+  .card { display: block; width: 100%; text-align: left; font: inherit; color: inherit; padding: 12px 14px; border: 1px solid #2c4a3a; border-radius: 10px; background: #0a1511; cursor: pointer; }
+  .card:hover, .card:focus-visible { border-color: var(--g); background: #0e2018; outline: none; }
+  .card b { color: #fff; font: 800 16px system-ui, sans-serif; }
+  .card .obj { margin: 4px 0; } .card .hz { color: var(--dim); font-size: 12px; } .card .bst { float: right; color: var(--y); font-size: 12px; }
+  .hud { border: 1px solid #2c4a3a; background: #07110c; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+  .hud .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; padding: 2px 0; }
+  .hud hr { border: 0; border-top: 1px dashed #2c4a3a; margin: 6px 0; }
+  .bar { letter-spacing: 0; white-space: pre; } .lbl { color: var(--dim); }
+  .ok { color: var(--g); } .warn { color: var(--y); } .bad { color: var(--r); }
+  .feed { color: #b9d4c4; } .feed b { color: var(--y); }
+  .story { margin: 0 0 12px; color: #e6f2ea; } .map { white-space: pre; background: #0a1511; border: 1px solid #2c4a3a; border-radius: 8px; padding: 8px 10px; margin: 0 0 12px; overflow-x: auto; font-size: 13px; }
+  .log { margin: 0 0 12px; padding: 8px 10px; border-left: 3px solid #2c4a3a; color: #aac4b4; font-size: 13px; }
+  .log p { margin: 0 0 4px; } .log p:first-child { color: #fff; }
+  .opts { display: grid; gap: 8px; }
+  .opt { text-align: left; font: inherit; color: #eaf5ee; background: #0b1a13; border: 1px solid #2c4a3a; border-radius: 10px; padding: 10px 12px; cursor: pointer; width: 100%; }
+  .opt:hover, .opt:focus-visible { border-color: var(--g); background: #10261b; outline: none; }
+  .opt .k { display: inline-block; min-width: 20px; color: #04100a; background: var(--g); border-radius: 4px; text-align: center; font-weight: 800; margin-right: 6px; }
+  .opt .m { display: block; margin-top: 4px; font-size: 12px; color: var(--dim); }
+  .opt .m b { font-weight: 700; }
+  .opt.fr { border-style: dashed; }
+  .end { text-align: center; padding: 20px 0; }
+  .end h2 { font: 900 clamp(34px, 9vw, 56px)/1 system-ui, sans-serif; margin: 0 0 8px; }
+  .end .sc { font: 900 64px/1 system-ui, sans-serif; color: var(--y); margin: 6px 0; }
+  .end .btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 14px 0; }
+  .btn { font: 700 15px system-ui, sans-serif; padding: 11px 20px; border: 0; border-radius: 12px; cursor: pointer; background: #fff; color: #111; }
+  .btn.alt { background: #0006; color: #fff; border: 1px solid #fff6; }
+  #lb { margin: 14px auto 0; } #ad { margin-top: 14px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="grain"></div><div id="scan"></div><div id="fx"></div>
+<a id="home" href="https://rank-game.com/">← Home</a>
+<script>if (top !== self) home.remove();</script>
+<div id="top"><span class="rec">● REC</span><button id="mute">🔊</button><button id="menu" hidden>Menu</button></div>
+<div id="app"></div>
+<script src="../leaderboard.js"></script>
+<script src="../ad.js"></script>
+<script>
+const $ = (s) => document.querySelector(s), app = $('#app');
+const T = (h, m, s = 0) => h * 3600 + m * 60 + s;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = (a) => a[Math.random() * a.length | 0];
+const fmtT = (s) => { s = (s % 86400 + 86400) % 86400; let h = s / 3600 | 0; const m = s / 60 % 60 | 0, ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')} ${ap}`; };
+
+// ---------- content helpers ----------
+// o(label, [lowDb, highDb], seconds, extras): one tactical option.
+//  tag 'step' = footsteps (socks help) · spike [chance, lowDb, highDb] = rare loud event · ex = extra detection from light/smell
+//  to = next node · meet = driver met · bonus = score · add/rem = gear · r = reward text · say/loud = result text
+const o = (t, db, sec, x = {}) => ({ t, db, sec, ...x });
+const doorOpts = (to, close) => [
+  o(close ? 'Ease the door shut, guiding the latch by hand' : 'Crack the door open 10% and slip through sideways', [17, 29], 14, { to, r: 'Quietest · slowest',
+    say: close ? 'The latch meets the frame with a whisper.' : 'The hinge stays silent. Cool hallway air brushes your face.' }),
+  o(close ? 'Push it closed at normal speed' : 'Open the door 50%', [30, 46], 6, { to, r: 'Faster · hinge may squeak', loud: 'A thin squeak cuts the dark.' }),
+  o(close ? 'Let it swing shut' : 'Swing it wide and walk out', [44, 64], 2, { to, r: 'Fastest · the hinge or latch will announce you', loud: close ? 'CLACK. The latch rings through the house.' : 'The hinge screams a long, rising note.' }),
+];
+const walkOpts = (to, x = {}) => [
+  o('Slow heel-to-toe along the wall edge', [16, 32], 40, { to, tag: 'step', r: 'Quietest · slowest', ...x }),
+  o('Normal walk down the middle', [30, 50], 14, { to, tag: 'step', r: 'Balanced', ...x }),
+  o('Sprint', [50, 72], 5, { to, tag: 'step', r: 'Fastest · the floor vibrates', loud: 'Your feet hammer the boards.', ...x }),
+  o('Phone flashlight on the floor to dodge creaks', [16, 30], 30, { to, tag: 'step', ex: 9, ei: '💡', r: 'Avoids creaks · light leaks under doors', ...x }),
+];
+const stairOpts = (to, x = {}) => [
+  o('Hug the wall side, skip the squeaky steps (3 and 11)', [17, 31], 35, { to, tag: 'step', r: 'Quietest · slowest', ...x }),
+  o('Hand on the rail, middle of each step', [32, 52], 15, { to, tag: 'step', r: 'Balanced', ...x }),
+  o('Take them two at a time', [46, 68], 6, { to, tag: 'step', r: 'Fastest · lands heavy', loud: 'THUD-THUD. The stairs boom.', ...x }),
+];
+// the trip back to your room (stairs optional): reused by every scenario
+const homeNodes = (hasStairs, win = 'WIN') => ({
+  ...(hasStairs ? { up: { loc: 'Staircase (Going Up)', vis: 'Moonlight on the rail. The landing is a darker square above.', aud: 'Your own pulse, the fridge hum fading below.',
+    txt: 'Almost home. The way up is the same thirteen steps, but now your legs are tired and your hands are shaky.', opts: stairOpts('hall2') } } : {}),
+  hall2: { loc: 'Master Hallway (2nd Floor)', vis: "Light leak under Mom's door, now to your side. Your door is 6 m ahead.", aud: 'Breathing from behind the door.',
+    txt: "The runner carpet muffles your socks, but the stretch right outside Mom's door is bare wood.", opts: walkOpts('door2') },
+  door2: { loc: 'Your Bedroom Door', vis: 'Your room, a dark rectangle. Safe.', aud: 'Your mattress seems to call you.',
+    txt: 'One door between you and a perfect, undetected night.', opts: doorOpts(win, true).map((x) => ({ ...x, bonus: 0 })) },
+});
+
+const FLAV = {
+  q: ['Silence. Only your pulse.', "Nothing stirs. Mom's breathing stays slow.", 'Clean. The house does not notice you.', 'A ghost would be noisier.'],
+  m: ['A creak. Mom turns over.', 'A soft squeak. Her breathing hitches, then settles.', 'The floor groans. Across the way a mattress shifts.', 'Too loud. A sheet rustles, then silence.'],
+  h: ['That was LOUD. Springs creak: she is sitting up!', 'A bed frame groans. A bedside lamp clicks on, then off. She is listening.', 'Floorboards complain upstairs. Someone is awake.'],
+};
+const MOMAUD = (w) => [`Slow, deep breathing from ${w}.`, `${w[0].toUpperCase() + w.slice(1)}: breathing is lighter now. A sheet rustles.`,
+  `Movement from ${w}: springs creak, a sleepy murmur.`, `Someone is half-awake in ${w}: coughing, the frame shifting.`, `Silence from ${w}. The breathing has STOPPED. She is listening.`];
+
+// ---------- scenarios ----------
+const SC = [
+  { id: 'ramen', emoji: '🍜', name: 'Midnight Ramen Ops', board: 'dont-wake-mom-ramen',
+    obj: 'Leave bed, enter the kitchen, cook instant noodles and return to your bedroom safely.',
+    hz: 'Plastic packet crunch · microwave beep · slurping spikes', where: "Mom's room", t0: T(2, 14, 32), alert: 12, gear: ['Socks On', 'Phone (Muted)', 'Flashlight (Off)'], start: 'bed',
+    bust: ['The hallway light snaps on. "Is that INSTANT RAMEN?! At 2 AM?!" Mom folds her arms. Busted.', 'Mom: "I can SMELL it. Hand over the cup."'],
+    nodes: {
+      bed: { loc: 'Your Bedroom (2nd Floor)', vis: 'Pitch black. A thin strip of hallway light leaks under your door.', aud: 'Fridge hum from downstairs (faint). House timber settling (left).',
+        txt: 'Your stomach growls and you smother it with a pillow. The plan: kitchen, fourteen meters away, one staircase, one sleeping mother. Your hand finds the door handle, brass, cold, slightly loose.', opts: doorOpts('hall') },
+      hall: { loc: 'Master Hallway (2nd Floor)', vis: "Dark hallway. Light leak under Mom's door (4 m ahead).", aud: 'Soft breathing from her room. A clock ticks somewhere.',
+        txt: "Warm air smelling of laundry detergent. Past Mom's door the carpet runner ends and bare, old hardwood begins.", opts: walkOpts('stairs') },
+      stairs: { loc: 'Staircase (2nd → 1st Floor)', vis: 'Moonlight through the landing window paints the rail silver.', aud: 'The fridge hum grows. Step 3 and step 11 are known squeakers.',
+        txt: 'Thirteen steps. You know this staircase like a bad exam: two traps, every time.', opts: stairOpts('kit') },
+      kit: { loc: 'Kitchen (1st Floor)', vis: 'Green glow from the microwave clock. A seam of fridge light.', aud: "The fridge compressor rumbles on and off, a perfect noise mask when it kicks in.",
+        txt: 'Cold tile under your socks. The noodles live in the top cabinet, behind a door whose hinges have never met oil.', opts: [
+          o('Open the cabinet door 10% and lift the cup straight up', [18, 32], 18, { to: 'pack', add: ['Cup Noodles'], r: 'Quiet · cup in hand' }),
+          o('Open the cabinet fully and grab it', [30, 48], 6, { to: 'pack', add: ['Cup Noodles'], r: 'Fast', loud: 'The hinge squeals.' }),
+          o('Wait for the fridge compressor to kick in, then open', [17, 26], 35, { to: 'pack', add: ['Cup Noodles'], r: 'Uses the noise mask · waiting costs time' })] },
+      pack: { loc: 'Kitchen (1st Floor)', vis: 'The cup sits on the counter, its plastic wrap shining.', aud: 'Plastic is the loudest material in this house.',
+        txt: 'A seal, a peel tab, a wrapper. The crinkle is high-frequency and carries up stairs like a flare.', opts: [
+          o('Open the packet inside your hoodie pocket (muffled)', [20, 34], 25, { to: 'heat', r: 'Muffled crunch', say: 'Fabric swallows the crinkle.' }),
+          o('Peel an inch at a time, palm over the wrap', [24, 40], 50, { to: 'heat', r: 'Slow, safe-ish' }),
+          o('Rip it fast', [58, 76], 3, { to: 'heat', r: 'Fastest · high-frequency alert', loud: 'KRRRRK. The packet shrieks.' })] },
+      heat: { loc: 'Kitchen (1st Floor)', vis: 'Cup, water, three ways to heat it.', aud: 'Your stomach again. Louder than you would like.',
+        txt: 'Hot water is the crux. Every option comes with a sound.', opts: [
+          o('Microwave it and hit CANCEL at 0:03 before the beep', [24, 32], 140, { to: 'eat', spike: [0.22, 84, 92], r: 'Hot noodles · beeps at 0:00 if you are late', loud: 'BEEEEP!' }),
+          o('Electric kettle: unplug it at the first bubbles', [34, 48], 110, { to: 'eat', r: 'Reliable · rumble of boiling' }),
+          o('Pot on the stove, flame low', [28, 40], 190, { to: 'eat', r: 'Quiet · slow', say: 'The blue flame hisses softly.' }),
+          o('Skip heating: eat it crunchy and dry', [44, 60], 40, { to: 'eat', r: 'Fastest · crunch is loud', loud: 'CRUNCH. Dry noodles are LOUD.' })] },
+      eat: { loc: 'Kitchen (1st Floor)', vis: 'Steam curls over the cup in the fridge light.', aud: 'Warm broth smell is spreading through the kitchen.',
+        txt: 'Steam fogs your face. The smell is perfect, and also a signal flare.', opts: [
+          o('Eat here in small bites, no slurping', [26, 40], 120, { to: 'up', r: 'No spill risk', say: 'You chew like a ninja.' }),
+          o('Carry it upstairs with both hands', [20, 34], 50, { to: 'up', spike: [0.12, 58, 68], r: 'Balance risk (hot cup)', loud: 'Broth sloshes against the cup.' }),
+          o('Slurp fast and leave', [52, 72], 30, { to: 'up', r: 'Fastest · slurp spike', loud: 'SLUUURP. Echoes down the hall.' })] },
+      ...homeNodes(true) } },
+
+  { id: 'ranked', emoji: '🎮', name: '3 AM Secret Ranked Match', board: 'dont-wake-mom-ranked',
+    obj: 'Sneak past Mom asleep on the couch, boot up the gaming PC and win a clutch match.',
+    hz: 'RGB light spill · keyboard chatter · surprise voice chat', where: 'the couch', t0: T(3, 2, 10), alert: 18, gear: ['Socks On', 'Phone (Muted)', 'Headset (Wired)'], start: 'bed',
+    bust: ['The lamp clicks on. "ARE YOU PLAYING GAMES AT 3 AM?!" Mom has your controller already. Busted.', 'Mom, from the couch, without opening her eyes: "Log off. NOW."'],
+    nodes: {
+      bed: { loc: 'Your Bedroom (2nd Floor)', vis: 'Your phone clock says 3:02. Ranked queue is open in 12 minutes.', aud: 'House creaking. Faint TV static from downstairs.',
+        txt: 'Your promotion match starts soon. Mom fell asleep on the living room couch during her show, and the gaming setup is six steps behind her.', opts: doorOpts('hall') },
+      hall: { loc: 'Master Hallway (2nd Floor)', vis: "Dark hall. Mom's bedroom door is open, bed empty, made.", aud: 'Distant TV mutter from the living room.',
+        txt: "The hall is quiet and her door is open. Mom's not upstairs, which is the problem: she's sleeping between you and the PC.", opts: walkOpts('stairs') },
+      stairs: { loc: 'Staircase (2nd → 1st Floor)', vis: 'Blue flicker climbs the wall from the living room.', aud: 'TV dialogue on mute. Faint snore.',
+        txt: 'Each step lowers you into the TV glow. Step 3 and 11 creak.', opts: stairOpts('liv') },
+      liv: { loc: 'Living Room (1st Floor)', vis: 'Mom asleep on the couch, blanket to her chin. TV flicker plays across the ceiling.', aud: 'Slow snore, dry, with a little whistle at the end.',
+        txt: 'The desk sits behind the couch, in the far corner by the bookshelf. Three ways to get there, none of them free.', opts: [
+          o('Behind the couch along the bookshelf (carpet)', [18, 32], 30, { to: 'desk', tag: 'step', r: 'Quietest · slow' }),
+          o('Across the rug in front of the TV', [22, 34], 12, { to: 'desk', tag: 'step', ex: 14, ei: '🎬', r: 'Fast · your shadow crosses her face' }),
+          o('Straight over the creaky hardwood', [34, 54], 8, { to: 'desk', tag: 'step', r: 'Fastest · loud boards' })] },
+      desk: { loc: 'Gaming Corner (1st Floor)', vis: 'The PC case shows a rainbow RGB sleeper light, only dimmed.', aud: 'Fans ticking as they cool. Mom turns, mumbles.',
+        txt: 'The rig is asleep. The moment it boots, the RGB fans will paint the ceiling like a nightclub.', opts: [
+          o('Kill the RGB with the case switch, then boot', [20, 32], 20, { to: 'setup', add: ['PC Online'], r: 'Dark boot · no light show' }),
+          o('Hit power and hope', [28, 40], 6, { to: 'setup', add: ['PC Online'], ex: 22, ei: '🌈', r: 'Fast · RGB spills across the room' }),
+          o('Wake it from your phone (wake-on-LAN, no clicks)', [20, 30], 25, { to: 'setup', add: ['PC Online'], ex: 5, ei: '📱', r: 'Silent · screen glow', rem: ['Phone (Muted)'] })] },
+      setup: { loc: 'Gaming Corner (1st Floor)', vis: 'Monitor splash screen, brightness slammed to max.', aud: 'Your mic indicator flicks green. Voice chat lobby chatter leaks from the headset.',
+        txt: 'Headset time. One wrong click and your squad screams into the room.', opts: [
+          o('Mic muted, volume low, headset fully on both ears', [19, 28], 20, { to: 'match', r: 'Quiet · you will not hear Mom approach' }),
+          o('One ear off to hear the room, mic muted', [20, 30], 20, { to: 'match', spike: [0.2, 58, 66], r: 'Awareness · teammates may leak out', loud: 'A teammate yelps from your headset.' }),
+          o('Mic on so your squad can hear callouts', [24, 36], 15, { to: 'match', spike: [0.35, 62, 78], r: 'Best callouts · chat can explode', loud: '"WHERE ARE YOU?!" blasts from the headset.' })] },
+      match: { loc: 'Gaming Corner (1st Floor)', vis: 'Ranked lobby: 1v3, ten seconds on the clock, you are the last alive.', aud: 'Keys, mouse clicks, adrenaline.',
+        txt: 'The match: your team is dead, three enemies remain, and one more win ranks you up. This is your 1v3.', opts: [
+          o('Play quiet: soft keys, slow flicks', [22, 34], 120, { to: 'clutch', bonus: 30, r: 'Safe · slower clutch' }),
+          o('Hammer the mechanical keyboard and go for the flick', [38, 56], 70, { to: 'clutch', bonus: 80, r: 'Max reward · thock thock thock', loud: 'The mechanical switches clatter like hail.' }),
+          o('Use the controller on your lap (soft buttons)', [24, 38], 90, { to: 'clutch', bonus: 50, r: 'Balanced · stick drift risk' })] },
+      clutch: { loc: 'Gaming Corner (1st Floor)', vis: 'VICTORY. The screen blazes gold, brightness maxed.', aud: 'Your heart. And your own breath. You want to SCREAM.',
+        txt: 'You did it. Rank up. Every part of you wants to shout. Mom is two meters away.', opts: [
+          o('Silent fist pump, bite your sleeve', [20, 28], 6, { to: 'shut', r: 'Perfect restraint' }),
+          o('Whisper "LET\'S GOOOOO"', [34, 50], 6, { to: 'shut', r: 'Satisfying · whispers carry' }),
+          o('Slap the desk in victory', [60, 76], 3, { to: 'shut', r: 'Max joy · max noise', loud: 'WHAM. The monitor shakes.' })] },
+      shut: { loc: 'Gaming Corner (1st Floor)', vis: 'The screen is bright. Mom hasn\'t moved.', aud: "Fans spin down slowly. Your pulse won't.",
+        txt: 'Time to leave no trace.', opts: [
+          o('Put the PC to sleep with the keyboard shortcut', [19, 29], 8, { to: 'liv2', r: 'Instant · silent' }),
+          o('Shut down fully, unplug monitor', [28, 40], 30, { to: 'liv2', ex: 4, ei: '💡', r: 'Clean · fans whir' }),
+          o('Leave it running and run', [20, 30], 2, { to: 'liv2', ex: 16, ei: '🌈', r: 'Fastest · glow stays on' })] },
+      liv2: { loc: 'Living Room (1st Floor)', vis: 'Mom shifts, the blanket slips. The TV glow lights the path.', aud: 'Snore interrupted by a smack of lips.',
+        txt: 'The long way back around the couch.', opts: [
+          o('Along the bookshelf, the way you came', [17, 29], 30, { to: 'up', tag: 'step', r: 'Quietest' }),
+          o('Across the rug', [22, 34], 12, { to: 'up', tag: 'step', ex: 12, ei: '🎬', r: 'Faster · TV shadow' }),
+          o('Hardwood sprint', [48, 68], 4, { to: 'up', tag: 'step', r: 'Fastest · boards groan', loud: 'The hardwood sings.' })] },
+      ...homeNodes(true) } },
+
+  { id: 'delivery', emoji: '🍔', name: 'Operation Midnight Delivery', board: 'dont-wake-mom-delivery',
+    obj: 'Intercept the delivery driver at the front door before they ring the bell.',
+    hz: 'Porch spotlight · deadbolt friction · food smell · the clock', where: "Mom's room", t0: T(1, 58, 20), alert: 10, deadline: 180, gear: ['Socks On', 'Phone (Muted)', 'Cash ($23)'], start: 'bed',
+    bust: ['DING-DONG! The doorbell rings through the house. "WHO IS AT THE DOOR AT 2 AM?!" Busted.', 'The porch light flares and Mom is at the top of the stairs. "What did you order?!"'],
+    nodes: {
+      bed: { loc: 'Your Bedroom (2nd Floor)', vis: 'Phone: "Your driver is 3 minutes away." The map pin crawls toward your street.', aud: 'Your stomach. A faint rumble of tires far off.',
+        txt: 'The burger place closes at 2. They are bringing it straight to your door, and the app says the driver will RING THE BELL. Under three minutes to beat the bell.', opts: doorOpts('hall') },
+      hall: { loc: 'Master Hallway (2nd Floor)', vis: "Dark hall. Light leak under Mom's door (4 m ahead).", aud: 'Soft breathing. The wall clock ticks, loudly.',
+        txt: 'Speed and silence do not mix, and the clock is ticking.', opts: walkOpts('stairs') },
+      stairs: { loc: 'Staircase (2nd → 1st Floor)', vis: 'The front hall glows faintly orange from the street.', aud: 'Step 3 and 11 creak. Outside: a car door thunk, far off.',
+        txt: 'The street lamp paints the foyer orange. Your delivery clock is running.', opts: stairOpts('foyer') },
+      foyer: { loc: 'Front Foyer (1st Floor)', vis: 'Orange streetlight in the door window. The deadbolt gleams.', aud: 'An engine idles outside, then cuts off. A door slams.',
+        txt: 'Deadbolt, chain, handle. A heavy door that sticks in the frame.', opts: [
+          o('Turn the deadbolt slowly with your palm cushioning it', [22, 36], 20, { to: 'porch', r: 'Quiet · takes time' }),
+          o('Flick the deadbolt open fast', [44, 60], 4, { to: 'porch', r: 'Fast · it clacks', loud: 'CLACK. The deadbolt slams home... open.' }),
+          o('Lift the door handle while turning (stops the latch scraping)', [20, 32], 28, { to: 'porch', r: 'Pro trick · slowest' })] },
+      porch: { loc: 'Front Porch', vis: 'Footsteps on the path. A motion-sensor spotlight watches the doorstep.', aud: 'Plastic bag rustling. Footsteps on gravel, coming.',
+        txt: 'The driver is coming up the path with a warm paper bag. The spotlight over the door triggers on motion. The bell is a thumb-press away.', opts: [
+          o('Open the door 10% and slip under the sensor\'s dead zone', [18, 30], 15, { to: 'hand', ex: 4, ei: '💡', meet: true, r: 'Beat the bell · small light risk' }),
+          o('Step straight out and wave the driver in', [22, 34], 5, { to: 'hand', ex: 26, ei: '💡', meet: true, r: 'Fastest · spotlight floods the porch' }),
+          o('Text the driver to wait quietly', [18, 26], 25, { to: 'hand', ex: 5, ei: '📱', spike: [0.3, 85, 92], meet: true, r: 'Phone glow · risk driver rings anyway', loud: 'DING-DONG! The driver did not read the text.' })] },
+      hand: { loc: 'Front Porch', vis: 'A friendly face under a cap, holding the bag.', aud: 'Rustling bag. Coins. A smell like fries drifts into the foyer.',
+        txt: 'The bag is warm. Grease already spots the paper. The smell is rolling into the house like a rumor.', opts: [
+          o('Whisper thanks, take the bag by the top, tip on the phone', [22, 34], 20, { to: 'close', ex: 9, ei: '👃', add: ['Burger Bag'], r: 'Silent · smell lingers' }),
+          o('Pay cash and ask for change', [36, 52], 25, { to: 'close', ex: 9, ei: '👃', add: ['Burger Bag'], r: 'Old school · coins jingle', loud: 'Coins jingle in the driver\'s palm.' }),
+          o('Stuff the bag inside your hoodie and back inside', [22, 36], 25, { to: 'close', ex: 4, ei: '👃', add: ['Burger Bag'], r: 'Smell contained · crinkle', say: 'The hoodie muffles the bag.' })] },
+      close: { loc: 'Front Foyer (1st Floor)', vis: 'The door open to the orange night.', aud: 'A car pulling away.',
+        txt: 'Back inside. The deadbolt is the last giveaway.', opts: [
+          o('Close the door slowly, latch by hand, deadbolt gently', [22, 36], 25, { to: 'up', r: 'Quiet · slowest' }),
+          o('Shove the door shut with your hip', [44, 62], 6, { to: 'up', r: 'Fastest · slam', loud: 'WHUMP. The whole house feels it.' }),
+          o('Leave it unlocked and go', [19, 28], 3, { to: 'up', ex: 10, ei: '👃', r: 'Silent · night air carries the smell' })] },
+      ...homeNodes(true) } },
+
+  { id: 'friend', emoji: '🤫', name: 'Sneaking a Friend In / Out', board: 'dont-wake-mom-friend',
+    obj: 'Guide your friend through the back patio, up the squeaky staircase and into your room. Then get them out again.',
+    hz: 'Dog tail-thumping · double-weight step creaks · whisper precision', where: "Mom's room", t0: T(1, 20, 5), alert: 22, gear: ['Socks On', 'Phone (Muted)', 'Friend: Sam (Outside)'], start: 'patio',
+    bust: ['The hall light snaps on. "SAM?! What is Sam doing in my house at 1 AM?!" Busted.', 'The dog barks, Mom storms in. "Out! Both of you!"'],
+    nodes: {
+      patio: { loc: 'Kitchen, Back Patio Door (1st Floor)', vis: "Silhouette of Sam on the patio, hand up. The dog's bed is by the door.", aud: 'The sliding door track rumbles when it moves. Crickets outside.',
+        txt: "You are on the inside of the sliding door. Sam is outside on the patio, shivering. The door's track grinds if you push it.", opts: [
+          o('Slide it 10% at a time (hand under the track)', [22, 38], 25, { to: 'dog', r: 'Careful · slow' }),
+          o('Lift the door as you slide (the trick)', [18, 30], 30, { to: 'dog', r: 'Pro · quiet track' }),
+          o('Yank it open fast', [50, 68], 3, { to: 'dog', r: 'Fastest · rumble', loud: 'The door rumbles like a freight train.' })] },
+      dog: { loc: 'Back Patio', vis: 'Biscuit the dog is awake, tail sweeping the floor. THUMP... THUMP... THUMP.', aud: 'The tail-thump has a steady rhythm. It is also very loud.',
+        txt: 'Biscuit loves Sam, and when he is happy his tail thumps the wall. A rhythm you can hear from upstairs. You can step ON the beat for cover.', opts: [
+          o('Step in on the thump beat (noise cover)', [17, 26], 30, { to: 'brief', tag: 'step', r: 'Masks your footsteps · tricky timing' }),
+          o('Offer a treat from your pocket (quiet crunch)', [20, 32], 20, { to: 'brief', r: 'Dog calmed · crunch' }),
+          o('Whisper "Sit"', [28, 44], 15, { to: 'brief', spike: [0.3, 52, 66], r: 'Fast · he may whine', loud: 'Biscuit whines and thumps harder.' })] },
+      brief: { loc: 'Kitchen (1st Floor)', vis: 'Sam is in. Pale face, eyes wide, backpack on one shoulder.', aud: 'Your whisper sounds louder than you thought.',
+        txt: 'Now Sam needs to know the rules: where to step, what to avoid. Every sound counts, and the whisper itself is a sound.', opts: [
+          o('Hand signals only: point, mime, thumbs up', [17, 24], 25, { to: 'mud', spike: [0.2, 40, 58], r: 'Silent · Sam may miss a signal', loud: 'Sam knocks a pot lid. It rings.' }),
+          o('Text Sam "step where I step"', [18, 26], 20, { to: 'mud', ex: 5, ei: '📱', r: 'Clear · screen glow' }),
+          o('Whisper the full plan', [28, 40], 15, { to: 'mud', r: 'Clear · whispers carry' })] },
+      mud: { loc: 'Mudroom / Hallway (1st Floor)', vis: 'A line of shoes, coats on hooks, the dim stairwell ahead.', aud: "Sam's sneakers squeak on the tile.",
+        txt: 'Shoes are the first problem. Squeaky sneakers on tile are a siren.', opts: [
+          o('Shoes in hand, socks only', [17, 30], 25, { to: 'stairs', tag: 'step', rem: ['Friend: Sam (Outside)'], add: ['Friend: Sam (Inside)'], r: 'Quiet' }),
+          o('Lead Sam by the sleeve, step by step', [19, 32], 35, { to: 'stairs', tag: 'step', rem: ['Friend: Sam (Outside)'], add: ['Friend: Sam (Inside)'], r: 'Guided · slow' }),
+          o('Keep shoes on, walk fast', [34, 52], 10, { to: 'stairs', tag: 'step', rem: ['Friend: Sam (Outside)'], add: ['Friend: Sam (Inside)'], r: 'Fast · sneaker squeaks', loud: 'Sneakers squeak on the tile.' })] },
+      stairs: { loc: 'Staircase (1st → 2nd Floor)', vis: 'A dark upward tunnel. Sam stares at it like it is a mountain.', aud: 'Each step has its own note. Two of them are famous.',
+        txt: 'Two people means double the weight on every step, and the squeaky ones (3 and 11) are loudest.', opts: [
+          o('One at a time: you go up, Sam waits until you are 4 steps ahead', [18, 32], 70, { to: 'mhall', tag: 'step', r: 'Quiet · slow' }),
+          o('Together, hands on the rail', [36, 58], 22, { to: 'mhall', tag: 'step', r: 'Fast · double-weight creaks', loud: 'Two sets of weight, one very loud step.' }),
+          o('Big stride over the squeaky steps (3 and 11)', [20, 40], 35, { to: 'mhall', tag: 'step', spike: [0.15, 56, 70], r: 'Clever · a stretch can go wrong', loud: 'Sam lands badly. Crack.' })] },
+      mhall: { loc: 'Master Hallway (2nd Floor)', vis: "Mom's door, ajar 5 cm. Your door is beyond it.", aud: 'Breathing from behind the door. Sam breathes much louder.',
+        txt: "The last twelve meters. Sam's breathing is the nervous kind.", opts: [
+          o('Single file, heel-to-toe, you lead', [17, 31], 40, { to: 'door_in', tag: 'step', r: 'Quiet' }),
+          o('Sam first so you can watch him', [20, 36], 40, { to: 'door_in', tag: 'step', r: 'Control · risk of Sam stumbling' }),
+          o('Quick shuffle together', [34, 52], 12, { to: 'door_in', tag: 'step', r: 'Fast · double-weight floor', loud: 'The floor creaks under both of you.' })] },
+      door_in: { loc: 'Your Bedroom Door', vis: 'Your room, warm and dark. Sam is nearly home free.', aud: 'Breathing. Sam holds his.',
+        txt: 'In, then close. Two bodies, one door.', opts: doorOpts('out1', true).map((x) => ({ ...x, bonus: 0 })) },
+      out1: { at: T(5, 20), loc: 'Your Bedroom → Hallway (2nd Floor)', vis: 'Grey pre-dawn light in the window. Mom\'s alarm goes off at 6.', aud: 'Birds. Sam yawns audibly.',
+        txt: "It is 5:20 AM, and Sam has to get home before Mom's alarm. Same trip, reversed, with a sleepy friend who is bad at whispering.", opts: [
+          o('Same careful route: single file, wall-side, no talking', [18, 32], 80, { to: 'out2', tag: 'step', rem: ['Friend: Sam (Inside)'], add: ['Friend: Sam (Leaving)'], r: 'Quiet · slow' }),
+          o('Quick trip down, stay on the beat', [34, 54], 30, { to: 'out2', tag: 'step', rem: ['Friend: Sam (Inside)'], add: ['Friend: Sam (Leaving)'], r: 'Fast · double weight' }),
+          o('Hand-signal the route, shoes in hand', [20, 36], 55, { to: 'out2', tag: 'step', spike: [0.15, 52, 64], rem: ['Friend: Sam (Inside)'], add: ['Friend: Sam (Leaving)'], r: 'Balanced', loud: 'Sam trips on a shoe.' })] },
+      out2: { loc: 'Kitchen, Back Patio Door (1st Floor)', vis: 'Pale dawn, the patio blue. Biscuit stretches.', aud: 'Biscuit\'s tail begins the countdown: thump... thump... thump.',
+        txt: 'The patio door and the dog, one more time. Sam is out and gone if this works.', opts: [
+          o('Lift-and-slide the door, step out on the beat', [17, 28], 30, { to: 'WIN', r: 'Perfect exit' }),
+          o('Quick slide, quick goodbye', [34, 54], 8, { to: 'WIN', r: 'Fast · rumble', loud: 'The door rumbles.' }),
+          o('Give Biscuit a treat to hush the tail', [20, 32], 20, { to: 'WIN', r: 'Calm dog · crunch' })] } } },
+
+  { id: 'phone', emoji: '📱', name: 'Confiscated Phone Retrieval', board: 'dont-wake-mom-phone',
+    obj: "Infiltrate Mom's bedroom, retrieve your phone from her nightstand and leave without waking her.",
+    hz: 'Creaky floor heatmap · bed-spring tension · screen glow · charging chime', where: 'her bed', t0: T(3, 40, 12), alert: 28, gear: ['Socks On', 'Phone (Confiscated)', 'Flashlight (Off)'], start: 'hall',
+    bust: ['The lamp snaps on. Mom is sitting up. "I KNEW IT. Phone. Hand it over. And go to bed." Busted.', 'A hand grabs your wrist in the dark: "Looking for something?"'],
+    nodes: {
+      hall: { loc: 'Master Hallway (2nd Floor)', vis: "Mom's door, ajar 15 cm. Faint warm lamp glow inside.", aud: 'Deep breathing. A faint ticking clock.',
+        txt: 'Your phone has been in her room for three days. She sleeps lightly, and she sleeps with the lamp on low. Time to take it back.', opts: walkOpts('mdoor') },
+      mdoor: { loc: "Mom's Bedroom Door", vis: 'A lit crack, a sliver of the room: bed, nightstand, a rug.', aud: 'Breathing: slow, with a small whistle. The hinge is oiled... mostly.',
+        txt: "The hinge is the first test. It squeaks mid-swing, and mid-swing is exactly where you'll be.", opts: [
+          o('Push at the hinge edge, 10% at a time', [20, 34], 30, { to: 'floor', r: 'Quiet · slow' }),
+          o('Open it 30% in one smooth motion', [32, 50], 10, { to: 'floor', r: 'Faster · squeak risk', loud: 'The hinge gives one thin squeak.' }),
+          o('Squeeze through the existing 15 cm gap', [22, 36], 12, { to: 'floor', r: 'No hinge · tight fit', say: 'You exhale and slide through.' })] },
+      floor: { loc: "Mom's Bedroom (2nd Floor)", vis: 'Warm lamp glow. The nightstand is 4 m away. The floor is a minefield:', aud: 'Her breathing syncs with your steps. You pray it stays that way.',
+        map: '  DOOR\n  ░ ░ ▒ ▓ ▒ ░ [NIGHTSTAND]\n  ░ ▒ ▓ ▓ ▒ ░\n  ░ ░ ▒ ▓ ▒ ░ [BED →]\n\n  ░ safe  ▒ creak (35–50 dB)  ▓ LOUD (55–70 dB)',
+        txt: 'You have walked this floor a thousand times, and you remember exactly which boards betray you.', opts: [
+          o('Hug the left wall (all ░)', [17, 30], 50, { to: 'nstand', tag: 'step', r: 'Quietest · long way around' }),
+          o('Diagonal through ▒ cells', [34, 50], 20, { to: 'nstand', tag: 'step', r: 'Balanced · some creaks' }),
+          o('Straight line over ▓ planks', [56, 70], 6, { to: 'nstand', tag: 'step', r: 'Fastest · loud boards', loud: 'The plank booms.' })] },
+      nstand: { loc: 'Mom\'s Nightstand', vis: 'Your phone, face-up on its charger. Lock screen lit.', aud: "Mom's cheek on the pillow, her breath on your wrist.",
+        txt: 'It\'s right there: charger cable still plugged in. The lock screen glows, and she is two feet away.', opts: [
+          o('Lift phone AND charger together, palm over the lock screen', [21, 34], 12, { to: 'shift', tag: 'step', ex: 5, ei: '💡', add: ['Phone (Recovered)'], rem: ['Phone (Confiscated)'], r: 'No chime · glow covered' }),
+          o('Unplug the cable first, then lift the phone', [30, 44], 8, { to: 'shift', spike: [0.45, 52, 64], ex: 8, ei: '💡', add: ['Phone (Recovered)'], rem: ['Phone (Confiscated)'], r: 'Clean · charging chime risk', loud: 'DING. The charging chime rings.' }),
+          o('Lean across the bed to reach it faster', [34, 56], 5, { to: 'shift', ex: 10, ei: '💡', add: ['Phone (Recovered)'], rem: ['Phone (Confiscated)'], r: 'Fastest · bed springs shift', loud: 'The bed frame groans under your weight.' })] },
+      shift: { loc: 'Mom\'s Nightstand', vis: 'Mom\'s eyelids flutter. Her hand slides across the sheet toward her pillow.', aud: 'Her breathing changes. Deeper. Slower. Then it stops.',
+        txt: 'She is shifting, turning toward the nightstand. You have about two seconds to become a statue or a shadow.', opts: [
+          o('Freeze completely, hold your breath', [15, 22], 12, { to: 'silence', r: 'Safe if you do not breathe · time passes', say: 'She settles. You breathe again, very slowly.' }),
+          o('Drop to the floor behind the bed', [24, 38], 6, { to: 'silence', r: 'Out of sight · floor creak risk' }),
+          o('Keep moving, hoping her turn covers the sound', [38, 56], 3, { to: 'silence', r: 'Fast · she is already moving', loud: 'She mumbles. She felt that.' })] },
+      silence: { loc: 'Mom\'s Nightstand', vis: 'Phone in your hand. The screen is beginning to wake.', aud: 'A notification vibrates against your palm.',
+        txt: "Phone in hand, you realize it's been 3 days of unread notifications. Mute it before it speaks.", opts: [
+          o('Flip the ringer switch with your thumb, palm over the screen', [18, 28], 8, { to: 'back', add: ['Phone (Muted)'], rem: ['Phone (Recovered)'], r: 'Muted · tiny click' }),
+          o('Press power to blank the screen', [20, 32], 5, { to: 'back', ex: 6, ei: '💡', add: ['Phone (Muted)'], rem: ['Phone (Recovered)'], r: 'Dark · ringer still on' }),
+          o('Leave it, retreat first', [20, 30], 2, { to: 'back', spike: [0.35, 60, 72], add: ['Phone (Muted)'], rem: ['Phone (Recovered)'], r: 'Fastest · a notification can ring out', loud: 'Buzz-ding! A notification screams.' })] },
+      back: { loc: "Mom's Bedroom (2nd Floor)", vis: 'The door and the path you took, a gray stripe on the floor.', aud: 'Her breathing is steady again. Yours is not.',
+        map: '  DOOR\n  ░ ░ ▒ ▓ ▒ ░ [NIGHTSTAND]\n  ░ ▒ ▓ ▓ ▒ ░\n  ░ ░ ▒ ▓ ▒ ░ [BED →]',
+        txt: 'The way out is the way in. Phone in hand, floor under your feet, every plank a memory.', opts: [
+          o('Retrace your exact steps along the wall', [16, 28], 50, { to: 'mdoor2', tag: 'step', r: 'Quietest' }),
+          o('Diagonal back through ▒', [34, 50], 20, { to: 'mdoor2', tag: 'step', r: 'Faster · creaks' }),
+          o('Straight line over ▓', [56, 70], 6, { to: 'mdoor2', tag: 'step', r: 'Fastest · loud', loud: 'The plank booms.' })] },
+      mdoor2: { loc: "Mom's Bedroom Door", vis: 'The lit crack of the doorway. Freedom.', aud: 'Her breath, the clock, the hinge waiting.',
+        txt: 'Leave it as you found it: ajar by 15 cm. Closed or fully open would be a clue.', opts: [
+          o('Ease it back to exactly 15 cm', [20, 34], 25, { to: 'hall2', r: 'Quiet · perfect disguise' }),
+          o('Squeeze out, leave it wider', [22, 36], 8, { to: 'hall2', ex: 4, ei: '🚪', r: 'Fast · Mom may notice later' }),
+          o('Close it the rest of the way', [30, 48], 10, { to: 'hall2', r: 'Hmm · latch click', loud: 'The latch clicks.' })] },
+      ...homeNodes(false) } },
+];
+
+// ---------- audio ----------
+let AC, muted = false, heart = 0;
+const audio = () => {
+  if (AC) return AC;
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    const b = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate), d = b.getChannelData(0); let l = 0;
+    for (let i = 0; i < d.length; i++) { l = (l + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = l * 3.5; } // brown noise: room tone
+    const src = AC.createBufferSource(); src.buffer = b; src.loop = true;
+    const g = AC.createGain(); g.gain.value = 0.15; src.connect(g).connect(AC.destination); src.start();
+    beat();
+  } catch {}
+  return AC;
+};
+function burst(db, light) {
+  if (!audio() || muted) return;
+  const len = 0.12 + clamp((db - 20) / 150, 0, 0.5), n = AC.sampleRate * len, b = AC.createBuffer(1, n, AC.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n) ** 2;
+  const s = AC.createBufferSource(); s.buffer = b;
+  const f = AC.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 400 + db * 25; f.Q.value = 1.2;
+  const g = AC.createGain(); g.gain.value = clamp(((db - 18) / 70) ** 2 * 0.9, 0.01, 0.8) * (light ? 0.2 : 1);
+  s.connect(f).connect(g).connect(AC.destination); s.start();
+  if (db >= 81) { const osc = AC.createOscillator(), og = AC.createGain(); osc.type = 'square'; osc.frequency.value = 880; og.gain.setValueAtTime(0.18, AC.currentTime); og.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.5); osc.connect(og).connect(AC.destination); osc.start(); osc.stop(AC.currentTime + 0.5); }
+}
+function beat() { // heartbeat gets faster as Mom wakes
+  clearTimeout(heart);
+  if (AC && !muted && S && S.sc && !S.over) {
+    const o = AC.createOscillator(), g = AC.createGain(); o.frequency.value = 52; g.gain.setValueAtTime(0.0001, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.14, AC.currentTime + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + 0.18);
+    o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime + 0.2);
+  }
+  heart = setTimeout(beat, 60000 / (62 + (S && S.alert || 0) * 0.9));
+}
+$('#mute').onclick = () => { muted = !muted; $('#mute').textContent = muted ? '🔇' : '🔊'; };
+
+// ---------- game state ----------
+let S = {}, best = {};
+try { best = JSON.parse(localStorage.getItem('dwm-best') || '{}'); } catch {}
+const saveBest = () => { try { localStorage.setItem('dwm-best', JSON.stringify(best)); } catch {} };
+const has = (g) => S.gear.some((x) => x === g);
+const node = () => S.sc.nodes[S.node];
+const delta = (op, d) => (op.freeze ? op.calm : (d <= 30 ? -3 : d <= 55 ? 6 + (d - 30) * 0.8 : 26 + (d - 55) * 1.4) + (op.ex || 0));
+const FREEZE = { t: 'Freeze and hold your breath (10 s)', db: [14, 20], sec: 10, calm: -8, freeze: true, r: 'Mom settles · the clock keeps ticking', say: 'You become furniture. Your heartbeat is the loudest thing in the house.' };
+const segs = (op) => {
+  const m = op.tag === 'step' && has('Socks On') ? -4 : 0, sp = op.spike ? op.spike[0] : 0, s = [[op.db[0] + m, op.db[1] + m + 6, 1 - sp]]; // +6: any step can surprise you
+  if (op.spike) s.push([op.spike[1], op.spike[2], sp]);
+  return s;
+};
+function evaluate(op) {
+  let pN = 0, pB = 0, K = 41; const ss = segs(op);
+  for (const [lo, hi, w] of ss) for (let k = 0; k < K; k++) {
+    const d = lo + (hi - lo) * k / (K - 1);
+    if (d > 30) pN += w / K;
+    if (d >= 81 || S.alert + delta(op, d) >= 100) pB += w / K;
+  }
+  return { lo: Math.min(...ss.map((x) => x[0])), hi: Math.max(...ss.map((x) => x[1])), pN: Math.round(pN * 100), pB: Math.round(pB * 100) };
+}
+const roll = (op) => { const ss = segs(op); let r = Math.random(); for (const [lo, hi, w] of ss) { if (r < w || ss.at(-1)[0] === lo) return Math.round(rnd(lo, hi)); r -= w; } };
+const tier = (d) => (d <= 30 ? 'QUIET' : d <= 55 ? 'MODERATE' : d <= 80 ? 'HIGH' : 'CRITICAL');
+const bar = (v, n) => '█'.repeat(v) + '░'.repeat(n - v);
+const label = (a) => (a >= 100 ? ['BUSTED', 'bad'] : a >= 81 ? ['CRITICAL (Eyes Opening)', 'bad'] : a >= 61 ? ['SEMI-AWAKE', 'bad'] : a >= 41 ? ['RESTLESS', 'warn'] : a >= 21 ? ['LIGHT SLEEP', 'warn'] : ['STABLE (Deep Sleep)', 'ok']);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+
+function start(i) {
+  const sc = SC[i];
+  S = { sc, i, node: sc.start, t: sc.t0, alert: sc.alert, floor: sc.alert, db: 22, shown: 22, gear: [...sc.gear], turns: 0, maxAlert: sc.alert, bonus: 0, log: [], worst: { db: 0, t: '' }, meet: false, over: false, froze: {} };
+  const at = node().at; if (at) S.t = at;
+  audio(); $('#menu').hidden = false; render();
+}
+function menu() {
+  S = {}; $('#menu').hidden = true; $('#fx').style.setProperty('--al', 0);
+  app.className = '';
+  app.innerHTML = `<div class="rec">● REC 02:14:32 AM</div><h1>Midnight Stealth: Don't Wake Mom!</h1>
+    <p class="sub">First-person suspense. Every sound is a decision. Pick a mission:</p>
+    <div class="cards">${SC.map((s, i) => `<button class="card" data-i="${i}"><span class="bst">${best[s.id] ? '★ ' + best[s.id] : ''}</span><b>${s.emoji} ${i + 1}. ${esc(s.name)}</b>
+      <div class="obj">${esc(s.obj)}</div><div class="hz">⚠️ ${esc(s.hz)}</div></button>`).join('')}</div>
+    <p class="sub" style="margin-top:14px">0–30 dB quiet · 31–55 creak/squeak · 56–80 loud · 81+ BUSTED. Keys 1–5 pick options.</p>`;
+  app.querySelectorAll('.card').forEach((c) => (c.onclick = () => start(+c.dataset.i)));
+}
+$('#menu').onclick = menu;
+
+function render() {
+  const n = node(), sc = S.sc, [lab, cls] = label(S.alert), mom = MOMAUD(sc.where)[S.alert < 20 ? 0 : S.alert < 40 ? 1 : S.alert < 60 ? 2 : S.alert < 80 ? 3 : 4];
+  const opts = n.opts.filter((x) => (!x.req || has(x.req)) && (!x.no || !has(x.no)));
+  if (S.alert > S.floor + 3 && !S.froze[S.node]) opts.push(FREEZE); // one freeze per room
+  S.opts = opts;
+  let extra = '';
+  if (sc.deadline && !S.meet) {
+    const left = Math.max(0, sc.t0 + sc.deadline - S.t);
+    extra = `<div class="row"><span class="lbl">🚗 DRIVER ETA</span><span class="${left < 45 ? 'bad' : 'warn'}">T-${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}</span></div>`;
+  }
+  const near = sc.deadline && !S.meet && sc.t0 + sc.deadline - S.t < 45 ? ' <b>Headlights sweep the ceiling. The driver is almost here!</b>' : '';
+  app.innerHTML = `<div class="hud">
+    <div class="row"><span>🕒 ${fmtT(S.t)}</span><span>📍 ${esc(n.loc)}</span></div>${extra}<hr>
+    <div class="row"><span>🔊 DECIBEL METER <span class="bar ${S.shown > 55 ? 'bad' : S.shown > 30 ? 'warn' : 'ok'}" id="dbb">${bar(clamp(Math.round((S.shown - 10) / 90 * 16), 0, 16), 16)}</span> <span id="dbt">${Math.round(S.shown)}</span> dB</span><span class="lbl">Ambient: 22 dB</span></div>
+    <div class="row"><span>🚨 MOM DETECTABILITY <span class="bar ${cls}">${bar(Math.round(S.alert / 100 * 15), 15)}</span> ${Math.round(S.alert)}% - <span class="${cls}">${lab}</span></span></div>
+    <div class="row"><span>🎒 GEAR: [${esc(S.gear.join(', '))}]</span></div><hr>
+    <div class="feed">⚠️ VISUAL FEED: ${esc(n.vis)}${near}</div><div class="feed">👂 AUDIO FEED: ${esc(n.aud)} <b>${esc(mom)}</b></div></div>
+    ${S.log.length ? `<div class="log">${S.log.map((l) => `<p>${l}</p>`).join('')}</div>` : ''}
+    <p class="story">${esc(n.txt)}</p>${n.map ? `<div class="map">${esc(n.map)}</div>` : ''}
+    <div class="opts">${opts.map((x, i) => { const e = evaluate(x), rc = e.pB >= 20 ? 'bad' : e.pN >= 50 || e.pB > 0 ? 'warn' : 'ok';
+      return `<button class="opt${x.freeze ? ' fr' : ''}" data-i="${i}"><span class="k">${i + 1}</span>${esc(x.t)}<span class="m">🔊 ${e.lo}–${e.hi} dB · <b class="${rc}">noise ${e.pN}% · bust ${e.pB}%</b>${x.ex ? ` · ${x.ei || '⚠️'} +${x.ex} detect` : ''} · ⏱ ${x.sec}s<br>🎁 ${esc(x.r || '')}</span></button>`; }).join('')}</div>`;
+  app.querySelectorAll('.opt').forEach((b) => (b.onclick = () => choose(+b.dataset.i)));
+  $('#fx').style.setProperty('--al', clamp((S.alert - 30) / 100, 0, 0.6));
+  clearInterval(S.ease);
+  S.ease = setInterval(() => { // meter eases back to ambient
+    if (S.shown <= 22) return clearInterval(S.ease);
+    S.shown = Math.max(22, S.shown - 3);
+    const b = $('#dbb'), t = $('#dbt'); if (!b) return clearInterval(S.ease);
+    b.textContent = bar(clamp(Math.round((S.shown - 10) / 90 * 16), 0, 16), 16); t.textContent = Math.round(S.shown);
+  }, 90);
+}
+
+function choose(i) {
+  const op = S.opts[i]; if (!op || S.over) return;
+  const d = roll(op), dl = delta(op, d);
+  if (op.freeze) S.froze[S.node] = 1;
+  S.t += op.sec; S.turns++; S.db = d; S.shown = d;
+  S.alert = clamp(S.alert + dl, S.floor, 100); S.maxAlert = Math.max(S.maxAlert, S.alert);
+  if (d > S.worst.db) S.worst = { db: d, t: op.t };
+  (op.add || []).forEach((g) => S.gear.push(g)); (op.rem || []).forEach((g) => { const k = S.gear.indexOf(g); if (k >= 0) S.gear.splice(k, 1); });
+  if (op.meet) S.meet = true;
+  S.bonus += op.bonus || 0;
+  const tr = tier(d), story = d > 30 ? (op.loud || pick(FLAV[d > 55 ? 'h' : 'm'])) : (op.say || pick(FLAV.q));
+  S.log.unshift(`[${d} dB · ${tr}] ${esc(op.t)}: ${esc(story)}${d > 30 && d <= 80 ? ' ' + esc(d > 55 ? pick(FLAV.h) : pick(FLAV.m)) : ''}`);
+  S.log = S.log.slice(0, 3);
+  burst(d, op.freeze);
+  const sc = S.sc, shake = d >= 56 ? 's3' : d > 30 ? 's2' : '';
+  if (sc.deadline && !S.meet && S.t >= sc.t0 + sc.deadline) return bust(`DING-DONG! The driver rang the bell at ${fmtT(S.t)}.`, 94);
+  if (d >= 81 || S.alert >= 100) return bust(d >= 81 ? op.loud || `${d} dB, off the chart.` : 'Her eyes open and meet yours.', Math.max(d, 82));
+  if (op.to === 'WIN') return win();
+  if (op.to) { S.node = op.to; const at = node().at; if (at) S.t = at; }
+  render();
+  if (shake) { app.classList.remove('s2', 's3'); void app.offsetWidth; app.classList.add(shake); }
+}
+
+function end(html) {
+  S.over = true; clearInterval(S.ease); clearTimeout(heart);
+  app.innerHTML = `<div class="end">${html}<div id="lb"></div><div id="ad"></div></div>`;
+  adBanner($('#ad'));
+}
+function bust(why, d) {
+  burst(Math.max(d, 82)); $('#fx').style.setProperty('--al', 0.9);
+  end(`<h2 class="bad">BUSTED</h2><p>${esc(pick(S.sc.bust))}</p><p class="lbl">${esc(why)}</p>
+    <p class="lbl">Loudest moment: ${S.worst.db} dB · ${esc(S.worst.t)} · Mom detectability peaked at ${Math.round(S.maxAlert)}%</p>
+    <div class="btns"><button class="btn" id="again">Try again</button><button class="btn alt" id="mn">Choose scenario</button></div>`);
+  $('#again').onclick = () => start(S.i); $('#mn').onclick = menu;
+}
+function win() {
+  const rise = S.maxAlert - S.floor, score = Math.round(clamp(400 + (100 - rise) * 4.5 - S.turns * 5 + S.bonus, 100, 1000));
+  const grade = score >= 850 ? ['S', 'GHOST'] : score >= 700 ? ['A', 'NINJA'] : score >= 550 ? ['B', 'SNEAKY'] : ['C', 'LUCKY'];
+  const isBest = score > (best[S.sc.id] || 0); if (isBest) { best[S.sc.id] = score; saveBest(); }
+  const sc = S.sc, i = S.i;
+  end(`<h2 class="ok">MISSION COMPLETE</h2><p>${sc.emoji} ${esc(sc.name)}: <b>undetected.</b></p>
+    <div class="sc">${score}</div><div><b>Grade ${grade[0]} · ${grade[1]}</b>${isBest ? ' · <span class="warn">★ NEW BEST!</span>' : ''}</div>
+    <p class="lbl">Loudest moment: ${S.worst.db} dB · Mom peaked at ${Math.round(S.maxAlert)}% · ${S.turns} moves</p>
+    <div class="btns"><button class="btn" id="again">Play again</button><button class="btn alt" id="mn">Next scenario</button><button class="btn alt" id="share">Share</button></div>`);
+  leaderboard($('#lb'), sc.board).show(score);
+  $('#again').onclick = () => start(i); $('#mn').onclick = menu;
+  $('#share').onclick = async (e) => {
+    const text = `I finished "${sc.name}" in Don't Wake Mom! with ${score} points (Grade ${grade[0]}). Can you beat me?`, url = 'https://rank-game.com/games/dont-wake-mom';
+    try { if (navigator.share) await navigator.share({ title: "Midnight Stealth: Don't Wake Mom!", text, url }); else { await navigator.clipboard.writeText(`${text} ${url}`); e.target.textContent = 'Copied!'; } } catch {}
+  };
+}
+addEventListener('keydown', (e) => {
+  if (e.target.closest && e.target.closest('.lb')) return;
+  if (/^[1-9]$/.test(e.key)) { if (S.sc && !S.over) choose(+e.key - 1); else if (!S.sc) { const c = SC[+e.key - 1]; if (c) start(+e.key - 1); } }
+  else if (e.key === 'm') $('#mute').click();
+});
+menu();
+</script>
+</body>
+</html>
