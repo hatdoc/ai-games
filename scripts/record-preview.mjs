@@ -172,9 +172,13 @@ const BOTS = {
     await at(12400); await page.keyboard.press('KeyF');
     await at(13800); await page.keyboard.press('Space');
   } },
-  'dont-wake-mom': { skip: 0.5, len: 11, poster: 5, async play(page) { // scenario 2, picking the quietest option (1) each turn
-    await page.keyboard.press('Digit2');
-    for (let i = 0; i < 9; i++) { await page.waitForTimeout(1500); await page.keyboard.press('Digit1'); }
+  'dont-wake-mom': { skip: 2, len: 12, poster: 7, async play(page) { // first-person: ease the bedroom door open, crouch-walk down the hallway
+    await page.evaluate(() => { __dwm.start(0); const { P, keys } = __dwm; Object.assign(P, { x: 2.5, z: 4.7, yaw: Math.PI, crouch: true }); keys.KeyE = 1; });
+    await page.waitForFunction(() => __dwm.D.yours.v > .3, null, { timeout: 30000 });
+    await page.evaluate(() => { const { P, keys } = __dwm; keys.KeyE = 0; keys.KeyW = 1; });
+    await page.waitForFunction(() => __dwm.P.z > 6.9, null, { timeout: 30000 });
+    await page.evaluate(() => { const { P } = __dwm; let k = 0; setInterval(() => { k++; P.yaw = Math.PI + Math.min(k, 40) / 40 * (-Math.PI * 1.5 + Math.PI * 0) ; }, 50); });
+    await page.waitForTimeout(8000);
   } },
   'line-mafia': { skip: 1.5, len: 9, poster: 7, async play(page) { // multiplayer: play the built-in demo room (bots draw a cat, one is the mafia)
     await page.evaluate(() => startDemo());
