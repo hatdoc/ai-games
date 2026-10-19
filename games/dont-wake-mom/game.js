@@ -542,6 +542,7 @@ function momFaceSVG() {
 }
 (function () { const mf = $('#mf'); mf.insertAdjacentHTML('afterbegin', momFaceSVG());
   const im = new Image(); im.onload = () => { mf.querySelector('svg').style.display = 'none'; im.className = 'momphoto'; mf.classList.add('photo'); mf.prepend(im); }; im.src = 'busted.webp'; })();
+$('#mfAgain').onclick = () => start(G.i); $('#mfMenu').onclick = () => toMenu();
 const MOMSAY = ['WHAT are you doing up?!', 'Back to bed. NOW!', 'I KNEW IT!', 'Young adult, explain yourself!', 'Do you know what time it is?!'];
 const samIn = (n) => { const s = G.sam; return s && World.roomAt(s.x, s.z, s.y).name === n; };
 
@@ -549,7 +550,7 @@ const samIn = (n) => { const s = G.sam; return s && World.roomAt(s.x, s.z, s.y).
 function prog(f, label, bar) { G.progT = .25; G.progF = f; G.progL = label; G.progBar = !!bar; }
 
 function start(i) {
-  const sc = MISSIONS[i]; Snd.init(); closeChoice();
+  const sc = MISSIONS[i]; Snd.init(); closeChoice(); $('#momface').hidden = true; $('#mfui').hidden = true;
   G = { phase: 'play', sc, i, t: 0, clock: sc.t0, alert: sc.base, base: sc.base, maxAlert: sc.base, meter: 22, meterLabel: 'Ambient', reach: 0, lastNoise: -9, lastGain: -9, step: 0, f: {}, held: { L: 'Phone (Muted)', R: 'Empty' },
     worst: { db: 0, t: '' }, flash: false, battery: 100, sched: [], busy: null, menu: null, fx: null, kettle: null, invOrder: [], sel: null, mg: null, boil: null, heat: null, steep: null, progBar: false, hotT: 0, stir: 0, stirNext: rnd(6, 12), thumpUntil: 0, thumpAt: 0, mw: null, over: false, inter: [], sam: null, glow: 0, driverHere: false };
   for (const id in D) { D[id].v = (sc.doorV && sc.doorV[id]) || 0; D[id].apply(); D[id].locked = 0; D[id].acc = 0; }
@@ -564,7 +565,7 @@ function start(i) {
   toast('Tip: C = crouch (quiet), Shift = run (loud), F = flashlight', 'ok');
 }
 function toMenu() {
-  $('#momface').hidden = true; if (G.mg) { G.mg = null; mgEl.hidden = true; } $('#hotbar').innerHTML = ''; $('#chip').hidden = true; Snd.tv(false); G.phase = 'menu'; closeChoice(); try { document.exitPointerLock(); } catch {}
+  $('#momface').hidden = true; $('#mfui').hidden = true; if (G.mg) { G.mg = null; mgEl.hidden = true; } $('#hotbar').innerHTML = ''; $('#chip').hidden = true; Snd.tv(false); G.phase = 'menu'; closeChoice(); try { document.exitPointerLock(); } catch {}
   $('#hud').hidden = true; $('#obj').hidden = true; $('#end').hidden = true; $('#menuBtn').hidden = true; $('#prompt').innerHTML = ''; $('#stir').hidden = true; $('#big').hidden = true; $('#prog').hidden = true;
   $('#menu').hidden = false; World.lights.lamp.intensity = 0;
   $('#cards').innerHTML = MISSIONS.map((s, i) => `<button class="card" data-i="${i}"><span class="num">${i + 1}</span><span class="em">${s.emoji}</span><b class="nm">${esc(s.name)}</b><div class="obj">${esc(s.obj)}</div><div class="hz">${s.hz.split(' · ').map((h) => `<span>${esc(h)}</span>`).join('')}</div>${best[s.id] ? `<span class="bst">★ ${best[s.id]}</span>` : ''}</button>`).join('');
@@ -574,7 +575,7 @@ function toMenu() {
 
 // ---------- end screens ----------
 function finish(html) {
-  $('#momface').hidden = true; if (G.mg) { G.mg = null; mgEl.hidden = true; } Snd.tv(false); G.phase = 'end'; G.over = true; closeChoice(); try { document.exitPointerLock(); } catch {}
+  $('#momface').hidden = true; $('#mfui').hidden = true; if (G.mg) { G.mg = null; mgEl.hidden = true; } Snd.tv(false); G.phase = 'end'; G.over = true; closeChoice(); try { document.exitPointerLock(); } catch {}
   $('#hud').hidden = true; $('#obj').hidden = true; $('#prompt').innerHTML = ''; $('#stir').hidden = true; $('#big').hidden = true; $('#prog').hidden = true;
   $('#end').hidden = false; $('#end').innerHTML = `<div class="endbox">${html}<div id="lb"></div><div id="ad"></div></div>`; adBanner($('#ad'));
 }
@@ -606,7 +607,10 @@ function update(dt) {
   if (G.phase === 'busted') { // Mom wakes up, the lamp clicks on
     G.bustT += dt; World.lights.lamp.intensity = Math.min(5, G.bustT * 6); m.up.position.y = Math.min(.45, G.bustT * .5); m.up.rotation.z = Math.min(.9, G.bustT * 1.1);
     if (G.bustT > .7 && !G.faceShown) { G.faceShown = 1; Snd.gasp(); $('#momSay').textContent = pick(MOMSAY); $('#momface').hidden = false; }
-    if (G.bustT > 3.2) { $('#momface').hidden = true; bustScreen(); } return;
+    if ($('#mf').classList.contains('photo')) { // the busted image stays on screen with its own buttons
+      if (G.bustT > 1.5 && $('#mfui').hidden) { $('#mfStats').textContent = `${G.why} · Loudest: ${G.worst.db} dB (${G.worst.t}) · Mom peaked at ${Math.round(G.maxAlert)}%`; $('#mfui').hidden = false; }
+    } else if (G.bustT > 3.2) { $('#momface').hidden = true; bustScreen(); }
+    return;
   }
   if (G.phase !== 'play') { m.body.scale.y = 1 + Math.sin(performance.now() / 900) * .03; return; }
   G.t += dt; G.clock = sc.t0 + G.t + (G.skip || 0);
