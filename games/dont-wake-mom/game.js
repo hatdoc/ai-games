@@ -110,7 +110,7 @@ function stepOnce(e, speed, isSam) {
   const sf = World.surfaceAt(e.x, e.z, e.y), mode = surfMode(speed);
   let db = sf.base + (mode === 0 ? -14 : mode === 2 ? 14 : 0) + (isSam ? 3 : 0) + rnd(-2, 3), label = sf.name;
   if (sf.creak && Math.random() < (mode === 0 ? .2 : mode === 1 ? .65 : 1)) { db = sf.base + (sf.creak > 1 ? 16 : 10) + (mode === 2 ? 8 : 0) + rnd(-2, 3); label = 'Floor creak!'; Snd.creak(db); toast(`Creak! ${Math.round(db)} dB`, 'warn'); }
-  else if (!isSam || Math.random() < .6) Snd.step(db, sf.name.startsWith('Tile') ? 'tile' : sf.base < 25 ? 'carpet' : 'wood');
+  else if (!isSam || Math.random() < .6) Snd.step(db, sf.name.startsWith('Tile') ? 'tile' : sf.name.startsWith('Concrete') ? 'conc' : sf.base < 25 ? 'carpet' : 'wood');
   if (G.thumpUntil > G.t) db -= 10; // Biscuit's tail thump masks the step
   if (!isSam && G.f.carry && mode === 2 && Math.random() < .35) { noise(58, 'Broth sloshes', e); Snd.bump(58); toast('The broth sloshes!', 'warn'); }
   noise(db, isSam ? 'Sam steps' : label, e);
@@ -189,18 +189,18 @@ const MISSIONS = [
       G.inter = [
         { x: 7.9, z: .7, r: 1.6, name: 'noodles', when: () => G.step === 2 && D.cab.v > .25, prompt: () => '[E] Take the Cup Noodles', use() { G.f.noodles = 1; G.held.R = 'Cup Noodles (Sealed)'; toast('Got the noodles.'); } },
         { x: 9.2, z: .7, r: 1.7, name: 'counter', when: () => G.step === 3, prompt: () => '[E] Open the packaging', use() { choice('How do you open the packet?', [
-          quiet('Open it inside your hoodie pocket (muffled)', [20, 34], 'Muffled crunch', { dur: 2.2, say: 'Fabric swallows the crinkle.', fn() { G.f.opened = 1; G.held.R = 'Cup Noodles (Open)'; } }),
-          quiet('Peel an inch at a time, palm over the wrap', [24, 40], 'Slow, safe-ish', { dur: 3.2, fn() { G.f.opened = 1; G.held.R = 'Cup Noodles (Open)'; } }),
-          quiet('Rip it fast', [58, 76], 'Fastest · high-frequency alert', { dur: .8, snd: 'rustle', fn() { G.f.opened = 1; G.held.R = 'Cup Noodles (Open)'; } })]); } },
+          quiet('Open it inside your hoodie pocket (muffled)', [20, 34], 'Muffled crunch', { dur: 2.2, snd: 'crinkle', say: 'Fabric swallows the crinkle.', fn() { G.f.opened = 1; G.held.R = 'Cup Noodles (Open)'; } }),
+          quiet('Peel an inch at a time, palm over the wrap', [24, 40], 'Slow, safe-ish', { dur: 3.2, snd: 'crinkle', bursts: 2, fn() { G.f.opened = 1; G.held.R = 'Cup Noodles (Open)'; } }),
+          quiet('Rip it fast', [58, 76], 'Fastest · high-frequency alert', { dur: .8, snd: 'crinkle', fn() { G.f.opened = 1; G.held.R = 'Cup Noodles (Open)'; } })]); } },
         { x: 9.7, z: .7, r: 1.7, name: 'microwave & kettle', when: () => G.step === 4 && !G.mw, prompt: () => '[E] Heat the water', use() { choice('Hot water: how?', [
-          quiet('Microwave: stop the timer at 0:01 (press E)', [24, 32], 'Hot noodles · beeps at 0:00 if you are late', { dur: .5, snd: 'click', fn() { G.mw = { t: 8, hum: 0 }; toast('Press E when the timer shows 0:01!'); } }),
-          quiet('Electric kettle: wait for it to boil', [34, 46], 'Reliable · boiling rumble', { dur: 4, bursts: 3, snd: 'buzz', fn() { G.f.hot = 1; G.held.R = 'Hot Cup Noodles'; } }),
-          quiet('Pot on the stove, flame low', [28, 40], 'Quiet · slow', { dur: 5, bursts: 2, snd: 'click', say: 'The blue flame hisses softly.', fn() { G.f.hot = 1; G.held.R = 'Hot Cup Noodles'; } }),
-          quiet('Skip heating: eat it crunchy and dry', [44, 60], 'Fastest · the crunch is loud', { dur: 1.5, snd: 'bump', fn() { G.f.hot = 1; G.held.R = 'Dry Noodles'; } })]); } },
+          quiet('Microwave: stop the timer at 0:01 (press E)', [24, 32], 'Hot noodles · beeps at 0:00 if you are late', { dur: .5, snd: 'click', fn() { Snd.ding(); G.mw = { t: 8, hum: 0 }; toast('Press E when the timer shows 0:01!'); } }),
+          quiet('Electric kettle: wait for it to boil', [34, 46], 'Reliable · boiling rumble', { dur: 4, bursts: 4, snd: 'boil', fn() { Snd.click(36); Snd.ding(); G.f.hot = 1; G.held.R = 'Hot Cup Noodles'; } }),
+          quiet('Pot on the stove, flame low', [28, 40], 'Quiet · slow', { dur: 5, bursts: 4, snd: 'hiss', say: 'The blue flame hisses softly.', fn() { Snd.pour(30); G.f.hot = 1; G.held.R = 'Hot Cup Noodles'; } }),
+          quiet('Skip heating: eat it crunchy and dry', [44, 60], 'Fastest · the crunch is loud', { dur: 1.5, snd: 'crunch', bursts: 2, fn() { G.f.hot = 1; G.held.R = 'Dry Noodles'; } })]); } },
         { x: 9.5, z: 1.9, r: 1.7, name: 'kitchen island', when: () => G.step === 5, prompt: () => '[E] Eat or carry the noodles', use() { choice('Time to eat', [
-          quiet('Eat here in small bites, no slurping', [26, 40], 'No spill risk', { dur: 4, bursts: 2, fn() { G.f.eaten = 1; G.held.R = 'Empty cup'; } }),
-          quiet('Carry it upstairs with both hands (do not run!)', [20, 34], 'Eat in bed · broth sloshes if you hurry', { dur: 1.2, fn() { G.f.carry = 1; G.held.R = 'Hot cup (careful!)'; } }),
-          quiet('Slurp fast and leave', [52, 72], 'Fastest · slurp spike', { dur: 2.5, bursts: 2, fn() { G.f.eaten = 1; G.held.R = 'Empty cup'; } })]); } },
+          quiet('Eat here in small bites, no slurping', [26, 40], 'No spill risk', { dur: 4, bursts: 3, snd: 'chew', fn() { G.f.eaten = 1; G.held.R = 'Empty cup'; } }),
+          quiet('Carry it upstairs with both hands (do not run!)', [20, 34], 'Eat in bed · broth sloshes if you hurry', { dur: 1.2, snd: 'handle', fn() { G.f.carry = 1; G.held.R = 'Hot cup (careful!)'; } }),
+          quiet('Slurp fast and leave', [52, 72], 'Fastest · slurp spike', { dur: 2.5, bursts: 2, snd: 'slurp', fn() { G.f.eaten = 1; G.held.R = 'Empty cup'; } })]); } },
       ];
     } },
 
@@ -222,20 +222,20 @@ const MISSIONS = [
     setup() {
       const pcFn = (rgb, ex) => () => { G.f.pcOn = 1; G.f.rgb = rgb; };
       const CFG = {
-        3: ['Boot the PC', [quiet('Kill the RGB with the case switch, then boot', [20, 32], 'Dark boot', { dur: 2, snd: 'click', fn: pcFn(0) }),
-          quiet('Hit power and hope', [28, 40], 'Fast · RGB spills across the room', { dur: 1, snd: 'click', ex: 8, fn: pcFn(1) }),
-          quiet('Wake it from your phone (no clicks)', [20, 30], 'Silent · screen glow', { dur: 2.5, snd: 'click', ex: 4, fn: pcFn(0) })]],
+        3: ['Boot the PC', [quiet('Kill the RGB with the case switch, then boot', [20, 32], 'Dark boot', { dur: 2, snd: 'click', fn() { Snd.fan(26); pcFn(0)(); } }),
+          quiet('Hit power and hope', [28, 40], 'Fast · RGB spills across the room', { dur: 1, snd: 'click', ex: 8, fn() { Snd.fan(32); pcFn(1)(); } }),
+          quiet('Wake it from your phone (no clicks)', [20, 30], 'Silent · screen glow', { dur: 2.5, snd: 'buzz', ex: 4, fn() { Snd.fan(26); pcFn(0)(); } })]],
         4: ['Headset time', [quiet('Mic muted, volume low, headset on both ears', [19, 28], 'Quiet · you will not hear Mom', { dur: 1.5, fn() { G.f.headset = 1; } }),
           quiet('One ear off to hear the room, mic muted', [20, 30], 'Awareness · teammates may leak', { dur: 1.5, spike: [.2, 58, 66], fn() { G.f.headset = 1; } }),
           quiet('Mic on so your squad hears callouts', [24, 36], 'Best callouts · chat can explode', { dur: 1.5, spike: [.35, 62, 78], fn() { G.f.headset = 1; } })]],
-        5: ['The match: 1v3, last one alive', [quiet('Soft keys, slow flicks', [22, 32], 'Safe · slower clutch', { dur: 4, bursts: 2, bonus: 30, fn() { G.f.match = 1; } }),
-          quiet('Hammer the mechanical keyboard and flick', [34, 48], 'Max reward · thock thock', { dur: 4, bursts: 3, bonus: 80, spike: [.2, 58, 68], fn() { G.f.match = 1; } }),
-          quiet('Use the controller in your lap', [24, 38], 'Balanced · soft buttons', { dur: 4, bursts: 2, bonus: 50, fn() { G.f.match = 1; } })]],
+        5: ['The match: 1v3, last one alive', [quiet('Soft keys, slow flicks', [22, 32], 'Safe · slower clutch', { dur: 4, bursts: 4, snd: 'keys', bonus: 30, fn() { G.f.match = 1; } }),
+          quiet('Hammer the mechanical keyboard and flick', [34, 48], 'Max reward · thock thock', { dur: 4, bursts: 5, snd: 'keys', bonus: 80, spike: [.2, 58, 68], fn() { G.f.match = 1; } }),
+          quiet('Use the controller in your lap', [24, 38], 'Balanced · soft buttons', { dur: 4, bursts: 4, snd: 'click', bonus: 50, fn() { G.f.match = 1; } })]],
         6: ['VICTORY! You want to scream...', [quiet('Silent fist pump, bite your sleeve', [20, 28], 'Perfect restraint', { dur: 1, fn() { G.f.cele = 1; } }),
-          quiet('Whisper "LET\'S GOOO"', [34, 50], 'Satisfying · whispers carry', { dur: 1, fn() { G.f.cele = 1; } }),
+          quiet('Whisper "LET\'S GOOO"', [34, 50], 'Satisfying · whispers carry', { dur: 1, snd: 'whisper', fn() { G.f.cele = 1; } }),
           quiet('Slap the desk', [60, 76], 'Max joy · max noise', { dur: .6, snd: 'bump', fn() { G.f.cele = 1; } })]],
         7: ['Leave no trace', [quiet('Sleep the PC with the keyboard shortcut', [19, 29], 'Instant · silent', { dur: 1, snd: 'click', fn() { G.f.shut = 1; G.f.pcOn = 0; G.f.rgb = 0; } }),
-          quiet('Shut down fully', [28, 40], 'Clean · fans whir', { dur: 2.5, snd: 'buzz', ex: 4, fn() { G.f.shut = 1; G.f.pcOn = 0; G.f.rgb = 0; } }),
+          quiet('Shut down fully', [28, 40], 'Clean · fans whir', { dur: 2.5, snd: 'fan', ex: 4, fn() { G.f.shut = 1; G.f.pcOn = 0; G.f.rgb = 0; } }),
           quiet('Leave it running and go', [20, 30], 'Fastest · RGB keeps glowing', { dur: .5, snd: 'click', ex: 12, fn() { G.f.shut = 1; } })]],
       };
       G.inter = [{ x: .9, z: 4.55, r: 1.9, name: 'gaming PC', when: () => G.step >= 3 && G.step <= 7, prompt: () => `[E] ${CFG[G.step][0]}`, use() { choice(CFG[G.step][0], CFG[G.step][1]); } }];
@@ -258,11 +258,11 @@ const MISSIONS = [
       G.f.locked = 1; G.arr = G.sc.t0 + G.sc.eta - 22; G.sc.eta0 = G.sc.t0 + G.sc.eta; World.driver.visible = true;
       G.inter = [
         { x: 2.3, z: 9.75, y: 0, r: 1.5, name: 'deadbolt', hold: true, when: () => G.step === 2, prompt: () => '[E hold] Turn the deadbolt (Shift = fast)', use(dt) {
-          G.f.bolt = (G.f.bolt || 0) + dt * (keys.ShiftLeft ? 4 : 1); if (G.f.bolt >= 1.8) { G.f.bolt = 0; G.f.unlocked = 1; D.front.locked = 0; const fast = !!keys.ShiftLeft; Snd.click(fast ? 52 : 28); noise(fast ? rnd(48, 58) : rnd(24, 34), fast ? 'CLACK, deadbolt' : 'Deadbolt turns', P); } else prog(G.f.bolt / 1.8, 'Turning deadbolt'); } },
+          G.f.bolt = (G.f.bolt || 0) + dt * (keys.ShiftLeft ? 4 : 1); if (G.f.bolt >= 1.8) { G.f.bolt = 0; G.f.unlocked = 1; D.front.locked = 0; const fast = !!keys.ShiftLeft; Snd.bolt(fast ? 52 : 28); noise(fast ? rnd(48, 58) : rnd(24, 34), fast ? 'CLACK, deadbolt' : 'Deadbolt turns', P); } else prog(G.f.bolt / 1.8, 'Turning deadbolt'); } },
         { x: 2, z: 11.2, y: 0, r: 2.2, name: 'driver', when: () => G.step === 4 && G.driverHere, prompt: () => '[E] Take the food from the driver', use() { choice('Handing it over', [
-          quiet('Whisper thanks, take the bag, tip on the phone', [22, 34], 'Silent · the smell lingers', { dur: 2, ex: 6, fn() { G.f.bag = 1; G.held.R = 'Burger Bag'; } }),
-          quiet('Pay cash and ask for change', [36, 52], 'Old school · coins jingle', { dur: 2.5, ex: 6, fn() { G.f.bag = 1; G.held.R = 'Burger Bag'; } }),
-          quiet('Stuff the bag in your hoodie', [22, 36], 'Smell contained · crinkle', { dur: 2.2, ex: 2, fn() { G.f.bag = 1; G.f.hoodie = 1; G.held.R = 'Bag (in hoodie)'; } })]); } },
+          quiet('Whisper thanks, take the bag, tip on the phone', [22, 34], 'Silent · the smell lingers', { dur: 2, snd: 'crinkle', ex: 6, fn() { G.f.bag = 1; G.held.R = 'Burger Bag'; } }),
+          quiet('Pay cash and ask for change', [36, 52], 'Old school · coins jingle', { dur: 2.5, snd: 'coins', ex: 6, fn() { G.f.bag = 1; G.held.R = 'Burger Bag'; } }),
+          quiet('Stuff the bag in your hoodie', [22, 36], 'Smell contained · crinkle', { dur: 2.2, snd: 'crinkle', ex: 2, fn() { G.f.bag = 1; G.f.hoodie = 1; G.held.R = 'Bag (in hoodie)'; } })]); } },
       ];
     } },
 
@@ -281,9 +281,9 @@ const MISSIONS = [
     setup() {
       const s = World.sam; s.visible = true; G.sam = { x: 15.4, z: 3.8, y: 0, acc: 0, trail: [], mode: 'wait', yaw: 0 }; s.position.set(15.4, 0, 3.8);
       G.inter = [{ x: 14, z: 2.8, y: 0, r: 3.6, name: 'Biscuit', when: () => G.step === 1, prompt: () => '[E] Calm Biscuit', use() { choice('Biscuit is thumping his tail...', [
-        quiet('Step in on the beat of the thumps (cover)', [17, 26], 'Masks your steps · tricky timing', { dur: 2.5, bursts: 2, fn() { G.f.dog = 1; G.sam.mode = 'follow'; G.thumpUntil = G.t + 8; } }),
-        quiet('Offer a treat from your pocket', [20, 32], 'Dog calmed · quiet crunch', { dur: 2, fn() { G.f.dog = 1; G.sam.mode = 'follow'; } }),
-        quiet('Whisper "Sit"', [28, 44], 'Fast · he may whine', { dur: 1.5, spike: [.3, 52, 66], fn() { G.f.dog = 1; G.sam.mode = 'follow'; } })]); } }];
+        quiet('Step in on the beat of the thumps (cover)', [17, 26], 'Masks your steps · tricky timing', { dur: 2.5, bursts: 2, snd: 'thump', fn() { G.f.dog = 1; G.sam.mode = 'follow'; G.thumpUntil = G.t + 8; } }),
+        quiet('Offer a treat from your pocket', [20, 32], 'Dog calmed · quiet crunch', { dur: 2, snd: 'crunch', fn() { G.f.dog = 1; G.sam.mode = 'follow'; } }),
+        quiet('Whisper "Sit"', [28, 44], 'Fast · he may whine', { dur: 1.5, snd: 'whine', spike: [.3, 52, 66], fn() { G.f.dog = 1; G.sam.mode = 'follow'; } })]); } }];
     } },
 
   { id: 'phone', emoji: '📱', name: 'Confiscated Phone Retrieval', board: 'dont-wake-mom-phone',
@@ -302,7 +302,7 @@ const MISSIONS = [
     setup() {
       G.inter = [
         { x: 8.7, z: 2.2, y: 3, r: 1.7, name: 'phone', when: () => G.step === 3, prompt: () => '[E] Take your phone', use() { choice('The phone is plugged in and its screen is lit', [
-          quiet('Lift phone AND charger together, palm over the screen', [21, 34], 'No chime · glow covered', { dur: 2, ex: 3, fn() { G.f.phone = 1; G.held.L = 'Phone (screen glowing)'; G.glow = 1; G.stir = G.t + 5; G.stirAt = G.t; } }),
+          quiet('Lift phone AND charger together, palm over the screen', [21, 34], 'No chime · glow covered', { dur: 2, snd: 'handle', ex: 3, fn() { G.f.phone = 1; G.held.L = 'Phone (screen glowing)'; G.glow = 1; G.stir = G.t + 5; G.stirAt = G.t; } }),
           quiet('Unplug the cable first, then lift the phone', [30, 44], 'Clean · charging chime risk', { dur: 1.8, spike: [.45, 52, 64], snd: 'chime', ex: 5, fn() { G.f.phone = 1; G.held.L = 'Phone (screen glowing)'; G.glow = 1; G.stir = G.t + 5; G.stirAt = G.t; } }),
           quiet('Lean across the bed to grab it', [34, 56], 'Fastest · bed springs groan', { dur: 1.2, snd: 'bump', ex: 6, fn() { G.f.phone = 1; G.held.L = 'Phone (screen glowing)'; G.glow = 1; G.stir = G.t + 5; G.stirAt = G.t; } })]); } },
         { x: 8.7, z: 2.2, y: 3, r: 2, name: 'phone', when: () => G.step === 4, prompt: () => '[E] Silence the phone', use() { choice('Silence it!', [
@@ -395,7 +395,7 @@ function update(dt) {
   P.y += (World.floorY(P.x, P.z, P.y) - P.y) * Math.min(1, dt * 12);
   if (P.speed > .3) walk(P, P.speed, dt, false); if (G.phase !== 'play') return;
   // Mom stirs now and then: hold still!
-  const nowStir = G.stir > G.t; if (!nowStir) { G.stirNext -= dt; if (G.stirNext <= 0) { G.stir = G.t + 4; G.stirAt = G.t; G.stirNext = rnd(sc.momStir || 22, (sc.momStir || 22) + 18); } }
+  const nowStir = G.stir > G.t; if (nowStir && !G.stirSnd) { G.stirSnd = 1; Snd.sigh(); } if (!nowStir) G.stirSnd = 0; if (!nowStir) { G.stirNext -= dt; if (G.stirNext <= 0) { G.stir = G.t + 4; G.stirAt = G.t; G.stirNext = rnd(sc.momStir || 22, (sc.momStir || 22) + 18); } }
   if (G.stir > G.t) { if (P.speed > .45 && G.t - (G.stirAt || 0) > .9) addAlert(9 * dt); if (G.phase !== 'play') return; }
   $('#stir').hidden = !(G.stir > G.t);
   if (sc.id === 'ranked') Snd.tv(true, .06 / (1 + Math.hypot(P.x - 3.3, P.z - .5) * .6) * (P.y > 1.5 ? .3 : 1));
@@ -411,12 +411,12 @@ function update(dt) {
   World.monScreen.material.color.set(G.f.pcOn ? 0x77aaff : 0x223355);
   if (sc.id === 'ranked' && G.f.pcOn && G.t - (G.pingT || 0) > 18 && Math.random() < dt * .1) { G.pingT = G.t; Snd.ping(); noise(rnd(42, 62), 'Discord notification', { x: .9, z: 4.6, y: 0 }); toast('Ping! A Discord notification', 'warn'); }
   // microwave minigame
-  if (G.mw) { G.mw.t -= dt; G.mw.hum -= dt; if (G.mw.hum <= 0) { G.mw.hum = 1.4; noise(rnd(32, 38), 'Microwave hum', { x: 9.5, z: .6, y: 0 }); }
+  if (G.mw) { G.mw.t -= dt; G.mw.hum -= dt; if (G.mw.hum <= 0) { G.mw.hum = 1.4; Snd.hum(34); noise(rnd(32, 38), 'Microwave hum', { x: 9.5, z: .6, y: 0 }); }
     if (G.mw.t <= 0) { Snd.beep(); noise(rnd(84, 92), 'MICROWAVE BEEP', { x: 9.5, z: .6, y: 0 }); if (G.phase !== 'play') return; G.mw = null; G.f.hot = 1; G.held.R = 'Hot Cup Noodles'; toast('Too late: it beeped!', 'bad'); }
     else if (hit.KeyE && G.target && G.target.name === 'microwave & kettle') { /* handled below */ } }
   // doors / holds / taps
   const tg = locked ? null : findTarget(); G.target = tg; let pr = '';
-  if (G.mw) { $('#big').hidden = false; const s = Math.max(0, G.mw.t); $('#big').textContent = `0:0${Math.ceil(s)}`; $('#big').classList.toggle('go', s <= 1.7); pr = '[E] stop the microwave at 0:01'; if (hit.KeyE) { if (G.mw.t <= 1.7) { Snd.click(26); G.mw = null; G.f.hot = 1; G.held.R = 'Hot Cup Noodles'; toast('Perfect: stopped at 0:01!', 'ok'); } else toast('Too early. Wait for 0:01!', 'warn'); } }
+  if (G.mw) { $('#big').hidden = false; const s = Math.max(0, G.mw.t); $('#big').textContent = `0:0${Math.ceil(s)}`; $('#big').classList.toggle('go', s <= 1.7); pr = '[E] stop the microwave at 0:01'; if (hit.KeyE) { if (G.mw.t <= 1.7) { Snd.click(26); Snd.ding(); G.mw = null; G.f.hot = 1; G.held.R = 'Hot Cup Noodles'; toast('Perfect: stopped at 0:01!', 'ok'); } else toast('Too early. Wait for 0:01!', 'warn'); } }
   else $('#big').hidden = true;
   if (tg && !G.mw) {
     if (tg.kind === 'door') {
@@ -444,18 +444,18 @@ function update(dt) {
   G.meter = Math.max(22, G.meter - 40 * dt);
 }
 function moveDoor(d, dirn, rate, dt) {
-  const v0 = d.v; d.v = clamp(d.v + dirn * rate * dt, 0, 1); d.apply(); const dv = Math.abs(d.v - v0); if (!dv) return;
+  const v0 = d.v; if (v0 === 0 && dirn > 0) Snd.handle(22); d.v = clamp(d.v + dirn * rate * dt, 0, 1); d.apply(); const dv = Math.abs(d.v - v0); if (!dv) return;
   d.acc += dv; const fast = rate > .4;
-  if (d.acc >= .08) { d.acc = 0; const inSq = d.sq && d.v >= d.sq[0] && d.v <= d.sq[1], db = d.base + (fast ? 14 : 0) + (inSq ? 10 : 0) + rnd(-2, 3); (inSq || fast ? Snd.hinge : Snd.click)(db); noise(db, inSq ? `${DNAME[d.id]} squeaks` : `${DNAME[d.id]} moving`, { x: DP[d.id][0], z: DP[d.id][1], y: P.y }); }
-  if (v0 > 0 && d.v === 0 && dirn < 0) { const db = fast ? 46 : 22; Snd.click(db); noise(db, `${DNAME[d.id]} latch`, { x: DP[d.id][0], z: DP[d.id][1], y: P.y }); }
+  if (d.acc >= .08) { d.acc = 0; const inSq = d.sq && d.v >= d.sq[0] && d.v <= d.sq[1], db = d.base + (fast ? 14 : 0) + (inSq ? 10 : 0) + rnd(-2, 3); (d.id === 'drawer' || d.id === 'patio' ? Snd.slide : Snd.hinge)(db); noise(db, inSq ? `${DNAME[d.id]} squeaks` : `${DNAME[d.id]} moving`, { x: DP[d.id][0], z: DP[d.id][1], y: P.y }); }
+  if (v0 > 0 && d.v === 0 && dirn < 0) { const db = fast ? 46 : 22; (d.id === 'cab' || d.id === 'drawer' ? Snd.cab : Snd.click)(db); noise(db, `${DNAME[d.id]} latch`, { x: DP[d.id][0], z: DP[d.id][1], y: P.y }); }
 }
 function delivery(dt) {
   const sc = G.sc, eta = sc.eta0, drv = World.driver;
   const z = 11.6 + Math.max(0, (G.arr - sc.t0 - G.t - 0)) * 1.3; // walks up the path; arrives at G.arr
-  drv.position.set(2, 0, Math.min(z, 24)); drv.rotation.y = Math.PI; G.driverHere = z <= 11.7; if (G.f.bag) drv.visible = false;
+  drv.position.set(2, 0, Math.min(z, 24)); drv.rotation.y = Math.PI; const was = G.driverHere; G.driverHere = z <= 11.7; if (G.driverHere && !was) { Snd.car(); toast('A car pulls up outside...', 'warn'); } if (G.f.bag) drv.visible = false;
   if (!G.f.bag && sc.t0 + G.t >= eta) { Snd.bell(); noise(95, 'DOORBELL', { x: 2, z: 10.5, y: 0 }); if (G.phase === 'play') bust(`DING-DONG! The driver rang the bell at ${fmtT(G.clock)}.`); return; }
   const px = P.x, pz = P.z, inZone = px > .4 && px < 4 && pz > 10.2 && pz < 13.5 && P.y < 1;
-  if (inZone && P.speed > 1.2 && !G.f.lit) { G.f.lit = G.t; World.lights.porch.intensity = 1.8; addAlert(14); toast('Motion sensor! The porch light floods on.', 'warn'); }
+  if (inZone && P.speed > 1.2 && !G.f.lit) { G.f.lit = G.t; World.lights.porch.intensity = 1.8; Snd.click(40); addAlert(14); toast('Motion sensor! The porch light floods on.', 'warn'); }
   if (G.f.lit && G.t - G.f.lit > 9) { World.lights.porch.intensity = 0; G.f.lit = 0; }
 }
 function friend(dt) {
