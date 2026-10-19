@@ -172,6 +172,10 @@ const BOTS = {
     await at(12400); await page.keyboard.press('KeyF');
     await at(13800); await page.keyboard.press('Space');
   } },
+  'dont-wake-mom': { skip: 0.5, len: 11, poster: 5, async play(page) { // scenario 2, picking the quietest option (1) each turn
+    await page.keyboard.press('Digit2');
+    for (let i = 0; i < 9; i++) { await page.waitForTimeout(1500); await page.keyboard.press('Digit1'); }
+  } },
   'line-mafia': { skip: 1.5, len: 9, poster: 7, async play(page) { // multiplayer: play the built-in demo room (bots draw a cat, one is the mafia)
     await page.evaluate(() => startDemo());
   } },
