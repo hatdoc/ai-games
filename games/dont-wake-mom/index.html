@@ -6,45 +6,41 @@
 <title>Midnight Stealth: Don't Wake Mom!</title>
 <script src="../cloudsave.js" data-game="dont-wake-mom" data-keys="dwm-best"></script>
 <style>
-  :root { --g: #7dffa8; --y: #ffd84a; --r: #ff5a5a; --dim: #7a8a82; }
+  :root { --g: #8fe3b0; --y: #ffd36b; --r: #ff8a7a; --dim: #8e98c4; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; min-height: 100%; background: #04070a; color: #cfe8d8; font: 14px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  html, body { margin: 0; min-height: 100%; background: #0e1226; color: #e8ecff; font: 14px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   body { overflow-x: hidden; }
-  /* bodycam look: vignette that reddens with Mom's alertness, film grain, scanlines */
+  /* soft night-light look: the edges glow amber as Mom stirs */
   #fx { position: fixed; inset: 0; pointer-events: none; z-index: 5;
-    background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.85) 100%), radial-gradient(ellipse at center, transparent 55%, rgba(255,40,40,var(--al,0)) 120%); }
-  #grain { position: fixed; inset: -50%; pointer-events: none; z-index: 4; opacity: .07; animation: grain .6s steps(4) infinite;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
-  @keyframes grain { 0% { transform: translate(0,0); } 25% { transform: translate(-3%,2%); } 50% { transform: translate(2%,-3%); } 75% { transform: translate(-2%,-1%); } }
-  #scan { position: fixed; inset: 0; pointer-events: none; z-index: 4; background: repeating-linear-gradient(transparent 0 2px, rgba(0,0,0,.18) 2px 3px); }
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,10,.45) 100%), radial-gradient(ellipse at center, transparent 60%, rgba(255,170,60,var(--al,0)) 130%); }
   #app { max-width: 760px; margin: 0 auto; padding: 56px 14px 40px; position: relative; z-index: 2; }
   #app.s1 { animation: sh .25s; } #app.s2 { animation: sh .4s; } #app.s3 { animation: sh .7s; }
   @keyframes sh { 0%,100% { transform: none; } 20% { transform: translate(-3px,2px); } 40% { transform: translate(4px,-2px); } 60% { transform: translate(-3px,-3px); } 80% { transform: translate(2px,3px); } }
   #home { position: fixed; top: 12px; left: 12px; z-index: 9; color: #fffc; text-decoration: none; font: 700 13px system-ui, sans-serif; background: #0008; padding: 6px 10px; border-radius: 8px; }
   #top { position: fixed; top: 12px; right: 12px; z-index: 9; display: flex; gap: 6px; align-items: center; }
   #top button { font: 700 12px system-ui, sans-serif; padding: 6px 10px; border: 1px solid #fff4; border-radius: 8px; background: #0008; color: #fffc; cursor: pointer; }
-  .rec { color: var(--r); font-weight: 700; font-size: 12px; animation: blink 1.2s steps(2) infinite; }
+  .rec { color: var(--y); font-weight: 700; font-size: 12px; }
   @keyframes blink { 50% { opacity: 0; } }
   h1 { font: 800 clamp(22px, 5.5vw, 34px)/1.1 system-ui, sans-serif; margin: 6px 0 4px; color: #fff; letter-spacing: -.5px; }
   .sub { color: var(--dim); margin: 0 0 16px; }
   .cards { display: grid; gap: 10px; }
-  .card { display: block; width: 100%; text-align: left; font: inherit; color: inherit; padding: 12px 14px; border: 1px solid #2c4a3a; border-radius: 10px; background: #0a1511; cursor: pointer; }
-  .card:hover, .card:focus-visible { border-color: var(--g); background: #0e2018; outline: none; }
+  .card { display: block; width: 100%; text-align: left; font: inherit; color: inherit; padding: 12px 14px; border: 1px solid #33406e; border-radius: 10px; background: #171f42; cursor: pointer; }
+  .card:hover, .card:focus-visible { border-color: var(--g); background: #202b5c; outline: none; }
   .card b { color: #fff; font: 800 16px system-ui, sans-serif; }
   .card .obj { margin: 4px 0; } .card .hz { color: var(--dim); font-size: 12px; } .card .bst { float: right; color: var(--y); font-size: 12px; }
-  .hud { border: 1px solid #2c4a3a; background: #07110c; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+  .hud { border: 1px solid #33406e; background: #131a38; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
   .hud .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; padding: 2px 0; }
-  .hud hr { border: 0; border-top: 1px dashed #2c4a3a; margin: 6px 0; }
+  .hud hr { border: 0; border-top: 1px dashed #33406e; margin: 6px 0; }
   .bar { letter-spacing: 0; white-space: pre; } .lbl { color: var(--dim); }
   .ok { color: var(--g); } .warn { color: var(--y); } .bad { color: var(--r); }
-  .feed { color: #b9d4c4; } .feed b { color: var(--y); }
-  .story { margin: 0 0 12px; color: #e6f2ea; } .map { white-space: pre; background: #0a1511; border: 1px solid #2c4a3a; border-radius: 8px; padding: 8px 10px; margin: 0 0 12px; overflow-x: auto; font-size: 13px; }
-  .log { margin: 0 0 12px; padding: 8px 10px; border-left: 3px solid #2c4a3a; color: #aac4b4; font-size: 13px; }
+  .feed { color: #c9d0f2; } .feed b { color: var(--y); }
+  .story { margin: 0 0 12px; color: #eef1ff; } .map { white-space: pre; background: #171f42; border: 1px solid #33406e; border-radius: 8px; padding: 8px 10px; margin: 0 0 12px; overflow-x: auto; font-size: 13px; }
+  .log { margin: 0 0 12px; padding: 8px 10px; border-left: 3px solid #33406e; color: #b8c1ea; font-size: 13px; }
   .log p { margin: 0 0 4px; } .log p:first-child { color: #fff; }
   .opts { display: grid; gap: 8px; }
-  .opt { text-align: left; font: inherit; color: #eaf5ee; background: #0b1a13; border: 1px solid #2c4a3a; border-radius: 10px; padding: 10px 12px; cursor: pointer; width: 100%; }
-  .opt:hover, .opt:focus-visible { border-color: var(--g); background: #10261b; outline: none; }
-  .opt .k { display: inline-block; min-width: 20px; color: #04100a; background: var(--g); border-radius: 4px; text-align: center; font-weight: 800; margin-right: 6px; }
+  .opt { text-align: left; font: inherit; color: #eef1ff; background: #18214a; border: 1px solid #33406e; border-radius: 10px; padding: 10px 12px; cursor: pointer; width: 100%; }
+  .opt:hover, .opt:focus-visible { border-color: var(--g); background: #202b5c; outline: none; }
+  .opt .k { display: inline-block; min-width: 20px; color: #0b1230; background: var(--g); border-radius: 4px; text-align: center; font-weight: 800; margin-right: 6px; }
   .opt .m { display: block; margin-top: 4px; font-size: 12px; color: var(--dim); }
   .opt .m b { font-weight: 700; }
   .opt.fr { border-style: dashed; }
@@ -59,10 +55,10 @@
 </style>
 </head>
 <body>
-<div id="grain"></div><div id="scan"></div><div id="fx"></div>
+<div id="fx"></div>
 <a id="home" href="https://rank-game.com/">← Home</a>
 <script>if (top !== self) home.remove();</script>
-<div id="top"><span class="rec">● REC</span><button id="mute">🔊</button><button id="menu" hidden>Menu</button></div>
+<div id="top"><span class="rec">🌙 Night Mode</span><button id="mute">🔊</button><button id="menu" hidden>Menu</button></div>
 <div id="app"></div>
 <script src="../leaderboard.js"></script>
 <script src="../ad.js"></script>
@@ -108,12 +104,12 @@ const homeNodes = (hasStairs, win = 'WIN') => ({
 });
 
 const FLAV = {
-  q: ['Silence. Only your pulse.', "Nothing stirs. Mom's breathing stays slow.", 'Clean. The house does not notice you.', 'A ghost would be noisier.'],
+  q: ['Silence. Nice and smooth.', "Nothing stirs. Mom's breathing stays slow.", 'Clean. The house does not notice you.', 'A cat would be noisier.'],
   m: ['A creak. Mom turns over.', 'A soft squeak. Her breathing hitches, then settles.', 'The floor groans. Across the way a mattress shifts.', 'Too loud. A sheet rustles, then silence.'],
-  h: ['That was LOUD. Springs creak: she is sitting up!', 'A bed frame groans. A bedside lamp clicks on, then off. She is listening.', 'Floorboards complain upstairs. Someone is awake.'],
+  h: ['Oops, that was LOUD! A bed creaks: someone is stirring.', 'A bed frame groans and a lamp clicks on, then off. Mom is about to check.', 'Floorboards complain upstairs. Someone is awake and curious.'],
 };
 const MOMAUD = (w) => [`Slow, deep breathing from ${w}.`, `${w[0].toUpperCase() + w.slice(1)}: breathing is lighter now. A sheet rustles.`,
-  `Movement from ${w}: springs creak, a sleepy murmur.`, `Someone is half-awake in ${w}: coughing, the frame shifting.`, `Silence from ${w}. The breathing has STOPPED. She is listening.`];
+  `Movement from ${w}: springs creak, a sleepy murmur.`, `Someone is half-awake in ${w}: coughing, the frame shifting.`, `It has gone very quiet in ${w}. Any second now she will check...`];
 
 // ---------- scenarios ----------
 const SC = [
@@ -283,7 +279,7 @@ const SC = [
   { id: 'phone', emoji: '📱', name: 'Confiscated Phone Retrieval', board: 'dont-wake-mom-phone',
     obj: "Infiltrate Mom's bedroom, retrieve your phone from her nightstand and leave without waking her.",
     hz: 'Creaky floor heatmap · bed-spring tension · screen glow · charging chime', where: 'her bed', t0: T(3, 40, 12), alert: 28, gear: ['Socks On', 'Phone (Confiscated)', 'Flashlight (Off)'], start: 'hall',
-    bust: ['The lamp snaps on. Mom is sitting up. "I KNEW IT. Phone. Hand it over. And go to bed." Busted.', 'A hand grabs your wrist in the dark: "Looking for something?"'],
+    bust: ['The lamp snaps on. Mom is sitting up. "I KNEW IT. Phone. Hand it over. And go to bed." Busted.', 'The lamp clicks on. Mom, arms folded: "Looking for something?"'],
     nodes: {
       hall: { loc: 'Master Hallway (2nd Floor)', vis: "Mom's door, ajar 15 cm. Faint warm lamp glow inside.", aud: 'Deep breathing. A faint ticking clock.',
         txt: 'Your phone has been in her room for three days. She sleeps lightly, and she sleeps with the lamp on low. Time to take it back.', opts: walkOpts('mdoor') },
@@ -303,8 +299,8 @@ const SC = [
           o('Lift phone AND charger together, palm over the lock screen', [21, 34], 12, { to: 'shift', tag: 'step', ex: 5, ei: '💡', add: ['Phone (Recovered)'], rem: ['Phone (Confiscated)'], r: 'No chime · glow covered' }),
           o('Unplug the cable first, then lift the phone', [30, 44], 8, { to: 'shift', spike: [0.45, 52, 64], ex: 8, ei: '💡', add: ['Phone (Recovered)'], rem: ['Phone (Confiscated)'], r: 'Clean · charging chime risk', loud: 'DING. The charging chime rings.' }),
           o('Lean across the bed to reach it faster', [34, 56], 5, { to: 'shift', ex: 10, ei: '💡', add: ['Phone (Recovered)'], rem: ['Phone (Confiscated)'], r: 'Fastest · bed springs shift', loud: 'The bed frame groans under your weight.' })] },
-      shift: { loc: 'Mom\'s Nightstand', vis: 'Mom\'s eyelids flutter. Her hand slides across the sheet toward her pillow.', aud: 'Her breathing changes. Deeper. Slower. Then it stops.',
-        txt: 'She is shifting, turning toward the nightstand. You have about two seconds to become a statue or a shadow.', opts: [
+      shift: { loc: 'Mom\'s Nightstand', vis: 'Mom stirs and starts to roll toward the nightstand.', aud: 'Her breathing changes: a deep sigh, a mumble.',
+        txt: 'She is turning over. You have about two seconds to become a statue.', opts: [
           o('Freeze completely, hold your breath', [15, 22], 12, { to: 'silence', r: 'Safe if you do not breathe · time passes', say: 'She settles. You breathe again, very slowly.' }),
           o('Drop to the floor behind the bed', [24, 38], 6, { to: 'silence', r: 'Out of sight · floor creak risk' }),
           o('Keep moving, hoping her turn covers the sound', [38, 56], 3, { to: 'silence', r: 'Fast · she is already moving', loud: 'She mumbles. She felt that.' })] },
@@ -337,7 +333,6 @@ const audio = () => {
     for (let i = 0; i < d.length; i++) { l = (l + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = l * 3.5; } // brown noise: room tone
     const src = AC.createBufferSource(); src.buffer = b; src.loop = true;
     const g = AC.createGain(); g.gain.value = 0.15; src.connect(g).connect(AC.destination); src.start();
-    beat();
   } catch {}
   return AC;
 };
@@ -349,7 +344,7 @@ function burst(db, light) {
   const f = AC.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 400 + db * 25; f.Q.value = 1.2;
   const g = AC.createGain(); g.gain.value = clamp(((db - 18) / 70) ** 2 * 0.9, 0.01, 0.8) * (light ? 0.2 : 1);
   s.connect(f).connect(g).connect(AC.destination); s.start();
-  if (db >= 81) { const osc = AC.createOscillator(), og = AC.createGain(); osc.type = 'square'; osc.frequency.value = 880; og.gain.setValueAtTime(0.18, AC.currentTime); og.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.5); osc.connect(og).connect(AC.destination); osc.start(); osc.stop(AC.currentTime + 0.5); }
+  if (db >= 81) { const osc = AC.createOscillator(), og = AC.createGain(); osc.type = 'sine'; osc.frequency.value = 440; og.gain.setValueAtTime(0.1, AC.currentTime); og.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.5); osc.connect(og).connect(AC.destination); osc.start(); osc.stop(AC.currentTime + 0.5); }
 }
 function beat() { // heartbeat gets faster as Mom wakes
   clearTimeout(heart);
@@ -369,7 +364,7 @@ const saveBest = () => { try { localStorage.setItem('dwm-best', JSON.stringify(b
 const has = (g) => S.gear.some((x) => x === g);
 const node = () => S.sc.nodes[S.node];
 const delta = (op, d) => (op.freeze ? op.calm : (d <= 30 ? -3 : d <= 55 ? 6 + (d - 30) * 0.8 : 26 + (d - 55) * 1.4) + (op.ex || 0));
-const FREEZE = { t: 'Freeze and hold your breath (10 s)', db: [14, 20], sec: 10, calm: -8, freeze: true, r: 'Mom settles · the clock keeps ticking', say: 'You become furniture. Your heartbeat is the loudest thing in the house.' };
+const FREEZE = { t: 'Freeze and hold your breath (10 s)', db: [14, 20], sec: 10, calm: -8, freeze: true, r: 'Mom settles · the clock keeps ticking', say: 'You become furniture. You swear your pulse is the loudest thing in the house.' };
 const segs = (op) => {
   const m = op.tag === 'step' && has('Socks On') ? -4 : 0, sp = op.spike ? op.spike[0] : 0, s = [[op.db[0] + m, op.db[1] + m + 6, 1 - sp]]; // +6: any step can surprise you
   if (op.spike) s.push([op.spike[1], op.spike[2], sp]);
@@ -387,7 +382,7 @@ function evaluate(op) {
 const roll = (op) => { const ss = segs(op); let r = Math.random(); for (const [lo, hi, w] of ss) { if (r < w || ss.at(-1)[0] === lo) return Math.round(rnd(lo, hi)); r -= w; } };
 const tier = (d) => (d <= 30 ? 'QUIET' : d <= 55 ? 'MODERATE' : d <= 80 ? 'HIGH' : 'CRITICAL');
 const bar = (v, n) => '█'.repeat(v) + '░'.repeat(n - v);
-const label = (a) => (a >= 100 ? ['BUSTED', 'bad'] : a >= 81 ? ['CRITICAL (Eyes Opening)', 'bad'] : a >= 61 ? ['SEMI-AWAKE', 'bad'] : a >= 41 ? ['RESTLESS', 'warn'] : a >= 21 ? ['LIGHT SLEEP', 'warn'] : ['STABLE (Deep Sleep)', 'ok']);
+const label = (a) => (a >= 100 ? ['BUSTED', 'bad'] : a >= 81 ? ['CRITICAL (Waking Up)', 'bad'] : a >= 61 ? ['SEMI-AWAKE', 'bad'] : a >= 41 ? ['RESTLESS', 'warn'] : a >= 21 ? ['LIGHT SLEEP', 'warn'] : ['STABLE (Deep Sleep)', 'ok']);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
 function start(i) {
@@ -399,8 +394,8 @@ function start(i) {
 function menu() {
   S = {}; $('#menu').hidden = true; $('#fx').style.setProperty('--al', 0);
   app.className = '';
-  app.innerHTML = `<div class="rec">● REC 02:14:32 AM</div><h1>Midnight Stealth: Don't Wake Mom!</h1>
-    <p class="sub">First-person suspense. Every sound is a decision. Pick a mission:</p>
+  app.innerHTML = `<div class="rec">🌙 Night Mode · 02:14 AM</div><h1>Midnight Stealth: Don't Wake Mom!</h1>
+    <p class="sub">A sneaky, tense (and funny) night. Every sound is a decision. Pick a mission:</p>
     <div class="cards">${SC.map((s, i) => `<button class="card" data-i="${i}"><span class="bst">${best[s.id] ? '★ ' + best[s.id] : ''}</span><b>${s.emoji} ${i + 1}. ${esc(s.name)}</b>
       <div class="obj">${esc(s.obj)}</div><div class="hz">⚠️ ${esc(s.hz)}</div></button>`).join('')}</div>
     <p class="sub" style="margin-top:14px">0–30 dB quiet · 31–55 creak/squeak · 56–80 loud · 81+ BUSTED. Keys 1–5 pick options.</p>`;
@@ -456,7 +451,7 @@ function choose(i) {
   burst(d, op.freeze);
   const sc = S.sc, shake = d >= 56 ? 's3' : d > 30 ? 's2' : '';
   if (sc.deadline && !S.meet && S.t >= sc.t0 + sc.deadline) return bust(`DING-DONG! The driver rang the bell at ${fmtT(S.t)}.`, 94);
-  if (d >= 81 || S.alert >= 100) return bust(d >= 81 ? op.loud || `${d} dB, off the chart.` : 'Her eyes open and meet yours.', Math.max(d, 82));
+  if (d >= 81 || S.alert >= 100) return bust(d >= 81 ? op.loud || `${d} dB, off the chart.` : 'Mom is awake and not amused.', Math.max(d, 82));
   if (op.to === 'WIN') return win();
   if (op.to) { S.node = op.to; const at = node().at; if (at) S.t = at; }
   render();
