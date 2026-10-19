@@ -483,6 +483,65 @@ const MISSIONS = [
         A('Ignore it and retreat first', [20, 30], 'reach', .6, { snd: 'buzz', spike: [.35, 60, 72], ex: 8, when: () => F.phone && !F.muted, fn: muted })] }];
     } },
 ];
+
+// ---------- Mom's face: a shaded, realistic digital portrait (or your own photo: put it next to index.html as mom.jpg) ----------
+function momFaceSVG() {
+  const r = (a, b) => a + Math.random() * (b - a), f = (n) => n.toFixed(1);
+  let hair = '', strands = '', brows = '', lashes = '', curl = '';
+  let cap = '';
+  for (let i = 0; i < 160; i++) { const a = Math.PI * (1.0 + r(0, 1.0)), rad = r(70, 150), x0 = 200 + Math.cos(a) * rad, y0 = 190 + Math.sin(a) * rad * 1.05, x1 = 200 + Math.cos(a) * r(125, 150), y1 = 200 + Math.sin(a) * r(40, 120);
+    strands += `<path d="M${f(x0)} ${f(y0)} Q${f((x0 + x1) / 2 + r(-10, 10))} ${f((y0 + y1) / 2 + r(-10, 10))} ${f(x1)} ${f(y1)}" stroke="${Math.random() < .5 ? 'rgba(10,5,2,.6)' : 'rgba(140,98,64,.32)'}" stroke-width="${f(r(.8, 2))}" fill="none"/>`; }
+  for (let i = 0; i < 170; i++) { const t = r(0, 1), x = 96 + 208 * t, y = 200 - 62 * Math.sin(Math.PI * t), ex = x + (x - 200) * .12 + r(-8, 8), ey = y - r(50, 100);
+    cap += `<path d="M${f(x)} ${f(y)} Q${f(x + (x - 200) * .1 + r(-12, 12))} ${f(y - 30)} ${f(ex)} ${f(ey)}" stroke="${Math.random() < .55 ? 'rgba(12,6,3,.6)' : 'rgba(150,104,68,.34)'}" stroke-width="${f(r(.8, 2))}" fill="none"/>`; }
+  for (const [sx, ex, ey, flip] of [[104, 180, 198, 1], [296, 220, 198, -1]]) for (let i = 0; i < 55; i++) { const t = i / 54, x = sx + (ex - sx) * t, y = 168 + (ey - 168) * t + Math.sin(t * 3) * 2 - (1 - t) * 4 * (0), th = 7 + 6 * Math.sin(t * Math.PI) * .8;
+    brows += `<path d="M${f(x + r(-2, 2))} ${f(y + th * .5)} L${f(x + flip * r(4, 9))} ${f(y - th * .6 + r(-1, 1))}" stroke="rgba(${Math.random() < .5 ? '40,24,14' : '70,44,26'},.8)" stroke-width="${f(r(1, 1.9))}" stroke-linecap="round"/>`; }
+  const eye = (cx, cy, s) => { let l = ''; for (let i = 0; i < 14; i++) { const t = i / 13, x = -27 + t * 54, y = -17 * Math.sin(t * Math.PI) * .9 - 1; l += `<path d="M${f(x)} ${f(y)} l${f(s * -2 + (t - .5) * 6)} -6" stroke="#1a0e08" stroke-width="1.3" stroke-linecap="round"/>`; }
+    return `<g transform="translate(${cx} ${cy}) scale(${s} 1)"><path d="M-30 0 C-15 -19 15 -19 30 0 C15 13 -15 13 -30 0Z" fill="url(#sclera)"/><g clip-path="url(#eyeclip)"><circle cx="0" cy="-1" r="14" fill="url(#iris)"/><circle cx="0" cy="-1" r="14" fill="none" stroke="#1b0f08" stroke-width="2"/><circle cx="0" cy="-1" r="5.4" fill="#050302"/><circle cx="-5" cy="-6" r="3.3" fill="#fff" opacity=".95"/><circle cx="5" cy="3" r="1.6" fill="#fff" opacity=".7"/><rect x="-32" y="-22" width="64" height="12" fill="rgba(60,30,20,.38)"/></g>
+      <path d="M-30 0 C-15 -19 15 -19 30 0" fill="none" stroke="#2a150c" stroke-width="3.4" stroke-linecap="round"/><path d="M-26 -9 C-12 -26 12 -26 26 -9" fill="none" stroke="rgba(110,64,44,.55)" stroke-width="2.4"/><path d="M-27 3 C-12 14 12 14 27 3" fill="none" stroke="rgba(120,70,50,.5)" stroke-width="1.4"/>${l}</g>`; };
+  for (let i = 0; i < 4; i++) { const a = -.5 + i * .33; curl += `<g transform="translate(${f(120 + i * 54)} ${f(70 - Math.sin((i + .5) / 4 * 3.14) * 18 + 30)}) rotate(${f((i - 1.5) * 14)})"><rect x="-24" y="-17" width="48" height="34" rx="17" fill="url(#roll)"/><ellipse cx="-24" cy="0" rx="8" ry="17" fill="#c2487f"/><rect x="-16" y="-14" width="30" height="5" rx="2.5" fill="rgba(255,255,255,.55)"/><rect x="-24" y="-3" width="48" height="2.4" fill="rgba(0,0,0,.18)"/></g>`; }
+  return `<svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg"><defs>
+   <radialGradient id="bg" cx=".25" cy=".35" r="1"><stop offset="0" stop-color="#7a4a2a"/><stop offset=".45" stop-color="#2a1a1a"/><stop offset="1" stop-color="#0a0608"/></radialGradient>
+   <radialGradient id="skin" cx=".38" cy=".42" r=".75"><stop offset="0" stop-color="#f2c4a2"/><stop offset=".55" stop-color="#dba17f"/><stop offset="1" stop-color="#a86a4c"/></radialGradient>
+   <linearGradient id="neck" x1="0" x2="1"><stop offset="0" stop-color="#c88e6c"/><stop offset="1" stop-color="#7a4a38"/></linearGradient>
+   <linearGradient id="robe" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5a6c94"/><stop offset="1" stop-color="#202a44"/></linearGradient>
+   <radialGradient id="sclera" cx=".5" cy=".6" r=".7"><stop offset=".5" stop-color="#f4f1ee"/><stop offset="1" stop-color="#b9a9a2"/></radialGradient>
+   <radialGradient id="iris" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#9a6a3a"/><stop offset=".6" stop-color="#5a381c"/><stop offset="1" stop-color="#26140a"/></radialGradient>
+   <linearGradient id="roll" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff9ccb"/><stop offset=".6" stop-color="#e0589a"/><stop offset="1" stop-color="#a73a74"/></linearGradient>
+   <radialGradient id="mouth" cx=".5" cy=".3" r=".8"><stop offset="0" stop-color="#5a1218"/><stop offset="1" stop-color="#14040a"/></radialGradient>
+   <linearGradient id="teeth" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf6"/><stop offset="1" stop-color="#d9d0bf"/></linearGradient>
+   <radialGradient id="tongue" cx=".5" cy=".3" r=".8"><stop offset="0" stop-color="#e58a96"/><stop offset="1" stop-color="#a84a5a"/></radialGradient>
+   <linearGradient id="lipU" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a5504f"/><stop offset="1" stop-color="#8a3a40"/></linearGradient>
+   <linearGradient id="lipL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9686a"/><stop offset="1" stop-color="#a14850"/></linearGradient>
+   <radialGradient id="warm" cx=".12" cy=".4" r=".75"><stop offset="0" stop-color="rgba(255,190,120,.55)"/><stop offset="1" stop-color="rgba(255,190,120,0)"/></radialGradient>
+   <linearGradient id="shade" x1="0" x2="1"><stop offset=".5" stop-color="rgba(10,10,40,0)"/><stop offset="1" stop-color="rgba(10,10,40,.55)"/></linearGradient>
+   <radialGradient id="vig" cx=".5" cy=".45" r=".7"><stop offset=".55" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="rgba(0,0,0,.75)"/></radialGradient>
+   <radialGradient id="blush" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="rgba(230,110,100,.45)"/><stop offset="1" stop-color="rgba(230,110,100,0)"/></radialGradient>
+   <radialGradient id="nose" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="rgba(255,225,200,.7)"/><stop offset="1" stop-color="rgba(255,225,200,0)"/></radialGradient>
+   <filter id="skinN"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 .45  0 0 0 0 .28  0 0 0 0 .2  0 0 0 .55 -.12"/></filter>
+   <filter id="soft"><feGaussianBlur stdDeviation="2.2"/></filter><filter id="soft2"><feGaussianBlur stdDeviation=".5"/></filter>
+   <clipPath id="head"><path id="hp" d="M200 66 C120 66 92 132 94 215 C95 282 120 360 160 402 C175 420 190 428 200 428 C210 428 225 420 240 402 C280 360 305 282 306 215 C308 132 280 66 200 66Z"/></clipPath>
+   <clipPath id="backclip"><ellipse cx="200" cy="175" rx="140" ry="150"/></clipPath><clipPath id="capclip"><path d="M96 200 C98 96 150 62 200 62 C250 62 302 96 304 200 C290 156 250 140 200 138 C150 140 110 156 96 200Z"/></clipPath><clipPath id="eyeclip"><path d="M-30 0 C-15 -19 15 -19 30 0 C15 13 -15 13 -30 0Z"/></clipPath></defs>
+   <rect width="400" height="500" fill="url(#bg)"/>
+   <path d="M20 500 C40 440 120 424 200 446 C280 424 360 440 380 500Z" fill="url(#robe)"/><path d="M150 392 L250 392 L262 460 C230 470 170 470 138 460Z" fill="url(#neck)"/><path d="M150 392 Q200 440 250 392 L250 410 Q200 450 150 410Z" fill="rgba(40,16,10,.45)" filter="url(#soft)"/>
+   <ellipse cx="200" cy="175" rx="140" ry="150" fill="#2a170c"/><g clip-path="url(#backclip)">${strands}</g>
+   <ellipse cx="92" cy="240" rx="15" ry="31" fill="#c98e6c"/><ellipse cx="308" cy="240" rx="15" ry="31" fill="#a06a50"/>
+   <use href="#hp" fill="url(#skin)"/>
+   <g clip-path="url(#head)" filter="url(#soft2)"><rect x="80" y="60" width="240" height="380" filter="url(#skinN)" opacity=".5"/><rect x="80" y="60" width="240" height="380" fill="url(#shade)"/><rect x="80" y="60" width="240" height="380" fill="url(#warm)" style="mix-blend-mode:screen"/>
+     <ellipse cx="128" cy="290" rx="40" ry="34" fill="url(#blush)"/><ellipse cx="272" cy="290" rx="40" ry="34" fill="url(#blush)"/>
+     <path d="M130 138 Q200 124 270 138" stroke="rgba(120,70,50,.22)" stroke-width="2" fill="none"/>
+     <path d="M186 170 L190 198" stroke="rgba(110,60,44,.55)" stroke-width="3"/><path d="M214 170 L210 198" stroke="rgba(110,60,44,.55)" stroke-width="3"/>
+     <path d="M152 300 C140 330 140 350 150 372" stroke="rgba(110,60,44,.45)" stroke-width="3" fill="none"/><path d="M248 300 C260 330 260 350 250 372" stroke="rgba(110,60,44,.4)" stroke-width="3" fill="none"/>
+     <path d="M118 205 l-14 -8 M118 214 l-16 0 M118 223 l-14 8" stroke="rgba(110,60,44,.4)" stroke-width="1.6"/><path d="M282 205 l14 -8 M282 214 l16 0 M282 223 l14 8" stroke="rgba(110,60,44,.4)" stroke-width="1.6"/>
+     <ellipse cx="200" cy="262" rx="9" ry="42" fill="url(#nose)"/><ellipse cx="200" cy="304" rx="22" ry="12" fill="url(#nose)"/><ellipse cx="187" cy="312" rx="7" ry="4.5" fill="rgba(70,30,22,.7)"/><ellipse cx="213" cy="312" rx="7" ry="4.5" fill="rgba(70,30,22,.7)"/><path d="M178 316 Q200 326 222 316" stroke="rgba(90,44,32,.45)" stroke-width="3" fill="none"/>
+     <ellipse cx="200" cy="420" rx="70" ry="18" fill="rgba(60,25,15,.3)" filter="url(#soft)"/></g>
+   ${eye(148, 216, 1.3)}${eye(252, 216, -1.3)}${brows}
+   <g><ellipse cx="200" cy="372" rx="47" ry="30" fill="url(#mouth)"/><path d="M160 352 Q200 342 240 352 L236 372 Q200 364 164 372Z" fill="url(#teeth)"/><path d="M164 372 Q200 364 236 372" stroke="rgba(80,40,30,.35)" stroke-width="1.5" fill="none"/><ellipse cx="200" cy="392" rx="25" ry="10" fill="url(#tongue)"/>
+    <path d="M146 364 Q172 338 200 346 Q228 338 254 364 Q228 350 200 354 Q172 350 146 364Z" fill="url(#lipU)"/><path d="M152 380 Q200 430 248 380 Q200 404 152 380Z" fill="url(#lipL)"/><path d="M170 398 Q200 412 230 398" stroke="rgba(255,220,210,.4)" stroke-width="2" fill="none"/></g>
+   <path d="M96 200 C98 96 150 62 200 62 C250 62 302 96 304 200 C290 156 250 140 200 138 C150 140 110 156 96 200Z" fill="#2a170c"/><g clip-path="url(#capclip)">${cap}</g><g>${curl}</g>
+   <rect width="400" height="500" fill="url(#vig)"/></svg>`;
+}
+(function () { const mf = $('#mf'); mf.insertAdjacentHTML('afterbegin', momFaceSVG());
+  const im = new Image(); im.onload = () => { mf.querySelector('svg').style.display = 'none'; im.className = 'momphoto'; mf.prepend(im); }; im.src = 'mom.jpg'; })();
 const MOMSAY = ['WHAT are you doing up?!', 'Back to bed. NOW!', 'I KNEW IT!', 'Young adult, explain yourself!', 'Do you know what time it is?!'];
 const samIn = (n) => { const s = G.sam; return s && World.roomAt(s.x, s.z, s.y).name === n; };
 

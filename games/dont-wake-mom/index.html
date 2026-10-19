@@ -60,7 +60,7 @@
   #mg h3 { margin: 0 0 6px; font: 800 18px var(--sans); } #mg canvas { width: 100%; height: auto; border-radius: 12px; background: rgba(255,255,255,.03); touch-action: none; } #mgH { margin: 8px 4px 4px; font: 13px/1.4 var(--sans); color: #cdd5f3; } .mgf { font: 11px var(--sans); color: var(--dim); }
   #momface { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(120,20,20,.55), rgba(10,0,0,.92)); animation: flash .25s; }
   @keyframes flash { 0% { background: #fff; } 100% { } }
-  #momface .mf { position: relative; width: min(520px, 86vw); animation: pop .35s cubic-bezier(.2,1.6,.4,1), shake .5s .35s 3; } #momface svg { width: 100%; display: block; filter: drop-shadow(0 20px 40px rgba(0,0,0,.6)); }
+  #momface .mf { position: relative; width: min(520px, 86vw); animation: pop .35s cubic-bezier(.2,1.6,.4,1), shake .5s .35s 3; } #momface svg, #momface .momphoto { width: 100%; display: block; border-radius: 18px; filter: drop-shadow(0 20px 40px rgba(0,0,0,.6)); }
   #momface .bubble { position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%); width: 92%; padding: 10px 16px; border-radius: 16px; background: #fff; color: #1b1020; text-align: center; font: 900 clamp(18px, 4.5vw, 28px)/1.15 var(--sans); box-shadow: 0 10px 30px rgba(0,0,0,.5); }
   @keyframes pop { from { transform: scale(.2) rotate(-8deg); opacity: 0; } to { transform: scale(1); opacity: 1; } } @keyframes shake { 0%,100% { transform: translate(0); } 25% { transform: translate(-6px, 3px) rotate(-1deg); } 75% { transform: translate(6px, -3px) rotate(1deg); } }
   #cross { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #fffc; z-index: 15; pointer-events: none; transition: all .15s; box-shadow: 0 0 6px #000a; }
@@ -140,18 +140,7 @@
   <div class="cards" id="cards"></div>
   <div class="keys glass"><span class="desk"><b>W A S D</b> move · <b>mouse</b> look (click to capture) · </span><b>C</b> crouch (quiet) · <b>Shift</b> run (LOUD) · <b>E R T</b> do an action (each shows its noise) · <b>1-5</b> use an item from your item box · hold <b>E</b> to open · hold <b>Q</b> to close · <b>F</b> flashlight · <b>V</b> tell a friend to wait · <b>M</b> mute · (on this menu keys <b>1-5</b> start a mission).<br>
   0–30 dB quiet · 31–55 creaks · 56–80 loud · 81+ <span class="bad">busted</span>. Hold doors with <b>Shift</b> to rush them (squeaky!).</div></div></div>
-<div id="momface" hidden><div class="mf"><svg viewBox="0 0 300 320" xmlns="http://www.w3.org/2000/svg">
-  <ellipse cx="150" cy="300" rx="110" ry="30" fill="#2a1d3a"/>
-  <path d="M40 170 Q30 40 150 28 Q270 40 260 170 Q250 90 150 80 Q50 90 40 170Z" fill="#5a3a24"/>
-  <circle cx="75" cy="62" r="20" fill="#ff7ab8"/><circle cx="120" cy="40" r="20" fill="#7ad7ff"/><circle cx="180" cy="40" r="20" fill="#ff7ab8"/><circle cx="225" cy="62" r="20" fill="#7ad7ff"/>
-  <ellipse cx="150" cy="175" rx="105" ry="120" fill="#f4cba6" stroke="#c99468" stroke-width="4"/>
-  <circle cx="82" cy="210" r="20" fill="#f2a08a" opacity=".6"/><circle cx="218" cy="210" r="20" fill="#f2a08a" opacity=".6"/>
-  <ellipse cx="108" cy="150" rx="28" ry="32" fill="#fff"/><ellipse cx="192" cy="150" rx="28" ry="32" fill="#fff"/>
-  <circle cx="112" cy="156" r="13" fill="#3a2a1a"/><circle cx="188" cy="156" r="13" fill="#3a2a1a"/><circle cx="116" cy="150" r="4" fill="#fff"/><circle cx="192" cy="150" r="4" fill="#fff"/>
-  <path d="M70 112 L132 128" stroke="#4a2c18" stroke-width="12" stroke-linecap="round"/><path d="M230 112 L168 128" stroke="#4a2c18" stroke-width="12" stroke-linecap="round"/>
-  <path d="M150 165 Q140 200 154 205" stroke="#c99468" stroke-width="5" fill="none" stroke-linecap="round"/>
-  <ellipse cx="150" cy="262" rx="44" ry="34" fill="#7a1f2a" stroke="#4a0f18" stroke-width="4"/><path d="M114 245 Q150 236 186 245 L182 258 Q150 250 118 258Z" fill="#fff"/><ellipse cx="150" cy="282" rx="24" ry="10" fill="#e0607a"/>
-</svg><div class="bubble" id="momSay"></div></div></div>
+<div id="momface" hidden><div class="mf" id="mf"><div class="bubble" id="momSay"></div></div></div>
 <div id="end" hidden></div>
 <div id="touch"><button data-k="KeyE">E</button><button data-k="KeyR">R</button><button data-k="KeyT">T</button><button data-k="KeyQ">Close</button><button data-k="KeyC">Crouch</button><button data-k="ShiftLeft">Run</button><button data-k="KeyF">Light</button><button data-k="KeyV">Wait</button></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
