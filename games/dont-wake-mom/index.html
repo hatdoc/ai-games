@@ -62,6 +62,7 @@
   @keyframes flash { 0% { background: #fff; } 100% { } }
   #momface .mf { position: relative; width: min(520px, 86vw); animation: pop .35s cubic-bezier(.2,1.6,.4,1), shake .5s .35s 3; } #momface svg, #momface .momphoto { width: 100%; display: block; border-radius: 18px; filter: drop-shadow(0 20px 40px rgba(0,0,0,.6)); }
   #momface .bubble { position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%); width: 92%; padding: 10px 16px; border-radius: 16px; background: #fff; color: #1b1020; text-align: center; font: 900 clamp(18px, 4.5vw, 28px)/1.15 var(--sans); box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  #momface .mf.photo { width: min(1000px, 96vw); } #momface .mf.photo .bubble { display: none; } #momface .momphoto { width: 100%; height: auto; max-height: 90vh; object-fit: contain; }
   @keyframes pop { from { transform: scale(.2) rotate(-8deg); opacity: 0; } to { transform: scale(1); opacity: 1; } } @keyframes shake { 0%,100% { transform: translate(0); } 25% { transform: translate(-6px, 3px) rotate(-1deg); } 75% { transform: translate(6px, -3px) rotate(1deg); } }
   #cross { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #fffc; z-index: 15; pointer-events: none; transition: all .15s; box-shadow: 0 0 6px #000a; }
   #cross.act { width: 22px; height: 22px; margin: -11px 0 0 -11px; background: transparent; border: 2px solid var(--g); box-shadow: 0 0 10px #7ef0b088; }

@@ -484,7 +484,7 @@ const MISSIONS = [
     } },
 ];
 
-// ---------- Mom's face: a shaded, realistic digital portrait (or your own photo: put it next to index.html as mom.jpg) ----------
+// ---------- Mom's face: a shaded, realistic digital portrait (busted.webp is shown when present; this drawing is the fallback) ----------
 function momFaceSVG() {
   const r = (a, b) => a + Math.random() * (b - a), f = (n) => n.toFixed(1);
   let hair = '', strands = '', brows = '', lashes = '', curl = '';
@@ -541,7 +541,7 @@ function momFaceSVG() {
    <rect width="400" height="500" fill="url(#vig)"/></svg>`;
 }
 (function () { const mf = $('#mf'); mf.insertAdjacentHTML('afterbegin', momFaceSVG());
-  const im = new Image(); im.onload = () => { mf.querySelector('svg').style.display = 'none'; im.className = 'momphoto'; mf.prepend(im); }; im.src = 'mom.jpg'; })();
+  const im = new Image(); im.onload = () => { mf.querySelector('svg').style.display = 'none'; im.className = 'momphoto'; mf.classList.add('photo'); mf.prepend(im); }; im.src = 'busted.webp'; })();
 const MOMSAY = ['WHAT are you doing up?!', 'Back to bed. NOW!', 'I KNEW IT!', 'Young adult, explain yourself!', 'Do you know what time it is?!'];
 const samIn = (n) => { const s = G.sam; return s && World.roomAt(s.x, s.z, s.y).name === n; };
 
