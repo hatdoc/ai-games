@@ -75,6 +75,7 @@ const Snd = (() => {
     whine(db) { tone(700, 1000, .5, 'sine', vol(db) * .12, 7); },
     car() { tone(70, 50, 1.8, 'sawtooth', .09); burst(1.8, 150, .6, .2, 'lowpass'); later(1900, () => { tone(150, 70, .1, 'sine', .4); burst(.08, 800, 2, .4); }); },
     sigh() { burst(1, 500, .6, .08, 'lowpass', 220); later(500, () => burst(.35, 3500, .5, .035, 'highpass')); },
+    gasp() { burst(.3, 1400, 1.5, .35); tone(520, 980, .18, 'triangle', .18); later(130, () => { tone(300, 180, .35, 'square', .1); burst(.2, 700, 2, .25); }); },
     ping() { tone(880, 1320, .25, 'sine', .2); },
     chime() { tone(1320, 1320, .4, 'sine', .15); later(160, () => tone(1760, 1760, .5, 'sine', .12)); },
     bell() { tone(660, 660, .6, 'sine', .3); later(500, () => tone(520, 520, .8, 'sine', .3)); },
