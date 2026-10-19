@@ -5,9 +5,6 @@ const Snd = (() => {
     if (ac) return ac;
     try {
       ac = new (window.AudioContext || window.webkitAudioContext)(); out = ac.createGain(); out.gain.value = .9; out.connect(ac.destination);
-      const b = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = b.getChannelData(0); let l = 0;
-      for (let i = 0; i < d.length; i++) { l = (l + .02 * (Math.random() * 2 - 1)) / 1.02; d[i] = l * 3.5; }
-      const s = ac.createBufferSource(); s.buffer = b; s.loop = true; const g = ac.createGain(); g.gain.value = .12; s.connect(g).connect(out); s.start();
     } catch {}
     return ac;
   };
@@ -23,8 +20,20 @@ const Snd = (() => {
     o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
     gn.gain.setValueAtTime(g, t); gn.gain.exponentialRampToValueAtTime(.0005, t + dur); o.connect(gn).connect(out); o.start(); o.stop(t + dur);
   };
+  // low TV murmur, only for scenes that have a TV on (volume set by distance)
+  let tvG;
+  const tv = (on, v = .03) => {
+    if (!init() || muted) return;
+    if (!tvG) {
+      const b = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const s = ac.createBufferSource(); s.buffer = b; s.loop = true; const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = .5;
+      const lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = 3.1; lg.gain.value = .5; tvG = ac.createGain(); tvG.gain.value = 0;
+      lfo.connect(lg).connect(tvG.gain); s.connect(f).connect(tvG).connect(out); s.start(); lfo.start();
+    }
+    tvG.gain.value = on ? v : 0;
+  };
   return {
-    init, toggle() { muted = !muted; return muted; },
+    init, tv, toggle() { muted = !muted; return muted; },
     step(db, surf) { burst(.09 + vol(db) * .1, surf === 'tile' ? 1800 : surf === 'carpet' ? 260 : 520, 1.1, vol(db) * .7); },
     creak(db) { tone(110, 70, .35, 'sawtooth', vol(db) * .16); burst(.25, 700, 4, vol(db) * .2); },
     hinge(db) { tone(700, 1100, .22, 'triangle', vol(db) * .14); },

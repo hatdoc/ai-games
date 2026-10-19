@@ -327,13 +327,13 @@ function start(i) {
   World.monScreen.material.color.set(0x223355); World.rgb.material.color.set(0x222222);
   World.lights.lamp.intensity = 0; World.lights.mom.intensity = .7;
   Object.assign(P, sc.start, { vx: 0, vz: 0, pitch: -.05, crouch: false, acc: 0, eye: 1.62 });
-  sc.setup(); G.flashLabel = '';
+  sc.setup(); G.flashLabel = ''; Snd.tv(sc.id === 'ranked');
   $('#menu').hidden = true; $('#end').hidden = true; $('#hud').hidden = false; $('#obj').hidden = false; $('#menuBtn').hidden = false;
   if (matchMedia('(pointer:fine)').matches) { try { const pl = cv.requestPointerLock(); if (pl && pl.catch) pl.catch(() => {}); } catch {} }
   toast('Tip: C = crouch (quiet), Shift = run (loud), F = flashlight', 'ok');
 }
 function toMenu() {
-  G.phase = 'menu'; closeChoice(); try { document.exitPointerLock(); } catch {}
+  Snd.tv(false); G.phase = 'menu'; closeChoice(); try { document.exitPointerLock(); } catch {}
   $('#hud').hidden = true; $('#obj').hidden = true; $('#end').hidden = true; $('#menuBtn').hidden = true; $('#prompt').textContent = ''; $('#stir').hidden = true; $('#big').hidden = true; $('#prog').hidden = true;
   $('#menu').hidden = false; World.lights.lamp.intensity = 0;
   $('#cards').innerHTML = MISSIONS.map((s, i) => `<button class="card" data-i="${i}"><span class="bst">${best[s.id] ? '★ ' + best[s.id] : ''}</span><b>${s.emoji} ${i + 1}. ${esc(s.name)}</b><div class="obj">${esc(s.obj)}</div><div class="hz">⚠️ ${esc(s.hz)}</div></button>`).join('');
@@ -343,7 +343,7 @@ function toMenu() {
 
 // ---------- end screens ----------
 function finish(html) {
-  G.phase = 'end'; G.over = true; closeChoice(); try { document.exitPointerLock(); } catch {}
+  Snd.tv(false); G.phase = 'end'; G.over = true; closeChoice(); try { document.exitPointerLock(); } catch {}
   $('#hud').hidden = true; $('#obj').hidden = true; $('#prompt').textContent = ''; $('#stir').hidden = true; $('#big').hidden = true; $('#prog').hidden = true;
   $('#end').hidden = false; $('#end').innerHTML = `<div class="endbox">${html}<div id="lb"></div><div id="ad"></div></div>`; adBanner($('#ad'));
 }
@@ -398,6 +398,7 @@ function update(dt) {
   const nowStir = G.stir > G.t; if (!nowStir) { G.stirNext -= dt; if (G.stirNext <= 0) { G.stir = G.t + 4; G.stirAt = G.t; G.stirNext = rnd(sc.momStir || 22, (sc.momStir || 22) + 18); } }
   if (G.stir > G.t) { if (P.speed > .45 && G.t - (G.stirAt || 0) > .9) addAlert(9 * dt); if (G.phase !== 'play') return; }
   $('#stir').hidden = !(G.stir > G.t);
+  if (sc.id === 'ranked') Snd.tv(true, .06 / (1 + Math.hypot(P.x - 3.3, P.z - .5) * .6) * (P.y > 1.5 ? .3 : 1));
   // alert decay, flashlight, glow, smell
   if (G.t - G.lastGain > 1.6) G.alert = Math.max(G.base, G.alert - 1.8 * dt);
   const dm = Math.hypot(P.x - momPos().x, P.z - momPos().z), sameFloor = Math.abs(P.y - (momPos().y > 1.5 ? 3 : 0)) < 1.6;
