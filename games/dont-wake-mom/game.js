@@ -436,9 +436,11 @@ const MISSIONS = [
 
   { id: 'friend', emoji: '🤫', name: 'Sneaking a Friend In / Out', board: 'dont-wake-mom-friend',
     obj: 'Guide your friend through the back patio and upstairs past the dog and creaky floors. Then get them out again.', hz: 'Dog tail-thumping · double-person steps · squeaky step #4',
-    t0: tm(1, 20, 5), base: 20, mom: 'bed', momDoor: 'mom', start: { x: 10.6, z: 3.5, y: 0, yaw: -Math.PI / 2 }, gear: ['Socks On', 'Phone (Muted)', 'Friend: Sam (Outside)'],
+    t0: tm(1, 20, 5), base: 20, mom: 'bed', momDoor: 'mom', start: { x: 2.7, z: 4.2, y: 3, yaw: Math.PI }, gear: ['Socks On', 'Phone (Muted)', 'Friend: Sam (Outside)'],
     bust: ['The hall light snaps on. "SAM?! What is Sam doing in my house at 1 AM?!" Busted.', 'The dog barks and Mom storms in. "Out! Both of you!"'],
     steps: [
+      { obj: 'Open your bedroom door (hold E)', ok: () => D.yours.v >= D.yours.pass },
+      { obj: 'Sneak down to the kitchen', ok: () => inRoom('Kitchen') },
       { obj: 'Slide the patio door open: hold E (gently)', ok: () => D.patio.v >= D.patio.pass },
       { obj: 'Calm Biscuit the dog so Sam can come in', ok: () => G.f.dog },
       { obj: "Lead Sam to your room. Hold V to tell him to WAIT. Mind step #4!", ok: () => inRoom('Your Bedroom') && samIn('Your Bedroom') },
@@ -461,9 +463,11 @@ const MISSIONS = [
 
   { id: 'phone', emoji: '📱', name: 'Confiscated Phone Retrieval', board: 'dont-wake-mom-phone',
     obj: "Infiltrate Mom's bedroom, reach into the nightstand drawer and retrieve your phone while she sleeps a meter away.", hz: 'Creaky floors · drawer friction · screen flare · charging chime',
-    t0: tm(3, 40, 12), base: 28, mom: 'bed', momDoor: 'mom', momStir: 11, start: { x: 9.5, z: 7.6, y: 3, yaw: 0 }, gear: ['Socks On', 'Phone (Confiscated)'], doorV: { mom: .06 },
+    t0: tm(3, 40, 12), base: 28, mom: 'bed', momDoor: 'mom', momStir: 11, start: { x: 2.7, z: 4.2, y: 3, yaw: Math.PI }, gear: ['Socks On', 'Phone (Confiscated)'], doorV: { mom: .06 },
     bust: ['The lamp snaps on. Mom is sitting up. "I KNEW IT. Phone. Hand it over. And go to bed." Busted.', 'Mom, arms folded: "Looking for something?"'],
     steps: [
+      { obj: 'Open your bedroom door (hold E)', ok: () => D.yours.v >= D.yours.pass },
+      { obj: "Sneak along the hallway to Mom's door (the boards creak!)", ok: () => P.y > 1.5 && near(9.5, 7, 1.7) },
       { obj: "Get into Mom's room: hold E to open her door (it is ajar) or squeeze through", ok: () => inRoom("Mom's Bedroom") },
       { obj: 'Reach the nightstand. Darker boards creak: the rug and the west wall are quiet', ok: () => near(8.0, 2.2, 1.4) },
       { obj: 'Slide the nightstand drawer open: hold E slowly', ok: () => D.drawer.v >= .7 },
@@ -715,12 +719,12 @@ function friend(dt) {
   // Biscuit's tail thump
   if (G.t - G.thumpAt > .9) { G.thumpAt = G.t; G.thumpUntil = G.t + .18; Snd.thump(42); noise(38, 'Dog tail thump', { x: 14.5, z: 2.7, y: 0 }); World.biscuit.tail.rotation.y = .6; } else World.biscuit.tail.rotation.y *= .85;
   // step 3 -> morning
-  if (G.step === 4 && !G.f.jumped) { G.f.jumped = 1; G.skip = tm(5, 20) - G.sc.t0 - G.t; toast('5:20 AM: Sam has to get home before Mom wakes!', 'ok'); }
+  if (G.step === 6 && !G.f.jumped) { G.f.jumped = 1; G.skip = tm(5, 20) - G.sc.t0 - G.t; toast('5:20 AM: Sam has to get home before Mom wakes!', 'ok'); }
   // follow trail
   const last = s.trail[s.trail.length - 1]; if (!last || Math.hypot(P.x - last.x, P.z - last.z) > .15) s.trail.push({ x: P.x, z: P.z }); if (s.trail.length > 400) s.trail.shift();
   let tx = P.x, tz = P.z;
   if (s.mode === 'follow') { let acc = 0; for (let i = s.trail.length - 1; i > 0; i--) { acc += Math.hypot(s.trail[i].x - s.trail[i - 1].x, s.trail[i].z - s.trail[i - 1].z); if (acc >= 1.5) { tx = s.trail[i - 1].x; tz = s.trail[i - 1].z; break; } } }
-  const out = G.step >= 4 && near(12, 3.5, 3.2) && D.patio.v >= D.patio.pass; if (out && !G.f.out && Math.hypot(s.x - 12, s.z - 3.5) < 1.8) { s.mode = 'leave'; }
+  const out = G.step >= 6 && near(12, 3.5, 3.2) && D.patio.v >= D.patio.pass; if (out && !G.f.out && Math.hypot(s.x - 12, s.z - 3.5) < 1.8) { s.mode = 'leave'; }
   if (s.mode === 'leave') { tx = 15.5; tz = 3.8; if (Math.hypot(s.x - tx, s.z - tz) < .5) { G.f.out = 1; sm.visible = false; s.mode = 'gone'; toast('Sam waves goodbye and slips away.', 'ok'); } }
   let sp = 0; const d = Math.hypot(tx - s.x, tz - s.z);
   if (s.mode !== 'wait' && s.mode !== 'gone' && !keys.KeyV && d > .25) { sp = clamp(P.speed * 1.05 + .15, .6, 3.6); if (s.mode === 'leave') sp = 1.4; if (d < .6) sp *= d / .6; const k = Math.min(sp * dt, d); s.x += (tx - s.x) / d * k; s.z += (tz - s.z) / d * k; sm.rotation.y = Math.atan2(-(tx - s.x), -(tz - s.z)) + Math.PI; collide(s, .25); }
