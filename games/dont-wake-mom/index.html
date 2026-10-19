@@ -53,8 +53,10 @@
 
   #cross { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #fffc; z-index: 15; pointer-events: none; transition: all .15s; box-shadow: 0 0 6px #000a; }
   #cross.act { width: 22px; height: 22px; margin: -11px 0 0 -11px; background: transparent; border: 2px solid var(--g); box-shadow: 0 0 10px #7ef0b088; }
-  #prompt { position: fixed; left: 0; right: 0; top: 60%; z-index: 20; text-align: center; font: 650 15px var(--sans); text-shadow: 0 1px 8px #000; pointer-events: none; padding: 0 10px; }
-  #prompt:empty { display: none; }
+  #prompt { position: fixed; left: 0; right: 0; top: 56%; z-index: 20; text-align: center; font: 650 15px var(--sans); text-shadow: 0 1px 8px #000; pointer-events: none; padding: 0 10px; }
+  #prompt:empty { display: none; } #prompt .pn { font: 700 11px var(--mono); letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); margin-bottom: 6px; }
+  #prompt .pa { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px auto; padding: 6px 12px; width: fit-content; max-width: 94vw; border-radius: 12px; background: rgba(8,12,26,.62); border: 1px solid var(--line); backdrop-filter: blur(8px); font: 650 14px var(--sans); }
+  #prompt .pa em { font: 700 11px var(--mono); font-style: normal; padding: 2px 8px; border-radius: 99px; background: rgba(255,255,255,.08); } #prompt .pa em.ok { background: rgba(63,214,138,.2); color: var(--g); } #prompt .pa em.warn { background: rgba(255,201,74,.2); color: var(--y); } #prompt .pa em.bad { background: rgba(255,90,74,.25); color: var(--r); }
   #toast { position: fixed; left: 0; right: 0; bottom: 150px; z-index: 20; text-align: center; font: 700 14px var(--sans); text-shadow: 0 1px 8px #000; pointer-events: none; padding: 0 10px; }
   #stir { position: fixed; left: 50%; top: 24%; transform: translateX(-50%); z-index: 22; padding: 10px 20px; border-radius: 14px; background: rgba(255,179,71,.92); color: #1b1200; font: 800 17px var(--sans); text-align: center; pointer-events: none; box-shadow: 0 8px 30px rgba(255,160,40,.35); animation: pulse 1s ease-in-out infinite; }
   @keyframes pulse { 50% { transform: translateX(-50%) scale(1.04); } }
@@ -85,10 +87,13 @@
   .card .num { position: absolute; right: 14px; top: 12px; font: 800 12px var(--mono); color: var(--dim); } .card .bst { position: absolute; right: 14px; bottom: 12px; font: 800 12px var(--mono); color: var(--y); }
   .keys { margin: 20px 0 0; padding: 14px 16px; color: var(--dim); font-size: 12px; line-height: 2; } .keys b { color: #fff; font-weight: 650; }
   .endbox { max-width: 540px; margin: 5vh auto; text-align: center; padding: 26px 22px; border-radius: 22px; background: linear-gradient(180deg, rgba(18,26,56,.82), rgba(8,11,26,.9)); border: 1px solid var(--line); box-shadow: 0 24px 70px rgba(0,0,0,.6); }
-  .endbox h2 { font: 900 clamp(34px, 9vw, 54px)/1 var(--sans); margin: 0 0 10px; letter-spacing: -1px; } .endbox .sc { font: 900 72px/1 var(--mono); color: var(--y); margin: 8px 0; text-shadow: 0 0 30px rgba(255,211,107,.3); }
+  .endbox h2 { font: 900 clamp(34px, 9vw, 54px)/1 var(--sans); margin: 0 0 10px; letter-spacing: -1px; } .endbox .final { font: 900 72px/1 var(--mono); color: var(--y); margin: 8px 0; text-shadow: 0 0 30px rgba(255,211,107,.3); }
   .btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 16px 0; }
   .btn { font: 700 15px var(--sans); padding: 12px 22px; border: 0; border-radius: 12px; cursor: pointer; background: #fff; color: #111; } .btn:hover { filter: brightness(.92); } .btn.alt { background: rgba(255,255,255,.08); color: #fff; border: 1px solid var(--line); }
   #lb { margin: 14px auto 0; } #ad { margin-top: 14px; }
+  #end .lb { font-family: var(--sans); width: min(380px, 92%); } #end .lb h3 { font: 700 11px var(--mono); letter-spacing: 2px; color: var(--dim); } #end .lb li { border-radius: 10px; padding: 7px 12px; font-size: 14px; } #end .lb li:nth-child(odd) { background: rgba(255,255,255,.05); }
+  #end .lb li.me { background: rgba(255,211,107,.14); outline: 1px solid rgba(255,211,107,.6); } #end .lb .sc { font: 800 15px var(--mono); } #end .lb .nm { font-weight: 600; } #end .lb .act, #end .lb .tabs button { font-family: var(--sans); }
+  #end .lb .tabs button.on, #end .lb .act { background: var(--y); color: #1b1400; }
   #touch { position: fixed; right: 8px; bottom: 90px; z-index: 25; display: none; gap: 6px; flex-wrap: wrap; justify-content: flex-end; width: 190px; }
   #touch button { width: 58px; height: 46px; border-radius: 12px; border: 1px solid var(--line); background: rgba(10,16,40,.7); color: #fff; font: 700 12px var(--sans); touch-action: none; backdrop-filter: blur(6px); }
   @media (pointer: coarse) { #touch { display: flex; } .desk { display: none; } #held { display: none; } #status { width: min(330px, 62vw); padding: 8px 10px; } .mt { margin-bottom: 5px; grid-template-columns: 40px 1fr auto; gap: 6px; } .mt b { font-size: 15px; min-width: 48px; } #cap { display: none; } #obj { max-width: calc(100vw - 200px); } #batt { display: none; } }
@@ -119,10 +124,10 @@
 <div id="menu"><div class="wrap">
   <div class="eyebrow">FIRST-PERSON STEALTH · 02:14 AM</div><h1>Midnight Stealth:<br>Don't Wake Mom!</h1><p class="lede">You see the house through your own eyes. Every step, hinge and floorboard makes noise. Pick a mission and stay quiet.</p>
   <div class="cards" id="cards"></div>
-  <div class="keys glass"><span class="desk"><b>W A S D</b> move · <b>mouse</b> look (click to capture) · </span><b>C</b> crouch (quiet) · <b>Shift</b> run (LOUD) · <b>E</b> use / hold to open · <b>Q</b> hold to close · <b>F</b> flashlight · <b>V</b> tell a friend to wait · <b>M</b> mute · <b>1-4</b> pick options · <b>1-5</b> start a mission.<br>
+  <div class="keys glass"><span class="desk"><b>W A S D</b> move · <b>mouse</b> look (click to capture) · </span><b>C</b> crouch (quiet) · <b>Shift</b> run (LOUD) · <b>E R T</b> do an action (each shows its noise) · hold <b>E</b> to open · hold <b>Q</b> to close · <b>F</b> flashlight · <b>V</b> tell a friend to wait · <b>M</b> mute · <b>1-5</b> start a mission.<br>
   0–30 dB quiet · 31–55 creaks · 56–80 loud · 81+ <span class="bad">busted</span>. Hold doors with <b>Shift</b> to rush them (squeaky!).</div></div></div>
 <div id="end" hidden></div>
-<div id="touch"><button data-k="KeyE">Use</button><button data-k="KeyQ">Close</button><button data-k="KeyC">Crouch</button><button data-k="ShiftLeft">Run</button><button data-k="KeyF">Light</button><button data-k="KeyV">Wait</button></div>
+<div id="touch"><button data-k="KeyE">E</button><button data-k="KeyR">R</button><button data-k="KeyT">T</button><button data-k="KeyQ">Close</button><button data-k="KeyC">Crouch</button><button data-k="ShiftLeft">Run</button><button data-k="KeyF">Light</button><button data-k="KeyV">Wait</button></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="../leaderboard.js"></script>
 <script src="../ad.js"></script>

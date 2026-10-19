@@ -6,7 +6,7 @@ const tm = (h, m, s = 0) => h * 3600 + m * 60 + s;
 const fmtT = (s) => { s = (s % 86400 + 86400) % 86400; let h = s / 3600 | 0; const m = s / 60 % 60 | 0, ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s % 60 | 0).padStart(2, '0')} ${ap}`; };
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const bar = (v, n) => '█'.repeat(clamp(v, 0, n)) + '░'.repeat(n - clamp(v, 0, n));
-const gain = (e) => (e <= 26 ? 0 : e <= 30 ? 1 : e <= 55 ? 6 + (e - 30) * .8 : 26 + (e - 55) * 1.4);
+const gain = (e) => (e <= 26 ? 0 : e <= 30 ? 1.2 : e <= 55 ? 7.5 + (e - 30) * 1 : 32 + (e - 55) * 1.75);
 
 // ---------- renderer: shadows, HDR bloom, filmic tone mapping, bodycam lens ----------
 const lc = (h) => new T.Color(h).convertSRGBToLinear(), emis = (m, hex, k = 1) => m.color.copy(lc(hex)).multiplyScalar(k);
@@ -28,6 +28,15 @@ const phoneM = new T.Mesh(new T.BoxGeometry(.07, .01, .14), new T.MeshStandardMa
 scr.rotation.x = -Math.PI / 2; scr.position.y = .0055; phoneM.add(scr); phoneM.position.set(0, .04, -.45); phoneM.rotation.x = -.55; armL.add(phoneM);
 const cupM = new T.Mesh(new T.CylinderGeometry(.045, .035, .11, 16), new T.MeshStandardMaterial({ color: lc(0xd04a3a), roughness: .5, emissive: lc(0x301008) })); cupM.position.set(0, .06, -.45); armR.add(cupM);
 const bagM = new T.Mesh(new T.BoxGeometry(.12, .16, .08), new T.MeshStandardMaterial({ color: lc(0xe8d9b8), roughness: .9, emissive: lc(0x302810) })); bagM.position.set(0, .07, -.45); armR.add(bagM);
+const stM = new T.MeshStandardMaterial({ color: lc(0xc6ccd6), roughness: .4, metalness: .2, emissive: lc(0x14161a) }), foilM = new T.MeshStandardMaterial({ color: lc(0xd7dbe2), roughness: .3, metalness: .3, emissive: lc(0x222428) });
+const cupL = new T.Mesh(cupM.geometry, cupM.material); cupL.position.set(0, .06, -.43); cupL.visible = false; armL.add(cupL); cupM.visible = false;
+const steamC = []; for (let i = 0; i < 3; i++) { const s = new T.Mesh(new T.SphereGeometry(.02, 8, 6), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .3, depthWrite: false })); cupL.add(s); steamC.push(s); }
+const grp = (parent, pos, rot) => { const g = new T.Group(); g.position.set(...pos); if (rot) g.rotation.set(...rot); g.visible = false; parent.add(g); return g; };
+const kettleP = grp(armR, [0, .07, -.45]); kettleP.add(new T.Mesh(new T.CylinderGeometry(.045, .055, .12, 14), stM)); { const h = new T.Mesh(new T.BoxGeometry(.012, .09, .05), new T.MeshStandardMaterial({ color: lc(0x15171c) })); h.position.set(.06, .01, 0); kettleP.add(h); const sp = new T.Mesh(new T.CylinderGeometry(.008, .014, .05, 6), stM); sp.rotation.z = Math.PI / 2.6; sp.position.set(-.06, .05, 0); kettleP.add(sp); }
+const potP = grp(armR, [0, .05, -.45]); potP.add(new T.Mesh(new T.CylinderGeometry(.075, .07, .075, 16), stM)); { const h = new T.Mesh(new T.BoxGeometry(.1, .012, .02), new T.MeshStandardMaterial({ color: lc(0x15171c) })); h.position.set(.11, .02, 0); potP.add(h); }
+const forkP = grp(armR, [0, .045, -.5], [-.45, 0, 0]); forkP.add(new T.Mesh(new T.BoxGeometry(.008, .006, .11), stM)); for (let i = -1; i <= 1; i++) { const t = new T.Mesh(new T.BoxGeometry(.003, .003, .03), stM); t.position.set(i * .006, 0, -.07); forkP.add(t); }
+const packetP = grp(armR, [0, .05, -.44]); packetP.add(new T.Mesh(new T.BoxGeometry(.09, .005, .09), foilM));
+const waterM = new T.Mesh(new T.CylinderGeometry(.006, .006, .13, 6), new T.MeshBasicMaterial({ color: lc(0x9fd0ff).multiplyScalar(1.4), transparent: true, opacity: .6 })); waterM.position.set(0, -.1, -.5); waterM.visible = false; hands.add(waterM);
 const beam = new T.SpotLight(lc(0xe6eeff), 0, 18, .5, .55, 1.4); cam.add(beam, beam.target); beam.target.position.set(0, 0, -5);
 if (!LOW) { beam.castShadow = true; beam.shadow.mapSize.set(1024, 1024); beam.shadow.bias = -.0004; beam.shadow.camera.near = .1; beam.shadow.camera.far = 20; }
 
@@ -80,8 +89,7 @@ addEventListener('keydown', (e) => {
   if (e.target.closest && e.target.closest('.lb,input')) return;
   Snd.init(); if (!keys[e.code]) hit[e.code] = 1; keys[e.code] = 1;
   if (/^(Arrow|Space|Tab)/.test(e.code)) e.preventDefault();
-  if (G.menu && /^Digit[1-9]$/.test(e.code)) chooseOpt(+e.code.slice(5) - 1);
-  else if (G.phase === 'menu' && /^Digit[1-5]$/.test(e.code)) start(+e.code.slice(5) - 1);
+  if (G.phase === 'menu' && /^Digit[1-5]$/.test(e.code)) start(+e.code.slice(5) - 1);
 });
 addEventListener('keyup', (e) => { keys[e.code] = 0; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = 0; });
@@ -136,7 +144,7 @@ const surfMode = (speed) => (speed < 1.1 ? 0 : speed < 2.4 ? 1 : 2);
 function stepOnce(e, speed, isSam) {
   const sf = World.surfaceAt(e.x, e.z, e.y), mode = surfMode(speed);
   let db = sf.base + (mode === 0 ? -14 : mode === 2 ? 14 : 0) + (isSam ? 3 : 0) + rnd(-2, 3), label = sf.name;
-  if (sf.creak && Math.random() < (mode === 0 ? .2 : mode === 1 ? .65 : 1)) { db = sf.base + (sf.creak > 1 ? 16 : 10) + (mode === 2 ? 8 : 0) + rnd(-2, 3); label = 'Floor creak!'; Snd.creak(db); toast(`Creak! ${Math.round(db)} dB`, 'warn'); }
+  if (sf.creak && Math.random() < (mode === 0 ? .35 : mode === 1 ? .85 : 1)) { db = sf.base + (sf.creak > 1 ? 16 : 10) + (mode === 2 ? 8 : 0) + rnd(-2, 3); label = 'Floor creak!'; Snd.creak(db); toast(`Creak! ${Math.round(db)} dB`, 'warn'); }
   else if (!isSam || Math.random() < .6) Snd.step(db, sf.name.startsWith('Tile') ? 'tile' : sf.name.startsWith('Concrete') ? 'conc' : sf.base < 25 ? 'carpet' : 'wood');
   if (G.thumpUntil > G.t) db -= 10; // Biscuit's tail thump masks the step
   if (!isSam && G.f.carry && mode === 2 && Math.random() < .35) { noise(58, 'Broth sloshes', e); Snd.bump(58); toast('The broth sloshes!', 'warn'); }
@@ -158,30 +166,23 @@ function collide(e, r) {
   e.x = clamp(e.x, -4, 18); e.z = clamp(e.z, -.8, 29);
 }
 
-// ---------- choices (the micro-interactions) ----------
+// ---------- actions: every physical thing you do has a noise level and a visible hand animation ----------
 const roll = (o) => { const sp = o.spike; return sp && Math.random() < sp[0] ? rnd(sp[1], sp[2]) : rnd(o.db[0], o.db[1]); };
 function risk(o) {
   let pN = 0, pB = 0; const K = 21, segs = [[o.db[0], o.db[1], 1 - (o.spike ? o.spike[0] : 0)]]; if (o.spike) segs.push([o.spike[1], o.spike[2], o.spike[0]]);
   for (const [lo, hi, w] of segs) for (let k = 0; k < K; k++) { const d = lo + (hi - lo) * k / (K - 1), e = reach(d, P); if (e > 30) pN += w / K; if (e >= 81 || G.alert + gain(e) * (o.bursts || 1) + (o.ex || 0) >= 100) pB += w / K; }
   const all = segs.map((s) => [s[0], s[1]]).flat();
-  return { lo: Math.round(Math.min(...all)), hi: Math.round(Math.max(...all)), el: Math.round(reach(Math.min(...all), P)), eh: Math.round(reach(Math.max(...all), P)), pN: Math.round(pN * 100), pB: Math.round(pB * 100) };
+  return { lo: Math.round(Math.min(...all)), hi: Math.round(Math.max(...all)), pN: Math.round(pN * 100), pB: Math.round(pB * 100) };
 }
-function choice(title, opts) {
-  G.menu = opts; keys.KeyE = 0;
-  $('#choice').hidden = false;
-  $('#choice').innerHTML = `<h3>${esc(title)}</h3>` + opts.map((o, i) => {
-    const r = risk(o), c = r.pB >= 15 ? 'bad' : r.pN >= 50 || r.pB > 0 ? 'warn' : 'ok';
-    return `<button data-i="${i}"><span class="k">${i + 1}</span>${esc(o.t)}<div class="chips"><span>🔊 ${r.lo}–${r.hi} dB</span><span>reaches Mom ${Math.max(0, r.el)}–${Math.max(0, r.eh)}</span><span class="${c}">noise ${r.pN}%</span><span class="${r.pB >= 15 ? 'bad' : r.pB > 0 ? 'warn' : 'ok'}">bust ${r.pB}%</span>${o.ex ? `<span class="warn">💡 +${o.ex} detect</span>` : ''}</div><div class="rw">🎁 ${esc(o.r || '')}</div></button>`;
-  }).join('') + '<div class="hint">Press the number key, or click. Esc steps back.</div>';
-  $('#choice').querySelectorAll('button').forEach((b) => (b.onclick = () => chooseOpt(+b.dataset.i)));
+const AKEYS = ['KeyE', 'KeyR', 'KeyT'], AKEY = ['E', 'R', 'T'];
+const actsOf = (it) => (it.acts || []).filter((a) => !a.when || a.when());
+function doAct(a) {
+  if (G.busy || G.phase !== 'play') return;
+  const dur = a.dur || 1.5, n = a.bursts || 1; G.busy = { a, t: dur, total: dur, label: a.t, anim: a.anim || 'reach' }; if (a.fx) G.fx = a.fx;
+  for (let k = 0; k < n; k++) G.sched.push({ at: G.t + dur * (n === 1 ? .35 : (k + .5) / n * .9), f: () => { const d = roll(a); Snd[a.snd || 'rustle'](d); noise(d, a.t, P); } });
+  if (a.ex) G.sched.push({ at: G.t + dur * .5, f: () => addAlert(a.ex) });
 }
-function closeChoice() { G.menu = null; $('#choice').hidden = true; }
-function chooseOpt(i) {
-  const o = G.menu && G.menu[i]; if (!o) return; closeChoice();
-  const n = o.bursts || 1, dur = o.dur || 1.6; G.busy = { t: dur, total: dur, label: o.t, fn: o.fn, say: o.say, bonus: o.bonus };
-  for (let k = 0; k < n; k++) G.sched.push({ at: G.t + k * dur / n, f: () => { const d = roll(o); Snd[o.snd || 'rustle'](d); noise(d, o.label || o.t, P); } });
-  if (o.ex) addAlert(o.ex);
-}
+function closeChoice() {}
 
 // ---------- interactions ----------
 const DP = { yours: [2.5, 6], mom: [9.5, 6], front: [2.0, 10], patio: [12, 3.5], cab: [7.8, .62], drawer: [8.7, 1.62] };
@@ -191,87 +192,103 @@ function findTarget() {
   const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw); let best = null, bs = 1e9;
   const test = (x, z, y, r, o) => { const dx = x - P.x, dz = z - P.z, d = Math.hypot(dx, dz); if (d > r || Math.abs(y - P.y) > 2.2) return; const dot = (dx * fx + dz * fz) / Math.max(d, .01); if (dot < .35 && d > .6) return; const s = d - dot; if (s < bs) { bs = s; best = o; } };
   for (const id in DP) { const d = D[id]; test(DP[id][0], DP[id][1], (d.y || 0) >= 2.5 ? 3 : 0, id === 'cab' || id === 'drawer' ? 1.5 : 1.7, { kind: 'door', id, d }); }
-  for (const it of IN()) if (!it.when || it.when()) test(it.x, it.z, it.y || 0, it.r || 1.6, it);
+  for (const it of IN()) { if (it.acts ? !actsOf(it).length : (it.when && !it.when())) continue; test(it.x, it.z, it.y || 0, it.r || 1.6, it); }
   return best;
 }
 
 // ---------- missions ----------
+const A = (t, db, anim, dur, x = {}) => ({ t, db, anim, dur, ...x }); // one physical action: label, dB range, hand animation, seconds
 const inRoom = (n) => World.roomAt(P.x, P.z, P.y).name === n;
 const near = (x, z, r) => Math.hypot(P.x - x, P.z - z) < r;
-const quiet = (t, db, r, x = {}) => ({ t, db, r, ...x });
-const doorOpts = null;
 const MISSIONS = [
   { id: 'ramen', emoji: '🍜', name: 'Midnight Ramen Ops', board: 'dont-wake-mom-ramen',
-    obj: 'Leave bed, enter the kitchen, cook instant noodles and return to your bedroom safely.', hz: 'Plastic packet crunch · microwave beep · slurping spikes',
+    obj: 'Sneak down, make instant noodles your own way (kettle, stove or microwave) and get back to bed.', hz: 'Packet crunch · kettle rumble · microwave beep · slurping',
     t0: tm(2, 14, 32), base: 12, mom: 'bed', momDoor: 'mom', start: { x: 2.7, z: 4.2, y: 3, yaw: Math.PI }, gear: ['Socks On', 'Phone (Muted)'],
     bust: ['The hallway light snaps on. "Is that INSTANT RAMEN?! At 2 AM?!" Mom folds her arms. Busted.', 'Mom: "I can smell it from here. Hand over the cup."'],
     steps: [
       { obj: 'Open your bedroom door: hold E (slow is quiet, Shift is fast)', ok: () => D.yours.v >= D.yours.pass },
       { obj: 'Sneak down to the kitchen (C = crouch for quiet heel-to-toe)', ok: () => inRoom('Kitchen') },
-      { obj: 'Open the upper cabinet (hold E) and take the noodles', ok: () => G.f.noodles },
-      { obj: 'Open the packaging at the counter', ok: () => G.f.opened },
-      { obj: 'Heat the water at the counter', ok: () => G.f.hot },
-      { obj: 'Eat your noodles', ok: () => G.f.eaten || G.f.carry },
+      { obj: 'Open the upper cabinet (hold E) and take a Cup Noodles', ok: () => G.f.noodles },
+      { obj: 'Peel the lid open at the kitchen island', ok: () => G.f.opened },
+      { obj: 'Make hot water: kettle (sink, boil, pour), pot on the stove, or the microwave', ok: () => G.f.cupWater === 2 },
+      { obj: 'Wait for the noodles to soften...', ok: () => G.f.ready },
+      { obj: 'Eat them at the island (or carry the cup upstairs)', ok: () => G.f.eaten || G.f.carry },
       { obj: 'Sneak back to bed and close your bedroom door (hold Q)', ok: () => inRoom('Your Bedroom') && D.yours.v < .07 },
     ],
     setup() {
+      const F = G.f, K = World.K, same = () => F.noodles && !F.opened, opened = (m) => () => { F.opened = 1; G.held.L = 'Cup Noodles (open)'; };
+      K.cups.forEach((c) => (c.visible = true)); K.pot.visible = true; for (const k of ['potStove', 'flame', 'led', 'steam', 'sinkWater', 'mwGlow']) K[k].visible = false;
+      const hotReady = () => F.opened && F.noodles && F.cupWater !== 2;
+      const doneHot = (src) => () => { F.cupWater = 2; G.steep = { t: 12 }; G.held.L = 'Cup Noodles (hot, steeping)'; if (src === 'k') { F.kHot = 0; F.kWater = 0; K.led.visible = false; K.steam.visible = false; G.held.R = 'Empty'; } if (src === 'p') { F.potHot = 0; F.potWater = 0; F.burner = 0; G.heat = null; K.flame.visible = false; Snd.click(28); G.held.R = 'Empty'; } };
       G.inter = [
-        { x: 7.9, z: .7, r: 1.6, name: 'noodles', when: () => G.step === 2 && D.cab.v > .25, prompt: () => '[E] Take the Cup Noodles', use() { G.f.noodles = 1; G.held.R = 'Cup Noodles (Sealed)'; toast('Got the noodles.'); } },
-        { x: 9.2, z: .7, r: 1.7, name: 'counter', when: () => G.step === 3, prompt: () => '[E] Open the packaging', use() { choice('How do you open the packet?', [
-          quiet('Open it inside your hoodie pocket (muffled)', [20, 34], 'Muffled crunch', { dur: 2.2, snd: 'crinkle', say: 'Fabric swallows the crinkle.', fn() { G.f.opened = 1; G.held.R = 'Cup Noodles (Open)'; } }),
-          quiet('Peel an inch at a time, palm over the wrap', [24, 40], 'Slow, safe-ish', { dur: 3.2, snd: 'crinkle', bursts: 2, fn() { G.f.opened = 1; G.held.R = 'Cup Noodles (Open)'; } }),
-          quiet('Rip it fast', [58, 76], 'Fastest · high-frequency alert', { dur: .8, snd: 'crinkle', fn() { G.f.opened = 1; G.held.R = 'Cup Noodles (Open)'; } })]); } },
-        { x: 9.7, z: .7, r: 1.7, name: 'microwave & kettle', when: () => G.step === 4 && !G.mw, prompt: () => '[E] Heat the water', use() { choice('Hot water: how?', [
-          quiet('Microwave: stop the timer at 0:01 (press E)', [24, 32], 'Hot noodles · beeps at 0:00 if you are late', { dur: .5, snd: 'click', fn() { Snd.ding(); G.mw = { t: 8, hum: 0 }; toast('Press E when the timer shows 0:01!'); } }),
-          quiet('Electric kettle: wait for it to boil', [34, 46], 'Reliable · boiling rumble', { dur: 4, bursts: 4, snd: 'boil', fn() { Snd.click(36); Snd.ding(); G.f.hot = 1; G.held.R = 'Hot Cup Noodles'; } }),
-          quiet('Pot on the stove, flame low', [28, 40], 'Quiet · slow', { dur: 5, bursts: 4, snd: 'hiss', say: 'The blue flame hisses softly.', fn() { Snd.pour(30); G.f.hot = 1; G.held.R = 'Hot Cup Noodles'; } }),
-          quiet('Skip heating: eat it crunchy and dry', [44, 60], 'Fastest · the crunch is loud', { dur: 1.5, snd: 'crunch', bursts: 2, fn() { G.f.hot = 1; G.held.R = 'Dry Noodles'; } })]); } },
-        { x: 9.5, z: 1.9, r: 1.7, name: 'kitchen island', when: () => G.step === 5, prompt: () => '[E] Eat or carry the noodles', use() { choice('Time to eat', [
-          quiet('Eat here in small bites, no slurping', [26, 40], 'No spill risk', { dur: 4, bursts: 3, snd: 'chew', fn() { G.f.eaten = 1; G.held.R = 'Empty cup'; } }),
-          quiet('Carry it upstairs with both hands (do not run!)', [20, 34], 'Eat in bed · broth sloshes if you hurry', { dur: 1.2, snd: 'handle', fn() { G.f.carry = 1; G.held.R = 'Hot cup (careful!)'; } }),
-          quiet('Slurp fast and leave', [52, 72], 'Fastest · slurp spike', { dur: 2.5, bursts: 2, snd: 'slurp', fn() { G.f.eaten = 1; G.held.R = 'Empty cup'; } })]); } },
+        { x: 7.95, z: .8, r: 1.8, name: 'cabinet shelf', acts: [
+          A('Take a Cup Noodles', [20, 30], 'open', 1.6, { snd: 'cab', when: () => D.cab.v > .25 && !F.noodles && !F.eaten, fn() { F.noodles = 1; K.cups[0].visible = false; G.held.L = 'Cup Noodles (sealed)'; } }),
+          A('Take the small pot', [30, 46], 'open', 1.6, { snd: 'clang', when: () => D.cab.v > .25 && !F.pot && !F.potPlaced, fn() { F.pot = 1; K.pot.visible = false; G.held.R = 'Small pot (empty)'; } })] },
+        { x: 10.7, z: .85, r: 1.8, name: 'kitchen sink', acts: [
+          A('Fill the kettle', [36, 48], 'fill', 3.2, { prop: 'kettle', snd: 'pour', bursts: 3, fx: 'sink', when: () => !F.kWater, fn() { F.kWater = 1; } }),
+          A('Fill the pot with water', [36, 48], 'fill', 3.2, { prop: 'pot', snd: 'pour', bursts: 3, fx: 'sink', when: () => F.pot && !F.potWater, fn() { F.potWater = 1; G.held.R = 'Small pot (water)'; } }),
+          A('Fill the cup with tap water', [34, 46], 'fillcup', 3, { snd: 'pour', bursts: 3, fx: 'sink', when: () => F.opened && F.noodles && !F.cupWater, fn() { F.cupWater = 1; G.held.L = 'Cup Noodles (cold water)'; } })] },
+        { x: 10.3, z: .85, r: 1.6, name: 'electric kettle', acts: [
+          A('Boil the kettle', [24, 32], 'press', 1, { snd: 'click', when: () => F.kWater && !F.kHot && !G.boil, fn() { G.boil = { t: 7, tick: 0 }; K.led.visible = true; toast('The kettle starts to rumble...'); } }),
+          A('Pour the hot water into the cup', [30, 42], 'pour', 3.4, { prop: 'kettle', snd: 'pour', bursts: 3, when: () => F.kHot && hotReady(), fn: doneHot('k') })] },
+        { x: 8.25, z: .85, r: 1.6, name: 'stove', acts: [
+          A('Put the pot on the stove', [32, 44], 'reach', 1.4, { snd: 'clang', when: () => F.pot && F.potWater && !F.potPlaced, fn() { F.potPlaced = 1; F.pot = 0; K.potStove.visible = true; G.held.R = 'Empty'; } }),
+          A('Turn the burner on', [24, 30], 'twist', 1.4, { snd: 'click', when: () => F.potPlaced && !F.burner, fn() { F.burner = 1; K.flame.visible = true; G.heat = { t: 9, tick: 0 }; toast('Blue flame. Wait for the water to boil...'); } }),
+          A('Pour the boiling water into the cup', [30, 44], 'pour', 3.4, { prop: 'pot', snd: 'pour', bursts: 3, when: () => F.potHot && hotReady(), fn: doneHot('p') }),
+          A('Turn the burner off', [22, 28], 'twist', 1.1, { snd: 'click', when: () => F.burner && !(F.potHot && hotReady()), fn() { F.burner = 0; K.flame.visible = false; G.heat = null; } })] },
+        { x: 9.55, z: .85, r: 1.6, name: 'microwave', acts: [
+          A('Microwave the cup (stop it at 0:01)', [24, 32], 'press', 1, { snd: 'click', when: () => F.cupWater === 1 && F.noodles && !G.mw, fn() { G.mw = { t: 8, hum: 0 }; K.mwGlow.visible = true; toast('Press E when the timer shows 0:01!'); } })] },
+        { x: 9.5, z: 1.95, r: 1.8, name: 'kitchen island', acts: [
+          A('Peel the lid open quietly', [22, 34], 'peel', 3.4, { snd: 'crinkle', bursts: 2, when: same, fn: opened() }),
+          A('Tear the lid off fast', [58, 76], 'rip', .9, { snd: 'crinkle', when: same, fn: opened() }),
+          A('Open it inside your hoodie pocket', [20, 34], 'peel', 2.6, { snd: 'crinkle', when: same, fn: opened() }),
+          A('Eat slowly, no slurping', [26, 40], 'eat', 6.5, { snd: 'chew', bursts: 3, when: () => F.ready && !F.eaten && !F.carry, fn() { F.eaten = 1; G.held.L = 'Empty cup'; G.held.R = 'Empty'; } }),
+          A('Slurp it down fast', [52, 72], 'eat', 3.5, { snd: 'slurp', bursts: 2, when: () => F.ready && !F.eaten && !F.carry, fn() { F.eaten = 1; G.held.L = 'Empty cup'; G.held.R = 'Empty'; } }),
+          A('Carry the cup upstairs', [20, 34], 'carry', 1.2, { snd: 'handle', when: () => F.ready && !F.eaten && !F.carry, fn() { F.carry = 1; G.held.L = 'Hot cup (careful!)'; } })] },
       ];
     } },
 
   { id: 'ranked', emoji: '🎮', name: '3 AM Secret Ranked Match', board: 'dont-wake-mom-ranked',
-    obj: 'Sneak past Mom asleep on the couch, turn on the PC and win a clutch match.', hz: 'RGB light spill · keyboard chatter · surprise voice chat',
+    obj: 'Sneak past Mom asleep on the couch, boot the gaming PC and win a clutch match.', hz: 'RGB light spill · keyboard chatter · voice chat',
     t0: tm(3, 2, 10), base: 18, mom: 'couch', start: { x: 2.7, z: 4.2, y: 3, yaw: Math.PI }, gear: ['Socks On', 'Phone (Muted)', 'Headset (Wired)'],
     bust: ['The lamp clicks on. "ARE YOU PLAYING GAMES AT 3 AM?!" Mom already has the controller. Busted.', 'Mom, from the couch, eyes still closed: "Log off. NOW."'],
     steps: [
       { obj: 'Open your bedroom door (hold E)', ok: () => D.yours.v >= D.yours.pass },
       { obj: 'Sneak down to the living room', ok: () => inRoom('Living Room') },
       { obj: 'Creep behind the couch to the gaming desk', ok: () => near(1.4, 4.6, 1.5) },
-      { obj: 'Boot the PC (watch the RGB light!)', ok: () => G.f.pcOn },
+      { obj: 'Boot the PC (the RGB lights spill if you are careless)', ok: () => G.f.pcOn },
       { obj: 'Put the headset on', ok: () => G.f.headset },
-      { obj: 'Play the clutch match', ok: () => G.f.match },
+      { obj: 'Play the clutch match at the keyboard', ok: () => G.f.match },
       { obj: 'Celebrate (quietly!)', ok: () => G.f.cele },
       { obj: 'Shut the PC down', ok: () => G.f.shut },
       { obj: 'Sneak back to bed and close your door (hold Q)', ok: () => inRoom('Your Bedroom') && D.yours.v < .07 },
     ],
     setup() {
-      const pcFn = (rgb, ex) => () => { G.f.pcOn = 1; G.f.rgb = rgb; };
-      const CFG = {
-        3: ['Boot the PC', [quiet('Kill the RGB with the case switch, then boot', [20, 32], 'Dark boot', { dur: 2, snd: 'click', fn() { Snd.fan(26); pcFn(0)(); } }),
-          quiet('Hit power and hope', [28, 40], 'Fast · RGB spills across the room', { dur: 1, snd: 'click', ex: 8, fn() { Snd.fan(32); pcFn(1)(); } }),
-          quiet('Wake it from your phone (no clicks)', [20, 30], 'Silent · screen glow', { dur: 2.5, snd: 'buzz', ex: 4, fn() { Snd.fan(26); pcFn(0)(); } })]],
-        4: ['Headset time', [quiet('Mic muted, volume low, headset on both ears', [19, 28], 'Quiet · you will not hear Mom', { dur: 1.5, fn() { G.f.headset = 1; } }),
-          quiet('One ear off to hear the room, mic muted', [20, 30], 'Awareness · teammates may leak', { dur: 1.5, spike: [.2, 58, 66], fn() { G.f.headset = 1; } }),
-          quiet('Mic on so your squad hears callouts', [24, 36], 'Best callouts · chat can explode', { dur: 1.5, spike: [.35, 62, 78], fn() { G.f.headset = 1; } })]],
-        5: ['The match: 1v3, last one alive', [quiet('Soft keys, slow flicks', [22, 32], 'Safe · slower clutch', { dur: 4, bursts: 4, snd: 'keys', bonus: 30, fn() { G.f.match = 1; } }),
-          quiet('Hammer the mechanical keyboard and flick', [34, 48], 'Max reward · thock thock', { dur: 4, bursts: 5, snd: 'keys', bonus: 80, spike: [.2, 58, 68], fn() { G.f.match = 1; } }),
-          quiet('Use the controller in your lap', [24, 38], 'Balanced · soft buttons', { dur: 4, bursts: 4, snd: 'click', bonus: 50, fn() { G.f.match = 1; } })]],
-        6: ['VICTORY! You want to scream...', [quiet('Silent fist pump, bite your sleeve', [20, 28], 'Perfect restraint', { dur: 1, fn() { G.f.cele = 1; } }),
-          quiet('Whisper "LET\'S GOOO"', [34, 50], 'Satisfying · whispers carry', { dur: 1, snd: 'whisper', fn() { G.f.cele = 1; } }),
-          quiet('Slap the desk', [60, 76], 'Max joy · max noise', { dur: .6, snd: 'bump', fn() { G.f.cele = 1; } })]],
-        7: ['Leave no trace', [quiet('Sleep the PC with the keyboard shortcut', [19, 29], 'Instant · silent', { dur: 1, snd: 'click', fn() { G.f.shut = 1; G.f.pcOn = 0; G.f.rgb = 0; } }),
-          quiet('Shut down fully', [28, 40], 'Clean · fans whir', { dur: 2.5, snd: 'fan', ex: 4, fn() { G.f.shut = 1; G.f.pcOn = 0; G.f.rgb = 0; } }),
-          quiet('Leave it running and go', [20, 30], 'Fastest · RGB keeps glowing', { dur: .5, snd: 'click', ex: 12, fn() { G.f.shut = 1; } })]],
-      };
-      G.inter = [{ x: .9, z: 4.55, r: 1.9, name: 'gaming PC', when: () => G.step >= 3 && G.step <= 7, prompt: () => `[E] ${CFG[G.step][0]}`, use() { choice(CFG[G.step][0], CFG[G.step][1]); } }];
+      const F = G.f, boot = () => { F.pcOn = 1; F.rgb = F.rgbOff ? 0 : 1; Snd.fan(26); };
+      G.inter = [
+        { x: .6, z: 5.15, r: 1.9, name: 'PC tower', acts: [
+          A('Flip the RGB switch off', [20, 28], 'press', 1.2, { snd: 'click', when: () => !F.rgbOff && !F.shut, fn() { F.rgbOff = 1; F.rgb = 0; } }),
+          A('Press the power button', [28, 40], 'press', 1.2, { snd: 'click', when: () => !F.pcOn, fn() { boot(); if (F.rgb) addAlert(8); } }),
+          A('Wake it from your phone (silent)', [20, 30], 'phone', 2, { snd: 'buzz', ex: 3, when: () => !F.pcOn, fn() { boot(); } }),
+          A('Sleep the PC with the keyboard shortcut', [19, 29], 'press', 1, { snd: 'click', when: () => F.cele && !F.shut, fn() { F.shut = 1; F.pcOn = 0; F.rgb = 0; } }),
+          A('Hold the power button: full shutdown', [28, 40], 'press', 2.5, { snd: 'fan', ex: 4, when: () => F.cele && !F.shut, fn() { F.shut = 1; F.pcOn = 0; F.rgb = 0; } }),
+          A('Leave it running and go', [20, 30], 'reach', .6, { snd: 'click', ex: 12, when: () => F.cele && !F.shut, fn() { F.shut = 1; } })] },
+        { x: .4, z: 4.05, r: 1.8, name: 'headset', acts: [
+          A('Headset on, mic muted, volume low', [19, 28], 'reach', 1.5, { snd: 'rustle', when: () => F.pcOn && !F.headset, fn() { F.headset = 1; } }),
+          A('One ear off to hear the room', [20, 30], 'reach', 1.5, { snd: 'rustle', spike: [.2, 58, 66], when: () => F.pcOn && !F.headset, fn() { F.headset = 1; } }),
+          A('Mic on so your squad hears callouts', [24, 36], 'reach', 1.5, { snd: 'rustle', spike: [.35, 62, 78], when: () => F.pcOn && !F.headset, fn() { F.headset = 1; } })] },
+        { x: .45, z: 4.55, r: 1.8, name: 'keyboard', acts: [
+          A('Play: soft keys, slow flicks', [22, 32], 'type', 6, { snd: 'keys', bursts: 4, bonus: 30, when: () => F.headset && !F.match, fn() { F.match = 1; } }),
+          A('Play: hammer the mechanical keyboard', [34, 48], 'type', 6, { snd: 'keys', bursts: 5, bonus: 80, spike: [.2, 58, 68], when: () => F.headset && !F.match, fn() { F.match = 1; } }),
+          A('Play: controller in your lap', [24, 38], 'type', 6, { snd: 'click', bursts: 4, bonus: 50, when: () => F.headset && !F.match, fn() { F.match = 1; } }),
+          A('Silent fist pump, bite your sleeve', [20, 28], 'fist', 1.6, { snd: 'rustle', when: () => F.match && !F.cele, fn() { F.cele = 1; } }),
+          A('Whisper "LET\'S GOOO"', [34, 50], 'fist', 1.6, { snd: 'whisper', when: () => F.match && !F.cele, fn() { F.cele = 1; } }),
+          A('Slap the desk in victory', [60, 76], 'fist', 1, { snd: 'bump', when: () => F.match && !F.cele, fn() { F.cele = 1; } })] },
+      ];
     } },
 
   { id: 'delivery', emoji: '🍔', name: 'Operation Midnight Delivery', board: 'dont-wake-mom-delivery',
-    obj: 'Reach the front door, unlock the deadbolt and collect your food before the driver rings the bell.', hz: 'Porch motion light · deadbolt friction · food smell · the clock',
+    obj: 'Reach the front door, unlock the deadbolt and collect your food before the driver rings the bell.', hz: 'Porch motion light · deadbolt · food smell · the clock',
     t0: tm(1, 58, 20), base: 10, mom: 'bed', momDoor: 'mom', eta: 110, start: { x: 2.7, z: 4.2, y: 3, yaw: Math.PI }, gear: ['Socks On', 'Phone (Muted)', 'Cash ($23)'],
     bust: ['DING-DONG! The doorbell rings through the house. "WHO IS AT THE DOOR AT 2 AM?!" Busted.', 'The porch light flares and Mom is at the top of the stairs. "What did you order?!"'],
     steps: [
@@ -284,72 +301,71 @@ const MISSIONS = [
       { obj: 'Sneak upstairs and close your bedroom door', ok: () => inRoom('Your Bedroom') && D.yours.v < .07 },
     ],
     setup() {
-      G.f.locked = 1; G.arr = G.sc.t0 + G.sc.eta - 22; G.sc.eta0 = G.sc.t0 + G.sc.eta; World.driver.visible = true;
+      const F = G.f; F.locked = 1; G.arr = G.sc.t0 + G.sc.eta - 22; G.sc.eta0 = G.sc.t0 + G.sc.eta; World.driver.visible = true;
       G.inter = [
         { x: 2.3, z: 9.75, y: 0, r: 1.5, name: 'deadbolt', hold: true, when: () => G.step === 2, prompt: () => '[E hold] Turn the deadbolt (Shift = fast)', use(dt) {
-          G.f.bolt = (G.f.bolt || 0) + dt * (keys.ShiftLeft ? 4 : 1); if (G.f.bolt >= 1.8) { G.f.bolt = 0; G.f.unlocked = 1; D.front.locked = 0; const fast = !!keys.ShiftLeft; Snd.bolt(fast ? 52 : 28); noise(fast ? rnd(48, 58) : rnd(24, 34), fast ? 'CLACK, deadbolt' : 'Deadbolt turns', P); } else prog(G.f.bolt / 1.8, 'Turning deadbolt'); } },
-        { x: 2, z: 11.2, y: 0, r: 2.2, name: 'driver', when: () => G.step === 4 && G.driverHere, prompt: () => '[E] Take the food from the driver', use() { choice('Handing it over', [
-          quiet('Whisper thanks, take the bag, tip on the phone', [22, 34], 'Silent · the smell lingers', { dur: 2, snd: 'crinkle', ex: 6, fn() { G.f.bag = 1; G.held.R = 'Burger Bag'; } }),
-          quiet('Pay cash and ask for change', [36, 52], 'Old school · coins jingle', { dur: 2.5, snd: 'coins', ex: 6, fn() { G.f.bag = 1; G.held.R = 'Burger Bag'; } }),
-          quiet('Stuff the bag in your hoodie', [22, 36], 'Smell contained · crinkle', { dur: 2.2, snd: 'crinkle', ex: 2, fn() { G.f.bag = 1; G.f.hoodie = 1; G.held.R = 'Bag (in hoodie)'; } })]); } },
+          F.bolt = (F.bolt || 0) + dt * (keys.ShiftLeft ? 4 : 1); if (F.bolt >= 1.8) { F.bolt = 0; F.unlocked = 1; D.front.locked = 0; const fast = !!keys.ShiftLeft; Snd.bolt(fast ? 52 : 28); noise(fast ? rnd(48, 58) : rnd(24, 34), fast ? 'CLACK, deadbolt' : 'Deadbolt turns', P); } else prog(F.bolt / 1.8, 'Turning the deadbolt', true); } },
+        { x: 2, z: 11.2, y: 0, r: 2.4, name: 'delivery driver', acts: [
+          A('Whisper thanks, take the bag, tip on the phone', [22, 34], 'reach', 2, { snd: 'crinkle', ex: 6, when: () => G.driverHere && !F.bag, fn() { F.bag = 1; G.held.R = 'Burger Bag'; } }),
+          A('Pay cash and ask for change', [36, 52], 'reach', 2.5, { snd: 'coins', ex: 6, when: () => G.driverHere && !F.bag, fn() { F.bag = 1; G.held.R = 'Burger Bag'; } }),
+          A('Stuff the bag in your hoodie', [22, 36], 'carry', 2.2, { snd: 'crinkle', ex: 2, when: () => G.driverHere && !F.bag, fn() { F.bag = 1; F.hoodie = 1; G.held.R = 'Bag (in hoodie)'; } })] },
       ];
     } },
 
   { id: 'friend', emoji: '🤫', name: 'Sneaking a Friend In / Out', board: 'dont-wake-mom-friend',
-    obj: 'Guide your friend through the back patio and upstairs past the dog and creaky floors. Then get them out again.', hz: 'Dog tail-thumping · double-person steps · squeaky stair step #4',
+    obj: 'Guide your friend through the back patio and upstairs past the dog and creaky floors. Then get them out again.', hz: 'Dog tail-thumping · double-person steps · squeaky step #4',
     t0: tm(1, 20, 5), base: 20, mom: 'bed', momDoor: 'mom', start: { x: 10.6, z: 3.5, y: 0, yaw: -Math.PI / 2 }, gear: ['Socks On', 'Phone (Muted)', 'Friend: Sam (Outside)'],
     bust: ['The hall light snaps on. "SAM?! What is Sam doing in my house at 1 AM?!" Busted.', 'The dog barks and Mom storms in. "Out! Both of you!"'],
     steps: [
       { obj: 'Slide the patio door open: hold E (gently)', ok: () => D.patio.v >= D.patio.pass },
-      { obj: 'Calm Biscuit the dog and wave Sam in', ok: () => G.f.dog },
+      { obj: 'Calm Biscuit the dog so Sam can come in', ok: () => G.f.dog },
       { obj: "Lead Sam to your room. Hold V to tell him to WAIT. Mind step #4!", ok: () => inRoom('Your Bedroom') && samIn('Your Bedroom') },
       { obj: 'Close your bedroom door (hold Q)', ok: () => D.yours.v < .07 },
       { obj: "5:20 AM: lead Sam back down and out to the patio", ok: () => G.f.out },
       { obj: 'Close the patio door (hold Q)', ok: () => D.patio.v < .1 && inRoom('Kitchen') },
     ],
     setup() {
-      const s = World.sam; s.visible = true; G.sam = { x: 15.4, z: 3.8, y: 0, acc: 0, trail: [], mode: 'wait', yaw: 0 }; s.position.set(15.4, 0, 3.8);
-      G.inter = [{ x: 14, z: 2.8, y: 0, r: 3.6, name: 'Biscuit', when: () => G.step === 1, prompt: () => '[E] Calm Biscuit', use() { choice('Biscuit is thumping his tail...', [
-        quiet('Step in on the beat of the thumps (cover)', [17, 26], 'Masks your steps · tricky timing', { dur: 2.5, bursts: 2, snd: 'thump', fn() { G.f.dog = 1; G.sam.mode = 'follow'; G.thumpUntil = G.t + 8; } }),
-        quiet('Offer a treat from your pocket', [20, 32], 'Dog calmed · quiet crunch', { dur: 2, snd: 'crunch', fn() { G.f.dog = 1; G.sam.mode = 'follow'; } }),
-        quiet('Whisper "Sit"', [28, 44], 'Fast · he may whine', { dur: 1.5, snd: 'whine', spike: [.3, 52, 66], fn() { G.f.dog = 1; G.sam.mode = 'follow'; } })]); } }];
+      const F = G.f, s = World.sam; s.visible = true; G.sam = { x: 15.4, z: 3.8, y: 0, acc: 0, trail: [], mode: 'wait', yaw: 0 }; s.position.set(15.4, 0, 3.8);
+      const calm = (extra) => () => { F.dog = 1; G.sam.mode = 'follow'; if (extra) extra(); };
+      G.inter = [{ x: 14, z: 2.8, y: 0, r: 3.6, name: 'Biscuit the dog', acts: [
+        A('Offer a treat from your pocket', [20, 32], 'reach', 2, { snd: 'crunch', when: () => !F.dog, fn: calm() }),
+        A('Pet him gently and whisper "sit"', [26, 44], 'reach', 2, { snd: 'whisper', spike: [.3, 52, 66], when: () => !F.dog, fn: calm() }),
+        A('Step in on the beat of his tail thumps', [17, 26], 'reach', 2.5, { snd: 'thump', bursts: 2, when: () => !F.dog, fn: calm(() => { G.thumpUntil = G.t + 8; }) })] }];
     } },
 
   { id: 'phone', emoji: '📱', name: 'Confiscated Phone Retrieval', board: 'dont-wake-mom-phone',
-    obj: "Infiltrate Mom's bedroom, reach into the nightstand drawer and retrieve your phone while she sleeps a meter away.", hz: 'Creaky floor heatmap · drawer friction · blue screen flare · charging chime',
-    t0: tm(3, 40, 12), base: 28, mom: 'bed', momDoor: 'mom', momStir: 16, start: { x: 9.5, z: 7.6, y: 3, yaw: 0 }, gear: ['Socks On', 'Phone (Confiscated)'], doorV: { mom: .06 },
+    obj: "Infiltrate Mom's bedroom, reach into the nightstand drawer and retrieve your phone while she sleeps a meter away.", hz: 'Creaky floors · drawer friction · screen flare · charging chime',
+    t0: tm(3, 40, 12), base: 28, mom: 'bed', momDoor: 'mom', momStir: 11, start: { x: 9.5, z: 7.6, y: 3, yaw: 0 }, gear: ['Socks On', 'Phone (Confiscated)'], doorV: { mom: .06 },
     bust: ['The lamp snaps on. Mom is sitting up. "I KNEW IT. Phone. Hand it over. And go to bed." Busted.', 'Mom, arms folded: "Looking for something?"'],
     steps: [
       { obj: "Get into Mom's room: hold E to open her door (it is ajar) or squeeze through", ok: () => inRoom("Mom's Bedroom") },
       { obj: 'Reach the nightstand. Darker boards creak: the rug and the west wall are quiet', ok: () => near(8.0, 2.2, 1.4) },
       { obj: 'Slide the nightstand drawer open: hold E slowly', ok: () => D.drawer.v >= .7 },
-      { obj: 'Take your phone', ok: () => G.f.phone },
+      { obj: 'Take your phone out of the drawer', ok: () => G.f.phone },
       { obj: 'Silence the phone before the screen wakes Mom', ok: () => G.f.muted },
       { obj: "Leave and close Mom's door (hold Q)", ok: () => !inRoom("Mom's Bedroom") && D.mom.v < .15 },
       { obj: 'Back to your room: close your door (hold Q)', ok: () => inRoom('Your Bedroom') && D.yours.v < .07 },
     ],
     setup() {
-      G.inter = [
-        { x: 8.7, z: 2.2, y: 3, r: 1.7, name: 'phone', when: () => G.step === 3, prompt: () => '[E] Take your phone', use() { choice('The phone is plugged in and its screen is lit', [
-          quiet('Lift phone AND charger together, palm over the screen', [21, 34], 'No chime · glow covered', { dur: 2, snd: 'handle', ex: 3, fn() { G.f.phone = 1; G.held.L = 'Phone (screen glowing)'; G.glow = 1; G.stir = G.t + 5; G.stirAt = G.t; } }),
-          quiet('Unplug the cable first, then lift the phone', [30, 44], 'Clean · charging chime risk', { dur: 1.8, spike: [.45, 52, 64], snd: 'chime', ex: 5, fn() { G.f.phone = 1; G.held.L = 'Phone (screen glowing)'; G.glow = 1; G.stir = G.t + 5; G.stirAt = G.t; } }),
-          quiet('Lean across the bed to grab it', [34, 56], 'Fastest · bed springs groan', { dur: 1.2, snd: 'bump', ex: 6, fn() { G.f.phone = 1; G.held.L = 'Phone (screen glowing)'; G.glow = 1; G.stir = G.t + 5; G.stirAt = G.t; } })]); } },
-        { x: 8.7, z: 2.2, y: 3, r: 2, name: 'phone', when: () => G.step === 4, prompt: () => '[E] Silence the phone', use() { choice('Silence it!', [
-          quiet('Flip the ringer switch, palm over the screen', [18, 28], 'Muted · tiny click', { dur: 1.5, snd: 'click', fn() { G.f.muted = 1; G.glow = 0; G.held.L = 'Phone (Muted)'; } }),
-          quiet('Press power to blank the screen', [20, 32], 'Dark · ringer still on', { dur: 1.2, snd: 'click', ex: 3, fn() { G.f.muted = 1; G.glow = 0; G.held.L = 'Phone (Muted)'; } }),
-          quiet('Ignore it and retreat first', [20, 30], 'Fastest · a notification can ring out', { dur: .6, spike: [.35, 60, 72], snd: 'buzz', ex: 8, fn() { G.f.muted = 1; G.glow = 0; G.held.L = 'Phone (Muted)'; } })]); } },
-      ];
+      const F = G.f, got = () => { F.phone = 1; G.held.L = 'Phone (screen glowing)'; G.glow = 1; G.stir = G.t + 5; G.stirAt = G.t; }, muted = () => { F.muted = 1; G.glow = 0; G.held.L = 'Phone (Muted)'; };
+      G.inter = [{ x: 8.7, z: 2.2, y: 3, r: 1.9, name: 'nightstand', acts: [
+        A('Lift phone AND charger together, palm over the screen', [21, 34], 'reach', 2, { snd: 'handle', ex: 3, when: () => D.drawer.v >= .6 && !F.phone, fn: got }),
+        A('Unplug the cable first, then lift the phone', [30, 44], 'reach', 1.8, { snd: 'chime', spike: [.45, 52, 64], ex: 5, when: () => D.drawer.v >= .6 && !F.phone, fn: got }),
+        A('Lean across the bed to grab it', [34, 56], 'reach', 1.2, { snd: 'bump', ex: 6, when: () => D.drawer.v >= .6 && !F.phone, fn: got }),
+        A('Flip the ringer switch, palm over the screen', [18, 28], 'phone', 1.5, { snd: 'click', when: () => F.phone && !F.muted, fn: muted }),
+        A('Press power to blank the screen', [20, 32], 'phone', 1.2, { snd: 'click', ex: 3, when: () => F.phone && !F.muted, fn: muted }),
+        A('Ignore it and retreat first', [20, 30], 'reach', .6, { snd: 'buzz', spike: [.35, 60, 72], ex: 8, when: () => F.phone && !F.muted, fn: muted })] }];
     } },
 ];
 const samIn = (n) => { const s = G.sam; return s && World.roomAt(s.x, s.z, s.y).name === n; };
 
 // ---------- helpers: progress, HUD ----------
-function prog(f, label) { G.progT = .25; G.progF = f; G.progL = label; }
+function prog(f, label, bar) { G.progT = .25; G.progF = f; G.progL = label; G.progBar = !!bar; }
 
 function start(i) {
   const sc = MISSIONS[i]; Snd.init(); closeChoice();
   G = { phase: 'play', sc, i, t: 0, clock: sc.t0, alert: sc.base, base: sc.base, maxAlert: sc.base, meter: 22, meterLabel: 'Ambient', reach: 0, lastNoise: -9, lastGain: -9, step: 0, f: {}, held: { L: 'Phone (Muted)', R: 'Empty' },
-    worst: { db: 0, t: '' }, flash: false, battery: 100, sched: [], busy: null, menu: null, stir: 0, stirNext: rnd(10, 22), thumpUntil: 0, thumpAt: 0, mw: null, over: false, inter: [], sam: null, glow: 0, driverHere: false };
+    worst: { db: 0, t: '' }, flash: false, battery: 100, sched: [], busy: null, menu: null, fx: null, boil: null, heat: null, steep: null, progBar: false, hotT: 0, stir: 0, stirNext: rnd(6, 12), thumpUntil: 0, thumpAt: 0, mw: null, over: false, inter: [], sam: null, glow: 0, driverHere: false };
   for (const id in D) { D[id].v = (sc.doorV && sc.doorV[id]) || 0; D[id].apply(); D[id].locked = 0; D[id].acc = 0; }
   World.moms.bed.visible = sc.mom === 'bed'; World.moms.couch.visible = sc.mom === 'couch'; World.sam.visible = false; World.driver.visible = false;
   for (const k of ['pc', 'phone', 'porch', 'lamp']) World.lights[k].intensity = 0;
@@ -380,10 +396,10 @@ function bust(why) {
   if (G.phase !== 'play') return; G.phase = 'busted'; G.bustT = 0; G.why = why; Snd.bump(70); $('#stir').hidden = true; closeChoice(); G.busy = null;
 }
 function win() {
-  const sc = G.sc, rise = G.maxAlert - G.base, el = G.t, score = Math.round(clamp(430 + (100 - rise) * 4.2 - Math.min(150, el / 6) + (G.bonus || 0), 100, 1000));
+  const sc = G.sc, rise = G.maxAlert - sc.base, el = G.t, score = Math.round(clamp(430 + (100 - rise) * 4.2 - Math.min(150, el / 6) + (G.bonus || 0), 100, 1000));
   const grade = score >= 850 ? ['S', 'GHOST'] : score >= 700 ? ['A', 'NINJA'] : score >= 550 ? ['B', 'SNEAKY'] : ['C', 'LUCKY'], isBest = score > (best[sc.id] || 0);
   if (isBest) { best[sc.id] = score; try { localStorage.setItem('dwm-best', JSON.stringify(best)); } catch {} }
-  finish(`<h2 class="ok">MISSION COMPLETE</h2><p>${sc.emoji} ${esc(sc.name)}: <b>undetected.</b></p><div class="sc">${score}</div><div><b>Grade ${grade[0]} · ${grade[1]}</b>${isBest ? ' · <span class="warn">★ NEW BEST!</span>' : ''}</div>
+  finish(`<h2 class="ok">MISSION COMPLETE</h2><p>${sc.emoji} ${esc(sc.name)}: <b>undetected.</b></p><div class="final">${score}</div><div><b>Grade ${grade[0]} · ${grade[1]}</b>${isBest ? ' · <span class="warn">★ NEW BEST!</span>' : ''}</div>
     <p class="lbl">Loudest moment: ${G.worst.db} dB (${esc(G.worst.t)}) · Mom peaked at ${Math.round(G.maxAlert)}% · ${Math.round(el)} s</p>
     <div class="btns"><button class="btn" id="again">Play again</button><button class="btn alt" id="mn">Choose scenario</button><button class="btn alt" id="share">Share</button></div>`);
   leaderboard($('#lb'), sc.board).show(score);
@@ -410,7 +426,7 @@ function update(dt) {
   m.body.scale.y = 1 + Math.sin(performance.now() / 900) * .04 + (G.stir > G.t ? .15 : 0); m.body.rotation.x = G.stir > G.t ? Math.sin(G.t * 6) * .05 : 0;
   // scheduled noises and busy actions
   for (let i = G.sched.length - 1; i >= 0; i--) if (G.t >= G.sched[i].at) { const s = G.sched.splice(i, 1)[0]; s.f(); if (G.phase !== 'play') return; }
-  if (G.busy) { G.busy.t -= dt; prog(1 - G.busy.t / G.busy.total, G.busy.label); if (G.busy.t <= 0) { const b = G.busy; G.busy = null; if (b.bonus) G.bonus = (G.bonus || 0) + b.bonus; b.fn && b.fn(); if (b.say) toast(b.say); } }
+  if (G.busy) { G.busy.t -= dt; prog(0, G.busy.label, false); if (G.busy.t <= 0) { const a = G.busy.a; G.busy = null; G.fx = null; if (a.bonus) G.bonus = (G.bonus || 0) + a.bonus; a.fn && a.fn(); if (a.say) toast(a.say); } }
   const locked = G.busy || G.menu;
   // movement
   const f = fv(), mvz = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - tmz, mvx = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0) + tmx;
@@ -424,12 +440,14 @@ function update(dt) {
   P.y += (World.floorY(P.x, P.z, P.y) - P.y) * Math.min(1, dt * 12);
   if (P.speed > .3) walk(P, P.speed, dt, false); if (G.phase !== 'play') return;
   // Mom stirs now and then: hold still!
-  const nowStir = G.stir > G.t; if (nowStir && !G.stirSnd) { G.stirSnd = 1; Snd.sigh(); } if (!nowStir) G.stirSnd = 0; if (!nowStir) { G.stirNext -= dt; if (G.stirNext <= 0) { G.stir = G.t + 4; G.stirAt = G.t; G.stirNext = rnd(sc.momStir || 22, (sc.momStir || 22) + 18); } }
-  if (G.stir > G.t) { if (P.speed > .45 && G.t - (G.stirAt || 0) > .9) addAlert(9 * dt); if (G.phase !== 'play') return; }
+  const nowStir = G.stir > G.t; if (nowStir && !G.stirSnd) { G.stirSnd = 1; Snd.sigh(); } if (!nowStir) G.stirSnd = 0; if (!nowStir) { G.stirNext -= dt; if (G.stirNext <= 0) { G.stir = G.t + 3.6; G.stirAt = G.t; G.stirNext = rnd(sc.momStir || 12, (sc.momStir || 12) + 9); } }
+  if (G.stir > G.t) { if (P.speed > .45 && G.t - (G.stirAt || 0) > .6) addAlert(11 * dt); if (G.phase !== 'play') return; }
   $('#stir').hidden = !(G.stir > G.t);
   if (sc.id === 'ranked') Snd.tv(true, .06 / (1 + Math.hypot(P.x - 3.3, P.z - .5) * .6) * (P.y > 1.5 ? .3 : 1));
   // alert decay, flashlight, glow, smell
-  if (G.t - G.lastGain > 1.6) G.alert = Math.max(G.base, G.alert - 1.8 * dt);
+  G.base = Math.min(sc.base + 30, G.base + dt * .1); // Mom sleeps lighter as the night goes on
+  if (G.t - G.lastGain > 2.2) G.alert = Math.max(G.base, G.alert - 1.0 * dt);
+  if (G.alert >= 70) { G.hotT = (G.hotT || 0) + dt; if (G.hotT > 8) return bust('Mom got up to see what the noise was.'); } else G.hotT = 0;
   const dm = Math.hypot(P.x - momPos().x, P.z - momPos().z), sameFloor = Math.abs(P.y - (momPos().y > 1.5 ? 3 : 0)) < 1.6;
   if (G.flash) { G.battery = Math.max(0, G.battery - dt / 5); if (G.battery <= 0) G.flash = false; if (dm < 5.5 && sameFloor) { const d = [momPos().x - P.x, momPos().z - P.z], dl = Math.hypot(...d); addAlert((1.6 + ((d[0] * f[0] + d[1] * f[1]) / dl > .7 ? 3.5 : 0)) * dt); } }
   if (hit.KeyF) { G.flash = !G.flash && G.battery > 0; } hit.KeyF = 0; beam.intensity = G.flash ? 9 : 0;
@@ -441,11 +459,19 @@ function update(dt) {
   if (sc.id === 'ranked' && G.f.pcOn && G.t - (G.pingT || 0) > 18 && Math.random() < dt * .1) { G.pingT = G.t; Snd.ping(); noise(rnd(42, 62), 'Discord notification', { x: .9, z: 4.6, y: 0 }); toast('Ping! A Discord notification', 'warn'); }
   // microwave minigame
   if (G.mw) { G.mw.t -= dt; G.mw.hum -= dt; if (G.mw.hum <= 0) { G.mw.hum = 1.4; Snd.hum(34); noise(rnd(32, 38), 'Microwave hum', { x: 9.5, z: .6, y: 0 }); }
-    if (G.mw.t <= 0) { Snd.beep(); noise(rnd(84, 92), 'MICROWAVE BEEP', { x: 9.5, z: .6, y: 0 }); if (G.phase !== 'play') return; G.mw = null; G.f.hot = 1; G.held.R = 'Hot Cup Noodles'; toast('Too late: it beeped!', 'bad'); }
+    if (G.mw.t <= 0) { Snd.beep(); noise(rnd(84, 92), 'MICROWAVE BEEP', { x: 9.5, z: .6, y: 0 }); if (G.phase !== 'play') return; G.mw = null; G.f.cupWater = 2; G.steep = { t: 12 }; G.held.L = 'Cup Noodles (hot, steeping)'; toast('Too late: it beeped!', 'bad'); }
     else if (hit.KeyE && G.target && G.target.name === 'microwave & kettle') { /* handled below */ } }
+  // kitchen systems: kettle boiling, pot heating, noodles steeping, and the props that show them
+  { const K = World.K, F = G.f;
+    if (G.boil) { G.boil.t -= dt; G.boil.tick -= dt; if (G.boil.tick <= 0) { G.boil.tick = 1.1; Snd.boil(40); noise(rnd(38, 46), 'Kettle rumbling', { x: 10.3, z: .55, y: 0 }); } if (G.boil.t <= 0) { G.boil = null; F.kHot = 1; Snd.click(34); Snd.ding(); toast('The kettle clicks off: the water is boiling.', 'ok'); } }
+    if (G.heat) { G.heat.t -= dt; G.heat.tick -= dt; if (G.heat.tick <= 0) { G.heat.tick = 1.4; Snd.hiss(30); noise(rnd(26, 34), 'Gas burner hiss', { x: 8, z: .45, y: 0 }); } if (G.heat.t <= 0 && !F.potHot) { F.potHot = 1; G.heat = { t: 99999, tick: .2 }; Snd.boil(36); toast('The water in the pot is boiling!', 'ok'); } }
+    if (G.steep) { G.steep.t -= dt; if (G.steep.t <= 0) { G.steep = null; F.ready = 1; G.held.L = 'Cup Noodles (ready!)'; toast('The noodles are ready to eat!', 'ok'); } }
+    K.cups[0].visible = !F.noodles; K.pot.visible = !F.pot && !F.potPlaced && !F.potTaken; K.potStove.visible = !!F.potPlaced; K.flame.visible = !!F.burner; K.flame.scale.setScalar(1 + Math.sin(G.t * 22) * .15);
+    K.led.visible = !!G.boil || !!F.kHot; K.steam.visible = !!G.boil || !!F.kHot; K.sinkWater.visible = G.fx === 'sink' && !!G.busy; K.mwGlow.visible = !!G.mw;
+    K.steam.children.forEach((s, i) => { const f = (G.t * .45 + i * .2) % 1; s.position.set(Math.sin(G.t * 2 + i) * .02, f * .28, 0); s.material.opacity = .26 * (1 - f); s.scale.setScalar(.7 + f); }); }
   // doors / holds / taps
-  const tg = locked ? null : findTarget(); G.target = tg; let pr = '';
-  if (G.mw) { $('#big').hidden = false; const s = Math.max(0, G.mw.t); $('#big').textContent = `0:0${Math.ceil(s)}`; $('#big').classList.toggle('go', s <= 1.7); pr = '[E] stop the microwave at 0:01'; if (hit.KeyE) { if (G.mw.t <= 1.7) { Snd.click(26); Snd.ding(); G.mw = null; G.f.hot = 1; G.held.R = 'Hot Cup Noodles'; toast('Perfect: stopped at 0:01!', 'ok'); } else toast('Too early. Wait for 0:01!', 'warn'); } }
+  const tg = locked ? null : findTarget(); G.target = tg; let pr = '', prHtml = '';
+  if (G.mw) { $('#big').hidden = false; const s = Math.max(0, G.mw.t); $('#big').textContent = `0:0${Math.ceil(s)}`; $('#big').classList.toggle('go', s <= 1.7); pr = '[E] stop the microwave at 0:01'; if (hit.KeyE) { if (G.mw.t <= 1.7) { Snd.click(26); Snd.ding(); G.mw = null; G.f.cupWater = 2; G.steep = { t: 12 }; G.held.L = 'Cup Noodles (hot, steeping)'; toast('Perfect: stopped at 0:01!', 'ok'); } else toast('Too early. Wait for 0:01!', 'warn'); } }
   else $('#big').hidden = true;
   if (tg && !G.mw) {
     if (tg.kind === 'door') {
@@ -454,14 +480,17 @@ function update(dt) {
       if (tg.id === 'front' && G.f.locked && !G.f.unlocked) { /* locked */ }
       else if (dirn) moveDoor(d, dirn, fast ? .7 : .18, dt);
       pr = `${tg.id === 'front' && G.f.locked && !G.f.unlocked ? 'Locked: turn the deadbolt first' : pr}  (${DNAME[tg.id]})`;
+    } else if (tg.acts) {
+      const list = actsOf(tg); prHtml = `<div class="pn">${esc(tg.name)}</div>` + list.map((a, i) => { const r = risk(a), c = r.pB >= 15 ? 'bad' : r.pN >= 50 || r.pB > 0 ? 'warn' : 'ok'; return `<div class="pa"><kbd>${AKEY[i]}</kbd><span>${esc(a.t)}</span><em class="${c}">🔊 ${r.lo}–${r.hi} dB</em></div>`; }).join('');
+      list.forEach((a, i) => { if (i < 3 && hit[AKEYS[i]]) doAct(a); });
     } else {
       pr = tg.prompt();
       if (tg.hold) { if (keys.KeyE) tg.use(dt); else G.f.bolt = Math.max(0, (G.f.bolt || 0) - dt); }
       else if (hit.KeyE) tg.use();
     }
   }
-  if (G.progT > 0) { G.progT -= dt; $('#prog').hidden = false; $('#prog i').style.width = (clamp(G.progF, 0, 1) * 100) + '%'; $('#prog span').textContent = G.progL; } else $('#prog').hidden = true;
-  $('#prompt').innerHTML = kbdify(pr); hit.KeyE = 0; hit.KeyQ = 0;
+  if (G.progT > 0) { G.progT -= dt; $('#prog').hidden = false; $('#prog i').style.width = (clamp(G.progF, 0, 1) * 100) + '%'; $('#prog b').hidden = !G.progBar; $('#prog span').textContent = G.progL; } else $('#prog').hidden = true;
+  $('#prompt').innerHTML = prHtml || kbdify(pr); hit.KeyE = 0; hit.KeyQ = 0; hit.KeyR = 0; hit.KeyT = 0;
   // scenario systems
   if (sc.id === 'delivery') delivery(dt); if (sc.id === 'friend') friend(dt);
   if (G.phase !== 'play') return;
@@ -535,6 +564,39 @@ function drawHud(dt) {
   $('#cross').classList.toggle('act', !!tg && !G.mw);
 }
 
+// ---------- hand animations: what your hands visibly do during each action ----------
+const baseR = [.17, -.3, -.28, .32, -.32, 0], baseL = [-.17, -.3, -.28, .32, .32, 0], curR = [0, 0, 0, 0, 0, 0], curL = [0, 0, 0, 0, 0, 0], Z6 = [0, 0, 0, 0, 0, 0];
+const PI = Math.PI, pu = (p) => Math.sin(PI * clamp(p, 0, 1)), ez = (x) => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
+const ANIM = {
+  reach: (p) => { const u = pu(p); return { R: [-.05 * u, .09 * u, -.25 * u, -.4 * u, 0, 0] }; },
+  open: (p) => { const u = pu(p); return { R: [-.06 * u, .08 * u, -.26 * u, -.3 * u, 0, .45 * Math.sin(p * 2 * PI)] }; },
+  twist: (p) => { const u = pu(p); return { R: [-.05 * u, .06 * u, -.22 * u, -.3 * u, 0, .8 * Math.sin(p * 4 * PI) * u] }; },
+  press: (p) => { const u = pu(p); return { R: [-.04 * u, .05 * u, -.2 * u - .035 * Math.sin(p * 5 * PI) * u, -.3 * u, 0, 0] }; },
+  fill: () => ({ R: [-.09, .06, -.14, -.15, .25, -.25], props: ['pourItem'] }),
+  fillcup: () => ({ L: [.12, .05, -.16, -.1, -.25, 0], props: ['cupL'] }),
+  pour: (p) => { const t = Math.sin(clamp(p * 1.1, 0, 1) * PI) * 1.2; return { R: [-.1, .09, -.08, -.15, .3, -t], L: [.1, .12, -.06, -.15, -.3, 0], props: ['pourItem', 'cupL', 'water'] }; },
+  rip: (p) => { const e = ez((p - .2) / .6); return { R: [-.05 + .1 * e, .1 + .06 * e, -.17 + .03 * e, -.3, .25, -.4 * e], L: [.06, .1, -.15, -.3, -.25, 0], props: ['packet', 'cupL'] }; },
+  peel: (p) => { const e = ez((p - .15) / .7); return { R: [-.05 + .05 * e, .1 + .03 * e, -.17, -.3, .25, -.25 * e + .05 * Math.sin(p * 20)], L: [.06, .1, -.15, -.3, -.25, 0], props: ['packet', 'cupL'] }; },
+  eat: (p) => { const f = Math.max(0, Math.sin(p * PI * 5)); return { R: [-.07, .02 + .14 * f, -.17 + .1 * f, -.2 - .6 * f, .2, 0], L: [.1, .1, -.08, -.3, -.3, 0], props: ['cupL', 'fork'] }; },
+  type: (p) => { const j = Math.sin(p * 60) * .012; return { R: [-.03, -.05 + j, -.15, -.2, 0, 0], L: [.03, -.05 - j, -.15, -.2, 0, 0] }; },
+  fist: (p) => { const u = pu(p); return { R: [-.06, .3 * u, -.12, -.9 * u, 0, 0] }; },
+  phone: (p) => { const u = pu(p); return { L: [.12, .22 * u, -.08 * u, -.6 * u, 0, 0], props: ['phone'] }; },
+  carry: () => ({ L: [.1, .15, -.1, -.4, -.25, 0], props: ['cupL'] }),
+};
+function poseArms(dt) {
+  const b = G.busy, held = G.held || { L: '', R: '' }; let o = {}, p = 0;
+  if (b && ANIM[b.anim]) { p = 1 - b.t / b.total; o = ANIM[b.anim](p, b) || {}; }
+  const R = o.R || Z6, L = o.L || Z6, k = Math.min(1, dt * 12);
+  for (let i = 0; i < 6; i++) { curR[i] += (R[i] - curR[i]) * k; curL[i] += (L[i] - curL[i]) * k; }
+  armR.position.set(baseR[0] + curR[0], baseR[1] + curR[1], baseR[2] + curR[2]); armR.rotation.set(baseR[3] + curR[3], baseR[4] + curR[4], baseR[5] + curR[5]);
+  armL.position.set(baseL[0] + curL[0], baseL[1] + curL[1], baseL[2] + curL[2]); armL.rotation.set(baseL[3] + curL[3], baseL[4] + curL[4], baseL[5] + curL[5]);
+  const ex = !!o.props, pr = o.props || [], has = (x) => pr.includes(x), cupHeld = /noodle|cup/i.test(held.L || '') && !/empty/i.test(held.L || ''), item = b && b.a && b.a.prop;
+  cupL.visible = ex ? has('cupL') : cupHeld; phoneM.visible = ex ? has('phone') : !cupHeld;
+  potP.visible = ex ? has('pourItem') && item === 'pot' : /pot/i.test(held.R || ''); kettleP.visible = ex && has('pourItem') && item === 'kettle';
+  forkP.visible = has('fork'); packetP.visible = has('packet'); bagM.visible = !ex && /bag/i.test(held.R || '');
+  waterM.visible = has('water') && p > .2 && p < .9; if (waterM.visible) waterM.scale.y = .8 + Math.random() * .4;
+  const steam = cupL.visible && G.f && G.f.cupWater === 2 && !G.f.eaten; steamC.forEach((s, i) => { s.visible = !!steam; const f = (performance.now() / 1400 + i / 3) % 1; s.position.set(Math.sin(f * 6 + i) * .01, .08 + f * .12, 0); s.material.opacity = .3 * (1 - f); });
+}
 // ---------- render loop ----------
 let last = performance.now(), idle = 0;
 function frame(now) {
@@ -542,8 +604,7 @@ function frame(now) {
   if (G.phase === 'menu') { idle += dt; P.yaw = .6 + Math.sin(idle * .15) * .5; }
   const eyeT = P.crouch ? 1.1 : 1.62; P.eye += (eyeT - P.eye) * Math.min(1, dt * 8); P.bob += P.speed * dt * 5.5;
   cam.position.set(P.x, P.y + P.eye + Math.sin(P.bob) * .014 * Math.min(P.speed, 2), P.z + 0); cam.rotation.set(P.pitch, P.yaw, 0, 'YXZ');
-  const busy = G.busy ? 1 : 0; hands.position.y = Math.sin(P.bob * .5) * .008 + (busy ? .06 : 0); hands.position.x = Math.cos(P.bob * .5) * .006;
-  phoneM.visible = true; cupM.visible = /Noodles|cup|Cup/.test(G.held?.R || '') && !/Empty$/.test(G.held?.R || ''); bagM.visible = /Bag/.test(G.held?.R || '');
+  hands.position.y = Math.sin(P.bob * .5) * .008; hands.position.x = Math.cos(P.bob * .5) * .006; poseArms(dt);
   drawHud(dt);
   { const fl = 1.7 + Math.sin(now / 230) * .25 + Math.sin(now / 71) * .12; emis(World.tv.material, 0x4a7ac8, fl); World.lights.living.intensity = 1.6 + fl * .4; }
   renderFrame(now);
