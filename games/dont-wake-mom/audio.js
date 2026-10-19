@@ -29,12 +29,13 @@ const Snd = (() => {
     toggle() { muted = !muted; if (tvG) tvG.gain.value = 0; return muted; },
     // soft TV murmur, only where a TV is on
     tv(on, v = .03) {
+      if (!on && !tvG) return; // never build (or start) the TV unless a scene turns it on
       if (!init() || muted) return;
       if (!tvG) {
         const b = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
         const s = ac.createBufferSource(); s.buffer = b; s.loop = true; const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = .5;
-        const lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = 3.1; lg.gain.value = .5; tvG = ac.createGain(); tvG.gain.value = 0;
-        lfo.connect(lg).connect(tvG.gain); s.connect(f).connect(tvG).connect(out); s.start(); lfo.start();
+        const mod = ac.createGain(); mod.gain.value = .6; const lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = 3.1; lg.gain.value = .4; lfo.connect(lg).connect(mod.gain);
+        tvG = ac.createGain(); tvG.gain.value = 0; s.connect(f).connect(mod).connect(tvG).connect(out); s.start(); lfo.start();
       }
       tvG.gain.value = on ? v : 0;
     },
