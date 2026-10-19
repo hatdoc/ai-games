@@ -89,7 +89,9 @@ addEventListener('keydown', (e) => {
   if (e.target.closest && e.target.closest('.lb,input')) return;
   Snd.init(); if (!keys[e.code]) hit[e.code] = 1; keys[e.code] = 1;
   if (/^(Arrow|Space|Tab)/.test(e.code)) e.preventDefault();
-  if (G.phase === 'menu' && /^Digit[1-5]$/.test(e.code)) start(+e.code.slice(5) - 1);
+  if (e.code === 'Escape' && G.mg) endMG(false);
+  else if (G.phase === 'play' && !G.mg && !G.busy && /^Digit[1-5]$/.test(e.code)) useSlot(+e.code.slice(5) - 1);
+  else if (G.phase === 'menu' && /^Digit[1-5]$/.test(e.code)) start(+e.code.slice(5) - 1);
 });
 addEventListener('keyup', (e) => { keys[e.code] = 0; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = 0; });
@@ -184,6 +186,120 @@ function doAct(a) {
 }
 function closeChoice() {}
 
+// ---------- item box (hotbar): things you pick up go into numbered slots ----------
+const ITEMS = { noodles: '🍜', pot: '🥘', bag: '🍔', phone: '📱' };
+const possess = (id) => { const F = G.f || {}; return id === 'noodles' ? !!F.noodles && !F.eaten : id === 'pot' ? !!F.pot : id === 'bag' ? !!F.bag : id === 'phone' ? !!F.phone : false; };
+const give = (id) => { if (!G.invOrder.includes(id)) G.invOrder.push(id); };
+const invList = () => (G.invOrder || []).filter(possess);
+function itemName(id) {
+  const F = G.f;
+  if (id === 'noodles') return !F.opened ? 'Instant noodles (lid on)' : F.ready ? 'Instant noodles (ready!)' : F.cupWater === 2 ? 'Instant noodles (steeping)' : F.cupWater === 1 ? 'Instant noodles (cold water)' : 'Instant noodles (no lid)';
+  return id === 'pot' ? (F.potWater ? 'Small pot (water)' : 'Small pot (empty)') : id === 'bag' ? 'Burger bag' : 'Your phone';
+}
+function held() {
+  const gh = G.held || { L: '', R: '' }; let L = gh.L, R = gh.R; if (G.sc && G.sc.id === 'ramen') { L = 'Phone (Muted)'; R = 'Empty'; }
+  const s = G.sel; if (s && possess(s)) { if (s === 'pot' || s === 'bag') R = itemName(s); else L = itemName(s); }
+  return { L, R };
+}
+function useSlot(i) {
+  const id = invList()[i]; if (!id) return;
+  if (G.sel === id && !(id === 'noodles' && !G.f.opened)) { G.sel = null; return; }
+  G.sel = id;
+  if (id === 'noodles' && !G.f.opened) startMG({ type: 'tension', title: 'Peel the lid', art: 'lid', speed: 1, sticky: [.3, .62], snd: 'crinkle', fail: 'The foil crackles loudly',
+    hint: 'HOLD E to pull the lid slowly. Keep the needle inside the green zone. Too gentle and it will not budge, too hard and the foil crackles (noise!).',
+    onDone() { G.f.opened = 1; G.sel = 'noodles'; toast('Lid off! Now take it to the kettle, stove or microwave.', 'ok'); } });
+}
+
+// ---------- mini games: tension (peel / unplug), timing (stove / eating / clutch shots), pour ----------
+const mgEl = $('#mg'), mgC = $('#mgC'), mgX = mgC.getContext('2d'); let mgHold = false;
+mgC.addEventListener('pointerdown', (e) => { mgHold = true; if (!keys.KeyE) hit.KeyE = 1; try { mgC.setPointerCapture(e.pointerId); } catch {} });
+for (const ev of ['pointerup', 'pointercancel']) mgC.addEventListener(ev, () => { mgHold = false; });
+const mgHeld = () => !!(keys.KeyE || keys.Space || mgHold);
+function startMG(cfg) {
+  G.mg = { t: 0, holdT: 0, loud: 0, p: 0, ten: 0, pos: 0, dir: 1, n: 0, level: 0, flow: 0, target: .78, zc: rnd(.3, .7), ...cfg };
+  $('#mgT').textContent = cfg.title; $('#mgH').textContent = cfg.hint || ''; mgEl.hidden = false; keys.KeyE = 0; hit.KeyE = 0; $('#prompt').innerHTML = '';
+}
+function endMG(ok) { const m = G.mg; if (!m) return; G.mg = null; mgEl.hidden = true; mgHold = false; if (ok && m.onDone) m.onDone(); }
+const MGS = {
+  tension(m, dt) {
+    const held = mgHeld(), stir = G.stir > G.t; m.t += dt; m.holdT = held ? m.holdT + dt : 0;
+    m.ten += (held ? (.9 + Math.min(1.1, m.holdT * .5)) * .55 * (m.speed || 1) : -1.3) * dt + (Math.sin(m.t * 9.3) + Math.sin(m.t * 5.1 + 1)) * (stir ? .03 : .012) * dt * 18;
+    m.ten = clamp(m.ten, 0, 1);
+    const stick = (m.sticky || []).some((s) => m.p > s && m.p < s + .07);
+    m.zc = stick ? .22 : .5 + Math.sin(m.t * .9 + m.p * 5) * .16; m.w = Math.max(.1, (stick ? .16 : .26) - m.p * .1 - (stir ? .05 : 0));
+    const inZone = Math.abs(m.ten - m.zc) < m.w / 2, over = m.ten > m.zc + m.w / 2; m.state = inZone ? 'ok' : over ? 'over' : 'under';
+    if (inZone) { m.p += dt * .15; m.quietT = (m.quietT || 0) + dt; if (m.quietT > .5) { m.quietT = 0; (m.snd === 'chime' ? Snd.click : Snd.crinkle)(22); } }
+    else if (over) {
+      m.tearT = (m.tearT || 0) + dt; m.p = Math.max(0, m.p - dt * .03);
+      if (m.tearT > .28) { m.tearT = 0; const d = rnd(40, 56) + m.loud * 12; Snd[m.snd || 'crinkle'](d); noise(d, m.fail || 'Crackles loudly', P); m.loud = Math.min(1, m.loud + .12); }
+    }
+    if (G.phase !== 'play') return;
+    if (m.ten > .97 && !(m.ripCool > 0)) { const d = rnd(58, 70) + m.loud * 6; Snd[m.snd || 'crinkle'](d); Snd.bump(d - 8); noise(d, 'RIPPED! ' + (m.fail || ''), P); m.ten = .5; m.p = Math.max(0, m.p - .06); m.loud = Math.min(1, m.loud + .3); m.ripCool = .8; m.flash = .3; }
+    m.ripCool = (m.ripCool || 0) - dt; m.flash = Math.max(0, (m.flash || 0) - dt); m.loud = Math.max(0, m.loud - dt * .03);
+    if (G.phase === 'play' && m.p >= 1) endMG(true);
+  },
+  timing(m, dt) {
+    m.t += dt; m.pos += m.dir * (m.speed || 1) * dt; if (m.pos > 1) { m.pos = 1; m.dir = -1; } if (m.pos < 0) { m.pos = 0; m.dir = 1; } m.flash = Math.max(0, (m.flash || 0) - dt);
+    if (!hit.KeyE) return; hit.KeyE = 0;
+    if (Math.abs(m.pos - m.zc) < m.zoneW / 2) {
+      m.n++; m.flash = .25; m.flashOk = true; const d = rnd(...m.goodNoise); Snd[m.snd || 'click'](d); noise(d, m.goodLabel || 'Quiet', P); m.zc = rnd(.2, .8); m.speed *= 1.06;
+      if (G.phase === 'play' && m.n >= m.hits) endMG(true);
+    } else { m.miss = (m.miss || 0) + 1; m.flash = .3; m.flashOk = false; const d = rnd(...m.missNoise); Snd[m.missSnd || m.snd || 'bump'](d); noise(d, m.missLabel || 'Oops', P); }
+  },
+  pour(m, dt) {
+    const held = mgHeld(); m.t += dt; m.flow = held ? Math.min(1, m.flow + dt * 1.2) : Math.max(0, m.flow - dt * 2.4); m.level += m.flow * dt * .15; m.splT = (m.splT || 0) + dt; m.flash = Math.max(0, (m.flash || 0) - dt);
+    if (m.flow > .05 && m.splT > .45) { m.splT = 0; const d = 24 + m.flow * 16 + rnd(-2, 2); Snd.pour(d); noise(d, 'Water pouring', P); }
+    if (G.phase !== 'play') return;
+    if (m.level > m.target + .1) { const d = rnd(56, 66); Snd.bump(d); Snd.pour(d); noise(d, 'Hot water SPILLS!', P); m.level = m.target - .3; m.flow = 0; m.flash = .4; m.spills = (m.spills || 0) + 1; }
+    if (G.phase !== 'play') return;
+    m.okT = Math.abs(m.level - m.target) < .05 && m.flow < .08 ? (m.okT || 0) + dt : 0; if (m.okT > .7) endMG(true);
+  },
+};
+function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function gauge(c, x, y, w, h, m) { // vertical tension gauge
+  c.fillStyle = 'rgba(255,255,255,.08)'; rr(c, x, y, w, h, 8); c.fill();
+  const zt = y + h - (m.zc + m.w / 2) * h, zh = m.w * h; c.fillStyle = 'rgba(63,214,138,.55)'; c.fillRect(x, zt, w, zh); c.strokeStyle = '#7ef0b0'; c.strokeRect(x, zt, w, zh);
+  c.fillStyle = m.state === 'over' ? '#ff5a4a' : m.state === 'ok' ? '#7ef0b0' : '#ffd36b'; const ny = y + h - m.ten * h; c.fillRect(x - 8, ny - 3, w + 16, 6);
+  c.fillStyle = '#98a3cc'; c.font = '700 11px system-ui'; c.textAlign = 'center'; c.fillText('TENSION', x + w / 2, y - 8);
+}
+function noiseBar(c, x, y, w, v, label) { c.fillStyle = 'rgba(255,255,255,.08)'; rr(c, x, y, w, 12, 6); c.fill(); c.fillStyle = v > .6 ? '#ff5a4a' : v > .3 ? '#ffc94a' : '#3fd68a'; rr(c, x, y, Math.max(8, w * v), 12, 6); c.fill(); c.fillStyle = '#98a3cc'; c.font = '700 11px system-ui'; c.textAlign = 'left'; c.fillText(label, x, y - 6); }
+function drawMG(m) {
+  const c = mgX, W = 560, H = 300; c.clearRect(0, 0, W, H);
+  if (m.type === 'tension') {
+    const cx = 165, cy = 140, R = 98, a0 = -Math.PI / 2, a1 = a0 + m.p * Math.PI * 2;
+    if (m.art === 'cable') {
+      c.fillStyle = '#1c2338'; rr(c, 60, 70, 150, 150, 18); c.fill(); c.fillStyle = '#2a3558'; rr(c, 70, 80, 130, 120, 12); c.fill(); c.fillStyle = '#8fb0ff'; c.font = '700 13px system-ui'; c.textAlign = 'center'; c.fillText('PHONE', 135, 145);
+      const px = 210 + m.p * 90; c.strokeStyle = '#d8dde8'; c.lineWidth = 6; c.beginPath(); c.moveTo(210, 150); c.bezierCurveTo(px - 30, 150 + Math.sin(m.t * 6) * 6, px - 10, 190, px, 150); c.stroke(); c.fillStyle = '#d8dde8'; rr(c, px, 138, 26, 24, 4); c.fill();
+    } else {
+      c.fillStyle = '#b8322c'; c.beginPath(); c.arc(cx, cy, R + 14, 0, 7); c.fill(); c.fillStyle = '#e8584a'; c.beginPath(); c.arc(cx, cy, R + 8, 0, 7); c.fill();
+      c.fillStyle = '#f2d78d'; c.beginPath(); c.arc(cx, cy, R, 0, 7); c.fill(); c.strokeStyle = 'rgba(180,120,40,.55)'; c.lineWidth = 3; for (let i = 0; i < 9; i++) { c.beginPath(); c.arc(cx + Math.cos(i * 2.1) * 40, cy + Math.sin(i * 2.1) * 40, 18 + (i % 3) * 8, 0, 4.5); c.stroke(); }
+      const gr = c.createRadialGradient(cx - 30, cy - 30, 10, cx, cy, R); gr.addColorStop(0, '#f4f6fa'); gr.addColorStop(1, '#a9b2c2'); c.fillStyle = gr; c.beginPath(); c.moveTo(cx, cy); c.arc(cx, cy, R, a1, a0 + Math.PI * 2); c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(0,0,0,.18)'; c.lineWidth = 2; c.stroke();
+      const px = cx + Math.cos(a1) * R, py = cy + Math.sin(a1) * R; c.fillStyle = '#e6eaf2'; c.beginPath(); c.moveTo(cx, cy); c.lineTo(px, py); c.lineTo(px + Math.cos(a1 + 1.1) * 40, py + Math.sin(a1 + 1.1) * 40); c.closePath(); c.fill();
+      c.fillStyle = '#cfd5e0'; rr(c, cx - 14, cy - R - 20, 28, 24, 6); c.fill();
+    }
+    gauge(c, 400, 36, 46, 220, m); noiseBar(c, 60, 270, 250, m.loud, 'NOISE'); if (m.flash > 0) { c.fillStyle = `rgba(255,70,60,${m.flash})`; c.fillRect(0, 0, W, H); }
+    c.fillStyle = '#eef2ff'; c.font = '700 13px system-ui'; c.textAlign = 'center'; c.textAlign = 'left'; c.fillText(Math.round(m.p * 100) + '%', 330, 281);
+  } else if (m.type === 'timing') {
+    const x0 = 50, w = 460, y = 120;
+    c.fillStyle = 'rgba(255,255,255,.08)'; rr(c, x0, y, w, 44, 10); c.fill();
+    c.fillStyle = 'rgba(63,214,138,.55)'; c.fillRect(x0 + (m.zc - m.zoneW / 2) * w, y, m.zoneW * w, 44); c.strokeStyle = '#7ef0b0'; c.strokeRect(x0 + (m.zc - m.zoneW / 2) * w, y, m.zoneW * w, 44);
+    c.fillStyle = m.flash > 0 ? (m.flashOk ? '#7ef0b0' : '#ff5a4a') : '#fff'; c.fillRect(x0 + m.pos * w - 3, y - 12, 6, 68);
+    for (let i = 0; i < m.hits; i++) { c.fillStyle = i < m.n ? '#7ef0b0' : 'rgba(255,255,255,.18)'; c.beginPath(); c.arc(W / 2 - (m.hits - 1) * 14 + i * 28, 70, 8, 0, 7); c.fill(); }
+    c.fillStyle = '#98a3cc'; c.font = '700 12px system-ui'; c.textAlign = 'center'; c.fillText(`Misses: ${m.miss || 0}`, W / 2, 230);
+  } else if (m.type === 'pour') {
+    const lx = 150, top = 50, bot = 260, tw = 120, bw = 90; c.fillStyle = 'rgba(255,255,255,.07)'; c.beginPath(); c.moveTo(lx - tw / 2, top); c.lineTo(lx + tw / 2, top); c.lineTo(lx + bw / 2, bot); c.lineTo(lx - bw / 2, bot); c.closePath(); c.fill();
+    const wy = bot - m.level * (bot - top), wl = (bot - wy) / (bot - top), hw = bw / 2 + (tw / 2 - bw / 2) * wl; c.fillStyle = 'rgba(120,190,255,.75)'; c.beginPath(); c.moveTo(lx - hw, wy); c.lineTo(lx + hw, wy); c.lineTo(lx + bw / 2, bot); c.lineTo(lx - bw / 2, bot); c.closePath(); c.fill();
+    const ty = bot - m.target * (bot - top); c.strokeStyle = '#7ef0b0'; c.lineWidth = 2; c.setLineDash([6, 4]); c.beginPath(); c.moveTo(lx - 80, ty); c.lineTo(lx + 80, ty); c.stroke(); c.setLineDash([]);
+    c.fillStyle = 'rgba(63,214,138,.22)'; c.fillRect(lx - 70, ty - .05 * (bot - top), 140, .1 * (bot - top));
+    if (m.flow > .03) { c.fillStyle = `rgba(160,210,255,${.4 + m.flow * .5})`; c.fillRect(lx - 2 - m.flow * 3, 8, 4 + m.flow * 6, wy - 8); }
+    c.fillStyle = '#c6ccd6'; rr(c, lx - 30, 0, 60, 14, 6); c.fill();
+    gauge(c, 400, 36, 46, 220, { zc: .3, w: .0, ten: m.flow, state: m.flow > .75 ? 'over' : 'ok' }); c.fillStyle = '#98a3cc'; c.font = '700 11px system-ui'; c.textAlign = 'center'; c.fillText('FLOW', 423, 28);
+    if (m.flash > 0) { c.fillStyle = `rgba(255,70,60,${m.flash})`; c.fillRect(0, 0, W, H); }
+  }
+}
+
+
 // ---------- interactions ----------
 const DP = { yours: [2.5, 6], mom: [9.5, 6], front: [2.0, 10], patio: [12, 3.5], cab: [7.8, .62], drawer: [8.7, 1.62] };
 const DNAME = { yours: 'your bedroom door', mom: "Mom's door", front: 'front door', patio: 'patio door', cab: 'kitchen cabinet', drawer: 'nightstand drawer' };
@@ -202,49 +318,47 @@ const inRoom = (n) => World.roomAt(P.x, P.z, P.y).name === n;
 const near = (x, z, r) => Math.hypot(P.x - x, P.z - z) < r;
 const MISSIONS = [
   { id: 'ramen', emoji: '🍜', name: 'Midnight Ramen Ops', board: 'dont-wake-mom-ramen',
-    obj: 'Sneak down, make instant noodles your own way (kettle, stove or microwave) and get back to bed.', hz: 'Packet crunch · kettle rumble · microwave beep · slurping',
+    obj: 'Sneak down, peel and cook instant noodles (kettle, stove or microwave) and get back to bed.', hz: 'Lid peeling · kettle rumble · gas flame · microwave beep · slurping',
     t0: tm(2, 14, 32), base: 12, mom: 'bed', momDoor: 'mom', start: { x: 2.7, z: 4.2, y: 3, yaw: Math.PI }, gear: ['Socks On', 'Phone (Muted)'],
     bust: ['The hallway light snaps on. "Is that INSTANT RAMEN?! At 2 AM?!" Mom folds her arms. Busted.', 'Mom: "I can smell it from here. Hand over the cup."'],
     steps: [
       { obj: 'Open your bedroom door: hold E (slow is quiet, Shift is fast)', ok: () => D.yours.v >= D.yours.pass },
       { obj: 'Sneak down to the kitchen (C = crouch for quiet heel-to-toe)', ok: () => inRoom('Kitchen') },
-      { obj: 'Open the upper cabinet (hold E) and take a Cup Noodles', ok: () => G.f.noodles },
-      { obj: 'Peel the lid open at the kitchen island', ok: () => G.f.opened },
-      { obj: 'Make hot water: kettle (sink, boil, pour), pot on the stove, or the microwave', ok: () => G.f.cupWater === 2 },
+      { obj: 'Open the upper cabinet (hold E) and take a Cup Noodles. It goes into your item box', ok: () => G.f.noodles },
+      { obj: 'Press 1 to take the noodles out and peel the lid slowly and carefully', ok: () => G.f.opened },
+      { obj: 'Make hot water: fill the kettle and switch it on (switch it off if it gets too loud), light the stove, or microwave the cup', ok: () => G.f.cupWater === 2 },
       { obj: 'Wait for the noodles to soften...', ok: () => G.f.ready },
-      { obj: 'Eat them at the island (or carry the cup upstairs)', ok: () => G.f.eaten || G.f.carry },
+      { obj: 'Eat them at the island without slurping (or carry the cup upstairs)', ok: () => G.f.eaten || G.f.carry },
       { obj: 'Sneak back to bed and close your bedroom door (hold Q)', ok: () => inRoom('Your Bedroom') && D.yours.v < .07 },
     ],
     setup() {
-      const F = G.f, K = World.K, same = () => F.noodles && !F.opened, opened = (m) => () => { F.opened = 1; G.held.L = 'Cup Noodles (open)'; };
+      const F = G.f, K = World.K; G.kettle = { heat: 0, on: false, tick: 0 }; G.invOrder = []; G.sel = null;
       K.cups.forEach((c) => (c.visible = true)); K.pot.visible = true; for (const k of ['potStove', 'flame', 'led', 'steam', 'sinkWater', 'mwGlow']) K[k].visible = false;
       const hotReady = () => F.opened && F.noodles && F.cupWater !== 2;
-      const doneHot = (src) => () => { F.cupWater = 2; G.steep = { t: 12 }; G.held.L = 'Cup Noodles (hot, steeping)'; if (src === 'k') { F.kHot = 0; F.kWater = 0; K.led.visible = false; K.steam.visible = false; G.held.R = 'Empty'; } if (src === 'p') { F.potHot = 0; F.potWater = 0; F.burner = 0; G.heat = null; K.flame.visible = false; Snd.click(28); G.held.R = 'Empty'; } };
+      const doneHot = (src) => () => { F.cupWater = 2; G.steep = { t: 12 }; if (src === 'k') { F.kHot = 0; F.kWater = 0; } if (src === 'p') { F.potHot = 0; F.potWater = 0; F.burner = 0; G.heat = null; Snd.click(28); } toast('Hot water in! The noodles need a few seconds to soften.', 'ok'); };
+      const pourMG = (src) => () => startMG({ type: 'pour', title: 'Pour the hot water', hint: 'HOLD E to tilt and pour, release to stop. Fill to the line, no spills, and keep the splashing quiet.', onDone: doneHot(src) });
       G.inter = [
         { x: 7.95, z: .8, r: 1.8, name: 'cabinet shelf', acts: [
-          A('Take a Cup Noodles', [20, 30], 'open', 1.6, { snd: 'cab', when: () => D.cab.v > .25 && !F.noodles && !F.eaten, fn() { F.noodles = 1; K.cups[0].visible = false; G.held.L = 'Cup Noodles (sealed)'; } }),
-          A('Take the small pot', [30, 46], 'open', 1.6, { snd: 'clang', when: () => D.cab.v > .25 && !F.pot && !F.potPlaced, fn() { F.pot = 1; K.pot.visible = false; G.held.R = 'Small pot (empty)'; } })] },
+          A('Take a Cup Noodles', [20, 30], 'open', 1.6, { snd: 'cab', when: () => D.cab.v > .25 && !F.noodles && !F.eaten, fn() { F.noodles = 1; give('noodles'); toast(`Cup Noodles stored in slot ${invList().indexOf('noodles') + 1}. Press ${invList().indexOf('noodles') + 1} to peel the lid.`, 'ok'); } }),
+          A('Take the small pot', [30, 46], 'open', 1.6, { snd: 'clang', when: () => D.cab.v > .25 && !F.pot && !F.potPlaced && !F.potTaken, fn() { F.pot = 1; F.potTaken = 1; give('pot'); toast(`Small pot stored in slot ${invList().indexOf('pot') + 1}.`, 'ok'); } })] },
         { x: 10.7, z: .85, r: 1.8, name: 'kitchen sink', acts: [
           A('Fill the kettle', [36, 48], 'fill', 3.2, { prop: 'kettle', snd: 'pour', bursts: 3, fx: 'sink', when: () => !F.kWater, fn() { F.kWater = 1; } }),
-          A('Fill the pot with water', [36, 48], 'fill', 3.2, { prop: 'pot', snd: 'pour', bursts: 3, fx: 'sink', when: () => F.pot && !F.potWater, fn() { F.potWater = 1; G.held.R = 'Small pot (water)'; } }),
-          A('Fill the cup with tap water', [34, 46], 'fillcup', 3, { snd: 'pour', bursts: 3, fx: 'sink', when: () => F.opened && F.noodles && !F.cupWater, fn() { F.cupWater = 1; G.held.L = 'Cup Noodles (cold water)'; } })] },
+          A('Fill the pot with water', [36, 48], 'fill', 3.2, { prop: 'pot', snd: 'pour', bursts: 3, fx: 'sink', when: () => F.pot && !F.potWater, fn() { F.potWater = 1; } }),
+          A('Fill the cup with tap water', [34, 46], 'fillcup', 3, { snd: 'pour', bursts: 3, fx: 'sink', when: () => F.opened && F.noodles && !F.cupWater, fn() { F.cupWater = 1; } })] },
         { x: 10.3, z: .85, r: 1.6, name: 'electric kettle', acts: [
-          A('Boil the kettle', [24, 32], 'press', 1, { snd: 'click', when: () => F.kWater && !F.kHot && !G.boil, fn() { G.boil = { t: 7, tick: 0 }; K.led.visible = true; toast('The kettle starts to rumble...'); } }),
-          A('Pour the hot water into the cup', [30, 42], 'pour', 3.4, { prop: 'kettle', snd: 'pour', bursts: 3, when: () => F.kHot && hotReady(), fn: doneHot('k') })] },
+          A('Switch the kettle on', [28, 36], 'press', .8, { snd: 'click', when: () => F.kWater && !F.kHot && !G.kettle.on, fn() { G.kettle.on = true; toast('Heating... it gets louder as it nears boiling. Switch it off if it is too loud.'); } }),
+          A('Switch the kettle off', [22, 28], 'press', .8, { snd: 'click', when: () => G.kettle.on, fn() { G.kettle.on = false; toast('Kettle off. The noise fades and the water cools slowly.'); } }),
+          A('Pour the hot water into the cup', [26, 34], 'reach', .6, { snd: 'click', when: () => F.kHot && hotReady(), fn: pourMG('k') })] },
         { x: 8.25, z: .85, r: 1.6, name: 'stove', acts: [
-          A('Put the pot on the stove', [32, 44], 'reach', 1.4, { snd: 'clang', when: () => F.pot && F.potWater && !F.potPlaced, fn() { F.potPlaced = 1; F.pot = 0; K.potStove.visible = true; G.held.R = 'Empty'; } }),
-          A('Turn the burner on', [24, 30], 'twist', 1.4, { snd: 'click', when: () => F.potPlaced && !F.burner, fn() { F.burner = 1; K.flame.visible = true; G.heat = { t: 9, tick: 0 }; toast('Blue flame. Wait for the water to boil...'); } }),
-          A('Pour the boiling water into the cup', [30, 44], 'pour', 3.4, { prop: 'pot', snd: 'pour', bursts: 3, when: () => F.potHot && hotReady(), fn: doneHot('p') }),
-          A('Turn the burner off', [22, 28], 'twist', 1.1, { snd: 'click', when: () => F.burner && !(F.potHot && hotReady()), fn() { F.burner = 0; K.flame.visible = false; G.heat = null; } })] },
+          A('Put the pot on the stove', [32, 44], 'reach', 1.4, { snd: 'clang', when: () => F.pot && F.potWater && !F.potPlaced, fn() { F.potPlaced = 1; F.pot = 0; } }),
+          A('Light the burner', [24, 30], 'twist', .6, { snd: 'click', when: () => F.potPlaced && !F.burner, fn: () => startMG({ type: 'timing', title: 'Light the burner', hint: 'Press E when the knob is in the green zone. Too early or late and the gas ignites with a WHUMP.', hits: 1, speed: 1.15, zoneW: .2, missNoise: [44, 58], missLabel: 'Gas ignites with a WHUMP', goodNoise: [24, 30], goodLabel: 'Burner clicks on', snd: 'click', onDone() { F.burner = 1; G.heat = { t: 9, tick: 0 }; toast('Blue flame. Wait for the water to boil...'); } }) }),
+          A('Pour the boiling water into the cup', [26, 34], 'reach', .6, { snd: 'click', when: () => F.potHot && hotReady(), fn: pourMG('p') }),
+          A('Turn the burner off', [22, 28], 'twist', 1.1, { snd: 'click', when: () => F.burner && !(F.potHot && hotReady()), fn() { F.burner = 0; G.heat = null; } })] },
         { x: 9.55, z: .85, r: 1.6, name: 'microwave', acts: [
           A('Microwave the cup (stop it at 0:01)', [24, 32], 'press', 1, { snd: 'click', when: () => F.cupWater === 1 && F.noodles && !G.mw, fn() { G.mw = { t: 8, hum: 0 }; K.mwGlow.visible = true; toast('Press E when the timer shows 0:01!'); } })] },
         { x: 9.5, z: 1.95, r: 1.8, name: 'kitchen island', acts: [
-          A('Peel the lid open quietly', [22, 34], 'peel', 3.4, { snd: 'crinkle', bursts: 2, when: same, fn: opened() }),
-          A('Tear the lid off fast', [58, 76], 'rip', .9, { snd: 'crinkle', when: same, fn: opened() }),
-          A('Open it inside your hoodie pocket', [20, 34], 'peel', 2.6, { snd: 'crinkle', when: same, fn: opened() }),
-          A('Eat slowly, no slurping', [26, 40], 'eat', 6.5, { snd: 'chew', bursts: 3, when: () => F.ready && !F.eaten && !F.carry, fn() { F.eaten = 1; G.held.L = 'Empty cup'; G.held.R = 'Empty'; } }),
-          A('Slurp it down fast', [52, 72], 'eat', 3.5, { snd: 'slurp', bursts: 2, when: () => F.ready && !F.eaten && !F.carry, fn() { F.eaten = 1; G.held.L = 'Empty cup'; G.held.R = 'Empty'; } }),
-          A('Carry the cup upstairs', [20, 34], 'carry', 1.2, { snd: 'handle', when: () => F.ready && !F.eaten && !F.carry, fn() { F.carry = 1; G.held.L = 'Hot cup (careful!)'; } })] },
+          A('Eat the noodles', [20, 24], 'reach', .6, { snd: 'click', when: () => F.ready && !F.eaten && !F.carry, fn: () => startMG({ type: 'timing', title: 'Eat quietly', hint: 'Press E when the marker is in the green zone to chew softly. Mistime it and you slurp!', hits: 4, speed: .95, zoneW: .26, missNoise: [52, 70], missLabel: 'SLURP!', goodNoise: [24, 36], goodLabel: 'Quiet chewing', snd: 'chew', missSnd: 'slurp', onDone() { F.eaten = 1; toast('All gone. Now back to bed...', 'ok'); } }) }),
+          A('Carry the cup upstairs', [20, 34], 'carry', 1.2, { snd: 'handle', when: () => F.ready && !F.eaten && !F.carry, fn() { F.carry = 1; } })] },
       ];
     } },
 
@@ -264,7 +378,7 @@ const MISSIONS = [
       { obj: 'Sneak back to bed and close your door (hold Q)', ok: () => inRoom('Your Bedroom') && D.yours.v < .07 },
     ],
     setup() {
-      const F = G.f, boot = () => { F.pcOn = 1; F.rgb = F.rgbOff ? 0 : 1; Snd.fan(26); };
+      const F = G.f, playMG = (title, c, bonus) => startMG({ type: 'timing', title, hint: 'Press E when the marker is in the green zone to land each shot. Misses make the keyboard clatter!', missLabel: 'Keys clatter', goodLabel: 'Key taps', snd: 'keys', onDone() { F.match = 1; G.bonus = (G.bonus || 0) + bonus; }, ...c }), boot = () => { F.pcOn = 1; F.rgb = F.rgbOff ? 0 : 1; Snd.fan(26); };
       G.inter = [
         { x: .6, z: 5.15, r: 1.9, name: 'PC tower', acts: [
           A('Flip the RGB switch off', [20, 28], 'press', 1.2, { snd: 'click', when: () => !F.rgbOff && !F.shut, fn() { F.rgbOff = 1; F.rgb = 0; } }),
@@ -278,9 +392,9 @@ const MISSIONS = [
           A('One ear off to hear the room', [20, 30], 'reach', 1.5, { snd: 'rustle', spike: [.2, 58, 66], when: () => F.pcOn && !F.headset, fn() { F.headset = 1; } }),
           A('Mic on so your squad hears callouts', [24, 36], 'reach', 1.5, { snd: 'rustle', spike: [.35, 62, 78], when: () => F.pcOn && !F.headset, fn() { F.headset = 1; } })] },
         { x: .45, z: 4.55, r: 1.8, name: 'keyboard', acts: [
-          A('Play: soft keys, slow flicks', [22, 32], 'type', 6, { snd: 'keys', bursts: 4, bonus: 30, when: () => F.headset && !F.match, fn() { F.match = 1; } }),
-          A('Play: hammer the mechanical keyboard', [34, 48], 'type', 6, { snd: 'keys', bursts: 5, bonus: 80, spike: [.2, 58, 68], when: () => F.headset && !F.match, fn() { F.match = 1; } }),
-          A('Play: controller in your lap', [24, 38], 'type', 6, { snd: 'click', bursts: 4, bonus: 50, when: () => F.headset && !F.match, fn() { F.match = 1; } }),
+          A('Play: soft keys, slow flicks', [18, 22], 'type', .5, { snd: 'click', when: () => F.headset && !F.match, fn: () => playMG('Clutch 1v3: soft keys', { hits: 5, speed: .85, zoneW: .3, goodNoise: [20, 28], missNoise: [30, 40] }, 30) }),
+          A('Play: hammer the mechanical keyboard', [18, 22], 'type', .5, { snd: 'click', when: () => F.headset && !F.match, fn: () => playMG('Clutch 1v3: mechanical flicks', { hits: 6, speed: 1.4, zoneW: .17, goodNoise: [34, 46], missNoise: [50, 64] }, 80) }),
+          A('Play: controller in your lap', [18, 22], 'type', .5, { snd: 'click', when: () => F.headset && !F.match, fn: () => playMG('Clutch 1v3: controller', { hits: 5, speed: 1.05, zoneW: .24, goodNoise: [24, 36], missNoise: [38, 50] }, 50) }),
           A('Silent fist pump, bite your sleeve', [20, 28], 'fist', 1.6, { snd: 'rustle', when: () => F.match && !F.cele, fn() { F.cele = 1; } }),
           A('Whisper "LET\'S GOOO"', [34, 50], 'fist', 1.6, { snd: 'whisper', when: () => F.match && !F.cele, fn() { F.cele = 1; } }),
           A('Slap the desk in victory', [60, 76], 'fist', 1, { snd: 'bump', when: () => F.match && !F.cele, fn() { F.cele = 1; } })] },
@@ -306,9 +420,9 @@ const MISSIONS = [
         { x: 2.3, z: 9.75, y: 0, r: 1.5, name: 'deadbolt', hold: true, when: () => G.step === 2, prompt: () => '[E hold] Turn the deadbolt (Shift = fast)', use(dt) {
           F.bolt = (F.bolt || 0) + dt * (keys.ShiftLeft ? 4 : 1); if (F.bolt >= 1.8) { F.bolt = 0; F.unlocked = 1; D.front.locked = 0; const fast = !!keys.ShiftLeft; Snd.bolt(fast ? 52 : 28); noise(fast ? rnd(48, 58) : rnd(24, 34), fast ? 'CLACK, deadbolt' : 'Deadbolt turns', P); } else prog(F.bolt / 1.8, 'Turning the deadbolt', true); } },
         { x: 2, z: 11.2, y: 0, r: 2.4, name: 'delivery driver', acts: [
-          A('Whisper thanks, take the bag, tip on the phone', [22, 34], 'reach', 2, { snd: 'crinkle', ex: 6, when: () => G.driverHere && !F.bag, fn() { F.bag = 1; G.held.R = 'Burger Bag'; } }),
-          A('Pay cash and ask for change', [36, 52], 'reach', 2.5, { snd: 'coins', ex: 6, when: () => G.driverHere && !F.bag, fn() { F.bag = 1; G.held.R = 'Burger Bag'; } }),
-          A('Stuff the bag in your hoodie', [22, 36], 'carry', 2.2, { snd: 'crinkle', ex: 2, when: () => G.driverHere && !F.bag, fn() { F.bag = 1; F.hoodie = 1; G.held.R = 'Bag (in hoodie)'; } })] },
+          A('Whisper thanks, take the bag, tip on the phone', [22, 34], 'reach', 2, { snd: 'crinkle', ex: 6, when: () => G.driverHere && !F.bag, fn() { F.bag = 1; give('bag'); G.held.R = 'Burger Bag'; } }),
+          A('Pay cash and ask for change', [36, 52], 'reach', 2.5, { snd: 'coins', ex: 6, when: () => G.driverHere && !F.bag, fn() { F.bag = 1; give('bag'); G.held.R = 'Burger Bag'; } }),
+          A('Stuff the bag in your hoodie', [22, 36], 'carry', 2.2, { snd: 'crinkle', ex: 2, when: () => G.driverHere && !F.bag, fn() { F.bag = 1; F.hoodie = 1; give('bag'); G.held.R = 'Bag (in hoodie)'; } })] },
       ];
     } },
 
@@ -347,10 +461,10 @@ const MISSIONS = [
       { obj: 'Back to your room: close your door (hold Q)', ok: () => inRoom('Your Bedroom') && D.yours.v < .07 },
     ],
     setup() {
-      const F = G.f, got = () => { F.phone = 1; G.held.L = 'Phone (screen glowing)'; G.glow = 1; G.stir = G.t + 5; G.stirAt = G.t; }, muted = () => { F.muted = 1; G.glow = 0; G.held.L = 'Phone (Muted)'; };
+      const F = G.f, got = () => { F.phone = 1; give('phone'); G.held.L = 'Phone (screen glowing)'; G.glow = 1; G.stir = G.t + 5; G.stirAt = G.t; }, muted = () => { F.muted = 1; G.glow = 0; G.held.L = 'Phone (Muted)'; };
       G.inter = [{ x: 8.7, z: 2.2, y: 3, r: 1.9, name: 'nightstand', acts: [
         A('Lift phone AND charger together, palm over the screen', [21, 34], 'reach', 2, { snd: 'handle', ex: 3, when: () => D.drawer.v >= .6 && !F.phone, fn: got }),
-        A('Unplug the cable first, then lift the phone', [30, 44], 'reach', 1.8, { snd: 'chime', spike: [.45, 52, 64], ex: 5, when: () => D.drawer.v >= .6 && !F.phone, fn: got }),
+        A('Unplug the cable first, then lift the phone', [18, 22], 'reach', .5, { snd: 'click', when: () => D.drawer.v >= .6 && !F.phone, fn: () => startMG({ type: 'tension', title: 'Unplug the charger slowly', hint: 'HOLD E to pull the cable out. Keep the needle in the green zone. Pull too hard and the plug scrapes (and the charging chime rings!).', snd: 'chime', fail: 'The plug scrapes and chimes', art: 'cable', speed: .8, onDone: got }) }),
         A('Lean across the bed to grab it', [34, 56], 'reach', 1.2, { snd: 'bump', ex: 6, when: () => D.drawer.v >= .6 && !F.phone, fn: got }),
         A('Flip the ringer switch, palm over the screen', [18, 28], 'phone', 1.5, { snd: 'click', when: () => F.phone && !F.muted, fn: muted }),
         A('Press power to blank the screen', [20, 32], 'phone', 1.2, { snd: 'click', ex: 3, when: () => F.phone && !F.muted, fn: muted }),
@@ -365,7 +479,7 @@ function prog(f, label, bar) { G.progT = .25; G.progF = f; G.progL = label; G.pr
 function start(i) {
   const sc = MISSIONS[i]; Snd.init(); closeChoice();
   G = { phase: 'play', sc, i, t: 0, clock: sc.t0, alert: sc.base, base: sc.base, maxAlert: sc.base, meter: 22, meterLabel: 'Ambient', reach: 0, lastNoise: -9, lastGain: -9, step: 0, f: {}, held: { L: 'Phone (Muted)', R: 'Empty' },
-    worst: { db: 0, t: '' }, flash: false, battery: 100, sched: [], busy: null, menu: null, fx: null, boil: null, heat: null, steep: null, progBar: false, hotT: 0, stir: 0, stirNext: rnd(6, 12), thumpUntil: 0, thumpAt: 0, mw: null, over: false, inter: [], sam: null, glow: 0, driverHere: false };
+    worst: { db: 0, t: '' }, flash: false, battery: 100, sched: [], busy: null, menu: null, fx: null, kettle: null, invOrder: [], sel: null, mg: null, boil: null, heat: null, steep: null, progBar: false, hotT: 0, stir: 0, stirNext: rnd(6, 12), thumpUntil: 0, thumpAt: 0, mw: null, over: false, inter: [], sam: null, glow: 0, driverHere: false };
   for (const id in D) { D[id].v = (sc.doorV && sc.doorV[id]) || 0; D[id].apply(); D[id].locked = 0; D[id].acc = 0; }
   World.moms.bed.visible = sc.mom === 'bed'; World.moms.couch.visible = sc.mom === 'couch'; World.sam.visible = false; World.driver.visible = false;
   for (const k of ['pc', 'phone', 'porch', 'lamp']) World.lights[k].intensity = 0;
@@ -378,7 +492,7 @@ function start(i) {
   toast('Tip: C = crouch (quiet), Shift = run (loud), F = flashlight', 'ok');
 }
 function toMenu() {
-  Snd.tv(false); G.phase = 'menu'; closeChoice(); try { document.exitPointerLock(); } catch {}
+  if (G.mg) { G.mg = null; mgEl.hidden = true; } $('#hotbar').innerHTML = ''; $('#chip').hidden = true; Snd.tv(false); G.phase = 'menu'; closeChoice(); try { document.exitPointerLock(); } catch {}
   $('#hud').hidden = true; $('#obj').hidden = true; $('#end').hidden = true; $('#menuBtn').hidden = true; $('#prompt').innerHTML = ''; $('#stir').hidden = true; $('#big').hidden = true; $('#prog').hidden = true;
   $('#menu').hidden = false; World.lights.lamp.intensity = 0;
   $('#cards').innerHTML = MISSIONS.map((s, i) => `<button class="card" data-i="${i}"><span class="num">${i + 1}</span><span class="em">${s.emoji}</span><b class="nm">${esc(s.name)}</b><div class="obj">${esc(s.obj)}</div><div class="hz">${s.hz.split(' · ').map((h) => `<span>${esc(h)}</span>`).join('')}</div>${best[s.id] ? `<span class="bst">★ ${best[s.id]}</span>` : ''}</button>`).join('');
@@ -388,12 +502,12 @@ function toMenu() {
 
 // ---------- end screens ----------
 function finish(html) {
-  Snd.tv(false); G.phase = 'end'; G.over = true; closeChoice(); try { document.exitPointerLock(); } catch {}
+  if (G.mg) { G.mg = null; mgEl.hidden = true; } Snd.tv(false); G.phase = 'end'; G.over = true; closeChoice(); try { document.exitPointerLock(); } catch {}
   $('#hud').hidden = true; $('#obj').hidden = true; $('#prompt').innerHTML = ''; $('#stir').hidden = true; $('#big').hidden = true; $('#prog').hidden = true;
   $('#end').hidden = false; $('#end').innerHTML = `<div class="endbox">${html}<div id="lb"></div><div id="ad"></div></div>`; adBanner($('#ad'));
 }
 function bust(why) {
-  if (G.phase !== 'play') return; G.phase = 'busted'; G.bustT = 0; G.why = why; Snd.bump(70); $('#stir').hidden = true; closeChoice(); G.busy = null;
+  if (G.phase !== 'play') return; if (G.mg) { G.mg = null; mgEl.hidden = true; } G.phase = 'busted'; G.bustT = 0; G.why = why; Snd.bump(70); $('#stir').hidden = true; closeChoice(); G.busy = null;
 }
 function win() {
   const sc = G.sc, rise = G.maxAlert - sc.base, el = G.t, score = Math.round(clamp(430 + (100 - rise) * 4.2 - Math.min(150, el / 6) + (G.bonus || 0), 100, 1000));
@@ -427,7 +541,8 @@ function update(dt) {
   // scheduled noises and busy actions
   for (let i = G.sched.length - 1; i >= 0; i--) if (G.t >= G.sched[i].at) { const s = G.sched.splice(i, 1)[0]; s.f(); if (G.phase !== 'play') return; }
   if (G.busy) { G.busy.t -= dt; prog(0, G.busy.label, false); if (G.busy.t <= 0) { const a = G.busy.a; G.busy = null; G.fx = null; if (a.bonus) G.bonus = (G.bonus || 0) + a.bonus; a.fn && a.fn(); if (a.say) toast(a.say); } }
-  const locked = G.busy || G.menu;
+  if (G.mg) { MGS[G.mg.type](G.mg, dt); if (G.phase !== 'play') return; if (G.mg) drawMG(G.mg); }
+  const locked = G.busy || G.menu || G.mg;
   // movement
   const f = fv(), mvz = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - tmz, mvx = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0) + tmx;
   if (keys.ArrowLeft) P.yaw += 1.8 * dt; if (keys.ArrowRight) P.yaw -= 1.8 * dt;
@@ -463,11 +578,11 @@ function update(dt) {
     else if (hit.KeyE && G.target && G.target.name === 'microwave & kettle') { /* handled below */ } }
   // kitchen systems: kettle boiling, pot heating, noodles steeping, and the props that show them
   { const K = World.K, F = G.f;
-    if (G.boil) { G.boil.t -= dt; G.boil.tick -= dt; if (G.boil.tick <= 0) { G.boil.tick = 1.1; Snd.boil(40); noise(rnd(38, 46), 'Kettle rumbling', { x: 10.3, z: .55, y: 0 }); } if (G.boil.t <= 0) { G.boil = null; F.kHot = 1; Snd.click(34); Snd.ding(); toast('The kettle clicks off: the water is boiling.', 'ok'); } }
+    if (G.kettle) { const k = G.kettle; if (k.on) { k.heat = Math.min(1, k.heat + dt / 9); k.tick -= dt; if (k.tick <= 0) { k.tick = .9; const db = 30 + k.heat * 24 + rnd(-2, 3); Snd.boil(db); noise(db, 'Kettle rumbling', { x: 10.3, z: .55, y: 0 }); } if (k.heat >= 1) { k.on = false; F.kHot = 1; Snd.click(34); Snd.ding(); toast('The kettle clicks off: the water is boiling.', 'ok'); } } else k.heat = Math.max(0, k.heat - dt * .03); }
     if (G.heat) { G.heat.t -= dt; G.heat.tick -= dt; if (G.heat.tick <= 0) { G.heat.tick = 1.4; Snd.hiss(30); noise(rnd(26, 34), 'Gas burner hiss', { x: 8, z: .45, y: 0 }); } if (G.heat.t <= 0 && !F.potHot) { F.potHot = 1; G.heat = { t: 99999, tick: .2 }; Snd.boil(36); toast('The water in the pot is boiling!', 'ok'); } }
     if (G.steep) { G.steep.t -= dt; if (G.steep.t <= 0) { G.steep = null; F.ready = 1; G.held.L = 'Cup Noodles (ready!)'; toast('The noodles are ready to eat!', 'ok'); } }
     K.cups[0].visible = !F.noodles; K.pot.visible = !F.pot && !F.potPlaced && !F.potTaken; K.potStove.visible = !!F.potPlaced; K.flame.visible = !!F.burner; K.flame.scale.setScalar(1 + Math.sin(G.t * 22) * .15);
-    K.led.visible = !!G.boil || !!F.kHot; K.steam.visible = !!G.boil || !!F.kHot; K.sinkWater.visible = G.fx === 'sink' && !!G.busy; K.mwGlow.visible = !!G.mw;
+    K.led.visible = !!(G.kettle && G.kettle.on) || !!F.kHot; K.steam.visible = !!(G.kettle && G.kettle.on) || !!F.kHot; K.sinkWater.visible = G.fx === 'sink' && !!G.busy; K.mwGlow.visible = !!G.mw;
     K.steam.children.forEach((s, i) => { const f = (G.t * .45 + i * .2) % 1; s.position.set(Math.sin(G.t * 2 + i) * .02, f * .28, 0); s.material.opacity = .26 * (1 - f); s.scale.setScalar(.7 + f); }); }
   // doors / holds / taps
   const tg = locked ? null : findTarget(); G.target = tg; let pr = '', prHtml = '';
@@ -542,7 +657,7 @@ const SEG = 28; for (const id of ['dbSeg', 'alSeg']) $('#' + id).innerHTML = '<i
 const segCache = {};
 function setSeg(id, f) { const n = Math.round(clamp(f, 0, 1) * SEG); if (segCache[id] === n) return; segCache[id] = n; const el = $('#' + id).children; for (let i = 0; i < SEG; i++) el[i].className = i < n ? (i < SEG * .4 ? 'g' : i < SEG * .72 ? 'y' : 'r') : ''; }
 const kbdify = (s) => esc(s).replace(/\[(E hold|E|Q|Shift)\]/g, (m, k) => `<kbd>${k.replace(' hold', '')}</kbd>${k === 'E hold' ? 'hold ' : ''}`);
-let hudT = 0;
+let hudT = 0; const hudCache = {};
 function drawHud(dt) {
   hudT -= dt; if (hudT > 0 || G.phase !== 'play') return; hudT = .08;
   const sc = G.sc, r = World.roomAt(P.x, P.z, P.y), sf = World.surfaceAt(P.x, P.z, P.y), [lab, cls] = stateLabel(G.alert), tg = G.target;
@@ -555,7 +670,9 @@ function drawHud(dt) {
   $('#dbL').textContent = `${G.meterLabel || 'Ambient'}${G.meter > 30 ? ' · reaches Mom ' + Math.max(0, Math.round(G.reach)) + ' dB' : ''}`;
   setSeg('alSeg', G.alert / 100); $('#alV').textContent = Math.round(G.alert) + '%'; $('#alV').className = cls === 'ok' ? '' : cls; $('#alL').innerHTML = `<span class="${cls}">${lab}</span>`;
   $('#surf').innerHTML = `<span>👣 ${esc(sf.name)}</span><em class="${sfc}">${sfT}</em>`;
-  $('#hL').textContent = G.held.L + (G.flash ? ' · light on' : ''); $('#hR').textContent = G.held.R;
+  const hd = held(); $('#hL').textContent = hd.L + (G.flash ? ' · light on' : ''); $('#hR').textContent = hd.R;
+  { const inv = invList(), html = inv.map((id, i) => `<div class="slot${G.sel === id ? ' on' : ''}"><kbd>${i + 1}</kbd><span class="ic">${ITEMS[id]}</span><small>${esc(itemName(id))}</small></div>`).join(''); if (html !== hudCache.inv) { hudCache.inv = html; $('#hotbar').innerHTML = html; } }
+  { const parts = []; const k = G.kettle; if (k && (k.on || k.heat > 0) && !G.f.kHot) parts.push(`🫖 Kettle ${Math.round(k.heat * 100)}% · ${k.on ? 'heating, ' + Math.round(30 + k.heat * 24) + ' dB (switch it off if too loud)' : 'cooling'}`); if (G.steep) parts.push(`🍜 Steeping ${Math.ceil(G.steep.t)}s`); if (G.heat && !G.f.potHot) parts.push('🥘 Water heating...'); $('#chip').hidden = !parts.length; if (parts.length) $('#chip').innerHTML = parts.join(' &nbsp;·&nbsp; '); }
   const left = sc.eta0 && !G.f.bag ? Math.max(0, Math.ceil(sc.eta0 - sc.t0 - G.t)) : -1, eta = $('#eta');
   eta.hidden = left < 0; if (left >= 0) { eta.innerHTML = `🚗 DRIVER ETA ${fmtT(sc.eta0)} · T-${left}s`; eta.className = 'glass ' + (left < 40 ? 'bad' : 'warn'); }
   const st = Math.min(G.step, sc.steps.length - 1);
@@ -584,7 +701,7 @@ const ANIM = {
   carry: () => ({ L: [.1, .15, -.1, -.4, -.25, 0], props: ['cupL'] }),
 };
 function poseArms(dt) {
-  const b = G.busy, held = G.held || { L: '', R: '' }; let o = {}, p = 0;
+  const b = G.busy, held = window.__held(); let o = {}, p = 0;
   if (b && ANIM[b.anim]) { p = 1 - b.t / b.total; o = ANIM[b.anim](p, b) || {}; }
   const R = o.R || Z6, L = o.L || Z6, k = Math.min(1, dt * 12);
   for (let i = 0; i < 6; i++) { curR[i] += (R[i] - curR[i]) * k; curL[i] += (L[i] - curL[i]) * k; }
@@ -610,6 +727,7 @@ function frame(now) {
   renderFrame(now);
   requestAnimationFrame(frame);
 }
+window.__held = held;
 window.__dwm = { get G() { return G; }, P, D, MISSIONS, start, noise, win, keys, hit };
 toMenu(); requestAnimationFrame(frame);
 })();
