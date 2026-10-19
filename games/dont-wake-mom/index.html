@@ -51,6 +51,13 @@
   #held { position: fixed; right: 14px; bottom: 14px; z-index: 20; padding: 10px 14px; pointer-events: none; min-width: 210px; }
   #held div { display: flex; justify-content: space-between; gap: 14px; font: 600 12px var(--sans); } #held div + div { margin-top: 5px; } #held label { font: 700 10px var(--sans); letter-spacing: 1.4px; color: var(--dim); } #held b { font-weight: 650; text-align: right; }
 
+  #hotbar { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 21; display: flex; gap: 8px; pointer-events: none; }
+  #hotbar .slot { position: relative; width: 96px; padding: 8px 6px 6px; text-align: center; border-radius: 14px; background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(10px); }
+  #hotbar .slot.on { border-color: var(--g); box-shadow: 0 0 0 1px var(--g), 0 0 18px rgba(126,240,176,.35); } #hotbar .slot kbd { position: absolute; left: 6px; top: 6px; min-width: 18px; padding: 0 5px; font-size: 11px; }
+  #hotbar .ic { display: block; font-size: 30px; line-height: 1.2; } #hotbar small { display: block; font: 600 10px/1.25 var(--sans); color: #cdd5f3; margin-top: 2px; }
+  #chip { position: fixed; left: 50%; top: 84px; transform: translateX(-50%); z-index: 20; padding: 7px 14px; font: 650 12px var(--sans); pointer-events: none; text-align: center; max-width: 92vw; }
+  #mg { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 45; width: min(600px, 94vw); padding: 14px 16px 12px; border-radius: 20px; background: linear-gradient(180deg, rgba(14,20,44,.94), rgba(8,11,26,.96)); border: 1px solid var(--line); box-shadow: 0 24px 70px rgba(0,0,0,.65); text-align: center; }
+  #mg h3 { margin: 0 0 6px; font: 800 18px var(--sans); } #mg canvas { width: 100%; height: auto; border-radius: 12px; background: rgba(255,255,255,.03); touch-action: none; } #mgH { margin: 8px 4px 4px; font: 13px/1.4 var(--sans); color: #cdd5f3; } .mgf { font: 11px var(--sans); color: var(--dim); }
   #cross { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #fffc; z-index: 15; pointer-events: none; transition: all .15s; box-shadow: 0 0 6px #000a; }
   #cross.act { width: 22px; height: 22px; margin: -11px 0 0 -11px; background: transparent; border: 2px solid var(--g); box-shadow: 0 0 10px #7ef0b088; }
   #prompt { position: fixed; left: 0; right: 0; top: 56%; z-index: 20; text-align: center; font: 650 15px var(--sans); text-shadow: 0 1px 8px #000; pointer-events: none; padding: 0 10px; }
@@ -117,6 +124,8 @@
   <div id="held" class="glass"><div><label>LEFT HAND</label><b id="hL"></b></div><div><label>RIGHT HAND</label><b id="hR"></b></div></div>
 </div>
 <div id="obj" class="glass" hidden></div>
+<div id="hotbar"></div><div id="chip" class="glass" hidden></div>
+<div id="mg" class="glass" hidden><h3 id="mgT"></h3><canvas id="mgC" width="560" height="300"></canvas><div id="mgH"></div><div class="mgf"><kbd>E</kbd> hold / press &nbsp;·&nbsp; <kbd>Esc</kbd> cancel</div></div>
 <div id="prompt"></div><div id="toast"></div><div id="stir" hidden>🛏️ Mom is rolling over... hold still!</div><div id="big" hidden></div>
 <div id="prog" class="glass" hidden><span></span><b><i></i></b></div><div id="choice" hidden></div>
 <div id="top"><button id="menuBtn" hidden>Menu</button><button id="mute">🔊</button><a id="home" href="https://rank-game.com/">← Home</a></div>
@@ -124,7 +133,7 @@
 <div id="menu"><div class="wrap">
   <div class="eyebrow">FIRST-PERSON STEALTH · 02:14 AM</div><h1>Midnight Stealth:<br>Don't Wake Mom!</h1><p class="lede">You see the house through your own eyes. Every step, hinge and floorboard makes noise. Pick a mission and stay quiet.</p>
   <div class="cards" id="cards"></div>
-  <div class="keys glass"><span class="desk"><b>W A S D</b> move · <b>mouse</b> look (click to capture) · </span><b>C</b> crouch (quiet) · <b>Shift</b> run (LOUD) · <b>E R T</b> do an action (each shows its noise) · hold <b>E</b> to open · hold <b>Q</b> to close · <b>F</b> flashlight · <b>V</b> tell a friend to wait · <b>M</b> mute · <b>1-5</b> start a mission.<br>
+  <div class="keys glass"><span class="desk"><b>W A S D</b> move · <b>mouse</b> look (click to capture) · </span><b>C</b> crouch (quiet) · <b>Shift</b> run (LOUD) · <b>E R T</b> do an action (each shows its noise) · <b>1-5</b> use an item from your item box · hold <b>E</b> to open · hold <b>Q</b> to close · <b>F</b> flashlight · <b>V</b> tell a friend to wait · <b>M</b> mute · (on this menu keys <b>1-5</b> start a mission).<br>
   0–30 dB quiet · 31–55 creaks · 56–80 loud · 81+ <span class="bad">busted</span>. Hold doors with <b>Shift</b> to rush them (squeaky!).</div></div></div>
 <div id="end" hidden></div>
 <div id="touch"><button data-k="KeyE">E</button><button data-k="KeyR">R</button><button data-k="KeyT">T</button><button data-k="KeyQ">Close</button><button data-k="KeyC">Crouch</button><button data-k="ShiftLeft">Run</button><button data-k="KeyF">Light</button><button data-k="KeyV">Wait</button></div>
