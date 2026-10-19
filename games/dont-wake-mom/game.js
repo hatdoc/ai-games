@@ -483,6 +483,7 @@ const MISSIONS = [
         A('Ignore it and retreat first', [20, 30], 'reach', .6, { snd: 'buzz', spike: [.35, 60, 72], ex: 8, when: () => F.phone && !F.muted, fn: muted })] }];
     } },
 ];
+const MOMSAY = ['WHAT are you doing up?!', 'Back to bed. NOW!', 'I KNEW IT!', 'Young adult, explain yourself!', 'Do you know what time it is?!'];
 const samIn = (n) => { const s = G.sam; return s && World.roomAt(s.x, s.z, s.y).name === n; };
 
 // ---------- helpers: progress, HUD ----------
@@ -504,7 +505,7 @@ function start(i) {
   toast('Tip: C = crouch (quiet), Shift = run (loud), F = flashlight', 'ok');
 }
 function toMenu() {
-  if (G.mg) { G.mg = null; mgEl.hidden = true; } $('#hotbar').innerHTML = ''; $('#chip').hidden = true; Snd.tv(false); G.phase = 'menu'; closeChoice(); try { document.exitPointerLock(); } catch {}
+  $('#momface').hidden = true; if (G.mg) { G.mg = null; mgEl.hidden = true; } $('#hotbar').innerHTML = ''; $('#chip').hidden = true; Snd.tv(false); G.phase = 'menu'; closeChoice(); try { document.exitPointerLock(); } catch {}
   $('#hud').hidden = true; $('#obj').hidden = true; $('#end').hidden = true; $('#menuBtn').hidden = true; $('#prompt').innerHTML = ''; $('#stir').hidden = true; $('#big').hidden = true; $('#prog').hidden = true;
   $('#menu').hidden = false; World.lights.lamp.intensity = 0;
   $('#cards').innerHTML = MISSIONS.map((s, i) => `<button class="card" data-i="${i}"><span class="num">${i + 1}</span><span class="em">${s.emoji}</span><b class="nm">${esc(s.name)}</b><div class="obj">${esc(s.obj)}</div><div class="hz">${s.hz.split(' · ').map((h) => `<span>${esc(h)}</span>`).join('')}</div>${best[s.id] ? `<span class="bst">★ ${best[s.id]}</span>` : ''}</button>`).join('');
@@ -514,12 +515,12 @@ function toMenu() {
 
 // ---------- end screens ----------
 function finish(html) {
-  if (G.mg) { G.mg = null; mgEl.hidden = true; } Snd.tv(false); G.phase = 'end'; G.over = true; closeChoice(); try { document.exitPointerLock(); } catch {}
+  $('#momface').hidden = true; if (G.mg) { G.mg = null; mgEl.hidden = true; } Snd.tv(false); G.phase = 'end'; G.over = true; closeChoice(); try { document.exitPointerLock(); } catch {}
   $('#hud').hidden = true; $('#obj').hidden = true; $('#prompt').innerHTML = ''; $('#stir').hidden = true; $('#big').hidden = true; $('#prog').hidden = true;
   $('#end').hidden = false; $('#end').innerHTML = `<div class="endbox">${html}<div id="lb"></div><div id="ad"></div></div>`; adBanner($('#ad'));
 }
 function bust(why) {
-  if (G.phase !== 'play') return; if (G.mg) { G.mg = null; mgEl.hidden = true; } G.phase = 'busted'; G.bustT = 0; G.why = why; Snd.bump(70); $('#stir').hidden = true; closeChoice(); G.busy = null;
+  if (G.phase !== 'play') return; if (G.mg) { G.mg = null; mgEl.hidden = true; } G.faceShown = 0; G.phase = 'busted'; G.bustT = 0; G.why = why; Snd.bump(70); $('#stir').hidden = true; closeChoice(); G.busy = null;
 }
 function win() {
   const sc = G.sc, rise = G.maxAlert - sc.base, el = G.t, score = Math.round(clamp(430 + (100 - rise) * 4.2 - Math.min(150, el / 6) + (G.bonus || 0), 100, 1000));
@@ -545,7 +546,8 @@ function update(dt) {
   const sc = G.sc, m = World.moms[sc.mom];
   if (G.phase === 'busted') { // Mom wakes up, the lamp clicks on
     G.bustT += dt; World.lights.lamp.intensity = Math.min(5, G.bustT * 6); m.up.position.y = Math.min(.45, G.bustT * .5); m.up.rotation.z = Math.min(.9, G.bustT * 1.1);
-    if (G.bustT > 1.8) bustScreen(); return;
+    if (G.bustT > .7 && !G.faceShown) { G.faceShown = 1; Snd.gasp(); $('#momSay').textContent = pick(MOMSAY); $('#momface').hidden = false; }
+    if (G.bustT > 3.2) { $('#momface').hidden = true; bustScreen(); } return;
   }
   if (G.phase !== 'play') { m.body.scale.y = 1 + Math.sin(performance.now() / 900) * .03; return; }
   G.t += dt; G.clock = sc.t0 + G.t + (G.skip || 0);
@@ -590,7 +592,7 @@ function update(dt) {
     else if (hit.KeyE && G.target && G.target.name === 'microwave & kettle') { /* handled below */ } }
   // kitchen systems: kettle boiling, pot heating, noodles steeping, and the props that show them
   { const K = World.K, F = G.f;
-    if (G.kettle) { const k = G.kettle; if (k.on) { k.heat = Math.min(1, k.heat + dt / 9); k.tick -= dt; if (k.tick <= 0) { k.tick = .9; const db = 30 + k.heat * 24 + rnd(-2, 3); Snd.boil(db); noise(db, 'Kettle rumbling', { x: 10.3, z: .55, y: 0 }); } if (k.heat >= 1) { k.on = false; F.kHot = 1; Snd.click(34); Snd.ding(); toast('The kettle clicks off: the water is boiling.', 'ok'); } } else k.heat = Math.max(0, k.heat - dt * .03); }
+    if (G.kettle) { const k = G.kettle; if (k.on) { k.heat = Math.min(1, k.heat + dt / 6.5); k.tick -= dt; if (k.tick <= 0) { k.tick = 1.1; const db = 26 + k.heat * 20 + rnd(-2, 2); Snd.boil(db); noise(db, 'Kettle rumbling', { x: 10.3, z: .55, y: 0 }, { mult: .55 }); } if (k.heat >= 1) { k.on = false; F.kHot = 1; Snd.click(34); Snd.ding(); toast('The kettle clicks off: the water is boiling.', 'ok'); } } else k.heat = Math.max(0, k.heat - dt * .015); }
     if (G.heat) { G.heat.t -= dt; G.heat.tick -= dt; if (G.heat.tick <= 0) { G.heat.tick = 1.4; Snd.hiss(30); noise(rnd(26, 34), 'Gas burner hiss', { x: 8, z: .45, y: 0 }); } if (G.heat.t <= 0 && !F.potHot) { F.potHot = 1; G.heat = { t: 99999, tick: .2 }; Snd.boil(36); toast('The water in the pot is boiling!', 'ok'); } }
     if (G.steep) { G.steep.t -= dt; if (G.steep.t <= 0) { G.steep = null; F.ready = 1; G.held.L = 'Cup Noodles (ready!)'; toast('The noodles are ready to eat!', 'ok'); } }
     K.cups[0].visible = !F.noodles; K.pot.visible = !F.pot && !F.potPlaced && !F.potTaken; K.potStove.visible = !!F.potPlaced; K.flame.visible = !!F.burner; K.flame.scale.setScalar(1 + Math.sin(G.t * 22) * .15);
@@ -686,7 +688,7 @@ function drawHud(dt) {
   $('#surf').innerHTML = `<span>👣 ${esc(sf.name)}</span><em class="${sfc}">${sfT}</em>`;
   const hd = held(); $('#hL').textContent = hd.L + (G.flash ? ' · light on' : ''); $('#hR').textContent = hd.R;
   { const inv = invList(), html = inv.map((id, i) => `<div class="slot${G.sel === id ? ' on' : ''}"><kbd>${i + 1}</kbd><span class="ic">${ITEMS[id]}</span><small>${esc(itemName(id))}</small></div>`).join(''); if (html !== hudCache.inv) { hudCache.inv = html; $('#hotbar').innerHTML = html; } }
-  { const parts = []; const k = G.kettle; if (k && (k.on || k.heat > 0) && !G.f.kHot) parts.push(`🫖 Kettle ${Math.round(k.heat * 100)}% · ${k.on ? 'heating, ' + Math.round(30 + k.heat * 24) + ' dB (switch it off if too loud)' : 'cooling'}`); if (G.steep) parts.push(`🍜 Steeping ${Math.ceil(G.steep.t)}s`); if (G.heat && !G.f.potHot) parts.push('🥘 Water heating...'); $('#chip').hidden = !parts.length; if (parts.length) $('#chip').innerHTML = parts.join(' &nbsp;·&nbsp; '); }
+  { const parts = []; const k = G.kettle; if (k && (k.on || k.heat > 0) && !G.f.kHot) parts.push(`🫖 Kettle ${Math.round(k.heat * 100)}% · ${k.on ? 'heating, ' + Math.round(26 + k.heat * 20) + ' dB (switch it off if too loud)' : 'cooling'}`); if (G.steep) parts.push(`🍜 Steeping ${Math.ceil(G.steep.t)}s`); if (G.heat && !G.f.potHot) parts.push('🥘 Water heating...'); $('#chip').hidden = !parts.length; if (parts.length) $('#chip').innerHTML = parts.join(' &nbsp;·&nbsp; '); }
   const left = sc.eta0 && !G.f.bag ? Math.max(0, Math.ceil(sc.eta0 - sc.t0 - G.t)) : -1, eta = $('#eta');
   eta.hidden = left < 0; if (left >= 0) { eta.innerHTML = `🚗 DRIVER ETA ${fmtT(sc.eta0)} · T-${left}s`; eta.className = 'glass ' + (left < 40 ? 'bad' : 'warn'); }
   const st = Math.min(G.step, sc.steps.length - 1);
