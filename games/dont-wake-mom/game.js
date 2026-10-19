@@ -145,7 +145,7 @@ function addAlert(g) { G.alert = Math.min(100, G.alert + g); G.maxAlert = Math.m
 const surfMode = (speed) => (speed < 1.1 ? 0 : speed < 2.4 ? 1 : 2);
 function stepOnce(e, speed, isSam) {
   const sf = World.surfaceAt(e.x, e.z, e.y), mode = surfMode(speed);
-  let db = sf.base + (mode === 0 ? -14 : mode === 2 ? 14 : 0) + (isSam ? 3 : 0) + rnd(-2, 3), label = sf.name;
+  let db = sf.base + (mode === 0 ? -14 : mode === 2 ? 14 : 0) + (isSam ? (G.f.samBriefed ? -4 : 3) : 0) + rnd(-2, 3), label = sf.name;
   if (sf.creak && Math.random() < (mode === 0 ? .35 : mode === 1 ? .85 : 1)) { db = sf.base + (sf.creak > 1 ? 16 : 10) + (mode === 2 ? 8 : 0) + rnd(-2, 3); label = 'Floor creak!'; Snd.creak(db); toast(`Creak! ${Math.round(db)} dB`, 'warn'); }
   else if (!isSam || Math.random() < .6) Snd.step(db, sf.name.startsWith('Tile') ? 'tile' : sf.name.startsWith('Concrete') ? 'conc' : sf.base < 25 ? 'carpet' : 'wood');
   if (G.thumpUntil > G.t) db -= 10; // Biscuit's tail thump masks the step
@@ -267,7 +267,13 @@ function drawMG(m) {
   const c = mgX, W = 560, H = 300; c.clearRect(0, 0, W, H);
   if (m.type === 'tension') {
     const cx = 165, cy = 140, R = 98, a0 = -Math.PI / 2, a1 = a0 + m.p * Math.PI * 2;
-    if (m.art === 'cable') {
+    if (m.art === 'bolt') {
+      c.fillStyle = '#5a3a28'; rr(c, 50, 30, 230, 220, 14); c.fill(); c.fillStyle = '#7a5238'; rr(c, 60, 40, 210, 200, 10); c.fill(); c.fillStyle = '#c9ced8'; c.beginPath(); c.arc(165, 140, 62, 0, 7); c.fill(); c.fillStyle = '#9aa1ae'; c.beginPath(); c.arc(165, 140, 48, 0, 7); c.fill();
+      c.save(); c.translate(165, 140); c.rotate(m.p * Math.PI / 2); c.fillStyle = '#eef0f5'; rr(c, -12, -46, 24, 92, 8); c.fill(); c.restore(); c.fillStyle = '#2a2018'; c.fillRect(270, 125 + (1 - m.p) * 0, 22 - m.p * 22, 30);
+    } else if (m.art === 'drawer') {
+      c.fillStyle = '#6a4a30'; rr(c, 40, 50, 250, 190, 12); c.fill(); c.fillStyle = '#1a120c'; rr(c, 56, 66, 218, 60, 6); c.fill();
+      const dx = m.p * 70; c.fillStyle = '#8a6a48'; rr(c, 56 + dx * .3, 130 + dx * .3, 218, 80, 8); c.fill(); c.fillStyle = '#d8dde8'; rr(c, 135 + dx * .3, 160 + dx * .3, 60, 10, 5); c.fill(); c.fillStyle = '#8fb0ff'; rr(c, 100, 78, 40, 36, 6); c.fill();
+    } else if (m.art === 'cable') {
       c.fillStyle = '#1c2338'; rr(c, 60, 70, 150, 150, 18); c.fill(); c.fillStyle = '#2a3558'; rr(c, 70, 80, 130, 120, 12); c.fill(); c.fillStyle = '#8fb0ff'; c.font = '700 13px system-ui'; c.textAlign = 'center'; c.fillText('PHONE', 135, 145);
       const px = 210 + m.p * 90; c.strokeStyle = '#d8dde8'; c.lineWidth = 6; c.beginPath(); c.moveTo(210, 150); c.bezierCurveTo(px - 30, 150 + Math.sin(m.t * 6) * 6, px - 10, 190, px, 150); c.stroke(); c.fillStyle = '#d8dde8'; rr(c, px, 138, 26, 24, 4); c.fill();
     } else {
@@ -308,12 +314,13 @@ function findTarget() {
   const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw); let best = null, bs = 1e9;
   const test = (x, z, y, r, o) => { const dx = x - P.x, dz = z - P.z, d = Math.hypot(dx, dz); if (d > r || Math.abs(y - P.y) > 2.2) return; const dot = (dx * fx + dz * fz) / Math.max(d, .01); if (dot < .35 && d > .6) return; const s = d - dot; if (s < bs) { bs = s; best = o; } };
   for (const id in DP) { const d = D[id]; test(DP[id][0], DP[id][1], (d.y || 0) >= 2.5 ? 3 : 0, id === 'cab' || id === 'drawer' ? 1.5 : 1.7, { kind: 'door', id, d }); }
-  for (const it of IN()) { if (it.acts ? !actsOf(it).length : (it.when && !it.when())) continue; test(it.x, it.z, it.y || 0, it.r || 1.6, it); }
+  for (const it of IN()) { if (it.acts ? !actsOf(it).length : (it.when && !it.when())) continue; const pp = it.pos ? it.pos() : [it.x, it.z, it.y || 0]; test(pp[0], pp[1], pp[2], it.r || 1.6, it); }
   return best;
 }
 
 // ---------- missions ----------
-const A = (t, db, anim, dur, x = {}) => ({ t, db, anim, dur, ...x }); // one physical action: label, dB range, hand animation, seconds
+const A = (t, db, anim, dur, x = {}) => ({ t, db, anim, dur, mini: db[0] === 18 && db[1] === 22, ...x }); // mini = opens a mini game, which decides the noise // one physical action: label, dB range, hand animation, seconds
+const TM = (title, hint, c) => startMG({ type: 'timing', title, hint: hint + ' Press E when the marker is in the green zone.', ...c }); // quick timing mini game
 const inRoom = (n) => World.roomAt(P.x, P.z, P.y).name === n;
 const near = (x, z, r) => Math.hypot(P.x - x, P.z - z) < r;
 const MISSIONS = [
@@ -348,16 +355,16 @@ const MISSIONS = [
         { x: 10.3, z: .85, r: 1.6, name: 'electric kettle', acts: [
           A('Switch the kettle on', [28, 36], 'press', .8, { snd: 'click', when: () => F.kWater && !F.kHot && !G.kettle.on, fn() { G.kettle.on = true; toast('Heating... it gets louder as it nears boiling. Switch it off if it is too loud.'); } }),
           A('Switch the kettle off', [22, 28], 'press', .8, { snd: 'click', when: () => G.kettle.on, fn() { G.kettle.on = false; toast('Kettle off. The noise fades and the water cools slowly.'); } }),
-          A('Pour the hot water into the cup', [26, 34], 'reach', .6, { snd: 'click', when: () => F.kHot && hotReady(), fn: pourMG('k') })] },
+          A('Pour the hot water into the cup', [26, 34], 'reach', .6, { mini: true, snd: 'click', when: () => F.kHot && hotReady(), fn: pourMG('k') })] },
         { x: 8.25, z: .85, r: 1.6, name: 'stove', acts: [
           A('Put the pot on the stove', [32, 44], 'reach', 1.4, { snd: 'clang', when: () => F.pot && F.potWater && !F.potPlaced, fn() { F.potPlaced = 1; F.pot = 0; } }),
-          A('Light the burner', [24, 30], 'twist', .6, { snd: 'click', when: () => F.potPlaced && !F.burner, fn: () => startMG({ type: 'timing', title: 'Light the burner', hint: 'Press E when the knob is in the green zone. Too early or late and the gas ignites with a WHUMP.', hits: 1, speed: 1.15, zoneW: .2, missNoise: [44, 58], missLabel: 'Gas ignites with a WHUMP', goodNoise: [24, 30], goodLabel: 'Burner clicks on', snd: 'click', onDone() { F.burner = 1; G.heat = { t: 9, tick: 0 }; toast('Blue flame. Wait for the water to boil...'); } }) }),
-          A('Pour the boiling water into the cup', [26, 34], 'reach', .6, { snd: 'click', when: () => F.potHot && hotReady(), fn: pourMG('p') }),
+          A('Light the burner', [24, 30], 'twist', .6, { mini: true, snd: 'click', when: () => F.potPlaced && !F.burner, fn: () => startMG({ type: 'timing', title: 'Light the burner', hint: 'Press E when the knob is in the green zone. Too early or late and the gas ignites with a WHUMP.', hits: 1, speed: 1.15, zoneW: .2, missNoise: [44, 58], missLabel: 'Gas ignites with a WHUMP', goodNoise: [24, 30], goodLabel: 'Burner clicks on', snd: 'click', onDone() { F.burner = 1; G.heat = { t: 9, tick: 0 }; toast('Blue flame. Wait for the water to boil...'); } }) }),
+          A('Pour the boiling water into the cup', [26, 34], 'reach', .6, { mini: true, snd: 'click', when: () => F.potHot && hotReady(), fn: pourMG('p') }),
           A('Turn the burner off', [22, 28], 'twist', 1.1, { snd: 'click', when: () => F.burner && !(F.potHot && hotReady()), fn() { F.burner = 0; G.heat = null; } })] },
         { x: 9.55, z: .85, r: 1.6, name: 'microwave', acts: [
           A('Microwave the cup (stop it at 0:01)', [24, 32], 'press', 1, { snd: 'click', when: () => F.cupWater === 1 && F.noodles && !G.mw, fn() { G.mw = { t: 8, hum: 0 }; K.mwGlow.visible = true; toast('Press E when the timer shows 0:01!'); } })] },
         { x: 9.5, z: 1.95, r: 1.8, name: 'kitchen island', acts: [
-          A('Eat the noodles', [20, 24], 'reach', .6, { snd: 'click', when: () => F.ready && !F.eaten && !F.carry, fn: () => startMG({ type: 'timing', title: 'Eat quietly', hint: 'Press E when the marker is in the green zone to chew softly. Mistime it and you slurp!', hits: 4, speed: .95, zoneW: .26, missNoise: [52, 70], missLabel: 'SLURP!', goodNoise: [24, 36], goodLabel: 'Quiet chewing', snd: 'chew', missSnd: 'slurp', onDone() { F.eaten = 1; toast('All gone. Now back to bed...', 'ok'); } }) }),
+          A('Eat the noodles', [20, 24], 'reach', .6, { mini: true, snd: 'click', when: () => F.ready && !F.eaten && !F.carry, fn: () => startMG({ type: 'timing', title: 'Eat quietly', hint: 'Press E when the marker is in the green zone to chew softly. Mistime it and you slurp!', hits: 4, speed: .95, zoneW: .26, missNoise: [52, 70], missLabel: 'SLURP!', goodNoise: [24, 36], goodLabel: 'Quiet chewing', snd: 'chew', missSnd: 'slurp', onDone() { F.eaten = 1; toast('All gone. Now back to bed...', 'ok'); } }) }),
           A('Carry the cup upstairs', [20, 34], 'carry', 1.2, { snd: 'handle', when: () => F.ready && !F.eaten && !F.carry, fn() { F.carry = 1; } })] },
       ];
     } },
@@ -382,15 +389,15 @@ const MISSIONS = [
       G.inter = [
         { x: .6, z: 5.15, r: 1.9, name: 'PC tower', acts: [
           A('Flip the RGB switch off', [20, 28], 'press', 1.2, { snd: 'click', when: () => !F.rgbOff && !F.shut, fn() { F.rgbOff = 1; F.rgb = 0; } }),
-          A('Press the power button', [28, 40], 'press', 1.2, { snd: 'click', when: () => !F.pcOn, fn() { boot(); if (F.rgb) addAlert(8); } }),
-          A('Wake it from your phone (silent)', [20, 30], 'phone', 2, { snd: 'buzz', ex: 3, when: () => !F.pcOn, fn() { boot(); } }),
+          A('Press the power button', [18, 22], 'press', .6, { snd: 'click', when: () => !F.pcOn, fn: () => TM('Safe boot', 'Time the button press so the fans spin up softly.', { hits: 2, speed: .9, zoneW: .28, goodNoise: [24, 32], missNoise: [38, 52], goodLabel: 'Fans spin up', missLabel: 'Fans ROAR', snd: 'fan', onDone() { boot(); if (F.rgb) addAlert(8); } }) }),
+          A('Wake it from your phone (silent)', [18, 22], 'phone', 1, { snd: 'buzz', when: () => !F.pcOn, fn: () => TM('Wake-on-LAN from your phone', 'Send the signal at the right moment so the screen does not blast on.', { hits: 2, speed: 1, zoneW: .3, goodNoise: [20, 28], missNoise: [34, 46], goodLabel: 'Phone taps', missLabel: 'Screen blasts on', snd: 'click', onDone() { boot(); addAlert(3); } }) }),
           A('Sleep the PC with the keyboard shortcut', [19, 29], 'press', 1, { snd: 'click', when: () => F.cele && !F.shut, fn() { F.shut = 1; F.pcOn = 0; F.rgb = 0; } }),
           A('Hold the power button: full shutdown', [28, 40], 'press', 2.5, { snd: 'fan', ex: 4, when: () => F.cele && !F.shut, fn() { F.shut = 1; F.pcOn = 0; F.rgb = 0; } }),
           A('Leave it running and go', [20, 30], 'reach', .6, { snd: 'click', ex: 12, when: () => F.cele && !F.shut, fn() { F.shut = 1; } })] },
         { x: .4, z: 4.05, r: 1.8, name: 'headset', acts: [
-          A('Headset on, mic muted, volume low', [19, 28], 'reach', 1.5, { snd: 'rustle', when: () => F.pcOn && !F.headset, fn() { F.headset = 1; } }),
-          A('One ear off to hear the room', [20, 30], 'reach', 1.5, { snd: 'rustle', spike: [.2, 58, 66], when: () => F.pcOn && !F.headset, fn() { F.headset = 1; } }),
-          A('Mic on so your squad hears callouts', [24, 36], 'reach', 1.5, { snd: 'rustle', spike: [.35, 62, 78], when: () => F.pcOn && !F.headset, fn() { F.headset = 1; } })] },
+          A('Headset on, mic muted, volume low', [18, 22], 'reach', .6, { snd: 'rustle', when: () => F.pcOn && !F.headset, fn: () => TM('Plug in the headset', 'Slide the jack in without a clunk.', { hits: 2, speed: .9, zoneW: .3, goodNoise: [20, 28], missNoise: [34, 46], goodLabel: 'Jack slides in', missLabel: 'Jack clunks', snd: 'click', onDone() { F.headset = 1; } }) }),
+          A('One ear off to hear the room', [18, 22], 'reach', .6, { snd: 'rustle', when: () => F.pcOn && !F.headset, fn: () => TM('Plug in the headset', 'Slide the jack in without a clunk.', { hits: 2, speed: .9, zoneW: .3, goodNoise: [20, 28], missNoise: [34, 46], goodLabel: 'Jack slides in', missLabel: 'Jack clunks', snd: 'click', onDone() { F.headset = 1; if (Math.random() < 0.2) { const d = rnd(58, 66); Snd.rustle(d); noise(d, 'A teammate yells in your headset', P); } } }) }),
+          A('Mic on so your squad hears callouts', [18, 22], 'reach', .6, { snd: 'rustle', when: () => F.pcOn && !F.headset, fn: () => TM('Plug in the headset', 'Slide the jack in without a clunk.', { hits: 2, speed: .9, zoneW: .3, goodNoise: [20, 28], missNoise: [34, 46], goodLabel: 'Jack slides in', missLabel: 'Jack clunks', snd: 'click', onDone() { F.headset = 1; if (Math.random() < 0.35) { const d = rnd(62, 78); Snd.rustle(d); noise(d, 'A teammate yells in your headset', P); } } }) })] },
         { x: .45, z: 4.55, r: 1.8, name: 'keyboard', acts: [
           A('Play: soft keys, slow flicks', [18, 22], 'type', .5, { snd: 'click', when: () => F.headset && !F.match, fn: () => playMG('Clutch 1v3: soft keys', { hits: 5, speed: .85, zoneW: .3, goodNoise: [20, 28], missNoise: [30, 40] }, 30) }),
           A('Play: hammer the mechanical keyboard', [18, 22], 'type', .5, { snd: 'click', when: () => F.headset && !F.match, fn: () => playMG('Clutch 1v3: mechanical flicks', { hits: 6, speed: 1.4, zoneW: .17, goodNoise: [34, 46], missNoise: [50, 64] }, 80) }),
@@ -417,12 +424,13 @@ const MISSIONS = [
     setup() {
       const F = G.f; F.locked = 1; G.arr = G.sc.t0 + G.sc.eta - 22; G.sc.eta0 = G.sc.t0 + G.sc.eta; World.driver.visible = true;
       G.inter = [
-        { x: 2.3, z: 9.75, y: 0, r: 1.5, name: 'deadbolt', hold: true, when: () => G.step === 2, prompt: () => '[E hold] Turn the deadbolt (Shift = fast)', use(dt) {
-          F.bolt = (F.bolt || 0) + dt * (keys.ShiftLeft ? 4 : 1); if (F.bolt >= 1.8) { F.bolt = 0; F.unlocked = 1; D.front.locked = 0; const fast = !!keys.ShiftLeft; Snd.bolt(fast ? 52 : 28); noise(fast ? rnd(48, 58) : rnd(24, 34), fast ? 'CLACK, deadbolt' : 'Deadbolt turns', P); } else prog(F.bolt / 1.8, 'Turning the deadbolt', true); } },
+        { x: 2.3, z: 9.75, y: 0, r: 1.5, name: 'deadbolt', acts: [
+          A('Turn the deadbolt slowly', [18, 22], 'twist', .6, { snd: 'click', when: () => !F.unlocked, fn: () => startMG({ type: 'tension', title: 'Turn the deadbolt', art: 'bolt', speed: .9, sticky: [.45], snd: 'bolt', fail: 'The deadbolt grinds', hint: 'HOLD E to turn the thumb-turn. Keep the needle in the green zone. The bolt sticks halfway: ease off there. Forcing it grinds and clacks.',
+            onDone() { F.unlocked = 1; D.front.locked = 0; Snd.bolt(28); noise(rnd(24, 34), 'Deadbolt slides back', P); } }) })] },
         { x: 2, z: 11.2, y: 0, r: 2.4, name: 'delivery driver', acts: [
-          A('Whisper thanks, take the bag, tip on the phone', [22, 34], 'reach', 2, { snd: 'crinkle', ex: 6, when: () => G.driverHere && !F.bag, fn() { F.bag = 1; give('bag'); G.held.R = 'Burger Bag'; } }),
-          A('Pay cash and ask for change', [36, 52], 'reach', 2.5, { snd: 'coins', ex: 6, when: () => G.driverHere && !F.bag, fn() { F.bag = 1; give('bag'); G.held.R = 'Burger Bag'; } }),
-          A('Stuff the bag in your hoodie', [22, 36], 'carry', 2.2, { snd: 'crinkle', ex: 2, when: () => G.driverHere && !F.bag, fn() { F.bag = 1; F.hoodie = 1; give('bag'); G.held.R = 'Bag (in hoodie)'; } })] },
+          A('Whisper thanks, take the bag, tip on the phone', [18, 22], 'reach', .6, { snd: 'crinkle', when: () => G.driverHere && !F.bag, fn: () => TM('Quiet handoff', 'Take the bag without crinkling it.', { hits: 3, speed: .8, zoneW: .32, goodNoise: [20, 28], missNoise: [36, 48], goodLabel: 'Bag shifts', missLabel: 'The bag crinkles', snd: 'crinkle', onDone() { F.bag = 1; addAlert(6); give('bag'); G.held.R = 'Burger Bag'; } }) }),
+          A('Pay cash and ask for change', [18, 22], 'reach', .6, { snd: 'coins', when: () => G.driverHere && !F.bag, fn: () => TM('Count the coins quietly', 'Do not let the coins jingle.', { hits: 3, speed: 1, zoneW: .26, goodNoise: [26, 36], missNoise: [44, 58], goodLabel: 'Coins click', missLabel: 'Coins JINGLE', snd: 'coins', onDone() { F.bag = 1; addAlert(6); give('bag'); G.held.R = 'Burger Bag'; } }) }),
+          A('Stuff the bag in your hoodie', [18, 22], 'carry', .6, { snd: 'crinkle', when: () => G.driverHere && !F.bag, fn: () => TM('Tuck it away', 'Get the bag inside your hoodie before it crinkles.', { hits: 4, speed: 1.1, zoneW: .24, goodNoise: [20, 30], missNoise: [38, 52], goodLabel: 'Fabric rustles', missLabel: 'The bag crinkles', snd: 'crinkle', onDone() { F.bag = 1; F.hoodie = 1; addAlert(2); give('bag'); G.held.R = 'Bag (in hoodie)'; } }) })] },
       ];
     } },
 
@@ -441,10 +449,14 @@ const MISSIONS = [
     setup() {
       const F = G.f, s = World.sam; s.visible = true; G.sam = { x: 15.4, z: 3.8, y: 0, acc: 0, trail: [], mode: 'wait', yaw: 0 }; s.position.set(15.4, 0, 3.8);
       const calm = (extra) => () => { F.dog = 1; G.sam.mode = 'follow'; if (extra) extra(); };
-      G.inter = [{ x: 14, z: 2.8, y: 0, r: 3.6, name: 'Biscuit the dog', acts: [
-        A('Offer a treat from your pocket', [20, 32], 'reach', 2, { snd: 'crunch', when: () => !F.dog, fn: calm() }),
-        A('Pet him gently and whisper "sit"', [26, 44], 'reach', 2, { snd: 'whisper', spike: [.3, 52, 66], when: () => !F.dog, fn: calm() }),
-        A('Step in on the beat of his tail thumps', [17, 26], 'reach', 2.5, { snd: 'thump', bursts: 2, when: () => !F.dog, fn: calm(() => { G.thumpUntil = G.t + 8; }) })] }];
+      G.inter = [
+        { x: 14, z: 2.8, y: 0, r: 3.6, name: 'Biscuit the dog', acts: [
+          A('Offer a treat from your pocket', [18, 22], 'reach', .6, { snd: 'crunch', when: () => !F.dog, fn: () => TM('Offer the treat', 'Hold it out at the right moment so he takes it gently.', { hits: 2, speed: .9, zoneW: .3, goodNoise: [20, 30], missNoise: [38, 52], goodLabel: 'Crunch', missLabel: 'Biscuit snaps and whines', snd: 'crunch', missSnd: 'whine', onDone: calm() }) }),
+          A('Pet him gently and whisper "sit"', [18, 22], 'reach', .6, { snd: 'whisper', when: () => !F.dog, fn: () => TM('Calm him with the rhythm', 'Pet in time with his tail. Slow and steady keeps him quiet.', { hits: 5, speed: .7, zoneW: .36, goodNoise: [18, 26], missNoise: [40, 56], goodLabel: 'Soft pat', missLabel: 'Biscuit whines', snd: 'rustle', missSnd: 'whine', onDone: calm() }) }),
+          A('Step in on the beat of his tail thumps', [18, 22], 'reach', .6, { snd: 'thump', when: () => !F.dog, fn: () => TM('Move on the beat', 'Match his thumps so the noise hides yours.', { hits: 3, speed: 1.25, zoneW: .22, goodNoise: [17, 26], missNoise: [40, 54], goodLabel: 'Quiet step', missLabel: 'Off beat: a creak', snd: 'thump', onDone: calm(() => { G.thumpUntil = G.t + 8; }) }) })] },
+        { pos: () => (G.sam ? [G.sam.x, G.sam.z, G.sam.y > 1.5 ? 3 : 0] : [0, 0, 0]), r: 2.6, name: 'Sam', acts: [
+          A('Whisper the plan to Sam', [18, 22], 'reach', .6, { snd: 'whisper', when: () => F.dog && !F.samBriefed && G.sam && G.sam.mode !== 'gone', fn: () => TM('Whisper the plan', 'Tell Sam where to step. A loud whisper carries upstairs.', { hits: 3, speed: .9, zoneW: .3, goodNoise: [20, 28], missNoise: [36, 48], goodLabel: 'Whisper', missLabel: 'A whisper carries', snd: 'whisper', onDone() { F.samBriefed = 1; toast('Sam knows the plan: he steps more softly now.', 'ok'); } }) })] },
+      ];
     } },
 
   { id: 'phone', emoji: '📱', name: 'Confiscated Phone Retrieval', board: 'dont-wake-mom-phone',
@@ -466,7 +478,7 @@ const MISSIONS = [
         A('Lift phone AND charger together, palm over the screen', [21, 34], 'reach', 2, { snd: 'handle', ex: 3, when: () => D.drawer.v >= .6 && !F.phone, fn: got }),
         A('Unplug the cable first, then lift the phone', [18, 22], 'reach', .5, { snd: 'click', when: () => D.drawer.v >= .6 && !F.phone, fn: () => startMG({ type: 'tension', title: 'Unplug the charger slowly', hint: 'HOLD E to pull the cable out. Keep the needle in the green zone. Pull too hard and the plug scrapes (and the charging chime rings!).', snd: 'chime', fail: 'The plug scrapes and chimes', art: 'cable', speed: .8, onDone: got }) }),
         A('Lean across the bed to grab it', [34, 56], 'reach', 1.2, { snd: 'bump', ex: 6, when: () => D.drawer.v >= .6 && !F.phone, fn: got }),
-        A('Flip the ringer switch, palm over the screen', [18, 28], 'phone', 1.5, { snd: 'click', when: () => F.phone && !F.muted, fn: muted }),
+        A('Flip the ringer switch, palm over the screen', [18, 22], 'phone', .8, { snd: 'click', when: () => F.phone && !F.muted, fn: () => TM('Flip the ringer switch', 'Flick the switch with your thumb without a click that carries.', { hits: 2, speed: 1.1, zoneW: .26, goodNoise: [18, 26], missNoise: [34, 46], goodLabel: 'Switch flicks', missLabel: 'Switch clicks loudly', snd: 'click', onDone: muted }) }),
         A('Press power to blank the screen', [20, 32], 'phone', 1.2, { snd: 'click', ex: 3, when: () => F.phone && !F.muted, fn: muted }),
         A('Ignore it and retreat first', [20, 30], 'reach', .6, { snd: 'buzz', spike: [.35, 60, 72], ex: 8, when: () => F.phone && !F.muted, fn: muted })] }];
     } },
@@ -593,10 +605,12 @@ function update(dt) {
       const d = tg.d, dirn = keys.KeyE ? 1 : keys.KeyQ ? -1 : 0, fast = keys.ShiftLeft || keys.ShiftRight;
       pr = d.locked || (tg.id === 'front' && G.f.locked && !G.f.unlocked) ? `Locked: use the deadbolt` : `[E] open · [Q] close (hold, Shift = fast)`;
       if (tg.id === 'front' && G.f.locked && !G.f.unlocked) { /* locked */ }
+      else if (tg.id === 'drawer' && d.v < .6 && dirn >= 0) { prHtml = `<div class="pn">nightstand drawer</div><div class="pa"><kbd>E</kbd><span>Slide the drawer open slowly</span><em class="warn">tension game</em></div>`;
+        if (hit.KeyE) startMG({ type: 'tension', title: 'Slide the drawer open', art: 'drawer', speed: .85, sticky: [.5], snd: 'bump', fail: 'The drawer scrapes', hint: 'HOLD E to pull the drawer. Keep the needle in the green zone. The runner sticks halfway: ease off. Yanking it scrapes loudly.', onDone() { D.drawer.v = 1; D.drawer.apply(); Snd.slide(24); noise(rnd(22, 30), 'Drawer slides open', P); } }); }
       else if (dirn) moveDoor(d, dirn, fast ? .7 : .18, dt);
       pr = `${tg.id === 'front' && G.f.locked && !G.f.unlocked ? 'Locked: turn the deadbolt first' : pr}  (${DNAME[tg.id]})`;
     } else if (tg.acts) {
-      const list = actsOf(tg); prHtml = `<div class="pn">${esc(tg.name)}</div>` + list.map((a, i) => { const r = risk(a), c = r.pB >= 15 ? 'bad' : r.pN >= 50 || r.pB > 0 ? 'warn' : 'ok'; return `<div class="pa"><kbd>${AKEY[i]}</kbd><span>${esc(a.t)}</span><em class="${c}">🔊 ${r.lo}–${r.hi} dB</em></div>`; }).join('');
+      const list = actsOf(tg); prHtml = `<div class="pn">${esc(tg.name)}</div>` + list.map((a, i) => { const r = risk(a), c = r.pB >= 15 ? 'bad' : r.pN >= 50 || r.pB > 0 ? 'warn' : 'ok'; return `<div class="pa"><kbd>${AKEY[i]}</kbd><span>${esc(a.t)}</span>${a.mini ? '<em class="ok">🎮 mini game</em>' : `<em class="${c}">🔊 ${r.lo}–${r.hi} dB</em>`}</div>`; }).join('');
       list.forEach((a, i) => { if (i < 3 && hit[AKEYS[i]]) doAct(a); });
     } else {
       pr = tg.prompt();
