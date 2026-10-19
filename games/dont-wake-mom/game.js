@@ -89,7 +89,9 @@ addEventListener('keydown', (e) => {
   if (e.target.closest && e.target.closest('.lb,input')) return;
   Snd.init(); if (!keys[e.code]) hit[e.code] = 1; keys[e.code] = 1;
   if (/^(Arrow|Space|Tab)/.test(e.code)) e.preventDefault();
-  if (e.code === 'Escape' && G.mg) endMG(false);
+  if (G.mg && G.mg.type === 'coins' && /^Digit[1-4]$/.test(e.code)) coinAdd(+e.code.slice(5) - 1);
+  else if (G.mg && G.mg.type === 'coins' && (e.code === 'Backspace' || e.code === 'KeyQ')) coinUndo();
+  else if (e.code === 'Escape' && G.mg) endMG(false);
   else if (G.phase === 'play' && !G.mg && !G.busy && /^Digit[1-5]$/.test(e.code)) useSlot(+e.code.slice(5) - 1);
   else if (G.phase === 'menu' && /^Digit[1-5]$/.test(e.code)) start(+e.code.slice(5) - 1);
 });
@@ -156,6 +158,12 @@ function walk(e, speed, dt, isSam) {
   const stride = speed < 1.1 ? .6 : speed < 2.4 ? .8 : 1.1; e.acc += speed * dt;
   while (e.acc >= stride) { e.acc -= stride; stepOnce(e, speed, isSam); if (G.phase !== 'play') return; }
 }
+function lineClear(x1, z1, x2, z2, lv) { // nothing solid between two points (doors count as walls until they are open)
+  const n = Math.max(2, Math.ceil(Math.hypot(x2 - x1, z2 - z1) / .25));
+  for (let i = 1; i < n; i++) { const x = x1 + (x2 - x1) * i / n, z = z1 + (z2 - z1) * i / n;
+    for (const c of World.colliders) if ((c.lv === lv || c.lv === 2) && !(c.door && c.door.v >= c.door.pass) && x > c.x1 - .15 && x < c.x2 + .15 && z > c.z1 - .15 && z < c.z2 + .15) return false; }
+  return true;
+}
 function collide(e, r) {
   const lv = e.y > 1.5 ? 1 : 0;
   for (const c of World.colliders) {
@@ -188,7 +196,7 @@ function closeChoice() {}
 
 // ---------- item box (hotbar): things you pick up go into numbered slots ----------
 const ITEMS = { noodles: '🍜', pot: '🥘', bag: '🍔', phone: '📱' };
-const possess = (id) => { const F = G.f || {}; return id === 'noodles' ? !!F.noodles && !F.eaten : id === 'pot' ? !!F.pot : id === 'bag' ? !!F.bag : id === 'phone' ? !!F.phone : false; };
+const possess = (id) => { const F = G.f || {}; return id === 'noodles' ? !!F.noodles && !F.eaten : id === 'pot' ? !!F.pot : id === 'bag' ? !!F.bag && !F.ate : id === 'phone' ? !!F.phone : false; };
 const give = (id) => { if (!G.invOrder.includes(id)) G.invOrder.push(id); };
 const invList = () => (G.invOrder || []).filter(possess);
 function itemName(id) {
@@ -203,6 +211,7 @@ function held() {
 }
 function useSlot(i) {
   const id = invList()[i]; if (!id) return;
+  if (id === 'bag') { G.sel = 'bag'; startMG({ type: 'chew', art: 'burger', title: 'Eat the burger', hint: 'Alternate E and R in a steady rhythm to chew. Too fast is a loud chomp, the wrong key is a slurp! The smell is already drifting...', chews: 12, goodNoise: [20, 30], fastNoise: [44, 58], missNoise: [50, 66], snd: 'chew', missSnd: 'slurp', goodLabel: 'Quiet chew', wrongLabel: 'Loud munch!', onDone() { G.f.ate = 1; G.sel = null; toast('Burger demolished. Mission almost done!', 'ok'); } }); return; }
   if (G.sel === id && !(id === 'noodles' && !G.f.opened)) { G.sel = null; return; }
   G.sel = id;
   if (id === 'noodles' && !G.f.opened) startMG({ type: 'tension', title: 'Peel the lid', art: 'lid', speed: 1, sticky: [.3, .62], snd: 'crinkle', fail: 'The foil crackles loudly',
@@ -212,14 +221,24 @@ function useSlot(i) {
 
 // ---------- mini games: tension (peel / unplug), timing (stove / eating / clutch shots), pour ----------
 const mgEl = $('#mg'), mgC = $('#mgC'), mgX = mgC.getContext('2d'); let mgHold = false;
-mgC.addEventListener('pointerdown', (e) => { mgHold = true; if (!keys.KeyE) hit.KeyE = 1; try { mgC.setPointerCapture(e.pointerId); } catch {} });
+mgC.addEventListener('pointerdown', (e) => { const mm = G.mg; if (mm && mm.type === 'coins') { const r = mgC.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * 560, y = (e.clientY - r.top) / r.height * 300; if (y > 205 && y < 275) { const i = Math.floor((x - 25) / 128); if (i >= 0 && i < 4) coinAdd(i); } return; } mgHold = true; if (!keys.KeyE) hit.KeyE = 1; try { mgC.setPointerCapture(e.pointerId); } catch {} });
 for (const ev of ['pointerup', 'pointercancel']) mgC.addEventListener(ev, () => { mgHold = false; });
 const mgHeld = () => !!(keys.KeyE || keys.Space || mgHold);
 function startMG(cfg) {
   G.mg = { t: 0, holdT: 0, loud: 0, p: 0, ten: 0, pos: 0, dir: 1, n: 0, level: 0, flow: 0, target: .78, zc: rnd(.3, .7), ...cfg };
+  try { document.exitPointerLock(); } catch {} // free the mouse so you can click/hold the mini game
   $('#mgT').textContent = cfg.title; $('#mgH').textContent = cfg.hint || ''; mgEl.hidden = false; keys.KeyE = 0; hit.KeyE = 0; $('#prompt').innerHTML = '';
 }
-function endMG(ok) { const m = G.mg; if (!m) return; G.mg = null; mgEl.hidden = true; mgHold = false; if (ok && m.onDone) m.onDone(); }
+function endMG(ok) { const m = G.mg; if (!m) return; G.mg = null; mgEl.hidden = true; mgHold = false; hit.KeyE = hit.KeyR = hit.KeyT = 0; G.actCool = .3; if (ok && m.onDone) m.onDone(); }
+function mgGood(m) { const d = rnd(...m.goodNoise); Snd[m.snd || 'click'](d); noise(d, m.goodLabel || 'Quiet', P); m.flash = .25; m.flashOk = true; }
+function mgMiss(m, label) { m.miss = (m.miss || 0) + 1; m.flash = .3; m.flashOk = false; const d = rnd(...m.missNoise); Snd[m.missSnd || m.snd || 'bump'](d); noise(d, label || m.missLabel || 'Oops', P); }
+function newPat(m) { const n = 3 + (m.round > 0 ? 1 : 0); m.pat = [0]; for (let i = 1; i < n; i++) m.pat.push(m.pat[i - 1] + [.45, .7, .95][Math.random() * 3 | 0]); m.phase = 'demo'; m.t0 = m.t + .6; m.played = []; m.taps = []; }
+const COINS = [500, 100, 25, 10], money = (c) => '$' + (c / 100).toFixed(2);
+function coinAdd(i) {
+  const m = G.mg; if (!m || m.type !== 'coins' || m.doneT) return; const v = COINS[i], fast = m.t - (m.lastC ?? -9) < .45; m.lastC = m.t;
+  const d = (i === 0 ? 20 : i === 1 ? 30 : 26) + (fast ? 16 : 0) + rnd(-2, 3); Snd.coins(d); noise(d, fast ? 'Coins JINGLE' : 'Coin clinks', P); m.total += v; m.stack.push(v); m.flash = .2; m.flashOk = !fast;
+}
+function coinUndo() { const m = G.mg; if (!m || m.type !== 'coins' || !m.stack.length) return; m.total -= m.stack.pop(); Snd.click(24); noise(rnd(20, 28), 'Coin slid back', P); }
 const MGS = {
   tension(m, dt) {
     const held = mgHeld(), stir = G.stir > G.t; m.t += dt; m.holdT = held ? m.holdT + dt : 0;
@@ -246,13 +265,64 @@ const MGS = {
       if (G.phase === 'play' && m.n >= m.hits) endMG(true);
     } else { m.miss = (m.miss || 0) + 1; m.flash = .3; m.flashOk = false; const d = rnd(...m.missNoise); Snd[m.missSnd || m.snd || 'bump'](d); noise(d, m.missLabel || 'Oops', P); }
   },
+  // shared noise helpers for the newer mini games
+  lanes(m, dt) {
+    m.t += dt; m.notes = m.notes || []; m.spawn = (m.spawn ?? .6) - dt; m.flash = Math.max(0, (m.flash || 0) - dt);
+    if (m.spawn <= 0) { m.spawn = rnd(.55, .95); m.notes.push({ lane: Math.random() * 3 | 0, y: -.05 }); }
+    for (const n of m.notes) n.y += dt * (m.speed || .55);
+    for (let i = m.notes.length - 1; i >= 0; i--) if (m.notes[i].y > 1.05) { m.notes.splice(i, 1); mgMiss(m); if (G.phase !== 'play') return; }
+    for (let k = 0; k < 3; k++) if (hit[AKEYS[k]]) {
+      hit[AKEYS[k]] = 0; const nt = m.notes.find((n) => n.lane === k && Math.abs(n.y - .85) < .1);
+      if (nt) { m.notes.splice(m.notes.indexOf(nt), 1); m.n++; mgGood(m); } else mgMiss(m); if (G.phase !== 'play') return;
+    }
+    if (m.n >= m.hits) endMG(true);
+  },
+  chew(m, dt) {
+    m.t += dt; m.flash = Math.max(0, (m.flash || 0) - dt); m.exp = m.exp || 'KeyE';
+    for (const k of ['KeyE', 'KeyR']) if (hit[k]) {
+      hit[k] = 0; const gap = m.t - (m.lastT ?? -9), other = k === 'KeyE' ? 'KeyR' : 'KeyE';
+      if (k !== m.exp) { mgMiss(m, m.wrongLabel || 'Slurp'); m.streak = 0; }
+      else if (gap < .28) { const d = rnd(...m.fastNoise); Snd[m.missSnd || 'slurp'](d); noise(d, 'Too fast: a loud chomp', P); m.flash = .25; m.flashOk = false; m.n += .5; m.exp = other; m.lastT = m.t; }
+      else { m.n++; m.exp = other; m.lastT = m.t; mgGood(m); }
+      if (G.phase !== 'play') return;
+    }
+    if (m.n >= m.chews) endMG(true);
+  },
+  coins(m, dt) {
+    m.t += dt; m.flash = Math.max(0, (m.flash || 0) - dt);
+    if (m.total === m.target && !m.doneT) m.doneT = .5; if (m.doneT) { m.doneT -= dt; if (m.doneT <= 0) endMG(true); }
+  },
+  pattern(m, dt) {
+    m.t += dt; m.glow = Math.max(0, (m.glow || 0) - dt); m.flash = Math.max(0, (m.flash || 0) - dt);
+    if (!m.pat) { m.round = 0; newPat(m); }
+    if (m.phase === 'demo') {
+      const e = m.t - m.t0; m.pat.forEach((b, i) => { if (!m.played[i] && e >= b) { m.played[i] = 1; m.glow = .3; m.glowI = i; Snd.click(20); } });
+      if (e > m.pat[m.pat.length - 1] + .8) { m.phase = 'input'; m.taps = []; m.inT = m.t; }
+    } else {
+      if (m.t - m.inT > 7) { m.phase = 'demo'; m.t0 = m.t + .3; m.played = []; return; }
+      if (!hit.KeyE) return; hit.KeyE = 0; m.taps.push(m.t); m.glow = .2; m.glowI = m.taps.length - 1; Snd.click(22);
+      if (m.taps.length === m.pat.length) {
+        const off = m.taps.map((t) => t - m.taps[0]);
+        if (off.every((o, i) => Math.abs(o - m.pat[i]) < .26)) { m.round++; m.flash = .3; m.flashOk = true; mgGood(m); if (G.phase !== 'play') return; if (m.round >= m.rounds) { endMG(true); return; } newPat(m); }
+        else { mgMiss(m); m.phase = 'demo'; m.t0 = m.t + .6; m.played = []; }
+      }
+    }
+  },
+  balance(m, dt) {
+    m.t += dt; m.x = m.x ?? .3; m.v = m.v || 0; m.p = m.p || 0; m.flash = Math.max(0, (m.flash || 0) - dt);
+    const held = mgHeld(), drift = Math.sin(m.t * 1.3) * .5 + Math.sin(m.t * 2.9) * .25;
+    m.v += ((held ? 1 : -1) * 1.9 + drift * (G.stir > G.t ? 1.8 : .9)) * dt; m.v *= 1 - 1.5 * dt; m.x += m.v * dt;
+    if (Math.abs(m.x) < (m.zone || .3)) m.p += dt / (m.time || 3.5);
+    if (Math.abs(m.x) > .95) { const d = rnd(...m.missNoise); Snd[m.snd || 'bump'](d); noise(d, m.missLabel || 'Scrape', P); m.x = Math.sign(m.x) * .55; m.v = 0; m.flash = .3; m.p = Math.max(0, m.p - .12); if (G.phase !== 'play') return; }
+    if (m.p >= 1) endMG(true);
+  },
   pour(m, dt) {
     const held = mgHeld(); m.t += dt; m.flow = held ? Math.min(1, m.flow + dt * 1.2) : Math.max(0, m.flow - dt * 2.4); m.level += m.flow * dt * .15; m.splT = (m.splT || 0) + dt; m.flash = Math.max(0, (m.flash || 0) - dt);
     if (m.flow > .05 && m.splT > .45) { m.splT = 0; const d = 24 + m.flow * 16 + rnd(-2, 2); Snd.pour(d); noise(d, 'Water pouring', P); }
     if (G.phase !== 'play') return;
     if (m.level > m.target + .1) { const d = rnd(56, 66); Snd.bump(d); Snd.pour(d); noise(d, 'Hot water SPILLS!', P); m.level = m.target - .3; m.flow = 0; m.flash = .4; m.spills = (m.spills || 0) + 1; }
     if (G.phase !== 'play') return;
-    m.okT = Math.abs(m.level - m.target) < .05 && m.flow < .08 ? (m.okT || 0) + dt : 0; if (m.okT > .7) endMG(true);
+    m.okT = Math.abs(m.level - m.target) < .07 && m.flow < .08 ? (m.okT || 0) + dt : 0; if (m.okT > .7) endMG(true);
   },
 };
 function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
@@ -267,7 +337,9 @@ function drawMG(m) {
   const c = mgX, W = 560, H = 300; c.clearRect(0, 0, W, H);
   if (m.type === 'tension') {
     const cx = 165, cy = 140, R = 98, a0 = -Math.PI / 2, a1 = a0 + m.p * Math.PI * 2;
-    if (m.art === 'bolt') {
+    if (m.art === 'bag') {
+      c.fillStyle = '#4a5368'; rr(c, 40, 120, 250, 150, 16); c.fill(); const by = 30 + m.p * 120; c.fillStyle = '#efe0c2'; rr(c, 100, by, 130, 120, 8); c.fill(); c.fillStyle = '#d33a2c'; rr(c, 120, by + 30, 90, 20, 4); c.fill(); c.fillStyle = '#3a4358'; c.beginPath(); c.moveTo(60, 150); c.lineTo(270, 150); c.lineTo(250, 270); c.lineTo(80, 270); c.closePath(); c.fill(); c.fillStyle = '#98a3cc'; c.font = '700 12px system-ui'; c.textAlign = 'center'; c.fillText('HOODIE POCKET', 165, 212);
+    } else if (m.art === 'bolt') {
       c.fillStyle = '#5a3a28'; rr(c, 50, 30, 230, 220, 14); c.fill(); c.fillStyle = '#7a5238'; rr(c, 60, 40, 210, 200, 10); c.fill(); c.fillStyle = '#c9ced8'; c.beginPath(); c.arc(165, 140, 62, 0, 7); c.fill(); c.fillStyle = '#9aa1ae'; c.beginPath(); c.arc(165, 140, 48, 0, 7); c.fill();
       c.save(); c.translate(165, 140); c.rotate(m.p * Math.PI / 2); c.fillStyle = '#eef0f5'; rr(c, -12, -46, 24, 92, 8); c.fill(); c.restore(); c.fillStyle = '#2a2018'; c.fillRect(270, 125 + (1 - m.p) * 0, 22 - m.p * 22, 30);
     } else if (m.art === 'drawer') {
@@ -293,6 +365,51 @@ function drawMG(m) {
     c.fillStyle = m.flash > 0 ? (m.flashOk ? '#7ef0b0' : '#ff5a4a') : '#fff'; c.fillRect(x0 + m.pos * w - 3, y - 12, 6, 68);
     for (let i = 0; i < m.hits; i++) { c.fillStyle = i < m.n ? '#7ef0b0' : 'rgba(255,255,255,.18)'; c.beginPath(); c.arc(W / 2 - (m.hits - 1) * 14 + i * 28, 70, 8, 0, 7); c.fill(); }
     c.fillStyle = '#98a3cc'; c.font = '700 12px system-ui'; c.textAlign = 'center'; c.fillText(`Misses: ${m.miss || 0}`, W / 2, 230);
+  } else if (m.type === 'timing' && m.style === 'dial') {
+    const cx = 165, cy = 150, R = 100, ang = (p) => -Math.PI / 2 + (p - .5) * Math.PI * 1.35;
+    c.fillStyle = '#1c2338'; c.beginPath(); c.arc(cx, cy, R + 14, 0, 7); c.fill(); c.fillStyle = '#2a3558'; c.beginPath(); c.arc(cx, cy, R, 0, 7); c.fill();
+    for (let i = 0; i <= 20; i++) { const a = ang(i / 20), l = i % 5 ? 16 : 22; c.strokeStyle = '#98a3cc'; c.lineWidth = i % 5 ? 2 : 4; c.beginPath(); c.moveTo(cx + Math.cos(a) * (R - 8), cy + Math.sin(a) * (R - 8)); c.lineTo(cx + Math.cos(a) * (R - l), cy + Math.sin(a) * (R - l)); c.stroke(); }
+    c.strokeStyle = 'rgba(63,214,138,.85)'; c.lineWidth = 14; c.beginPath(); c.arc(cx, cy, R - 34, ang(m.zc - m.zoneW / 2), ang(m.zc + m.zoneW / 2)); c.stroke();
+    const a = ang(m.pos); c.strokeStyle = m.flash > 0 ? (m.flashOk ? '#7ef0b0' : '#ff5a4a') : '#ffd36b'; c.lineWidth = 6; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * (R - 22), cy + Math.sin(a) * (R - 22)); c.stroke(); c.fillStyle = '#eef0f5'; c.beginPath(); c.arc(cx, cy, 11, 0, 7); c.fill();
+    c.fillStyle = '#98a3cc'; c.font = '700 12px system-ui'; c.textAlign = 'center'; c.fillText('GAS KNOB', cx, cy + R + 34); c.fillStyle = '#ff9a5a'; c.beginPath(); c.moveTo(400, 150); c.quadraticCurveTo(372, 110, 400, 60); c.quadraticCurveTo(416, 100, 426, 120); c.quadraticCurveTo(440, 130, 400, 150); c.fill(); c.fillStyle = '#98a3cc'; c.fillText(`Misses: ${m.miss || 0}`, 400, 200);
+  } else if (m.type === 'lanes') {
+    const x0 = 110, lw = 110, top = 18, bot = 262, zy = top + .85 * (bot - top);
+    for (let k = 0; k < 3; k++) { c.fillStyle = 'rgba(255,255,255,.06)'; c.fillRect(x0 + k * lw + 4, top, lw - 8, bot - top); }
+    c.fillStyle = 'rgba(63,214,138,.22)'; c.fillRect(x0, zy - 26, lw * 3, 52); c.strokeStyle = '#7ef0b0'; c.lineWidth = 2; c.beginPath(); c.moveTo(x0, zy); c.lineTo(x0 + lw * 3, zy); c.stroke();
+    for (const n of m.notes || []) { c.fillStyle = ['#ff7a8a', '#ffd36b', '#7ac8ff'][n.lane]; rr(c, x0 + n.lane * lw + 12, top + n.y * (bot - top) - 12, lw - 24, 24, 8); c.fill(); }
+    ['E', 'R', 'T'].forEach((k, i) => { c.fillStyle = m.flash > 0 ? (m.flashOk ? '#7ef0b0' : '#ff5a4a') : '#eef0f5'; rr(c, x0 + i * lw + lw / 2 - 18, 270, 36, 26, 6); c.fill(); c.fillStyle = '#0b1230'; c.font = '800 14px system-ui'; c.textAlign = 'center'; c.fillText(k, x0 + i * lw + lw / 2, 289); });
+    c.fillStyle = '#eef2ff'; c.font = '800 20px system-ui'; c.textAlign = 'center'; c.fillText(`${m.n}/${m.hits}`, 470, 150); c.fillStyle = '#98a3cc'; c.font = '700 12px system-ui'; c.fillText(`Misses: ${m.miss || 0}`, 470, 175);
+  } else if (m.type === 'chew') {
+    const f = clamp(m.n / m.chews, 0, 1), cx = 165, cy = 140;
+    if (m.art === 'burger') {
+      c.fillStyle = '#d99a4a'; c.beginPath(); c.ellipse(cx, cy - 40, 100, 42, 0, Math.PI, 0); c.fill(); c.fillStyle = '#5a9a3a'; rr(c, cx - 104, cy - 38, 208, 12, 6); c.fill(); c.fillStyle = '#e8c23a'; rr(c, cx - 98, cy - 28, 196, 8, 4); c.fill(); c.fillStyle = '#6a3a22'; rr(c, cx - 100, cy - 20, 200, 26, 12); c.fill(); c.fillStyle = '#c93a32'; rr(c, cx - 96, cy + 4, 192, 9, 4); c.fill(); c.fillStyle = '#d99a4a'; rr(c, cx - 100, cy + 12, 200, 28, 14); c.fill();
+      c.fillStyle = '#10162f'; for (let i = 0; i < Math.floor(f * 8); i++) { c.beginPath(); c.arc(cx + 112 - i * 25, cy - 4 + (i % 2 ? 22 : -24), 30, 0, 7); c.fill(); }
+    } else {
+      c.fillStyle = '#d04a3a'; c.beginPath(); c.moveTo(cx - 88, cy - 10); c.lineTo(cx + 88, cy - 10); c.lineTo(cx + 60, cy + 90); c.lineTo(cx - 60, cy + 90); c.closePath(); c.fill(); c.fillStyle = '#f2d78d'; c.beginPath(); c.ellipse(cx, cy - 10 + f * 22, 86, 20, 0, 0, 7); c.fill();
+      c.strokeStyle = 'rgba(180,120,40,.7)'; c.lineWidth = 3; for (let i = 0; i < 6; i++) { c.beginPath(); c.arc(cx - 50 + i * 20, cy - 12 + f * 22, 12, 0, 4); c.stroke(); } const fy = cy - 60 - Math.sin(m.t * 5) * 8; c.strokeStyle = '#c6ccd6'; c.lineWidth = 5; c.beginPath(); c.moveTo(cx + 110, cy - 110); c.lineTo(cx + 20, fy + 20); c.stroke();
+    }
+    ['E', 'R'].forEach((k, i) => { const on = m.exp === 'Key' + k; c.fillStyle = on ? '#7ef0b0' : 'rgba(255,255,255,.14)'; rr(c, 380 + i * 66, 100, 56, 50, 10); c.fill(); c.fillStyle = on ? '#0b1230' : '#98a3cc'; c.font = '800 22px system-ui'; c.textAlign = 'center'; c.fillText(k, 408 + i * 66, 133); });
+    const ph = (m.t % .7) / .7; c.strokeStyle = `rgba(126,240,176,${1 - ph})`; c.lineWidth = 3; c.beginPath(); c.arc(436, 190, 16 + ph * 18, 0, 7); c.stroke(); c.fillStyle = '#98a3cc'; c.font = '700 12px system-ui'; c.textAlign = 'center'; c.fillText('keep this tempo', 436, 240);
+    c.fillStyle = '#eef2ff'; c.font = '800 16px system-ui'; c.fillText(`${Math.floor(m.n)}/${m.chews} chews`, 436, 75); if (m.flash > 0 && !m.flashOk) { c.fillStyle = `rgba(255,70,60,${m.flash * .5})`; c.fillRect(0, 0, W, H); }
+  } else if (m.type === 'coins') {
+    c.fillStyle = '#98a3cc'; c.font = '700 13px system-ui'; c.textAlign = 'center'; c.fillText('PAY EXACTLY', 280, 28); c.fillStyle = '#eef2ff'; c.font = '900 34px ui-monospace, monospace'; c.fillText(money(m.target), 280, 66);
+    const col = m.total === m.target ? '#7ef0b0' : m.total > m.target ? '#ff7a6a' : '#ffd36b'; c.fillStyle = col; c.font = '800 20px ui-monospace, monospace'; c.fillText('in hand: ' + money(m.total), 280, 98);
+    m.stack.forEach((v, i) => { const x = 40 + (i % 16) * 31, y = 150 - Math.floor(i / 16) * 20; c.fillStyle = v === 500 ? '#5a9a6a' : v === 100 ? '#d8c060' : v === 25 ? '#c6ccd6' : '#b8bcc6'; if (v === 500) rr(c, x - 12, y - 8, 28, 16, 3); else { c.beginPath(); c.arc(x, y, v === 100 ? 12 : v === 25 ? 11 : 9, 0, 7); } c.fill(); });
+    ['$5 note', '$1 coin', '25¢', '10¢'].forEach((l, i) => { c.fillStyle = 'rgba(255,255,255,.1)'; rr(c, 25 + i * 128, 205, 118, 66, 12); c.fill(); c.fillStyle = '#eef2ff'; c.font = '800 16px system-ui'; c.textAlign = 'center'; c.fillText(l, 84 + i * 128, 238); c.fillStyle = '#7ef0b0'; c.font = '700 12px ui-monospace, monospace'; c.fillText(`[${i + 1}]`, 84 + i * 128, 260); });
+    c.fillStyle = '#98a3cc'; c.font = '700 11px system-ui'; c.fillText('Backspace / Q = take the last one back · click fast = jingle!', 280, 292);
+  } else if (m.type === 'pattern') {
+    c.fillStyle = '#eef2ff'; c.font = '800 18px system-ui'; c.textAlign = 'center'; c.fillText(m.phase === 'demo' ? 'Watch the rhythm...' : 'Your turn: tap E in the same rhythm', 280, 40);
+    const n = m.pat ? m.pat.length : 3; for (let i = 0; i < n; i++) { const cx = 280 + (i - (n - 1) / 2) * 92, on = m.glow > 0 && m.glowI === i; c.fillStyle = on ? (m.phase === 'demo' ? '#7ac8ff' : '#7ef0b0') : 'rgba(255,255,255,.12)'; c.beginPath(); c.arc(cx, 150, 32, 0, 7); c.fill(); if (on) { c.strokeStyle = '#fff8'; c.lineWidth = 3; c.stroke(); } }
+    for (let i = 0; i < m.rounds; i++) { c.fillStyle = i < (m.round || 0) ? '#7ef0b0' : 'rgba(255,255,255,.18)'; c.beginPath(); c.arc(280 - (m.rounds - 1) * 14 + i * 28, 240, 8, 0, 7); c.fill(); }
+    c.fillStyle = '#98a3cc'; c.font = '700 12px system-ui'; c.fillText(`Misses: ${m.miss || 0}`, 280, 275); if (m.flash > 0 && !m.flashOk) { c.fillStyle = `rgba(255,70,60,${m.flash * .5})`; c.fillRect(0, 0, W, H); }
+  } else if (m.type === 'balance') {
+    const bx = 280, by = 215, hw = 220, px = bx + clamp(m.x, -1, 1) * hw;
+    if (m.art === 'jack') { c.fillStyle = '#2a3558'; rr(c, bx - 40, 70, 80, 50, 8); c.fill(); c.fillStyle = '#0b1020'; rr(c, bx - 8, 96, 16, 24, 4); c.fill(); c.fillStyle = '#c6ccd6'; rr(c, px - 10, 30 + (1 - m.p) * 20, 20, 70, 6); c.fill(); c.fillStyle = '#e0a030'; rr(c, px - 5, 100 + (1 - m.p) * 20, 10, 24, 3); c.fill(); }
+    else if (m.art === 'switch') { c.fillStyle = '#2a3558'; rr(c, bx - 60, 70, 120, 70, 12); c.fill(); c.strokeStyle = '#eef0f5'; c.lineWidth = 12; c.lineCap = 'round'; c.beginPath(); c.moveTo(bx, 130); c.lineTo(bx + clamp(m.x, -1, 1) * 46, 82); c.stroke(); c.lineCap = 'butt'; }
+    else { c.fillStyle = '#2a3558'; c.beginPath(); c.arc(bx, 100, 56, 0, 7); c.fill(); c.fillStyle = '#c6ccd6'; for (let i = 0; i < 4; i++) { const a = m.t * (4 + Math.abs(m.x) * 22) + i * Math.PI / 2; c.beginPath(); c.moveTo(bx, 100); c.arc(bx, 100, 50, a, a + .6); c.closePath(); c.fill(); } }
+    c.fillStyle = 'rgba(255,255,255,.1)'; rr(c, bx - hw, by, hw * 2, 20, 10); c.fill(); c.fillStyle = 'rgba(63,214,138,.5)'; c.fillRect(bx - (m.zone || .3) * hw, by, (m.zone || .3) * hw * 2, 20); c.fillStyle = 'rgba(255,90,74,.35)'; c.fillRect(bx - hw, by, hw * .05, 20); c.fillRect(bx + hw * .95, by, hw * .05, 20);
+    c.fillStyle = m.flash > 0 ? '#ff5a4a' : '#fff'; c.beginPath(); c.arc(px, by + 10, 15, 0, 7); c.fill(); c.fillStyle = '#10162f'; rr(c, 60, 262, 440, 10, 5); c.fill(); c.fillStyle = '#7ef0b0'; rr(c, 60, 262, Math.max(8, 440 * m.p), 10, 5); c.fill();
+    c.fillStyle = '#98a3cc'; c.font = '700 11px system-ui'; c.textAlign = 'center'; c.fillText('HOLD E = lean right, release = lean left: stay in the green', 280, 252);
   } else if (m.type === 'pour') {
     const lx = 150, top = 50, bot = 260, tw = 120, bw = 90; c.fillStyle = 'rgba(255,255,255,.07)'; c.beginPath(); c.moveTo(lx - tw / 2, top); c.lineTo(lx + tw / 2, top); c.lineTo(lx + bw / 2, bot); c.lineTo(lx - bw / 2, bot); c.closePath(); c.fill();
     const wy = bot - m.level * (bot - top), wl = (bot - wy) / (bot - top), hw = bw / 2 + (tw / 2 - bw / 2) * wl; c.fillStyle = 'rgba(120,190,255,.75)'; c.beginPath(); c.moveTo(lx - hw, wy); c.lineTo(lx + hw, wy); c.lineTo(lx + bw / 2, bot); c.lineTo(lx - bw / 2, bot); c.closePath(); c.fill();
@@ -310,9 +427,14 @@ function drawMG(m) {
 const DP = { yours: [2.5, 6], mom: [9.5, 6], front: [2.0, 10], patio: [12, 3.5], cab: [7.8, .62], drawer: [8.7, 1.62] };
 const DNAME = { yours: 'your bedroom door', mom: "Mom's door", front: 'front door', patio: 'patio door', cab: 'kitchen cabinet', drawer: 'nightstand drawer' };
 const IN = () => G.inter || [];
+function findDoor() { // the door you are facing, for holding Q to close it even when something else (a friend) is closer
+  const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw); let best = null, bs = 1e9;
+  for (const id in DP) { const d = D[id], dx = DP[id][0] - P.x, dz = DP[id][1] - P.z, dist = Math.hypot(dx, dz); if (dist > 1.8 || Math.abs(((d.y || 0) >= 2.5 ? 3 : 0) - P.y) > 2.2) continue; const dot = (dx * fx + dz * fz) / Math.max(dist, .01); if (dot < .3 && dist > .7) continue; const s = dist - dot * 2; if (s < bs) { bs = s; best = { id, d }; } }
+  return best;
+}
 function findTarget() {
   const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw); let best = null, bs = 1e9;
-  const test = (x, z, y, r, o) => { const dx = x - P.x, dz = z - P.z, d = Math.hypot(dx, dz); if (d > r || Math.abs(y - P.y) > 2.2) return; const dot = (dx * fx + dz * fz) / Math.max(d, .01); if (dot < .35 && d > .6) return; const s = d - dot; if (s < bs) { bs = s; best = o; } };
+  const test = (x, z, y, r, o) => { const dx = x - P.x, dz = z - P.z, d = Math.hypot(dx, dz); if (d > r || Math.abs(y - P.y) > 2.2) return; const dot = (dx * fx + dz * fz) / Math.max(d, .01); if (dot < .35 && d > .6) return; const s = d * .6 - dot * 3 + (o.low ? 1.5 : 0); if (s < bs) { bs = s; best = o; } };
   for (const id in DP) { const d = D[id]; test(DP[id][0], DP[id][1], (d.y || 0) >= 2.5 ? 3 : 0, id === 'cab' || id === 'drawer' ? 1.5 : 1.7, { kind: 'door', id, d }); }
   for (const it of IN()) { if (it.acts ? !actsOf(it).length : (it.when && !it.when())) continue; const pp = it.pos ? it.pos() : [it.x, it.z, it.y || 0]; test(pp[0], pp[1], pp[2], it.r || 1.6, it); }
   return best;
@@ -358,13 +480,13 @@ const MISSIONS = [
           A('Pour the hot water into the cup', [26, 34], 'reach', .6, { mini: true, snd: 'click', when: () => F.kHot && hotReady(), fn: pourMG('k') })] },
         { x: 8.25, z: .85, r: 1.6, name: 'stove', acts: [
           A('Put the pot on the stove', [32, 44], 'reach', 1.4, { snd: 'clang', when: () => F.pot && F.potWater && !F.potPlaced, fn() { F.potPlaced = 1; F.pot = 0; } }),
-          A('Light the burner', [24, 30], 'twist', .6, { mini: true, snd: 'click', when: () => F.potPlaced && !F.burner, fn: () => startMG({ type: 'timing', title: 'Light the burner', hint: 'Press E when the knob is in the green zone. Too early or late and the gas ignites with a WHUMP.', hits: 1, speed: 1.15, zoneW: .2, missNoise: [44, 58], missLabel: 'Gas ignites with a WHUMP', goodNoise: [24, 30], goodLabel: 'Burner clicks on', snd: 'click', onDone() { F.burner = 1; G.heat = { t: 9, tick: 0 }; toast('Blue flame. Wait for the water to boil...'); } }) }),
+          A('Light the burner', [24, 30], 'twist', .6, { mini: true, snd: 'click', when: () => F.potPlaced && !F.burner, fn: () => startMG({ type: 'timing', title: 'Light the burner', hint: 'Press E when the knob is in the green zone. Too early or late and the gas ignites with a WHUMP.', style: 'dial', hits: 1, speed: 1.15, zoneW: .2, missNoise: [44, 58], missLabel: 'Gas ignites with a WHUMP', goodNoise: [24, 30], goodLabel: 'Burner clicks on', snd: 'click', onDone() { F.burner = 1; G.heat = { t: 9, tick: 0 }; toast('Blue flame. Wait for the water to boil...'); } }) }),
           A('Pour the boiling water into the cup', [26, 34], 'reach', .6, { mini: true, snd: 'click', when: () => F.potHot && hotReady(), fn: pourMG('p') }),
           A('Turn the burner off', [22, 28], 'twist', 1.1, { snd: 'click', when: () => F.burner && !(F.potHot && hotReady()), fn() { F.burner = 0; G.heat = null; } })] },
         { x: 9.55, z: .85, r: 1.6, name: 'microwave', acts: [
           A('Microwave the cup (stop it at 0:01)', [24, 32], 'press', 1, { snd: 'click', when: () => F.cupWater === 1 && F.noodles && !G.mw, fn() { G.mw = { t: 8, hum: 0 }; K.mwGlow.visible = true; toast('Press E when the timer shows 0:01!'); } })] },
         { x: 9.5, z: 1.95, r: 1.8, name: 'kitchen island', acts: [
-          A('Eat the noodles', [20, 24], 'reach', .6, { mini: true, snd: 'click', when: () => F.ready && !F.eaten && !F.carry, fn: () => startMG({ type: 'timing', title: 'Eat quietly', hint: 'Press E when the marker is in the green zone to chew softly. Mistime it and you slurp!', hits: 4, speed: .95, zoneW: .26, missNoise: [52, 70], missLabel: 'SLURP!', goodNoise: [24, 36], goodLabel: 'Quiet chewing', snd: 'chew', missSnd: 'slurp', onDone() { F.eaten = 1; toast('All gone. Now back to bed...', 'ok'); } }) }),
+          A('Eat the noodles', [20, 24], 'reach', .6, { mini: true, snd: 'click', when: () => F.ready && !F.eaten && !F.carry, fn: () => startMG({ type: 'chew', art: 'noodles', title: 'Eat quietly', hint: 'Alternate E and R in a steady rhythm to chew. Too fast is a loud chomp, the wrong key is a slurp!', chews: 10, goodNoise: [20, 30], fastNoise: [44, 58], missNoise: [50, 66], snd: 'chew', missSnd: 'slurp', goodLabel: 'Quiet chew', wrongLabel: 'SLURP!', onDone() { F.eaten = 1; toast('All gone. Now back to bed...', 'ok'); } }) }),
           A('Carry the cup upstairs', [20, 34], 'carry', 1.2, { snd: 'handle', when: () => F.ready && !F.eaten && !F.carry, fn() { F.carry = 1; } })] },
       ];
     } },
@@ -385,19 +507,19 @@ const MISSIONS = [
       { obj: 'Sneak back to bed and close your door (hold Q)', ok: () => inRoom('Your Bedroom') && D.yours.v < .07 },
     ],
     setup() {
-      const F = G.f, playMG = (title, c, bonus) => startMG({ type: 'timing', title, hint: 'Press E when the marker is in the green zone to land each shot. Misses make the keyboard clatter!', missLabel: 'Keys clatter', goodLabel: 'Key taps', snd: 'keys', onDone() { F.match = 1; G.bonus = (G.bonus || 0) + bonus; }, ...c }), boot = () => { F.pcOn = 1; F.rgb = F.rgbOff ? 0 : 1; Snd.fan(26); };
+      const F = G.f, playMG = (title, c, bonus) => startMG({ type: 'lanes', title, hint: 'Press E, R or T as each note reaches the green line to land the shot. Misses make the keyboard clatter!', missLabel: 'Keys clatter', goodLabel: 'Key taps', snd: 'keys', onDone() { F.match = 1; G.bonus = (G.bonus || 0) + bonus; }, ...c, speed: (c.speed || 1) * .5 }), boot = () => { F.pcOn = 1; F.rgb = F.rgbOff ? 0 : 1; Snd.fan(26); };
       G.inter = [
         { x: .6, z: 5.15, r: 1.9, name: 'PC tower', acts: [
           A('Flip the RGB switch off', [20, 28], 'press', 1.2, { snd: 'click', when: () => !F.rgbOff && !F.shut, fn() { F.rgbOff = 1; F.rgb = 0; } }),
-          A('Press the power button', [18, 22], 'press', .6, { snd: 'click', when: () => !F.pcOn, fn: () => TM('Safe boot', 'Time the button press so the fans spin up softly.', { hits: 2, speed: .9, zoneW: .28, goodNoise: [24, 32], missNoise: [38, 52], goodLabel: 'Fans spin up', missLabel: 'Fans ROAR', snd: 'fan', onDone() { boot(); if (F.rgb) addAlert(8); } }) }),
+          A('Press the power button', [18, 22], 'press', .6, { snd: 'click', when: () => !F.pcOn, fn: () => startMG({ type: 'balance', art: 'fan', title: 'Safe boot', hint: 'Keep the fan speed in the green zone while it spins up. Hold E to speed it up, release to slow it.', time: 3.2, zone: .34, missNoise: [38, 52], missLabel: 'Fans ROAR', snd: 'fan', onDone() { boot(); if (F.rgb) addAlert(8); } }) }),
           A('Wake it from your phone (silent)', [18, 22], 'phone', 1, { snd: 'buzz', when: () => !F.pcOn, fn: () => TM('Wake-on-LAN from your phone', 'Send the signal at the right moment so the screen does not blast on.', { hits: 2, speed: 1, zoneW: .3, goodNoise: [20, 28], missNoise: [34, 46], goodLabel: 'Phone taps', missLabel: 'Screen blasts on', snd: 'click', onDone() { boot(); addAlert(3); } }) }),
           A('Sleep the PC with the keyboard shortcut', [19, 29], 'press', 1, { snd: 'click', when: () => F.cele && !F.shut, fn() { F.shut = 1; F.pcOn = 0; F.rgb = 0; } }),
           A('Hold the power button: full shutdown', [28, 40], 'press', 2.5, { snd: 'fan', ex: 4, when: () => F.cele && !F.shut, fn() { F.shut = 1; F.pcOn = 0; F.rgb = 0; } }),
           A('Leave it running and go', [20, 30], 'reach', .6, { snd: 'click', ex: 12, when: () => F.cele && !F.shut, fn() { F.shut = 1; } })] },
         { x: .4, z: 4.05, r: 1.8, name: 'headset', acts: [
-          A('Headset on, mic muted, volume low', [18, 22], 'reach', .6, { snd: 'rustle', when: () => F.pcOn && !F.headset, fn: () => TM('Plug in the headset', 'Slide the jack in without a clunk.', { hits: 2, speed: .9, zoneW: .3, goodNoise: [20, 28], missNoise: [34, 46], goodLabel: 'Jack slides in', missLabel: 'Jack clunks', snd: 'click', onDone() { F.headset = 1; } }) }),
-          A('One ear off to hear the room', [18, 22], 'reach', .6, { snd: 'rustle', when: () => F.pcOn && !F.headset, fn: () => TM('Plug in the headset', 'Slide the jack in without a clunk.', { hits: 2, speed: .9, zoneW: .3, goodNoise: [20, 28], missNoise: [34, 46], goodLabel: 'Jack slides in', missLabel: 'Jack clunks', snd: 'click', onDone() { F.headset = 1; if (Math.random() < 0.2) { const d = rnd(58, 66); Snd.rustle(d); noise(d, 'A teammate yells in your headset', P); } } }) }),
-          A('Mic on so your squad hears callouts', [18, 22], 'reach', .6, { snd: 'rustle', when: () => F.pcOn && !F.headset, fn: () => TM('Plug in the headset', 'Slide the jack in without a clunk.', { hits: 2, speed: .9, zoneW: .3, goodNoise: [20, 28], missNoise: [34, 46], goodLabel: 'Jack slides in', missLabel: 'Jack clunks', snd: 'click', onDone() { F.headset = 1; if (Math.random() < 0.35) { const d = rnd(62, 78); Snd.rustle(d); noise(d, 'A teammate yells in your headset', P); } } }) })] },
+          A('Headset on, mic muted, volume low', [18, 22], 'reach', .6, { snd: 'rustle', when: () => F.pcOn && !F.headset, fn: () => startMG({ type: 'balance', art: 'jack', title: 'Plug in the headset', hint: 'Guide the jack into the socket: hold E to push right, release to push left. Keep it in the green zone and do not scrape the edges.', time: 3.2, zone: .34, missNoise: [34, 46], missLabel: 'Jack clunks', snd: 'click', onDone() { F.headset = 1; } }) }),
+          A('One ear off to hear the room', [18, 22], 'reach', .6, { snd: 'rustle', when: () => F.pcOn && !F.headset, fn: () => startMG({ type: 'balance', art: 'jack', title: 'Plug in the headset', hint: 'Guide the jack into the socket: hold E to push right, release to push left. Keep it in the green zone and do not scrape the edges.', time: 3.2, zone: .34, missNoise: [34, 46], missLabel: 'Jack clunks', snd: 'click', onDone() { F.headset = 1; if (Math.random() < 0.2) { const d = rnd(58, 66); Snd.rustle(d); noise(d, 'A teammate yells in your headset', P); } } }) }),
+          A('Mic on so your squad hears callouts', [18, 22], 'reach', .6, { snd: 'rustle', when: () => F.pcOn && !F.headset, fn: () => startMG({ type: 'balance', art: 'jack', title: 'Plug in the headset', hint: 'Guide the jack into the socket: hold E to push right, release to push left. Keep it in the green zone and do not scrape the edges.', time: 3.2, zone: .34, missNoise: [34, 46], missLabel: 'Jack clunks', snd: 'click', onDone() { F.headset = 1; if (Math.random() < 0.35) { const d = rnd(62, 78); Snd.rustle(d); noise(d, 'A teammate yells in your headset', P); } } }) })] },
         { x: .45, z: 4.55, r: 1.8, name: 'keyboard', acts: [
           A('Play: soft keys, slow flicks', [18, 22], 'type', .5, { snd: 'click', when: () => F.headset && !F.match, fn: () => playMG('Clutch 1v3: soft keys', { hits: 5, speed: .85, zoneW: .3, goodNoise: [20, 28], missNoise: [30, 40] }, 30) }),
           A('Play: hammer the mechanical keyboard', [18, 22], 'type', .5, { snd: 'click', when: () => F.headset && !F.match, fn: () => playMG('Clutch 1v3: mechanical flicks', { hits: 6, speed: 1.4, zoneW: .17, goodNoise: [34, 46], missNoise: [50, 64] }, 80) }),
@@ -420,6 +542,7 @@ const MISSIONS = [
       { obj: 'Meet the driver and take the food', ok: () => G.f.bag },
       { obj: 'Close the front door behind you (hold Q)', ok: () => D.front.v < .08 && !inRoom('Front Porch') },
       { obj: 'Sneak upstairs and close your bedroom door', ok: () => inRoom('Your Bedroom') && D.yours.v < .07 },
+      { obj: 'Enjoy it: press the burger slot in your item box and eat quietly', ok: () => G.f.ate },
     ],
     setup() {
       const F = G.f; F.locked = 1; G.arr = G.sc.t0 + G.sc.eta - 22; G.sc.eta0 = G.sc.t0 + G.sc.eta; World.driver.visible = true;
@@ -429,8 +552,8 @@ const MISSIONS = [
             onDone() { F.unlocked = 1; D.front.locked = 0; Snd.bolt(28); noise(rnd(24, 34), 'Deadbolt slides back', P); } }) })] },
         { x: 2, z: 11.2, y: 0, r: 2.4, name: 'delivery driver', acts: [
           A('Whisper thanks, take the bag, tip on the phone', [18, 22], 'reach', .6, { snd: 'crinkle', when: () => G.driverHere && !F.bag, fn: () => TM('Quiet handoff', 'Take the bag without crinkling it.', { hits: 3, speed: .8, zoneW: .32, goodNoise: [20, 28], missNoise: [36, 48], goodLabel: 'Bag shifts', missLabel: 'The bag crinkles', snd: 'crinkle', onDone() { F.bag = 1; addAlert(6); give('bag'); G.held.R = 'Burger Bag'; } }) }),
-          A('Pay cash and ask for change', [18, 22], 'reach', .6, { snd: 'coins', when: () => G.driverHere && !F.bag, fn: () => TM('Count the coins quietly', 'Do not let the coins jingle.', { hits: 3, speed: 1, zoneW: .26, goodNoise: [26, 36], missNoise: [44, 58], goodLabel: 'Coins click', missLabel: 'Coins JINGLE', snd: 'coins', onDone() { F.bag = 1; addAlert(6); give('bag'); G.held.R = 'Burger Bag'; } }) }),
-          A('Stuff the bag in your hoodie', [18, 22], 'carry', .6, { snd: 'crinkle', when: () => G.driverHere && !F.bag, fn: () => TM('Tuck it away', 'Get the bag inside your hoodie before it crinkles.', { hits: 4, speed: 1.1, zoneW: .24, goodNoise: [20, 30], missNoise: [38, 52], goodLabel: 'Fabric rustles', missLabel: 'The bag crinkles', snd: 'crinkle', onDone() { F.bag = 1; F.hoodie = 1; addAlert(2); give('bag'); G.held.R = 'Bag (in hoodie)'; } }) })] },
+          A('Pay cash and ask for change', [18, 22], 'reach', .6, { snd: 'coins', when: () => G.driverHere && !F.bag, fn: () => startMG({ type: 'coins', title: 'Count out the money', hint: 'Pay exactly the amount. Press 1-4 (or click) to add a $5 note, $1 coin, 25¢ or 10¢. Tap too fast and the coins jingle!', target: [635, 745, 825][Math.random() * 3 | 0], total: 0, stack: [], onDone() { F.bag = 1; addAlert(4); give('bag'); G.held.R = 'Burger Bag'; } }) }),
+          A('Stuff the bag in your hoodie', [18, 22], 'carry', .6, { snd: 'crinkle', when: () => G.driverHere && !F.bag, fn: () => startMG({ type: 'tension', title: 'Tuck the bag into your hoodie', art: 'bag', speed: 1, sticky: [.4], snd: 'crinkle', fail: 'The bag crinkles loudly', hint: 'HOLD E to slide the bag into your hoodie pocket. Keep the needle in the green zone. Rushing crinkles the paper!', onDone() { F.bag = 1; F.hoodie = 1; addAlert(2); give('bag'); G.held.R = 'Bag (in hoodie)'; } }) })] },
       ];
     } },
 
@@ -454,10 +577,10 @@ const MISSIONS = [
       G.inter = [
         { x: 14, z: 2.8, y: 0, r: 3.6, name: 'Biscuit the dog', acts: [
           A('Offer a treat from your pocket', [18, 22], 'reach', .6, { snd: 'crunch', when: () => !F.dog, fn: () => TM('Offer the treat', 'Hold it out at the right moment so he takes it gently.', { hits: 2, speed: .9, zoneW: .3, goodNoise: [20, 30], missNoise: [38, 52], goodLabel: 'Crunch', missLabel: 'Biscuit snaps and whines', snd: 'crunch', missSnd: 'whine', onDone: calm() }) }),
-          A('Pet him gently and whisper "sit"', [18, 22], 'reach', .6, { snd: 'whisper', when: () => !F.dog, fn: () => TM('Calm him with the rhythm', 'Pet in time with his tail. Slow and steady keeps him quiet.', { hits: 5, speed: .7, zoneW: .36, goodNoise: [18, 26], missNoise: [40, 56], goodLabel: 'Soft pat', missLabel: 'Biscuit whines', snd: 'rustle', missSnd: 'whine', onDone: calm() }) }),
+          A('Pet him gently and whisper "sit"', [18, 22], 'reach', .6, { snd: 'whisper', when: () => !F.dog, fn: () => startMG({ type: 'pattern', title: 'Calm Biscuit', rounds: 3, hint: 'Watch the pattern of pats, then pet him in the same rhythm (tap E). A wrong rhythm makes him whine.', goodNoise: [18, 26], missNoise: [40, 56], goodLabel: 'Soft pat', missLabel: 'Biscuit whines', snd: 'rustle', missSnd: 'whine', onDone: calm() }) }),
           A('Step in on the beat of his tail thumps', [18, 22], 'reach', .6, { snd: 'thump', when: () => !F.dog, fn: () => TM('Move on the beat', 'Match his thumps so the noise hides yours.', { hits: 3, speed: 1.25, zoneW: .22, goodNoise: [17, 26], missNoise: [40, 54], goodLabel: 'Quiet step', missLabel: 'Off beat: a creak', snd: 'thump', onDone: calm(() => { G.thumpUntil = G.t + 8; }) }) })] },
-        { pos: () => (G.sam ? [G.sam.x, G.sam.z, G.sam.y > 1.5 ? 3 : 0] : [0, 0, 0]), r: 2.6, name: 'Sam', acts: [
-          A('Whisper the plan to Sam', [18, 22], 'reach', .6, { snd: 'whisper', when: () => F.dog && !F.samBriefed && G.sam && G.sam.mode !== 'gone', fn: () => TM('Whisper the plan', 'Tell Sam where to step. A loud whisper carries upstairs.', { hits: 3, speed: .9, zoneW: .3, goodNoise: [20, 28], missNoise: [36, 48], goodLabel: 'Whisper', missLabel: 'A whisper carries', snd: 'whisper', onDone() { F.samBriefed = 1; toast('Sam knows the plan: he steps more softly now.', 'ok'); } }) })] },
+        { pos: () => (G.sam ? [G.sam.x, G.sam.z, G.sam.y > 1.5 ? 3 : 0] : [0, 0, 0]), r: 2.6, low: true, name: 'Sam', acts: [
+          A('Whisper the plan to Sam', [18, 22], 'reach', .6, { snd: 'whisper', when: () => F.dog && !F.samBriefed && G.sam && G.sam.mode !== 'gone', fn: () => startMG({ type: 'pattern', title: 'Signal the plan to Sam', rounds: 2, hint: 'Watch the hand-signal rhythm, then tap E to repeat it so Sam understands. A wrong signal carries as a noise.', goodNoise: [20, 28], missNoise: [36, 48], goodLabel: 'Signal', missLabel: 'A whisper carries', snd: 'whisper', onDone() { F.samBriefed = 1; toast('Sam knows the plan: he steps more softly now.', 'ok'); } }) })] },
       ];
     } },
 
@@ -482,7 +605,7 @@ const MISSIONS = [
         A('Lift phone AND charger together, palm over the screen', [21, 34], 'reach', 2, { snd: 'handle', ex: 3, when: () => D.drawer.v >= .6 && !F.phone, fn: got }),
         A('Unplug the cable first, then lift the phone', [18, 22], 'reach', .5, { snd: 'click', when: () => D.drawer.v >= .6 && !F.phone, fn: () => startMG({ type: 'tension', title: 'Unplug the charger slowly', hint: 'HOLD E to pull the cable out. Keep the needle in the green zone. Pull too hard and the plug scrapes (and the charging chime rings!).', snd: 'chime', fail: 'The plug scrapes and chimes', art: 'cable', speed: .8, onDone: got }) }),
         A('Lean across the bed to grab it', [34, 56], 'reach', 1.2, { snd: 'bump', ex: 6, when: () => D.drawer.v >= .6 && !F.phone, fn: got }),
-        A('Flip the ringer switch, palm over the screen', [18, 22], 'phone', .8, { snd: 'click', when: () => F.phone && !F.muted, fn: () => TM('Flip the ringer switch', 'Flick the switch with your thumb without a click that carries.', { hits: 2, speed: 1.1, zoneW: .26, goodNoise: [18, 26], missNoise: [34, 46], goodLabel: 'Switch flicks', missLabel: 'Switch clicks loudly', snd: 'click', onDone: muted }) }),
+        A('Flip the ringer switch, palm over the screen', [18, 22], 'phone', .8, { snd: 'click', when: () => F.phone && !F.muted, fn: () => startMG({ type: 'balance', art: 'switch', title: 'Flip the ringer switch', hint: 'Ease the switch toward the middle: hold E to push it right, release to push it left. Do not slam it to either end!', time: 3.2, zone: .34, missNoise: [34, 46], missLabel: 'Switch clicks loudly', snd: 'click', onDone() { muted(); } }) }),
         A('Press power to blank the screen', [20, 32], 'phone', 1.2, { snd: 'click', ex: 3, when: () => F.phone && !F.muted, fn: muted }),
         A('Ignore it and retreat first', [20, 30], 'reach', .6, { snd: 'buzz', spike: [.35, 60, 72], ex: 8, when: () => F.phone && !F.muted, fn: muted })] }];
     } },
@@ -622,6 +745,7 @@ function update(dt) {
   // scheduled noises and busy actions
   for (let i = G.sched.length - 1; i >= 0; i--) if (G.t >= G.sched[i].at) { const s = G.sched.splice(i, 1)[0]; s.f(); if (G.phase !== 'play') return; }
   if (G.busy) { G.busy.t -= dt; prog(0, G.busy.label, false); if (G.busy.t <= 0) { const a = G.busy.a; G.busy = null; G.fx = null; if (a.bonus) G.bonus = (G.bonus || 0) + a.bonus; a.fn && a.fn(); if (a.say) toast(a.say); } }
+  if (G.actCool > 0) G.actCool -= dt;
   if (G.mg) { MGS[G.mg.type](G.mg, dt); if (G.phase !== 'play') return; if (G.mg) drawMG(G.mg); }
   const locked = G.busy || G.menu || G.mg;
   // movement
@@ -680,13 +804,14 @@ function update(dt) {
       pr = `${tg.id === 'front' && G.f.locked && !G.f.unlocked ? 'Locked: turn the deadbolt first' : pr}  (${DNAME[tg.id]})`;
     } else if (tg.acts) {
       const list = actsOf(tg); prHtml = `<div class="pn">${esc(tg.name)}</div>` + list.map((a, i) => { const r = risk(a), c = r.pB >= 15 ? 'bad' : r.pN >= 50 || r.pB > 0 ? 'warn' : 'ok'; return `<div class="pa"><kbd>${AKEY[i]}</kbd><span>${esc(a.t)}</span>${a.mini ? '<em class="ok">🎮 mini game</em>' : `<em class="${c}">🔊 ${r.lo}–${r.hi} dB</em>`}</div>`; }).join('');
-      list.forEach((a, i) => { if (i < 3 && hit[AKEYS[i]]) doAct(a); });
+      list.forEach((a, i) => { if (i < 3 && hit[AKEYS[i]] && !(G.actCool > 0)) doAct(a); });
     } else {
       pr = tg.prompt();
       if (tg.hold) { if (keys.KeyE) tg.use(dt); else G.f.bolt = Math.max(0, (G.f.bolt || 0) - dt); }
       else if (hit.KeyE) tg.use();
     }
   }
+  if (!locked && keys.KeyQ && !(tg && tg.kind === 'door')) { const dd = findDoor(); if (dd) moveDoor(dd.d, -1, (keys.ShiftLeft || keys.ShiftRight) ? .7 : .18, dt); }
   if (G.progT > 0) { G.progT -= dt; $('#prog').hidden = false; $('#prog i').style.width = (clamp(G.progF, 0, 1) * 100) + '%'; $('#prog b').hidden = !G.progBar; $('#prog span').textContent = G.progL; } else $('#prog').hidden = true;
   $('#prompt').innerHTML = prHtml || kbdify(pr); hit.KeyE = 0; hit.KeyQ = 0; hit.KeyR = 0; hit.KeyT = 0;
   // scenario systems
@@ -723,11 +848,13 @@ function friend(dt) {
   // follow trail
   const last = s.trail[s.trail.length - 1]; if (!last || Math.hypot(P.x - last.x, P.z - last.z) > .15) s.trail.push({ x: P.x, z: P.z }); if (s.trail.length > 400) s.trail.shift();
   let tx = P.x, tz = P.z;
-  if (s.mode === 'follow') { let acc = 0; for (let i = s.trail.length - 1; i > 0; i--) { acc += Math.hypot(s.trail[i].x - s.trail[i - 1].x, s.trail[i].z - s.trail[i - 1].z); if (acc >= 1.5) { tx = s.trail[i - 1].x; tz = s.trail[i - 1].z; break; } } }
-  const out = G.step >= 6 && near(12, 3.5, 3.2) && D.patio.v >= D.patio.pass; if (out && !G.f.out && Math.hypot(s.x - 12, s.z - 3.5) < 1.8) { s.mode = 'leave'; }
-  if (s.mode === 'leave') { tx = 15.5; tz = 3.8; if (Math.hypot(s.x - tx, s.z - tz) < .5) { G.f.out = 1; sm.visible = false; s.mode = 'gone'; toast('Sam waves goodbye and slips away.', 'ok'); } }
+  if (s.mode === 'follow') { let acc = 0; for (let i = s.trail.length - 1; i > 0; i--) { acc += Math.hypot(s.trail[i].x - s.trail[i - 1].x, s.trail[i].z - s.trail[i - 1].z); if (acc >= (P.speed < .25 ? .8 : 1.5)) { tx = s.trail[i - 1].x; tz = s.trail[i - 1].z; break; } } }
+  const out = G.step >= 6 && near(12, 3.5, 3.2) && D.patio.v >= D.patio.pass; if (out && !G.f.out && Math.hypot(s.x - 12, s.z - 3.5) < 3.6) { s.mode = 'leave'; }
+  if (s.mode === 'leave') { s.ls = s.ls || 0; [tx, tz] = [[11.2, 3.5], [12.9, 3.5], [15.5, 3.8]][s.ls]; if (s.ls < 2 && Math.hypot(s.x - tx, s.z - tz) < .45) s.ls++; if (s.ls === 2 && Math.hypot(s.x - tx, s.z - tz) < .5) { G.f.out = 1; sm.visible = false; s.mode = 'gone'; toast('Sam waves goodbye and slips away.', 'ok'); } }
+  // when you stand still in the same room, Sam walks up to you instead of waiting in the doorway
+  let stop = .25; if (s.mode === 'follow' && (s.y > 1.5) === (P.y > 1.5) && lineClear(s.x, s.z, P.x, P.z, s.y > 1.5 ? 1 : 0)) { tx = P.x; tz = P.z; stop = 1.0; }
   let sp = 0; const d = Math.hypot(tx - s.x, tz - s.z);
-  if (s.mode !== 'wait' && s.mode !== 'gone' && !keys.KeyV && d > .25) { sp = clamp(P.speed * 1.05 + .15, .6, 3.6); if (s.mode === 'leave') sp = 1.4; if (d < .6) sp *= d / .6; const k = Math.min(sp * dt, d); s.x += (tx - s.x) / d * k; s.z += (tz - s.z) / d * k; sm.rotation.y = Math.atan2(-(tx - s.x), -(tz - s.z)) + Math.PI; collide(s, .25); }
+  if (s.mode !== 'wait' && s.mode !== 'gone' && !keys.KeyV && d > stop) { sp = clamp(P.speed * 1.05 + .15, .6, 3.6); if (s.mode === 'leave') sp = 1.4; if (d < .6) sp *= d / .6; const k = Math.min(sp * dt, d); s.x += (tx - s.x) / d * k; s.z += (tz - s.z) / d * k; sm.rotation.y = Math.atan2(-(tx - s.x), -(tz - s.z)) + Math.PI; collide(s, .25); }
   s.y += (World.floorY(s.x, s.z, s.y) - s.y) * Math.min(1, dt * 12); sm.position.set(s.x, s.y, s.z);
   if (sp > .3) walk(s, sp, dt, true);
   G.held.L = G.held.L; G.samNear = Math.hypot(P.x - s.x, P.z - s.z);
@@ -811,6 +938,6 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 window.__held = held;
-window.__dwm = { get G() { return G; }, P, D, MISSIONS, start, noise, win, keys, hit };
+window.__dwm = { get G() { return G; }, P, D, MISSIONS, start, noise, win, keys, hit, startMG, coinAdd };
 toMenu(); requestAnimationFrame(frame);
 })();
