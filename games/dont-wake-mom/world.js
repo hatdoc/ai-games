@@ -262,7 +262,13 @@ const World = (() => {
   { const cab = paint(0xd9cfbc), top = M(0x3a3d46, { roughness: .25, metalness: .1 });
     box(7.3, 0, .2, 11, .9, .9, cab); col(7.3, 11, .2, .9, 0); box(7.3, .9, .2, 11, .95, .97, top); for (let x = 7.3; x < 11; x += .62) { box(x + .01, .06, .9, x + .6, .84, .915, paint(0xe6dcc8), { small: true }); cyl(x + .3, .45, .92, .012, .012, .12, chrome, { small: true }); }
     box(7.3, .95, .15, 11, 1.5, .2, pbr(TEX.tile, 1, 1, { tint: 0xf4f6fb, rough: .3, tile: .6 }), { small: true });
-    for (const [a, b] of [[7.4, 9.6], [10, 11.7]]) { box(a, 1.5, .15, b, 2.3, .6, paint(0xd9cfbc)); for (let x = a + .02; x < b - .1; x += (b - a) / (b === 9.6 ? 4 : 3)) { box(x, 1.52, .6, x + .5, 2.28, .615, paint(0xe6dcc8), { small: true }); cyl(x + .46, 1.55, .63, .012, .012, .1, chrome, { small: true }); } }
+    { const a = 7.4, b = 9.6, pn = paint(0xd9cfbc), cm = M(0xf4eede, { roughness: .6 }); // first upper cabinet: open-front carcass so the noodles and the pot are visible when its door opens
+      box(a, 1.5, .15, b, 2.3, .2, pn); box(a, 1.5, .2, a + .05, 2.3, .6, pn); box(b - .05, 1.5, .2, b, 2.3, .6, pn); box(a, 2.25, .2, b, 2.3, .6, pn); box(a, 1.5, .2, b, 1.55, .6, pn); box(a + .55, 1.5, .2, a + .6, 2.3, .6, pn); box(a + .05, 1.9, .2, a + .55, 1.93, .6, cm, { small: true });
+      for (const x of [a + .62, a + 1.4]) { box(x, 1.52, .6, x + .76, 2.28, .615, paint(0xe6dcc8), { small: true }); cyl(x + .66, 1.55, .63, .012, .012, .1, chrome, { small: true }); }
+      cyl(a + .5, 1.55, .63, .012, .012, .1, chrome, { small: true });
+      var cabCups = [], cabPot; for (let i = 0; i < 3; i++) { const c = cyl(a + .15 + i * .14, 1.93, .38, .045, .035, .11, M(i % 2 ? 0xd04a3a : 0xe0a030, { roughness: .5 }), { small: true, seg: 14 }); c.matrixAutoUpdate = true; c.userData.keep = true; cabCups.push(c); }
+      cabPot = cyl(a + .28, 1.55, .38, .1, .09, .11, M(0x8a8f99, { roughness: .35, metalness: .3 }), { small: true, seg: 16 }); cabPot.matrixAutoUpdate = true; cabPot.userData.keep = true; }
+    { const a = 10, b = 11.7; box(a, 1.5, .15, b, 2.3, .6, paint(0xd9cfbc)); for (let x = a + .02; x < b - .1; x += (b - a) / 3) { box(x, 1.52, .6, x + .5, 2.28, .615, paint(0xe6dcc8), { small: true }); cyl(x + .46, 1.55, .63, .012, .012, .1, chrome, { small: true }); } }
     box(7.8, .95, .3, 8.7, .97, .85, blackM, { small: true }); for (const [bx, bz] of [[8.0, .45], [8.5, .45], [8.0, .72], [8.5, .72]]) cyl(bx, .97, bz, .07, .07, .012, M(0x2a2a30, { roughness: .3, metalness: .6 }), { small: true });
     box(7.8, 1.65, .15, 8.7, 2.0, .5, steel, { small: true }); // hood (under cabinet)
     box(10.55, .93, .3, 11.0, .96, .85, M(0x20232a, { roughness: .2, metalness: .5 }), { small: true }); cyl(10.78, .96, .22, .014, .014, .3, chrome, { small: true });
@@ -276,6 +282,15 @@ const World = (() => {
     furn(7.4, 0, 4.9, 8.2, .8, 5.9, 0x7a6a5a);
   }
   const mwClock = (() => { const m = new T.Mesh(new T.PlaneGeometry(.09, .05), new T.MeshBasicMaterial({ color: L(0x44ff88).multiplyScalar(2.2) })); m.position.set(9.77, 1.08, .756); scene.add(fin(m)); return m; })();
+  // dynamic kitchen props (toggled by the game): stove flame, pot on the stove, kettle LED and steam, sink water, microwave light
+  const K = { cups: cabCups, pot: cabPot };
+  { const hot = (hex, k) => new T.MeshBasicMaterial({ color: L(hex).multiplyScalar(k), transparent: true, opacity: .9 });
+    K.flame = new T.Group(); K.flame.position.set(8.0, .975, .45); for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283, c = new T.Mesh(new T.ConeGeometry(.011, .045, 5), hot(0x5aa8ff, 3)); c.position.set(Math.cos(a) * .055, .022, Math.sin(a) * .055); K.flame.add(c); } K.flame.visible = false; scene.add(K.flame);
+    K.potStove = cyl(8.0, .975, .45, .1, .09, .11, M(0x8a8f99, { roughness: .35, metalness: .3 }), { small: true, seg: 16 }); K.potStove.matrixAutoUpdate = true; K.potStove.userData.keep = true; K.potStove.visible = false;
+    K.led = new T.Mesh(new T.CircleGeometry(.018, 10), hot(0xff4a2a, 4)); K.led.rotation.x = -Math.PI / 2; K.led.position.set(10.32, .955, .55); K.led.visible = false; scene.add(K.led);
+    K.steam = new T.Group(); K.steam.position.set(10.4, 1.2, .55); for (let i = 0; i < 5; i++) { const s = new T.Mesh(new T.SphereGeometry(.05, 8, 6), new T.MeshBasicMaterial({ color: L(0xe8eef8), transparent: true, opacity: .22, depthWrite: false })); s.userData.i = i; K.steam.add(s); } K.steam.visible = false; scene.add(K.steam);
+    K.sinkWater = new T.Mesh(new T.CylinderGeometry(.008, .008, .3, 6), new T.MeshBasicMaterial({ color: L(0x9fd0ff).multiplyScalar(1.5), transparent: true, opacity: .55 })); K.sinkWater.position.set(10.78, 1.1, .36); K.sinkWater.visible = false; scene.add(K.sinkWater);
+    K.mwGlow = new T.Mesh(new T.PlaneGeometry(.4, .21), new T.MeshBasicMaterial({ color: L(0xffd890).multiplyScalar(2.2) })); K.mwGlow.position.set(9.42, 1.085, .757); K.mwGlow.visible = false; scene.add(K.mwGlow); }
   // ---- foyer ----
   { box(4.2, 0, 6.2, 4.9, .8, 6.9, wood(0x6a4a30)); col(4.2, 4.9, 6.2, 6.9, 0); box(4.2, .8, 6.15, 4.9, .84, 6.95, wood(0x7a5a3a), { small: true });
     cyl(4.55, .84, 6.55, .05, .06, .02, M(0xddd8cc), { small: true }); cyl(4.55, .86, 6.55, .015, .015, .26, steel, { small: true }); cyl(4.55, 1.12, 6.55, .1, .13, .16, M(0xf0e4c8, { emissive: L(0x6a5030) }), { small: true });
@@ -288,7 +303,7 @@ const World = (() => {
   { for (const x of [0.15, 3.85]) { box(x - .05, 0, 12.85, x + .05, 1.0, 12.95, trimM); } box(0.1, .9, 12.85, 3.9, .96, 12.95, trimM, { small: true });
     for (const x of [.4, 3.6]) { cyl(x, 0, 10.4, .2, .15, .35, M(0x8a5a40, { roughness: .8 }), { small: true }); for (let i = 0; i < 5; i++) sph(x + Math.cos(i * 1.3) * .1, .5 + (i % 2) * .1, 10.4 + Math.sin(i * 1.3) * .1, .13, M(0x2f6a3a, { roughness: .9 }), { small: true }); }
     box(.4, 2.0, 10.04, .6, 2.12, 10.16, M(0x22252c), { small: true }); sph(.5, 1.95, 10.1, .06, glowM(0xfff2cc), { small: true });
-    for (let x = -4; x < 18; x += .3) { box(x, 0, 6.9, x + .2, 1.3, 6.95, wood(0x6a5038), { small: true }); } for (let z = 7; z < 28; z += .3) { box(17.8, 0, z, 17.85, 1.3, z + .2, wood(0x6a5038), { small: true }); box(-3.8, 0, z, -3.75, 1.3, z + .2, wood(0x6a5038), { small: true }); }
+    for (let x = 12.3; x < 17.8; x += .3) { box(x, 0, 6.9, x + .2, 1.3, 6.95, wood(0x6a5038), { small: true }); } for (let z = 7; z < 28; z += .3) { box(17.8, 0, z, 17.85, 1.3, z + .2, wood(0x6a5038), { small: true }); box(-3.8, 0, z, -3.75, 1.3, z + .2, wood(0x6a5038), { small: true }); }
     const trunk = M(0x3a2a1e, { roughness: 1 }), leaf = M(0x1f4a2a, { roughness: .95 });
     for (const [x, z] of [[8, 16], [-2, 18], [15, 12]]) { cyl(x, 0, z, .22, .3, 3.4, trunk, { seg: 10 }); for (let i = 0; i < 7; i++) sph(x + Math.cos(i * 2.1) * 1.0, 3.6 + (i % 3) * .5, z + Math.sin(i * 2.1) * 1.0, 1.3 + (i % 2) * .3, leaf, { seg: 10 }); }
     cyl(6, 0, 23.6, .06, .08, 4.6, M(0x30343c, { roughness: .5, metalness: .6 }), { small: true }); sph(6, 4.7, 23.6, .22, glowM(0xffe0a0), { small: true }); box(5.9, 4.55, 23.45, 6.1, 4.62, 24.2, M(0x30343c), { small: true });
@@ -323,7 +338,7 @@ const World = (() => {
   (function mergeStatic() {
     const groups = new Map();
     for (const m of scene.children.slice()) {
-      if (!m.isMesh || m.matrixAutoUpdate !== false || m.material.isMeshBasicMaterial || m.material.transparent || !m.geometry.attributes.uv) continue;
+      if (!m.isMesh || m.matrixAutoUpdate !== false || m.userData.keep || m.material.isMeshBasicMaterial || m.material.transparent || !m.geometry.attributes.uv) continue;
       const k = m.material.uuid + (m.castShadow ? 'c' : '') + (m.receiveShadow ? 'r' : ''); let g = groups.get(k); if (!g) groups.set(k, g = { m, list: [] });
       const geo = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone(); geo.applyMatrix4(m.matrix); g.list.push({ geo, src: m });
     }
@@ -336,7 +351,7 @@ const World = (() => {
     }
   })();
   if (LOW) for (const k of ['outside', 'hall', 'foyer']) { scene.remove(lights[k]); delete lights[k]; }
-  return { scene, colliders, doors, creaks, rugs, rooms, lights, STAIR, moms, sam, driver, biscuit, tv: tvScreen, mw: mwClock, rgb, monScreen, pcl, porch, phone, lamp, moon, LOW,
+  return { scene, colliders, doors, creaks, rugs, rooms, lights, STAIR, K, moms, sam, driver, biscuit, tv: tvScreen, mw: mwClock, rgb, monScreen, pcl, porch, phone, lamp, moon, LOW,
     floorY(x, z, y) { const s = STAIR; if (x > s.x1 && x < s.x2 && z > s.z1 && z < s.z2) return Math.max(0, Math.min(3, (x - 5) * .5)); return y > 1.5 ? 3 : 0; },
     roomAt(x, z, y) { const lv = y > 1.5 ? 1 : 0; for (const r of rooms) if (x >= r.x1 && x <= r.x2 && z >= r.z1 && z <= r.z2 && (r.lv === 2 || r.lv === lv)) return r; return { name: 'Outside', surf: 'conc' }; },
     surfaceAt(x, z, y) {

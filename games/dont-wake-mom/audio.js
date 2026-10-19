@@ -51,6 +51,7 @@ const Snd = (() => {
     click(db) { const v = vol(db); burst(.04, 2400, 2.5, v * .8); tone(900, 500, .03, 'square', v * .05); },
     handle(db) { const v = vol(db); burst(.05, 1600, 3, v * .7); later(70, () => tone(700, 400, .04, 'square', v * .05)); },
     slide(db) { const v = vol(db); burst(.5, 350, .8, v * .6, 'lowpass', 180); },
+    clang(db) { const v = vol(db); tone(520, 380, .35, 'triangle', v * .18); tone(1040, 760, .25, 'sine', v * .08); burst(.08, 2000, 3, v * .6); },
     cab(db) { const v = vol(db); tone(180, 90, .09, 'sine', v * .5); burst(.06, 900, 1.5, v * .6); },
     bolt(db) { const v = vol(db); tone(1700, 1100, .06, 'square', v * .08); burst(.05, 3000, 4, v * .7); later(110, () => { burst(.06, 2200, 4, v); tone(900, 600, .05, 'square', v * .08); }); },
     thump(db) { tone(90, 50, .12, 'sine', vol(db) * .6); },
