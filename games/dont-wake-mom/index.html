@@ -63,6 +63,12 @@
   #momface .mf { position: relative; width: min(520px, 86vw); animation: pop .35s cubic-bezier(.2,1.6,.4,1), shake .5s .35s 3; } #momface svg, #momface .momphoto { width: 100%; display: block; border-radius: 18px; filter: drop-shadow(0 20px 40px rgba(0,0,0,.6)); }
   #momface .bubble { position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%); width: 92%; padding: 10px 16px; border-radius: 16px; background: #fff; color: #1b1020; text-align: center; font: 900 clamp(18px, 4.5vw, 28px)/1.15 var(--sans); box-shadow: 0 10px 30px rgba(0,0,0,.5); }
   #momface .mf.photo { width: min(1000px, 96vw); } #momface .mf.photo .bubble { display: none; } #momface .momphoto { width: 100%; height: auto; max-height: 90vh; object-fit: contain; }
+  #momface .mfui { position: absolute; inset: 0; pointer-events: none; }
+  #mfStats { position: absolute; left: 14px; bottom: 12px; max-width: 52%; padding: 6px 10px; border-radius: 8px; background: rgba(0,0,0,.6); font: 600 12px/1.35 var(--mono); color: #e8ecff; }
+  #momface .mfb { position: absolute; right: 14px; bottom: 14%; display: flex; gap: 10px; pointer-events: auto; }
+  #momface .mfb button { font: 700 clamp(13px, 2.2vw, 18px) var(--mono); color: #fff; background: rgba(0,0,0,.62); border: 2px solid #fff; padding: 9px 20px; cursor: pointer; letter-spacing: .5px; }
+  #momface .mfb button:first-child { background: #fff; color: #111; } #momface .mfb button:hover { filter: brightness(1.15); transform: translateY(-1px); }
+  @media (max-width: 700px) { #mfStats { display: none; } #momface .mfb { left: 0; right: 0; justify-content: center; } }
   @keyframes pop { from { transform: scale(.2) rotate(-8deg); opacity: 0; } to { transform: scale(1); opacity: 1; } } @keyframes shake { 0%,100% { transform: translate(0); } 25% { transform: translate(-6px, 3px) rotate(-1deg); } 75% { transform: translate(6px, -3px) rotate(1deg); } }
   #cross { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #fffc; z-index: 15; pointer-events: none; transition: all .15s; box-shadow: 0 0 6px #000a; }
   #cross.act { width: 22px; height: 22px; margin: -11px 0 0 -11px; background: transparent; border: 2px solid var(--g); box-shadow: 0 0 10px #7ef0b088; }
@@ -141,7 +147,7 @@
   <div class="cards" id="cards"></div>
   <div class="keys glass"><span class="desk"><b>W A S D</b> move · <b>mouse</b> look (click to capture) · </span><b>C</b> crouch (quiet) · <b>Shift</b> run (LOUD) · <b>E R T</b> do an action (each shows its noise) · <b>1-5</b> use an item from your item box · hold <b>E</b> to open · hold <b>Q</b> to close · <b>F</b> flashlight · <b>V</b> tell a friend to wait · <b>M</b> mute · (on this menu keys <b>1-5</b> start a mission).<br>
   0–30 dB quiet · 31–55 creaks · 56–80 loud · 81+ <span class="bad">busted</span>. Hold doors with <b>Shift</b> to rush them (squeaky!).</div></div></div>
-<div id="momface" hidden><div class="mf" id="mf"><div class="bubble" id="momSay"></div></div></div>
+<div id="momface" hidden><div class="mf" id="mf"><div class="bubble" id="momSay"></div><div class="mfui" id="mfui" hidden><div id="mfStats"></div><div class="mfb"><button id="mfAgain">Try again</button><button id="mfMenu">Choose scenario</button></div></div></div></div>
 <div id="end" hidden></div>
 <div id="touch"><button data-k="KeyE">E</button><button data-k="KeyR">R</button><button data-k="KeyT">T</button><button data-k="KeyQ">Close</button><button data-k="KeyC">Crouch</button><button data-k="ShiftLeft">Run</button><button data-k="KeyF">Light</button><button data-k="KeyV">Wait</button></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
