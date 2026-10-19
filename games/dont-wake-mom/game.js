@@ -8,35 +8,62 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const bar = (v, n) => '█'.repeat(clamp(v, 0, n)) + '░'.repeat(n - clamp(v, 0, n));
 const gain = (e) => (e <= 26 ? 0 : e <= 30 ? 1 : e <= 55 ? 6 + (e - 30) * .8 : 26 + (e - 55) * 1.4);
 
-// ---------- renderer, hands, lens post-process ----------
-const cv = $('#c'), R = new T.WebGLRenderer({ canvas: cv, antialias: true });
-R.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
-const cam = new T.PerspectiveCamera(80, 1, .05, 60); World.scene.add(cam);
+// ---------- renderer: shadows, HDR bloom, filmic tone mapping, bodycam lens ----------
+const lc = (h) => new T.Color(h).convertSRGBToLinear(), emis = (m, hex, k = 1) => m.color.copy(lc(hex)).multiplyScalar(k);
+const cv = $('#c'), R = new T.WebGLRenderer({ canvas: cv, antialias: false, powerPreference: 'high-performance' }), LOW = World.LOW;
+R.setPixelRatio(LOW ? 1 : Math.min(devicePixelRatio || 1, 1.5)); R.shadowMap.enabled = !LOW; R.shadowMap.type = T.PCFSoftShadowMap;
+const cam = new T.PerspectiveCamera(78, 1, .05, 300); World.scene.add(cam);
 const hands = new T.Group(); cam.add(hands);
-const sleeveM = new T.MeshStandardMaterial({ color: 0x3a4678, roughness: .9, emissive: 0x0c0f22 }), skinM = new T.MeshStandardMaterial({ color: 0xe0b090, roughness: .8, emissive: 0x2a1c14 });
-const mkArm = (side) => { const g = new T.Group(), fa = new T.Mesh(new T.BoxGeometry(.07, .07, .3), sleeveM), h = new T.Mesh(new T.BoxGeometry(.07, .045, .1), skinM);
-  fa.position.set(0, 0, -.15); h.position.set(0, 0, -.35); g.add(fa, h); g.position.set(side * .2, -.27, -.32); g.rotation.set(.25, -side * .3, 0); hands.add(g); return g; };
+const sleeveM = new T.MeshStandardMaterial({ color: lc(0x2c313f), roughness: .95, emissive: lc(0x07080e) }), skinM = new T.MeshStandardMaterial({ color: lc(0xe0b090), roughness: .55, emissive: lc(0x2a1a12) });
+const mkArm = (side) => {
+  const g = new T.Group(), fa = new T.Mesh(new T.CylinderGeometry(.032, .042, .36, 16), sleeveM); fa.rotation.x = Math.PI / 2; fa.position.set(0, 0, -.18); g.add(fa);
+  const cuff = new T.Mesh(new T.CylinderGeometry(.044, .044, .035, 16), new T.MeshStandardMaterial({ color: lc(0x20242f), roughness: 1 })); cuff.rotation.x = Math.PI / 2; cuff.position.set(0, 0, -.37); g.add(cuff);
+  const palm = new T.Mesh(new T.BoxGeometry(.075, .03, .085), skinM); palm.position.set(0, 0, -.42); g.add(palm);
+  for (let i = 0; i < 4; i++) { const f = new T.Mesh(new T.CylinderGeometry(.011, .01, .075, 8), skinM); f.rotation.x = Math.PI / 2 - .25; f.position.set(-.028 + i * .019, -.005, -.49 + (i === 1 || i === 2 ? -.008 : 0)); g.add(f); }
+  const th = new T.Mesh(new T.BoxGeometry(.022, .022, .055), skinM); th.position.set(side * -.05, .005, -.43); th.rotation.y = side * .6; g.add(th);
+  g.position.set(side * .17, -.3, -.28); g.rotation.set(.32, -side * .32, 0); hands.add(g); return g;
+};
 const armL = mkArm(-1), armR = mkArm(1);
-const phoneM = new T.Mesh(new T.BoxGeometry(.06, .012, .11), new T.MeshStandardMaterial({ color: 0x20242e })); const scr = new T.Mesh(new T.PlaneGeometry(.052, .1), new T.MeshBasicMaterial({ color: 0x1a2a4a }));
-scr.rotation.x = -Math.PI / 2; scr.position.y = .007; phoneM.add(scr); phoneM.position.set(0, .045, -.38); phoneM.rotation.x = -.5; armL.add(phoneM);
-const cupM = new T.Mesh(new T.CylinderGeometry(.045, .035, .11, 12), new T.MeshStandardMaterial({ color: 0xd04a3a, emissive: 0x301008 })); cupM.position.set(0, .06, -.36); armR.add(cupM);
-const bagM = new T.Mesh(new T.BoxGeometry(.12, .15, .08), new T.MeshStandardMaterial({ color: 0xe8d9b8, emissive: 0x302810 })); bagM.position.set(0, .06, -.36); armR.add(bagM);
-const beam = new T.SpotLight(0xdfeaff, 0, 14, .5, .5, 1.2); cam.add(beam, beam.target); beam.target.position.set(0, 0, -5);
+const phoneM = new T.Mesh(new T.BoxGeometry(.07, .01, .14), new T.MeshStandardMaterial({ color: lc(0x15171c), roughness: .3, metalness: .6 })); const scr = new T.Mesh(new T.PlaneGeometry(.062, .125), new T.MeshBasicMaterial({ color: lc(0x1a2a4a) }));
+scr.rotation.x = -Math.PI / 2; scr.position.y = .0055; phoneM.add(scr); phoneM.position.set(0, .04, -.45); phoneM.rotation.x = -.55; armL.add(phoneM);
+const cupM = new T.Mesh(new T.CylinderGeometry(.045, .035, .11, 16), new T.MeshStandardMaterial({ color: lc(0xd04a3a), roughness: .5, emissive: lc(0x301008) })); cupM.position.set(0, .06, -.45); armR.add(cupM);
+const bagM = new T.Mesh(new T.BoxGeometry(.12, .16, .08), new T.MeshStandardMaterial({ color: lc(0xe8d9b8), roughness: .9, emissive: lc(0x302810) })); bagM.position.set(0, .07, -.45); armR.add(bagM);
+const beam = new T.SpotLight(lc(0xe6eeff), 0, 18, .5, .55, 1.4); cam.add(beam, beam.target); beam.target.position.set(0, 0, -5);
+if (!LOW) { beam.castShadow = true; beam.shadow.mapSize.set(1024, 1024); beam.shadow.bias = -.0004; beam.shadow.camera.near = .1; beam.shadow.camera.far = 20; }
 
-let rt = null; const quad = new T.Scene(), qcam = new T.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-const qmat = new T.ShaderMaterial({ uniforms: { t: { value: null }, time: { value: 0 }, al: { value: 0 }, res: { value: new T.Vector2(1, 1) } },
-  vertexShader: 'varying vec2 v; void main(){ v=uv; gl_Position=vec4(position,1.); }',
-  fragmentShader: `uniform sampler2D t; uniform float time, al; uniform vec2 res; varying vec2 v;
-    float h(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
-    void main(){ vec2 c=v-.5; c.x*=res.x/res.y; float r2=dot(c,c); vec2 u=c*(1.+.16*r2); u.x/=res.x/res.y; u+=.5;
-      if(u.x<0.||u.x>1.||u.y<0.||u.y>1.){ gl_FragColor=vec4(0.,0.,0.,1.); return; }
-      vec2 o=(u-.5)*.004; vec3 col=vec3(texture2D(t,u+o).r,texture2D(t,u).g,texture2D(t,u-o).b);
-      col*=1.-smoothstep(.15,.75,r2)*.5; col+=vec3(1.,.62,.2)*al*smoothstep(.1,.6,r2)*.5; col+=(h(v*res+time)-.5)*.03; col=pow(col,vec3(.92));
-      gl_FragColor=vec4(col,1.); }` });
-quad.add(new T.Mesh(new T.PlaneGeometry(2, 2), qmat));
+let rt = null, bA = null, bB = null;
+const quad = new T.Scene(), qcam = new T.OrthographicCamera(-1, 1, 1, -1, 0, 1), qmesh = new T.Mesh(new T.PlaneGeometry(2, 2)); quad.add(qmesh);
+const VS = 'varying vec2 v; void main(){ v=uv; gl_Position=vec4(position,1.); }';
+const pass = (fs, u) => new T.ShaderMaterial({ uniforms: u, vertexShader: VS, fragmentShader: fs, depthTest: false, depthWrite: false });
+const brightM = pass('uniform sampler2D t; varying vec2 v; void main(){ vec3 c=texture2D(t,v).rgb; float l=max(c.r,max(c.g,c.b)); gl_FragColor=vec4(c*smoothstep(.3,1.0,l),1.); }', { t: { value: null } });
+const blurM = pass('uniform sampler2D t; uniform vec2 d; varying vec2 v; void main(){ vec3 s=texture2D(t,v).rgb*.227; s+=(texture2D(t,v+d*1.38).rgb+texture2D(t,v-d*1.38).rgb)*.316; s+=(texture2D(t,v+d*3.23).rgb+texture2D(t,v-d*3.23).rgb)*.07; gl_FragColor=vec4(s,1.); }', { t: { value: null }, d: { value: new T.Vector2() } });
+const finalM = pass(`uniform sampler2D t, b; uniform float time, al, ex; uniform vec2 res; varying vec2 v;
+  float h(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
+  vec3 aces(vec3 x){ x*=ex; return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.); }
+  void main(){ vec2 c=v-.5; float asp=res.x/res.y; c.x*=asp; c*=.9; float r2=dot(c,c); vec2 u=c*(1.+.13*r2); u.x/=asp; u+=.5;
+    if(u.x<0.||u.x>1.||u.y<0.||u.y>1.){ gl_FragColor=vec4(0.,0.,0.,1.); return; }
+    vec2 o=(u-.5)*.003; vec3 col=vec3(texture2D(t,u+o).r,texture2D(t,u).g,texture2D(t,u-o).b); col+=texture2D(b,u).rgb*.7;
+    col=pow(aces(col),vec3(.4545)); col*=1.-smoothstep(.18,.8,r2)*.55; col+=vec3(1.,.55,.15)*al*smoothstep(.12,.6,r2)*.4; col+=(h(v*res+time)-.5)*.035;
+    gl_FragColor=vec4(col,1.); }`, { t: { value: null }, b: { value: null }, time: { value: 0 }, al: { value: 0 }, ex: { value: .95 }, res: { value: new T.Vector2(1, 1) } });
 function resize() {
-  const w = innerWidth, h = innerHeight, pr = R.getPixelRatio(); R.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
-  try { if (rt) rt.dispose(); rt = new T.WebGLRenderTarget(w * pr, h * pr, { minFilter: T.LinearFilter, magFilter: T.LinearFilter }); qmat.uniforms.t.value = rt.texture; qmat.uniforms.res.value.set(w, h); } catch { rt = null; }
+  const w = innerWidth, h = innerHeight, pr = R.getPixelRatio(); R.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); finalM.uniforms.res.value.set(w, h);
+  for (const r of [rt, bA, bB]) r && r.dispose(); rt = bA = bB = null;
+  try {
+    const o = { minFilter: T.LinearFilter, magFilter: T.LinearFilter, type: T.HalfFloatType, format: T.RGBAFormat };
+    try { rt = LOW ? new T.WebGLRenderTarget(w * pr, h * pr, o) : new T.WebGLMultisampleRenderTarget(w * pr, h * pr, o); } catch { rt = new T.WebGLRenderTarget(w * pr, h * pr, o); }
+    bA = new T.WebGLRenderTarget(w * pr / 4 | 0, h * pr / 4 | 0, o); bB = new T.WebGLRenderTarget(w * pr / 4 | 0, h * pr / 4 | 0, o);
+  } catch { rt = bA = bB = null; }
+}
+function renderFrame(now) {
+  if (!rt) { R.render(World.scene, cam); return; }
+  R.setRenderTarget(rt); R.render(World.scene, cam);
+  qmesh.material = brightM; brightM.uniforms.t.value = rt.texture; R.setRenderTarget(bA); R.render(quad, qcam);
+  for (let i = 0; i < 2; i++) {
+    qmesh.material = blurM; blurM.uniforms.t.value = bA.texture; blurM.uniforms.d.value.set(1 / bA.width, 0); R.setRenderTarget(bB); R.render(quad, qcam);
+    blurM.uniforms.t.value = bB.texture; blurM.uniforms.d.value.set(0, 1 / bA.height); R.setRenderTarget(bA); R.render(quad, qcam);
+  }
+  qmesh.material = finalM; finalM.uniforms.t.value = rt.texture; finalM.uniforms.b.value = bA.texture; finalM.uniforms.time.value = now / 1000;
+  finalM.uniforms.al.value = G.phase === 'play' ? clamp((G.alert - 25) / 100, 0, .6) : 0; R.setRenderTarget(null); R.render(quad, qcam);
 }
 addEventListener('resize', resize); resize();
 
@@ -142,8 +169,10 @@ function risk(o) {
 function choice(title, opts) {
   G.menu = opts; keys.KeyE = 0;
   $('#choice').hidden = false;
-  $('#choice').innerHTML = `<h3>${esc(title)}</h3>` + opts.map((o, i) => { const r = risk(o), c = r.pB >= 15 ? 'bad' : r.pN >= 50 || r.pB > 0 ? 'warn' : 'ok';
-    return `<button data-i="${i}"><span class="k">${i + 1}</span>${esc(o.t)}<span class="m">🔊 ${r.lo}–${r.hi} dB at source · reaches Mom ${Math.max(0, r.el)}–${Math.max(0, r.eh)} dB · <b class="${c}">noise ${r.pN}% · bust ${r.pB}%</b>${o.ex ? ` · 💡 +${o.ex} detect` : ''}<br>🎁 ${esc(o.r || '')}</span></button>`; }).join('') + '<div class="m">Esc to step back</div>';
+  $('#choice').innerHTML = `<h3>${esc(title)}</h3>` + opts.map((o, i) => {
+    const r = risk(o), c = r.pB >= 15 ? 'bad' : r.pN >= 50 || r.pB > 0 ? 'warn' : 'ok';
+    return `<button data-i="${i}"><span class="k">${i + 1}</span>${esc(o.t)}<div class="chips"><span>🔊 ${r.lo}–${r.hi} dB</span><span>reaches Mom ${Math.max(0, r.el)}–${Math.max(0, r.eh)}</span><span class="${c}">noise ${r.pN}%</span><span class="${r.pB >= 15 ? 'bad' : r.pB > 0 ? 'warn' : 'ok'}">bust ${r.pB}%</span>${o.ex ? `<span class="warn">💡 +${o.ex} detect</span>` : ''}</div><div class="rw">🎁 ${esc(o.r || '')}</div></button>`;
+  }).join('') + '<div class="hint">Press the number key, or click. Esc steps back.</div>';
   $('#choice').querySelectorAll('button').forEach((b) => (b.onclick = () => chooseOpt(+b.dataset.i)));
 }
 function closeChoice() { G.menu = null; $('#choice').hidden = true; }
@@ -324,8 +353,8 @@ function start(i) {
   for (const id in D) { D[id].v = (sc.doorV && sc.doorV[id]) || 0; D[id].apply(); D[id].locked = 0; D[id].acc = 0; }
   World.moms.bed.visible = sc.mom === 'bed'; World.moms.couch.visible = sc.mom === 'couch'; World.sam.visible = false; World.driver.visible = false;
   for (const k of ['pc', 'phone', 'porch', 'lamp']) World.lights[k].intensity = 0;
-  World.monScreen.material.color.set(0x223355); World.rgb.material.color.set(0x222222);
-  World.lights.lamp.intensity = 0; World.lights.mom.intensity = .7;
+  emis(World.monScreen.material, 0x223355, .7); emis(World.rgb.material, 0x222222);
+  World.lights.lamp.intensity = 0; World.lights.mom.intensity = 1.4;
   Object.assign(P, sc.start, { vx: 0, vz: 0, pitch: -.05, crouch: false, acc: 0, eye: 1.62 });
   sc.setup(); G.flashLabel = ''; Snd.tv(sc.id === 'ranked');
   $('#menu').hidden = true; $('#end').hidden = true; $('#hud').hidden = false; $('#obj').hidden = false; $('#menuBtn').hidden = false;
@@ -334,9 +363,9 @@ function start(i) {
 }
 function toMenu() {
   Snd.tv(false); G.phase = 'menu'; closeChoice(); try { document.exitPointerLock(); } catch {}
-  $('#hud').hidden = true; $('#obj').hidden = true; $('#end').hidden = true; $('#menuBtn').hidden = true; $('#prompt').textContent = ''; $('#stir').hidden = true; $('#big').hidden = true; $('#prog').hidden = true;
+  $('#hud').hidden = true; $('#obj').hidden = true; $('#end').hidden = true; $('#menuBtn').hidden = true; $('#prompt').innerHTML = ''; $('#stir').hidden = true; $('#big').hidden = true; $('#prog').hidden = true;
   $('#menu').hidden = false; World.lights.lamp.intensity = 0;
-  $('#cards').innerHTML = MISSIONS.map((s, i) => `<button class="card" data-i="${i}"><span class="bst">${best[s.id] ? '★ ' + best[s.id] : ''}</span><b>${s.emoji} ${i + 1}. ${esc(s.name)}</b><div class="obj">${esc(s.obj)}</div><div class="hz">⚠️ ${esc(s.hz)}</div></button>`).join('');
+  $('#cards').innerHTML = MISSIONS.map((s, i) => `<button class="card" data-i="${i}"><span class="num">${i + 1}</span><span class="em">${s.emoji}</span><b class="nm">${esc(s.name)}</b><div class="obj">${esc(s.obj)}</div><div class="hz">${s.hz.split(' · ').map((h) => `<span>${esc(h)}</span>`).join('')}</div>${best[s.id] ? `<span class="bst">★ ${best[s.id]}</span>` : ''}</button>`).join('');
   $('#cards').querySelectorAll('.card').forEach((c) => (c.onclick = () => start(+c.dataset.i)));
   P.x = 6; P.z = 4.6; P.y = 3; P.yaw = 0.6; P.pitch = -.1; G.sc = MISSIONS[0]; G.alert = 0; G.f = {}; G.sam = null;
 }
@@ -344,7 +373,7 @@ function toMenu() {
 // ---------- end screens ----------
 function finish(html) {
   Snd.tv(false); G.phase = 'end'; G.over = true; closeChoice(); try { document.exitPointerLock(); } catch {}
-  $('#hud').hidden = true; $('#obj').hidden = true; $('#prompt').textContent = ''; $('#stir').hidden = true; $('#big').hidden = true; $('#prog').hidden = true;
+  $('#hud').hidden = true; $('#obj').hidden = true; $('#prompt').innerHTML = ''; $('#stir').hidden = true; $('#big').hidden = true; $('#prog').hidden = true;
   $('#end').hidden = false; $('#end').innerHTML = `<div class="endbox">${html}<div id="lb"></div><div id="ad"></div></div>`; adBanner($('#ad'));
 }
 function bust(why) {
@@ -373,7 +402,7 @@ const fv = () => [-Math.sin(P.yaw), -Math.cos(P.yaw)];
 function update(dt) {
   const sc = G.sc, m = World.moms[sc.mom];
   if (G.phase === 'busted') { // Mom wakes up, the lamp clicks on
-    G.bustT += dt; World.lights.lamp.intensity = Math.min(1.6, G.bustT * 2); m.up.position.y = Math.min(.45, G.bustT * .5); m.up.rotation.z = Math.min(.9, G.bustT * 1.1);
+    G.bustT += dt; World.lights.lamp.intensity = Math.min(5, G.bustT * 6); m.up.position.y = Math.min(.45, G.bustT * .5); m.up.rotation.z = Math.min(.9, G.bustT * 1.1);
     if (G.bustT > 1.8) bustScreen(); return;
   }
   if (G.phase !== 'play') { m.body.scale.y = 1 + Math.sin(performance.now() / 900) * .03; return; }
@@ -403,12 +432,12 @@ function update(dt) {
   if (G.t - G.lastGain > 1.6) G.alert = Math.max(G.base, G.alert - 1.8 * dt);
   const dm = Math.hypot(P.x - momPos().x, P.z - momPos().z), sameFloor = Math.abs(P.y - (momPos().y > 1.5 ? 3 : 0)) < 1.6;
   if (G.flash) { G.battery = Math.max(0, G.battery - dt / 5); if (G.battery <= 0) G.flash = false; if (dm < 5.5 && sameFloor) { const d = [momPos().x - P.x, momPos().z - P.z], dl = Math.hypot(...d); addAlert((1.6 + ((d[0] * f[0] + d[1] * f[1]) / dl > .7 ? 3.5 : 0)) * dt); } }
-  if (hit.KeyF) { G.flash = !G.flash && G.battery > 0; } hit.KeyF = 0; beam.intensity = G.flash ? 1.7 : 0;
-  if (G.glow) { World.lights.phone.intensity = 1.1; World.lights.phone.position.set(P.x, P.y + 1.4, P.z); if (sameFloor && dm < 4) addAlert(2.2 * dt); } else World.lights.phone.intensity = 0;
-  scr.material.color.set(G.glow || G.flash ? 0x88bbff : 0x1a2a4a);
-  if (G.f.rgb && G.f.pcOn) { World.lights.pc.intensity = 1.3; World.lights.pc.color.setHSL((G.t * .3) % 1, 1, .55); World.rgb.material.color.setHSL((G.t * .3) % 1, 1, .5); addAlert(.9 * dt); }
-  else { World.lights.pc.intensity = 0; World.rgb.material.color.set(0x222222); }
-  World.monScreen.material.color.set(G.f.pcOn ? 0x77aaff : 0x223355);
+  if (hit.KeyF) { G.flash = !G.flash && G.battery > 0; } hit.KeyF = 0; beam.intensity = G.flash ? 9 : 0;
+  if (G.glow) { World.lights.phone.intensity = 2.4; World.lights.phone.position.set(P.x, P.y + 1.4, P.z); if (sameFloor && dm < 4) addAlert(2.2 * dt); } else World.lights.phone.intensity = 0;
+  scr.material.color.copy(lc(G.glow || G.flash ? 0x88bbff : 0x1a2a4a)).multiplyScalar(G.glow ? 3 : 1);
+  if (G.f.rgb && G.f.pcOn) { World.lights.pc.intensity = 3.5; World.lights.pc.color.setHSL((G.t * .3) % 1, 1, .55); World.rgb.material.color.setHSL((G.t * .3) % 1, 1, .5).multiplyScalar(2.5); addAlert(.9 * dt); }
+  else { World.lights.pc.intensity = 0; emis(World.rgb.material, 0x222222); }
+  if (G.f.pcOn) emis(World.monScreen.material, 0x77aaff, 2.2); else emis(World.monScreen.material, 0x223355, .7);
   if (sc.id === 'ranked' && G.f.pcOn && G.t - (G.pingT || 0) > 18 && Math.random() < dt * .1) { G.pingT = G.t; Snd.ping(); noise(rnd(42, 62), 'Discord notification', { x: .9, z: 4.6, y: 0 }); toast('Ping! A Discord notification', 'warn'); }
   // microwave minigame
   if (G.mw) { G.mw.t -= dt; G.mw.hum -= dt; if (G.mw.hum <= 0) { G.mw.hum = 1.4; Snd.hum(34); noise(rnd(32, 38), 'Microwave hum', { x: 9.5, z: .6, y: 0 }); }
@@ -432,7 +461,7 @@ function update(dt) {
     }
   }
   if (G.progT > 0) { G.progT -= dt; $('#prog').hidden = false; $('#prog i').style.width = (clamp(G.progF, 0, 1) * 100) + '%'; $('#prog span').textContent = G.progL; } else $('#prog').hidden = true;
-  $('#prompt').textContent = pr; hit.KeyE = 0; hit.KeyQ = 0;
+  $('#prompt').innerHTML = kbdify(pr); hit.KeyE = 0; hit.KeyQ = 0;
   // scenario systems
   if (sc.id === 'delivery') delivery(dt); if (sc.id === 'friend') friend(dt);
   if (G.phase !== 'play') return;
@@ -455,7 +484,7 @@ function delivery(dt) {
   drv.position.set(2, 0, Math.min(z, 24)); drv.rotation.y = Math.PI; const was = G.driverHere; G.driverHere = z <= 11.7; if (G.driverHere && !was) { Snd.car(); toast('A car pulls up outside...', 'warn'); } if (G.f.bag) drv.visible = false;
   if (!G.f.bag && sc.t0 + G.t >= eta) { Snd.bell(); noise(95, 'DOORBELL', { x: 2, z: 10.5, y: 0 }); if (G.phase === 'play') bust(`DING-DONG! The driver rang the bell at ${fmtT(G.clock)}.`); return; }
   const px = P.x, pz = P.z, inZone = px > .4 && px < 4 && pz > 10.2 && pz < 13.5 && P.y < 1;
-  if (inZone && P.speed > 1.2 && !G.f.lit) { G.f.lit = G.t; World.lights.porch.intensity = 1.8; Snd.click(40); addAlert(14); toast('Motion sensor! The porch light floods on.', 'warn'); }
+  if (inZone && P.speed > 1.2 && !G.f.lit) { G.f.lit = G.t; World.lights.porch.intensity = 9; Snd.click(40); addAlert(14); toast('Motion sensor! The porch light floods on.', 'warn'); }
   if (G.f.lit && G.t - G.f.lit > 9) { World.lights.porch.intensity = 0; G.f.lit = 0; }
 }
 function friend(dt) {
@@ -479,22 +508,31 @@ function friend(dt) {
 }
 
 // ---------- HUD ----------
-const stateLabel = (a) => (a >= 100 ? ['BUSTED', 'bad'] : a >= 81 ? ['CRITICAL (Waking Up)', 'bad'] : a >= 61 ? ['SEMI-AWAKE', 'bad'] : a >= 41 ? ['RESTLESS', 'warn'] : a >= 21 ? ['LIGHT SLEEP', 'warn'] : ['STABLE (Deep Sleep)', 'ok']);
+const stateLabel = (a) => (a >= 100 ? ['BUSTED', 'bad'] : a >= 81 ? ['CRITICAL · waking up', 'bad'] : a >= 61 ? ['SEMI-AWAKE', 'bad'] : a >= 41 ? ['RESTLESS', 'warn'] : a >= 21 ? ['LIGHT SLEEP', 'warn'] : ['DEEP SLEEP · STABLE', 'ok']);
+const SEG = 28; for (const id of ['dbSeg', 'alSeg']) $('#' + id).innerHTML = '<i></i>'.repeat(SEG);
+const segCache = {};
+function setSeg(id, f) { const n = Math.round(clamp(f, 0, 1) * SEG); if (segCache[id] === n) return; segCache[id] = n; const el = $('#' + id).children; for (let i = 0; i < SEG; i++) el[i].className = i < n ? (i < SEG * .4 ? 'g' : i < SEG * .72 ? 'y' : 'r') : ''; }
+const kbdify = (s) => esc(s).replace(/\[(E hold|E|Q|Shift)\]/g, (m, k) => `<kbd>${k.replace(' hold', '')}</kbd>${k === 'E hold' ? 'hold ' : ''}`);
 let hudT = 0;
 function drawHud(dt) {
-  hudT -= dt; if (hudT > 0 || G.phase !== 'play') return; hudT = .1;
-  const sc = G.sc, r = World.roomAt(P.x, P.z, P.y), sf = World.surfaceAt(P.x, P.z, P.y), [lab, cls] = stateLabel(G.alert), mc = G.meter > 55 ? 'bad' : G.meter > 30 ? 'warn' : 'ok';
-  const risk = sf.creak ? (sf.creak > 1 ? 'High creak risk underfoot!' : 'Creak risk underfoot') : sf.base < 25 ? 'Safe, soft surface' : 'Normal footstep noise', tg = G.target;
-  const look = `${P.crouch ? 'Crouched, low view.' : 'Standing view.'} ${G.flash ? 'The phone flashlight cuts a pale cone ahead.' : 'Only the dim blue night-light.'}${tg ? ' In reach: ' + (tg.name || DNAME[tg.id]) + '.' : ''}`;
-  const eta = sc.eta0 && !G.f.bag ? `<div class="r ${sc.eta0 - sc.t0 - G.t < 40 ? 'bad' : 'warn'}">🚗 DRIVER ETA ${fmtT(sc.eta0)} · T-${Math.max(0, Math.ceil(sc.eta0 - sc.t0 - G.t))}s</div>` : '';
-  $('#hud').innerHTML = `<div class="r">📹 FPV VIEWPORT: ${esc(look)}</div><div class="r">🕒 TIME: ${fmtT(G.clock)} &nbsp;|&nbsp; 📍 POSITION: ${esc(r.name)} (${P.crouch ? 'Crouched' : 'Standing'})</div>${eta}
-    <div class="r">🔊 DECIBEL METER <span class="${mc}">[${bar(Math.round((G.meter - 10) / 90 * 16), 16)}]</span> ${Math.round(G.meter)} dB <span class="lbl">(${esc(G.meterLabel || 'Ambient')}${G.meter > 30 ? ' · reaches Mom ' + Math.max(0, Math.round(G.reach)) + ' dB' : ''})</span></div>
-    <div class="r">🚨 MOM DETECTABILITY <span class="${cls}">[${bar(Math.round(G.alert / 100 * 15), 15)}]</span> ${Math.round(G.alert)}% <span class="${cls}">(${lab})</span></div>
-    <div class="r">🎒 HANDS / HELD: [Left: ${esc(G.held.L)}${G.flash ? ' · Flashlight ' + Math.round(G.battery) + '%' : ''} | Right: ${esc(G.held.R)}]</div>
-    <div class="r">👣 SURFACE NOISE: ${esc(sf.name)} <span class="${sf.creak ? 'bad' : 'ok'}">(${risk})</span></div>`;
-  $('#obj').innerHTML = `<b>${G.step + 1}/${sc.steps.length}</b> ${esc((sc.steps[Math.min(G.step, sc.steps.length - 1)] || {}).obj || '')}`;
-  if (toastT > 0) { toastT -= .1; if (toastT <= 0) $('#toast').innerHTML = ''; }
-  $('#fx').style.setProperty('--al', clamp((G.alert - 20) / 100, 0, .7));
+  hudT -= dt; if (hudT > 0 || G.phase !== 'play') return; hudT = .08;
+  const sc = G.sc, r = World.roomAt(P.x, P.z, P.y), sf = World.surfaceAt(P.x, P.z, P.y), [lab, cls] = stateLabel(G.alert), tg = G.target;
+  const sfc = sf.creak ? (sf.creak > 1 ? 'bad' : 'warn') : 'ok', sfT = sf.creak ? (sf.creak > 1 ? 'HIGH CREAK RISK' : 'CREAK RISK') : sf.base < 25 ? 'SOFT · SAFE' : 'NORMAL NOISE';
+  $('#tc').textContent = fmtT(G.clock);
+  $('#cap').textContent = `${P.crouch ? 'Crouched, low view.' : 'Standing view.'} ${G.flash ? 'The phone flashlight cuts a pale cone ahead.' : 'Only the dim blue night-light.'}${tg ? ' In reach: ' + (tg.name || DNAME[tg.id]) + '.' : ''}`;
+  $('#locT').textContent = r.name; $('#posT').textContent = P.crouch ? '· Crouched' : '· Standing';
+  $('#batT').textContent = `BAT ${G.flash ? Math.round(G.battery) : 78}%`;
+  setSeg('dbSeg', (G.meter - 10) / 90); $('#dbV').innerHTML = `${Math.round(G.meter)}<small>dB</small>`; $('#dbV').className = G.meter > 55 ? 'bad' : G.meter > 30 ? 'warn' : '';
+  $('#dbL').textContent = `${G.meterLabel || 'Ambient'}${G.meter > 30 ? ' · reaches Mom ' + Math.max(0, Math.round(G.reach)) + ' dB' : ''}`;
+  setSeg('alSeg', G.alert / 100); $('#alV').textContent = Math.round(G.alert) + '%'; $('#alV').className = cls === 'ok' ? '' : cls; $('#alL').innerHTML = `<span class="${cls}">${lab}</span>`;
+  $('#surf').innerHTML = `<span>👣 ${esc(sf.name)}</span><em class="${sfc}">${sfT}</em>`;
+  $('#hL').textContent = G.held.L + (G.flash ? ' · light on' : ''); $('#hR').textContent = G.held.R;
+  const left = sc.eta0 && !G.f.bag ? Math.max(0, Math.ceil(sc.eta0 - sc.t0 - G.t)) : -1, eta = $('#eta');
+  eta.hidden = left < 0; if (left >= 0) { eta.innerHTML = `🚗 DRIVER ETA ${fmtT(sc.eta0)} · T-${left}s`; eta.className = 'glass ' + (left < 40 ? 'bad' : 'warn'); }
+  const st = Math.min(G.step, sc.steps.length - 1);
+  $('#obj').innerHTML = `<div><span class="n">${G.step + 1}/${sc.steps.length}</span><span class="t">${esc(sc.steps[st].obj)}</span></div><div class="dots">${sc.steps.map((_, i) => `<i class="${i < G.step ? 'd' : i === G.step ? 'c' : ''}"></i>`).join('')}</div>`;
+  if (toastT > 0) { toastT -= .08; if (toastT <= 0) $('#toast').innerHTML = ''; }
+  $('#cross').classList.toggle('act', !!tg && !G.mw);
 }
 
 // ---------- render loop ----------
@@ -507,8 +545,8 @@ function frame(now) {
   const busy = G.busy ? 1 : 0; hands.position.y = Math.sin(P.bob * .5) * .008 + (busy ? .06 : 0); hands.position.x = Math.cos(P.bob * .5) * .006;
   phoneM.visible = true; cupM.visible = /Noodles|cup|Cup/.test(G.held?.R || '') && !/Empty$/.test(G.held?.R || ''); bagM.visible = /Bag/.test(G.held?.R || '');
   drawHud(dt);
-  qmat.uniforms.time.value = now / 1000; qmat.uniforms.al.value = G.phase === 'play' ? clamp((G.alert - 25) / 100, 0, .6) : 0;
-  if (rt) { R.setRenderTarget(rt); R.render(World.scene, cam); R.setRenderTarget(null); R.render(quad, qcam); } else R.render(World.scene, cam);
+  { const fl = 1.7 + Math.sin(now / 230) * .25 + Math.sin(now / 71) * .12; emis(World.tv.material, 0x4a7ac8, fl); World.lights.living.intensity = 1.6 + fl * .4; }
+  renderFrame(now);
   requestAnimationFrame(frame);
 }
 window.__dwm = { get G() { return G; }, P, D, MISSIONS, start, noise, win, keys, hit };
