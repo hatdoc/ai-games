@@ -212,10 +212,10 @@ function held() {
 }
 function useSlot(i) {
   const id = invList()[i]; if (!id) return;
-  if (id === 'bag') { G.sel = 'bag'; startMG({ type: 'chew', art: 'burger', title: 'Eat the burger', hint: 'Alternate E and R in a steady rhythm to chew. Too fast is a loud chomp, the wrong key is a slurp! The smell is already drifting...', chews: 12, goodNoise: [20, 30], fastNoise: [44, 58], missNoise: [50, 66], snd: 'chew', missSnd: 'slurp', goodLabel: 'Quiet chew', wrongLabel: 'Loud munch!', onDone() { G.f.ate = 1; G.sel = null; toast('Burger demolished. Mission almost done!', 'ok'); } }); return; }
+  if (id === 'bag') { G.sel = 'bag'; startMG({ type: 'chew', art: 'burger', achPerfect: 'burger_zen', title: 'Eat the burger', hint: 'Alternate E and R in a steady rhythm to chew. Too fast is a loud chomp, the wrong key is a slurp! The smell is already drifting...', chews: 12, goodNoise: [20, 30], fastNoise: [44, 58], missNoise: [50, 66], snd: 'chew', missSnd: 'slurp', goodLabel: 'Quiet chew', wrongLabel: 'Loud munch!', onDone() { G.f.ate = 1; G.sel = null; toast('Burger demolished. Mission almost done!', 'ok'); } }); return; }
   if (G.sel === id && !(id === 'noodles' && !G.f.opened)) { G.sel = null; return; }
   G.sel = id;
-  if (id === 'noodles' && !G.f.opened) startMG({ type: 'tension', title: 'Peel the lid', art: 'lid', speed: 1, sticky: [.3, .62], snd: 'crinkle', fail: 'The foil crackles loudly',
+  if (id === 'noodles' && !G.f.opened) startMG({ type: 'tension', title: 'Peel the lid', art: 'lid', achPerfect: 'perfect_peel', speed: 1, sticky: [.3, .62], snd: 'crinkle', fail: 'The foil crackles loudly',
     hint: 'HOLD E to pull the lid slowly. Keep the needle inside the green zone. Too gentle and it will not budge, too hard and the foil crackles (noise!).',
     onDone() { G.f.opened = 1; G.sel = 'noodles'; toast('Lid off! Now take it to the kettle, stove or microwave.', 'ok'); } });
 }
@@ -230,13 +230,13 @@ function startMG(cfg) {
   try { document.exitPointerLock(); } catch {} // free the mouse so you can click/hold the mini game
   $('#mgT').textContent = cfg.title; $('#mgH').textContent = cfg.hint || ''; mgEl.hidden = false; keys.KeyE = 0; hit.KeyE = 0; $('#prompt').innerHTML = '';
 }
-function endMG(ok) { const m = G.mg; if (!m) return; G.mg = null; mgEl.hidden = true; mgHold = false; hit.KeyE = hit.KeyR = hit.KeyT = 0; G.actCool = .3; if (ok && m.onDone) m.onDone(); }
+function endMG(ok) { const m = G.mg; if (!m) return; G.mg = null; mgEl.hidden = true; mgHold = false; hit.KeyE = hit.KeyR = hit.KeyT = 0; G.actCool = .3; if (ok) { if (m.ach) award(m.ach); if (m.achPerfect && !(m.miss || m.noisy || m.spills)) award(m.achPerfect); if (m.onDone) m.onDone(); } }
 function mgGood(m) { const d = rnd(...m.goodNoise); Snd[m.snd || 'click'](d); noise(d, m.goodLabel || 'Quiet', P); m.flash = .25; m.flashOk = true; }
 function mgMiss(m, label) { m.miss = (m.miss || 0) + 1; m.flash = .3; m.flashOk = false; const d = rnd(...m.missNoise); Snd[m.missSnd || m.snd || 'bump'](d); noise(d, label || m.missLabel || 'Oops', P); }
 function newPat(m) { const n = 3 + (m.round > 0 ? 1 : 0); m.pat = [0]; for (let i = 1; i < n; i++) m.pat.push(m.pat[i - 1] + [.45, .7, .95][Math.random() * 3 | 0]); m.phase = 'demo'; m.t0 = m.t + .6; m.played = []; m.taps = []; }
 const COINS = [500, 100, 25, 10], money = (c) => '$' + (c / 100).toFixed(2);
 function coinAdd(i) {
-  const m = G.mg; if (!m || m.type !== 'coins' || m.doneT) return; const v = COINS[i], fast = m.t - (m.lastC ?? -9) < .45; m.lastC = m.t;
+  const m = G.mg; if (!m || m.type !== 'coins' || m.doneT) return; const v = COINS[i], fast = m.t - (m.lastC ?? -9) < .45; m.lastC = m.t; if (fast) m.miss = (m.miss || 0) + 1;
   const d = (i === 0 ? 20 : i === 1 ? 30 : 26) + (fast ? 16 : 0) + rnd(-2, 3); Snd.coins(d); noise(d, fast ? 'Coins JINGLE' : 'Coin clinks', P); m.total += v; m.stack.push(v); m.flash = .2; m.flashOk = !fast;
 }
 function coinUndo() { const m = G.mg; if (!m || m.type !== 'coins' || !m.stack.length) return; m.total -= m.stack.pop(); Snd.click(24); noise(rnd(20, 28), 'Coin slid back', P); }
@@ -251,10 +251,10 @@ const MGS = {
     if (inZone) { m.p += dt * .15; m.quietT = (m.quietT || 0) + dt; if (m.quietT > .5) { m.quietT = 0; (m.snd === 'chime' ? Snd.click : Snd.crinkle)(22); } }
     else if (over) {
       m.tearT = (m.tearT || 0) + dt; m.p = Math.max(0, m.p - dt * .03);
-      if (m.tearT > .28) { m.tearT = 0; const d = rnd(40, 56) + m.loud * 12; Snd[m.snd || 'crinkle'](d); noise(d, m.fail || 'Crackles loudly', P); m.loud = Math.min(1, m.loud + .12); }
+      if (m.tearT > .28) { m.tearT = 0; const d = rnd(40, 56) + m.loud * 12; m.noisy = 1; Snd[m.snd || 'crinkle'](d); noise(d, m.fail || 'Crackles loudly', P); m.loud = Math.min(1, m.loud + .12); }
     }
     if (G.phase !== 'play') return;
-    if (m.ten > .97 && !(m.ripCool > 0)) { const d = rnd(58, 70) + m.loud * 6; Snd[m.snd || 'crinkle'](d); Snd.bump(d - 8); noise(d, 'RIPPED! ' + (m.fail || ''), P); m.ten = .5; m.p = Math.max(0, m.p - .06); m.loud = Math.min(1, m.loud + .3); m.ripCool = .8; m.flash = .3; }
+    if (m.ten > .97 && !(m.ripCool > 0)) { const d = rnd(58, 70) + m.loud * 6; Snd[m.snd || 'crinkle'](d); Snd.bump(d - 8); noise(d, 'RIPPED! ' + (m.fail || ''), P); m.noisy = 1; m.ten = .5; m.p = Math.max(0, m.p - .06); m.loud = Math.min(1, m.loud + .3); m.ripCool = .8; m.flash = .3; }
     m.ripCool = (m.ripCool || 0) - dt; m.flash = Math.max(0, (m.flash || 0) - dt); m.loud = Math.max(0, m.loud - dt * .03);
     if (G.phase === 'play' && m.p >= 1) endMG(true);
   },
@@ -283,7 +283,7 @@ const MGS = {
     for (const k of ['KeyE', 'KeyR']) if (hit[k]) {
       hit[k] = 0; const gap = m.t - (m.lastT ?? -9), other = k === 'KeyE' ? 'KeyR' : 'KeyE';
       if (k !== m.exp) { mgMiss(m, m.wrongLabel || 'Slurp'); m.streak = 0; }
-      else if (gap < .28) { const d = rnd(...m.fastNoise); Snd[m.missSnd || 'slurp'](d); noise(d, 'Too fast: a loud chomp', P); m.flash = .25; m.flashOk = false; m.n += .5; m.exp = other; m.lastT = m.t; }
+      else if (gap < .28) { const d = rnd(...m.fastNoise); Snd[m.missSnd || 'slurp'](d); noise(d, 'Too fast: a loud chomp', P); m.miss = (m.miss || 0) + 1; m.flash = .25; m.flashOk = false; m.n += .5; m.exp = other; m.lastT = m.t; }
       else { m.n++; m.exp = other; m.lastT = m.t; mgGood(m); }
       if (G.phase !== 'play') return;
     }
@@ -314,7 +314,7 @@ const MGS = {
     const held = mgHeld(), drift = Math.sin(m.t * 1.3) * .5 + Math.sin(m.t * 2.9) * .25;
     m.v += ((held ? 1 : -1) * 1.9 + drift * (G.stir > G.t ? 1.8 : .9)) * dt; m.v *= 1 - 1.5 * dt; m.x += m.v * dt;
     if (Math.abs(m.x) < (m.zone || .3)) m.p += dt / (m.time || 3.5);
-    if (Math.abs(m.x) > .95) { const d = rnd(...m.missNoise); Snd[m.snd || 'bump'](d); noise(d, m.missLabel || 'Scrape', P); m.x = Math.sign(m.x) * .55; m.v = 0; m.flash = .3; m.p = Math.max(0, m.p - .12); if (G.phase !== 'play') return; }
+    if (Math.abs(m.x) > .95) { const d = rnd(...m.missNoise); Snd[m.snd || 'bump'](d); noise(d, m.missLabel || 'Scrape', P); m.miss = (m.miss || 0) + 1; m.x = Math.sign(m.x) * .55; m.v = 0; m.flash = .3; m.p = Math.max(0, m.p - .12); if (G.phase !== 'play') return; }
     if (m.p >= 1) endMG(true);
   },
   pour(m, dt) {
@@ -466,7 +466,7 @@ const MISSIONS = [
       K.cups.forEach((c) => (c.visible = true)); K.pot.visible = true; for (const k of ['potStove', 'flame', 'led', 'steam', 'sinkWater', 'mwGlow']) K[k].visible = false;
       const hotReady = () => F.opened && F.noodles && F.cupWater !== 2;
       const doneHot = (src) => () => { F.cupWater = 2; G.steep = { t: 12 }; if (src === 'k') { F.kHot = 0; F.kWater = 0; } if (src === 'p') { F.potHot = 0; F.potWater = 0; F.burner = 0; G.heat = null; Snd.click(28); } toast('Hot water in! The noodles need a few seconds to soften.', 'ok'); };
-      const pourMG = (src) => () => startMG({ type: 'pour', title: 'Pour the hot water', hint: 'HOLD E to tilt and pour, release to stop. Fill to the line, no spills, and keep the splashing quiet.', onDone: doneHot(src) });
+      const pourMG = (src) => () => startMG({ type: 'pour', achPerfect: 'steady_hand', title: 'Pour the hot water', hint: 'HOLD E to tilt and pour, release to stop. Fill to the line, no spills, and keep the splashing quiet.', onDone: doneHot(src) });
       G.inter = [
         { x: 7.95, z: .8, r: 1.8, name: 'cabinet shelf', acts: [
           A('Take a Cup Noodles', [20, 30], 'open', 1.6, { snd: 'cab', when: () => D.cab.v > .25 && !F.noodles && !F.eaten, fn() { F.noodles = 1; give('noodles'); toast(`Cup Noodles stored in slot ${invList().indexOf('noodles') + 1}. Press ${invList().indexOf('noodles') + 1} to peel the lid.`, 'ok'); } }),
@@ -477,18 +477,18 @@ const MISSIONS = [
           A('Fill the cup with tap water', [34, 46], 'fillcup', 3, { snd: 'pour', bursts: 3, fx: 'sink', when: () => F.opened && F.noodles && !F.cupWater, fn() { F.cupWater = 1; } })] },
         { x: 10.3, z: .85, r: 1.6, name: 'electric kettle', acts: [
           A('Switch the kettle on', [28, 36], 'press', .8, { snd: 'click', when: () => F.kWater && !F.kHot && !G.kettle.on, fn() { G.kettle.on = true; toast('Heating... it gets louder as it nears boiling. Switch it off if it is too loud.'); } }),
-          A('Switch the kettle off', [22, 28], 'press', .8, { snd: 'click', when: () => G.kettle.on, fn() { G.kettle.on = false; toast('Kettle off. The noise fades and the water cools slowly.'); } }),
+          A('Switch the kettle off', [22, 28], 'press', .8, { snd: 'click', when: () => G.kettle.on, fn() { G.kettle.on = false; G.f.kOff = 1; toast('Kettle off. The noise fades and the water cools slowly.'); } }),
           A('Pour the hot water into the cup', [26, 34], 'reach', .6, { mini: true, snd: 'click', when: () => F.kHot && hotReady(), fn: pourMG('k') })] },
         { x: 8.25, z: .85, r: 1.6, name: 'stove', acts: [
           A('Put the pot on the stove', [32, 44], 'reach', 1.4, { snd: 'clang', when: () => F.pot && F.potWater && !F.potPlaced, fn() { F.potPlaced = 1; F.pot = 0; } }),
-          A('Light the burner', [24, 30], 'twist', .6, { mini: true, snd: 'click', when: () => F.potPlaced && !F.burner, fn: () => startMG({ type: 'timing', title: 'Light the burner', hint: 'Press E when the knob is in the green zone. Too early or late and the gas ignites with a WHUMP.', style: 'dial', hits: 1, speed: 1.15, zoneW: .2, missNoise: [44, 58], missLabel: 'Gas ignites with a WHUMP', goodNoise: [24, 30], goodLabel: 'Burner clicks on', snd: 'click', onDone() { F.burner = 1; G.heat = { t: 9, tick: 0 }; toast('Blue flame. Wait for the water to boil...'); } }) }),
+          A('Light the burner', [24, 30], 'twist', .6, { mini: true, snd: 'click', when: () => F.potPlaced && !F.burner, fn: () => startMG({ type: 'timing', title: 'Light the burner', hint: 'Press E when the knob is in the green zone. Too early or late and the gas ignites with a WHUMP.', style: 'dial', achPerfect: 'gas_chef', hits: 1, speed: 1.15, zoneW: .2, missNoise: [44, 58], missLabel: 'Gas ignites with a WHUMP', goodNoise: [24, 30], goodLabel: 'Burner clicks on', snd: 'click', onDone() { F.burner = 1; G.heat = { t: 9, tick: 0 }; toast('Blue flame. Wait for the water to boil...'); } }) }),
           A('Pour the boiling water into the cup', [26, 34], 'reach', .6, { mini: true, snd: 'click', when: () => F.potHot && hotReady(), fn: pourMG('p') }),
           A('Turn the burner off', [22, 28], 'twist', 1.1, { snd: 'click', when: () => F.burner && !(F.potHot && hotReady()), fn() { F.burner = 0; G.heat = null; } })] },
         { x: 9.55, z: .85, r: 1.6, name: 'microwave', acts: [
           A('Microwave the cup (stop it at 0:01)', [24, 32], 'press', 1, { snd: 'click', when: () => F.cupWater === 1 && F.noodles && !G.mw, fn() { G.mw = { t: 8, hum: 0 }; K.mwGlow.visible = true; toast('Press E when the timer shows 0:01!'); } })] },
         { x: 9.5, z: 1.95, r: 1.8, name: 'kitchen island', acts: [
-          A('Eat the noodles', [20, 24], 'reach', .6, { mini: true, snd: 'click', when: () => F.ready && !F.eaten && !F.carry, fn: () => startMG({ type: 'chew', art: 'noodles', title: 'Eat quietly', hint: 'Alternate E and R in a steady rhythm to chew. Too fast is a loud chomp, the wrong key is a slurp!', chews: 10, goodNoise: [20, 30], fastNoise: [44, 58], missNoise: [50, 66], snd: 'chew', missSnd: 'slurp', goodLabel: 'Quiet chew', wrongLabel: 'SLURP!', onDone() { F.eaten = 1; toast('All gone. Now back to bed...', 'ok'); } }) }),
-          A('Carry the cup upstairs', [20, 34], 'carry', 1.2, { snd: 'handle', when: () => F.ready && !F.eaten && !F.carry, fn() { F.carry = 1; } })] },
+          A('Eat the noodles', [20, 24], 'reach', .6, { mini: true, snd: 'click', when: () => F.ready && !F.eaten && !F.carry, fn: () => startMG({ type: 'chew', art: 'noodles', achPerfect: 'silent_slurper', title: 'Eat quietly', hint: 'Alternate E and R in a steady rhythm to chew. Too fast is a loud chomp, the wrong key is a slurp!', chews: 10, goodNoise: [20, 30], fastNoise: [44, 58], missNoise: [50, 66], snd: 'chew', missSnd: 'slurp', goodLabel: 'Quiet chew', wrongLabel: 'SLURP!', onDone() { F.eaten = 1; toast('All gone. Now back to bed...', 'ok'); } }) }),
+          A('Carry the cup upstairs', [20, 34], 'carry', 1.2, { ach: 'carry_out', snd: 'handle', when: () => F.ready && !F.eaten && !F.carry, fn() { F.carry = 1; } })] },
       ];
     } },
 
@@ -508,24 +508,24 @@ const MISSIONS = [
       { obj: 'Sneak back to bed and close your door (hold Q)', ok: () => inRoom('Your Bedroom') && D.yours.v < .07 },
     ],
     setup() {
-      const F = G.f, playMG = (title, c, bonus) => startMG({ type: 'lanes', title, hint: 'Press E, R or T as each note reaches the green line to land the shot. Misses make the keyboard clatter!', missLabel: 'Keys clatter', goodLabel: 'Key taps', snd: 'keys', onDone() { F.match = 1; G.bonus = (G.bonus || 0) + bonus; }, ...c, speed: (c.speed || 1) * .5 }), boot = () => { F.pcOn = 1; F.rgb = F.rgbOff ? 0 : 1; Snd.fan(26); };
+      const F = G.f, playMG = (title, c, bonus) => startMG({ type: 'lanes', title, achPerfect: 'perfect_clutch', ach: c.ach, hint: 'Press E, R or T as each note reaches the green line to land the shot. Misses make the keyboard clatter!', missLabel: 'Keys clatter', goodLabel: 'Key taps', snd: 'keys', onDone() { F.match = 1; G.bonus = (G.bonus || 0) + bonus; }, ...c, speed: (c.speed || 1) * .5 }), boot = () => { F.pcOn = 1; F.rgb = F.rgbOff ? 0 : 1; Snd.fan(26); };
       G.inter = [
         { x: .6, z: 5.15, r: 1.9, name: 'PC tower', acts: [
-          A('Flip the RGB switch off', [20, 28], 'press', 1.2, { snd: 'click', when: () => !F.rgbOff && !F.shut, fn() { F.rgbOff = 1; F.rgb = 0; } }),
+          A('Flip the RGB switch off', [20, 28], 'press', 1.2, { snd: 'click', when: () => !F.rgbOff && !F.shut, fn() { if (!F.pcOn) award('lights_out'); F.rgbOff = 1; F.rgb = 0; } }),
           A('Press the power button', [18, 22], 'press', .6, { snd: 'click', when: () => !F.pcOn, fn: () => startMG({ type: 'balance', art: 'fan', title: 'Safe boot', hint: 'Keep the fan speed in the green zone while it spins up. Hold E to speed it up, release to slow it.', time: 3.2, zone: .34, missNoise: [38, 52], missLabel: 'Fans ROAR', snd: 'fan', onDone() { boot(); if (F.rgb) addAlert(8); } }) }),
           A('Wake it from your phone (silent)', [18, 22], 'phone', 1, { snd: 'buzz', when: () => !F.pcOn, fn: () => TM('Wake-on-LAN from your phone', 'Send the signal at the right moment so the screen does not blast on.', { hits: 2, speed: 1, zoneW: .3, goodNoise: [20, 28], missNoise: [34, 46], goodLabel: 'Phone taps', missLabel: 'Screen blasts on', snd: 'click', onDone() { boot(); addAlert(3); } }) }),
-          A('Sleep the PC with the keyboard shortcut', [19, 29], 'press', 1, { snd: 'click', when: () => F.cele && !F.shut, fn() { F.shut = 1; F.pcOn = 0; F.rgb = 0; } }),
+          A('Sleep the PC with the keyboard shortcut', [19, 29], 'press', 1, { ach: 'sleep_mode', snd: 'click', when: () => F.cele && !F.shut, fn() { F.shut = 1; F.pcOn = 0; F.rgb = 0; } }),
           A('Hold the power button: full shutdown', [28, 40], 'press', 2.5, { snd: 'fan', ex: 4, when: () => F.cele && !F.shut, fn() { F.shut = 1; F.pcOn = 0; F.rgb = 0; } }),
           A('Leave it running and go', [20, 30], 'reach', .6, { snd: 'click', ex: 12, when: () => F.cele && !F.shut, fn() { F.shut = 1; } })] },
         { x: .4, z: 4.05, r: 1.8, name: 'headset', acts: [
-          A('Headset on, mic muted, volume low', [18, 22], 'reach', .6, { snd: 'rustle', when: () => F.pcOn && !F.headset, fn: () => startMG({ type: 'balance', art: 'jack', title: 'Plug in the headset', hint: 'Guide the jack into the socket: hold E to push right, release to push left. Keep it in the green zone and do not scrape the edges.', time: 3.2, zone: .34, missNoise: [34, 46], missLabel: 'Jack clunks', snd: 'click', onDone() { F.headset = 1; } }) }),
+          A('Headset on, mic muted, volume low', [18, 22], 'reach', .6, { snd: 'rustle', when: () => F.pcOn && !F.headset, fn: () => startMG({ ach: 'mic_muted', type: 'balance', art: 'jack', title: 'Plug in the headset', hint: 'Guide the jack into the socket: hold E to push right, release to push left. Keep it in the green zone and do not scrape the edges.', time: 3.2, zone: .34, missNoise: [34, 46], missLabel: 'Jack clunks', snd: 'click', onDone() { F.headset = 1; } }) }),
           A('One ear off to hear the room', [18, 22], 'reach', .6, { snd: 'rustle', when: () => F.pcOn && !F.headset, fn: () => startMG({ type: 'balance', art: 'jack', title: 'Plug in the headset', hint: 'Guide the jack into the socket: hold E to push right, release to push left. Keep it in the green zone and do not scrape the edges.', time: 3.2, zone: .34, missNoise: [34, 46], missLabel: 'Jack clunks', snd: 'click', onDone() { F.headset = 1; if (Math.random() < 0.2) { const d = rnd(58, 66); Snd.rustle(d); noise(d, 'A teammate yells in your headset', P); } } }) }),
           A('Mic on so your squad hears callouts', [18, 22], 'reach', .6, { snd: 'rustle', when: () => F.pcOn && !F.headset, fn: () => startMG({ type: 'balance', art: 'jack', title: 'Plug in the headset', hint: 'Guide the jack into the socket: hold E to push right, release to push left. Keep it in the green zone and do not scrape the edges.', time: 3.2, zone: .34, missNoise: [34, 46], missLabel: 'Jack clunks', snd: 'click', onDone() { F.headset = 1; if (Math.random() < 0.35) { const d = rnd(62, 78); Snd.rustle(d); noise(d, 'A teammate yells in your headset', P); } } }) })] },
         { x: .45, z: 4.55, r: 1.8, name: 'keyboard', acts: [
           A('Play: soft keys, slow flicks', [18, 22], 'type', .5, { snd: 'click', when: () => F.headset && !F.match, fn: () => playMG('Clutch 1v3: soft keys', { hits: 5, speed: .85, zoneW: .3, goodNoise: [20, 28], missNoise: [30, 40] }, 30) }),
-          A('Play: hammer the mechanical keyboard', [18, 22], 'type', .5, { snd: 'click', when: () => F.headset && !F.match, fn: () => playMG('Clutch 1v3: mechanical flicks', { hits: 6, speed: 1.4, zoneW: .17, goodNoise: [34, 46], missNoise: [50, 64] }, 80) }),
+          A('Play: hammer the mechanical keyboard', [18, 22], 'type', .5, { snd: 'click', when: () => F.headset && !F.match, fn: () => playMG('Clutch 1v3: mechanical flicks', { ach: 'clutch_master', hits: 6, speed: 1.4, zoneW: .17, goodNoise: [34, 46], missNoise: [50, 64] }, 80) }),
           A('Play: controller in your lap', [18, 22], 'type', .5, { snd: 'click', when: () => F.headset && !F.match, fn: () => playMG('Clutch 1v3: controller', { hits: 5, speed: 1.05, zoneW: .24, goodNoise: [24, 36], missNoise: [38, 50] }, 50) }),
-          A('Silent fist pump, bite your sleeve', [20, 28], 'fist', 1.6, { snd: 'rustle', when: () => F.match && !F.cele, fn() { F.cele = 1; } }),
+          A('Silent fist pump, bite your sleeve', [20, 28], 'fist', 1.6, { ach: 'silent_fist', snd: 'rustle', when: () => F.match && !F.cele, fn() { F.cele = 1; } }),
           A('Whisper "LET\'S GOOO"', [34, 50], 'fist', 1.6, { snd: 'whisper', when: () => F.match && !F.cele, fn() { F.cele = 1; } }),
           A('Slap the desk in victory', [60, 76], 'fist', 1, { snd: 'bump', when: () => F.match && !F.cele, fn() { F.cele = 1; } })] },
       ];
@@ -549,12 +549,12 @@ const MISSIONS = [
       const F = G.f; F.locked = 1; G.arr = G.sc.t0 + G.sc.eta - 22; G.sc.eta0 = G.sc.t0 + G.sc.eta; World.driver.visible = true;
       G.inter = [
         { x: 2.3, z: 9.75, y: 0, r: 1.5, name: 'deadbolt', acts: [
-          A('Turn the deadbolt slowly', [18, 22], 'twist', .6, { snd: 'click', when: () => !F.unlocked, fn: () => startMG({ type: 'tension', title: 'Turn the deadbolt', art: 'bolt', speed: .9, sticky: [.45], snd: 'bolt', fail: 'The deadbolt grinds', hint: 'HOLD E to turn the thumb-turn. Keep the needle in the green zone. The bolt sticks halfway: ease off there. Forcing it grinds and clacks.',
+          A('Turn the deadbolt slowly', [18, 22], 'twist', .6, { snd: 'click', when: () => !F.unlocked, fn: () => startMG({ type: 'tension', title: 'Turn the deadbolt', achPerfect: 'smooth_bolt', art: 'bolt', speed: .9, sticky: [.45], snd: 'bolt', fail: 'The deadbolt grinds', hint: 'HOLD E to turn the thumb-turn. Keep the needle in the green zone. The bolt sticks halfway: ease off there. Forcing it grinds and clacks.',
             onDone() { F.unlocked = 1; D.front.locked = 0; Snd.bolt(28); noise(rnd(24, 34), 'Deadbolt slides back', P); } }) })] },
         { x: 2, z: 11.2, y: 0, r: 2.4, name: 'delivery driver', acts: [
-          A('Whisper thanks, take the bag, tip on the phone', [18, 22], 'reach', .6, { snd: 'crinkle', when: () => G.driverHere && !F.bag, fn: () => TM('Quiet handoff', 'Take the bag without crinkling it.', { hits: 3, speed: .8, zoneW: .32, goodNoise: [20, 28], missNoise: [36, 48], goodLabel: 'Bag shifts', missLabel: 'The bag crinkles', snd: 'crinkle', onDone() { F.bag = 1; addAlert(6); give('bag'); G.held.R = 'Burger Bag'; } }) }),
-          A('Pay cash and ask for change', [18, 22], 'reach', .6, { snd: 'coins', when: () => G.driverHere && !F.bag, fn: () => startMG({ type: 'coins', title: 'Count out the money', hint: 'Pay exactly the amount. Press 1-4 (or click) to add a $5 note, $1 coin, 25¢ or 10¢. Tap too fast and the coins jingle!', target: [635, 745, 825][Math.random() * 3 | 0], total: 0, stack: [], onDone() { F.bag = 1; addAlert(4); give('bag'); G.held.R = 'Burger Bag'; } }) }),
-          A('Stuff the bag in your hoodie', [18, 22], 'carry', .6, { snd: 'crinkle', when: () => G.driverHere && !F.bag, fn: () => startMG({ type: 'tension', title: 'Tuck the bag into your hoodie', art: 'bag', speed: 1, sticky: [.4], snd: 'crinkle', fail: 'The bag crinkles loudly', hint: 'HOLD E to slide the bag into your hoodie pocket. Keep the needle in the green zone. Rushing crinkles the paper!', onDone() { F.bag = 1; F.hoodie = 1; addAlert(2); give('bag'); G.held.R = 'Bag (in hoodie)'; } }) })] },
+          A('Whisper thanks, take the bag, tip on the phone', [18, 22], 'reach', .6, { snd: 'crinkle', when: () => G.driverHere && !F.bag, fn: () => TM('Quiet handoff', 'Take the bag without crinkling it.', { hits: 3, speed: .8, zoneW: .32, goodNoise: [20, 28], missNoise: [36, 48], goodLabel: 'Bag shifts', missLabel: 'The bag crinkles', snd: 'crinkle', onDone() { F.bag = 1; addAlert(6); give('bag'); G.held.R = 'Burger Bag'; if (G.sc.eta0 - G.sc.t0 - G.t > 40) award('beat_the_bell'); } }) }),
+          A('Pay cash and ask for change', [18, 22], 'reach', .6, { snd: 'coins', when: () => G.driverHere && !F.bag, fn: () => startMG({ type: 'coins', achPerfect: 'exact_change', title: 'Count out the money', hint: 'Pay exactly the amount. Press 1-4 (or click) to add a $5 note, $1 coin, 25¢ or 10¢. Tap too fast and the coins jingle!', target: [635, 745, 825][Math.random() * 3 | 0], total: 0, stack: [], onDone() { F.bag = 1; addAlert(4); give('bag'); G.held.R = 'Burger Bag'; } }) }),
+          A('Stuff the bag in your hoodie', [18, 22], 'carry', .6, { snd: 'crinkle', when: () => G.driverHere && !F.bag, fn: () => startMG({ type: 'tension', title: 'Tuck the bag into your hoodie', ach: 'hoodie_smuggler', art: 'bag', speed: 1, sticky: [.4], snd: 'crinkle', fail: 'The bag crinkles loudly', hint: 'HOLD E to slide the bag into your hoodie pocket. Keep the needle in the green zone. Rushing crinkles the paper!', onDone() { F.bag = 1; F.hoodie = 1; addAlert(2); give('bag'); G.held.R = 'Bag (in hoodie)'; } }) })] },
       ];
     } },
 
@@ -577,11 +577,11 @@ const MISSIONS = [
       const calm = (extra) => () => { F.dog = 1; G.sam.mode = 'follow'; if (extra) extra(); };
       G.inter = [
         { x: 14, z: 2.8, y: 0, r: 3.6, name: 'Biscuit the dog', acts: [
-          A('Offer a treat from your pocket', [18, 22], 'reach', .6, { snd: 'crunch', when: () => !F.dog, fn: () => TM('Offer the treat', 'Hold it out at the right moment so he takes it gently.', { hits: 2, speed: .9, zoneW: .3, goodNoise: [20, 30], missNoise: [38, 52], goodLabel: 'Crunch', missLabel: 'Biscuit snaps and whines', snd: 'crunch', missSnd: 'whine', onDone: calm() }) }),
-          A('Pet him gently and whisper "sit"', [18, 22], 'reach', .6, { snd: 'whisper', when: () => !F.dog, fn: () => startMG({ type: 'pattern', title: 'Calm Biscuit', rounds: 3, hint: 'Watch the pattern of pats, then pet him in the same rhythm (tap E). A wrong rhythm makes him whine.', goodNoise: [18, 26], missNoise: [40, 56], goodLabel: 'Soft pat', missLabel: 'Biscuit whines', snd: 'rustle', missSnd: 'whine', onDone: calm() }) }),
-          A('Step in on the beat of his tail thumps', [18, 22], 'reach', .6, { snd: 'thump', when: () => !F.dog, fn: () => TM('Move on the beat', 'Match his thumps so the noise hides yours.', { hits: 3, speed: 1.25, zoneW: .22, goodNoise: [17, 26], missNoise: [40, 54], goodLabel: 'Quiet step', missLabel: 'Off beat: a creak', snd: 'thump', onDone: calm(() => { G.thumpUntil = G.t + 8; }) }) })] },
+          A('Offer a treat from your pocket', [18, 22], 'reach', .6, { snd: 'crunch', when: () => !F.dog, fn: () => TM('Offer the treat', 'Hold it out at the right moment so he takes it gently.', { ach: 'treat_giver', hits: 2, speed: .9, zoneW: .3, goodNoise: [20, 30], missNoise: [38, 52], goodLabel: 'Crunch', missLabel: 'Biscuit snaps and whines', snd: 'crunch', missSnd: 'whine', onDone: calm() }) }),
+          A('Pet him gently and whisper "sit"', [18, 22], 'reach', .6, { snd: 'whisper', when: () => !F.dog, fn: () => startMG({ type: 'pattern', title: 'Calm Biscuit', achPerfect: 'dog_whisperer', rounds: 3, hint: 'Watch the pattern of pats, then pet him in the same rhythm (tap E). A wrong rhythm makes him whine.', goodNoise: [18, 26], missNoise: [40, 56], goodLabel: 'Soft pat', missLabel: 'Biscuit whines', snd: 'rustle', missSnd: 'whine', onDone: calm() }) }),
+          A('Step in on the beat of his tail thumps', [18, 22], 'reach', .6, { snd: 'thump', when: () => !F.dog, fn: () => TM('Move on the beat', 'Match his thumps so the noise hides yours.', { ach: 'beat_dropper', hits: 3, speed: 1.25, zoneW: .22, goodNoise: [17, 26], missNoise: [40, 54], goodLabel: 'Quiet step', missLabel: 'Off beat: a creak', snd: 'thump', onDone: calm(() => { G.thumpUntil = G.t + 8; }) }) })] },
         { pos: () => (G.sam ? [G.sam.x, G.sam.z, G.sam.y > 1.5 ? 3 : 0] : [0, 0, 0]), r: 2.6, low: true, name: 'Sam', acts: [
-          A('Whisper the plan to Sam', [18, 22], 'reach', .6, { snd: 'whisper', when: () => F.dog && !F.samBriefed && G.sam && G.sam.mode !== 'gone', fn: () => startMG({ type: 'pattern', title: 'Signal the plan to Sam', rounds: 2, hint: 'Watch the hand-signal rhythm, then tap E to repeat it so Sam understands. A wrong signal carries as a noise.', goodNoise: [20, 28], missNoise: [36, 48], goodLabel: 'Signal', missLabel: 'A whisper carries', snd: 'whisper', onDone() { F.samBriefed = 1; toast('Sam knows the plan: he steps more softly now.', 'ok'); } }) })] },
+          A('Whisper the plan to Sam', [18, 22], 'reach', .6, { snd: 'whisper', when: () => F.dog && !F.samBriefed && G.sam && G.sam.mode !== 'gone', fn: () => startMG({ type: 'pattern', ach: 'clear_signals', title: 'Signal the plan to Sam', rounds: 2, hint: 'Watch the hand-signal rhythm, then tap E to repeat it so Sam understands. A wrong signal carries as a noise.', goodNoise: [20, 28], missNoise: [36, 48], goodLabel: 'Signal', missLabel: 'A whisper carries', snd: 'whisper', onDone() { F.samBriefed = 1; toast('Sam knows the plan: he steps more softly now.', 'ok'); } }) })] },
       ];
     } },
 
@@ -603,12 +603,12 @@ const MISSIONS = [
     setup() {
       const F = G.f, got = () => { F.phone = 1; give('phone'); G.held.L = 'Phone (screen glowing)'; G.glow = 1; G.stir = G.t + 5; G.stirAt = G.t; }, muted = () => { F.muted = 1; G.glow = 0; G.held.L = 'Phone (Muted)'; };
       G.inter = [{ x: 8.7, z: 2.2, y: 3, r: 1.9, name: 'nightstand', acts: [
-        A('Lift phone AND charger together, palm over the screen', [21, 34], 'reach', 2, { snd: 'handle', ex: 3, when: () => D.drawer.v >= .6 && !F.phone, fn: got }),
-        A('Unplug the cable first, then lift the phone', [18, 22], 'reach', .5, { snd: 'click', when: () => D.drawer.v >= .6 && !F.phone, fn: () => startMG({ type: 'tension', title: 'Unplug the charger slowly', hint: 'HOLD E to pull the cable out. Keep the needle in the green zone. Pull too hard and the plug scrapes (and the charging chime rings!).', snd: 'chime', fail: 'The plug scrapes and chimes', art: 'cable', speed: .8, onDone: got }) }),
+        A('Lift phone AND charger together, palm over the screen', [21, 34], 'reach', 2, { ach: 'quick_fingers', snd: 'handle', ex: 3, when: () => D.drawer.v >= .6 && !F.phone, fn: got }),
+        A('Unplug the cable first, then lift the phone', [18, 22], 'reach', .5, { snd: 'click', when: () => D.drawer.v >= .6 && !F.phone, fn: () => startMG({ type: 'tension', title: 'Unplug the charger slowly', achPerfect: 'cable_control', hint: 'HOLD E to pull the cable out. Keep the needle in the green zone. Pull too hard and the plug scrapes (and the charging chime rings!).', snd: 'chime', fail: 'The plug scrapes and chimes', art: 'cable', speed: .8, onDone: got }) }),
         A('Lean across the bed to grab it', [34, 56], 'reach', 1.2, { snd: 'bump', ex: 6, when: () => D.drawer.v >= .6 && !F.phone, fn: got }),
-        A('Flip the ringer switch, palm over the screen', [18, 22], 'phone', .8, { snd: 'click', when: () => F.phone && !F.muted, fn: () => startMG({ type: 'balance', art: 'switch', title: 'Flip the ringer switch', hint: 'Ease the switch toward the middle: hold E to push it right, release to push it left. Do not slam it to either end!', time: 3.2, zone: .34, missNoise: [34, 46], missLabel: 'Switch clicks loudly', snd: 'click', onDone() { muted(); } }) }),
+        A('Flip the ringer switch, palm over the screen', [18, 22], 'phone', .8, { snd: 'click', when: () => F.phone && !F.muted, fn: () => startMG({ type: 'balance', achPerfect: 'ringer_ninja', art: 'switch', title: 'Flip the ringer switch', hint: 'Ease the switch toward the middle: hold E to push it right, release to push it left. Do not slam it to either end!', time: 3.2, zone: .34, missNoise: [34, 46], missLabel: 'Switch clicks loudly', snd: 'click', onDone() { muted(); } }) }),
         A('Press power to blank the screen', [20, 32], 'phone', 1.2, { snd: 'click', ex: 3, when: () => F.phone && !F.muted, fn: muted }),
-        A('Ignore it and retreat first', [20, 30], 'reach', .6, { snd: 'buzz', spike: [.35, 60, 72], ex: 8, when: () => F.phone && !F.muted, fn: muted })] }];
+        A('Ignore it and retreat first', [20, 30], 'reach', .6, { ach: 'living_dangerously', snd: 'buzz', spike: [.35, 60, 72], ex: 8, when: () => F.phone && !F.muted, fn: muted })] }];
     } },
 ];
 
@@ -680,7 +680,7 @@ function prog(f, label, bar) { G.progT = .25; G.progF = f; G.progL = label; G.pr
 function start(i) {
   const sc = MISSIONS[i]; Snd.init(); closeChoice(); $('#momface').hidden = true; $('#mfui').hidden = true;
   G = { phase: 'play', sc, i, t: 0, clock: sc.t0, alert: sc.base, base: sc.base, maxAlert: sc.base, meter: 22, meterLabel: 'Ambient', reach: 0, lastNoise: -9, lastGain: -9, step: 0, f: {}, held: { L: 'Phone (Muted)', R: 'Empty' },
-    worst: { db: 0, t: '' }, flash: false, battery: 100, sched: [], busy: null, menu: null, fx: null, kettle: null, invOrder: [], sel: null, mg: null, boil: null, heat: null, steep: null, progBar: false, hotT: 0, stir: 0, stirNext: rnd(6, 12), thumpUntil: 0, thumpAt: 0, mw: null, over: false, inter: [], sam: null, glow: 0, driverHere: false };
+    worst: { db: 0, t: '' }, flash: false, battery: 100, sched: [], achRun: [], busy: null, menu: null, fx: null, kettle: null, invOrder: [], sel: null, mg: null, boil: null, heat: null, steep: null, progBar: false, hotT: 0, stir: 0, stirNext: rnd(6, 12), thumpUntil: 0, thumpAt: 0, mw: null, over: false, inter: [], sam: null, glow: 0, driverHere: false };
   for (const id in D) { D[id].v = (sc.doorV && sc.doorV[id]) || 0; D[id].apply(); D[id].locked = 0; D[id].acc = 0; }
   World.moms.bed.visible = sc.mom === 'bed'; World.moms.couch.visible = sc.mom === 'couch'; World.sam.visible = false; World.driver.visible = false;
   for (const k of ['pc', 'phone', 'porch', 'lamp']) World.lights[k].intensity = 0;
@@ -710,13 +710,71 @@ function finish(html) {
 function bust(why) {
   if (G.phase !== 'play') return; if (G.mg) { G.mg = null; mgEl.hidden = true; } try { document.exitPointerLock(); } catch {} G.faceShown = 0; G.phase = 'busted'; G.bustT = 0; G.why = why; Snd.bump(70); $('#stir').hidden = true; closeChoice(); G.busy = null;
 }
+// ---------- achievements: earned by how you choose to play ----------
+const ACH = [
+  { id: 'perfect_peel', m: 'ramen', i: '🍜', n: 'Perfect Peel', d: 'Peel the lid without a single crackle' },
+  { id: 'kettle_whisperer', m: 'ramen', i: '🫖', n: 'Kettle Whisperer', d: 'Switch the kettle off at least once, then still boil it' },
+  { id: 'gas_chef', m: 'ramen', i: '🔥', n: 'Gas Chef', d: 'Light the burner on the first try' },
+  { id: 'microwave_ninja', m: 'ramen', i: '⏱️', n: 'Microwave Ninja', d: 'Stop the microwave exactly at 0:01' },
+  { id: 'steady_hand', m: 'ramen', i: '💧', n: 'Steady Hand', d: 'Pour hot water without a single spill' },
+  { id: 'silent_slurper', m: 'ramen', i: '🤫', n: 'Silent Slurper', d: 'Eat the noodles without a loud chomp or slurp' },
+  { id: 'carry_out', m: 'ramen', i: '🥡', n: 'Carry Out', d: 'Carry the cup upstairs instead of eating in the kitchen' },
+  { id: 'lights_out', m: 'ranked', i: '🌑', n: 'Lights Out', d: 'Kill the RGB lights before booting the PC' },
+  { id: 'mic_muted', m: 'ranked', i: '🎧', n: 'Mic Muted', d: 'Plug in the headset with the mic muted' },
+  { id: 'clutch_master', m: 'ranked', i: '⌨️', n: 'Clutch Master', d: 'Win the clutch match on the mechanical keyboard' },
+  { id: 'perfect_clutch', m: 'ranked', i: '🎯', n: 'Flawless Flicks', d: 'Land every note in the clutch match' },
+  { id: 'silent_fist', m: 'ranked', i: '✊', n: 'Silent Fist', d: 'Celebrate the win in total silence' },
+  { id: 'sleep_mode', m: 'ranked', i: '😴', n: 'Sleep Mode', d: 'Put the PC to sleep with the keyboard shortcut' },
+  { id: 'smooth_bolt', m: 'delivery', i: '🔐', n: 'Smooth Bolt', d: 'Turn the deadbolt without a single grind' },
+  { id: 'exact_change', m: 'delivery', i: '💵', n: 'Exact Change', d: 'Pay in exact change without a jingle' },
+  { id: 'hoodie_smuggler', m: 'delivery', i: '🧥', n: 'Hoodie Smuggler', d: 'Smuggle the bag inside your hoodie' },
+  { id: 'burger_zen', m: 'delivery', i: '🍔', n: 'Burger Zen', d: 'Eat the burger without a loud munch' },
+  { id: 'beat_the_bell', m: 'delivery', i: '🔔', n: 'Beat the Bell', d: 'Get the bag with 40+ seconds to spare' },
+  { id: 'dog_whisperer', m: 'friend', i: '🐕', n: 'Dog Whisperer', d: 'Calm Biscuit with the petting rhythm and no whines' },
+  { id: 'beat_dropper', m: 'friend', i: '🥁', n: 'Beat Dropper', d: "Step in on the beat of Biscuit's tail" },
+  { id: 'clear_signals', m: 'friend', i: '🤟', n: 'Clear Signals', d: 'Brief Sam so he steps quietly' },
+  { id: 'treat_giver', m: 'friend', i: '🦴', n: 'Treat Giver', d: 'Win the dog over with a treat' },
+  { id: 'smooth_drawer', m: 'phone', i: '🗄️', n: 'Smooth Drawer', d: 'Open the nightstand drawer without a scrape' },
+  { id: 'cable_control', m: 'phone', i: '🔌', n: 'Cable Control', d: 'Unplug the charger without a scrape' },
+  { id: 'quick_fingers', m: 'phone', i: '⚡', n: 'Quick Fingers', d: 'Lift the phone and charger together' },
+  { id: 'ringer_ninja', m: 'phone', i: '🔕', n: 'Ringer Ninja', d: 'Silence the ringer without a loud click' },
+  { id: 'living_dangerously', m: 'phone', i: '😬', n: 'Living Dangerously', d: 'Retreat with the phone before silencing it' },
+  { id: 'ghost', m: 'any', i: '👻', n: 'Ghost', d: 'Finish any mission with grade S' },
+  { id: 'untouchable', m: 'any', i: '🧘', n: 'Untouchable', d: 'Finish a mission with Mom barely stirring' },
+  { id: 'speedy', m: 'any', i: '💨', n: 'Speedrunner', d: 'Finish a mission in under 3 minutes' },
+  { id: 'completionist', m: 'any', i: '🏆', n: 'Completionist', d: 'Finish all five missions' },
+];
+let achStore = {}; try { achStore = JSON.parse(localStorage.getItem('dwm-ach') || '{}'); } catch {}
+const achQ = []; let achBusy = false;
+function award(id) {
+  const a = ACH.find((x) => x.id === id); if (!a || !G.achRun || G.achRun.includes(id)) return;
+  G.achRun.push(id); const isNew = !achStore[id];
+  if (isNew) { achStore[id] = Date.now(); try { localStorage.setItem('dwm-ach', JSON.stringify(achStore)); } catch {} }
+  achQ.push({ a, isNew }); if (!achBusy) nextAch();
+}
+function nextAch() {
+  const it = achQ.shift(); if (!it) { achBusy = false; return; } achBusy = true;
+  const el = $('#achpop'); el.innerHTML = `<span class="ai">${it.a.i}</span><div><small>${it.isNew ? 'ACHIEVEMENT UNLOCKED' : 'ACHIEVEMENT (already earned)'}</small><b>${esc(it.a.n)}</b><em>${esc(it.a.d)}</em></div>`; el.hidden = false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  Snd.ping(); setTimeout(() => { el.hidden = true; nextAch(); }, 3600);
+}
+const MNAME = { ramen: 'Midnight Ramen Ops', ranked: '3 AM Ranked Match', delivery: 'Midnight Delivery', friend: 'Friend In / Out', phone: 'Phone Retrieval', any: 'Any mission' };
+function achPanel() {
+  const have = ACH.filter((a) => achStore[a.id]).length;
+  $('#achp').innerHTML = `<div class="achbox"><div class="achhead"><h2>🏆 Achievements <small>${have}/${ACH.length}</small></h2><button class="btn alt" id="achClose">Close</button></div>` +
+    ['ramen', 'ranked', 'delivery', 'friend', 'phone', 'any'].map((m) => `<h3>${MNAME[m]}</h3><div class="achgrid">${ACH.filter((a) => a.m === m).map((a) => `<div class="ach${achStore[a.id] ? ' on' : ''}"><span class="ai">${achStore[a.id] ? a.i : '🔒'}</span><div><b>${esc(a.n)}</b><em>${esc(a.d)}</em></div></div>`).join('')}</div>`).join('') + '</div>';
+  $('#achp').hidden = false; $('#achClose').onclick = () => { $('#achp').hidden = true; };
+}
+$('#achBtn').onclick = achPanel;
 function win() {
   const sc = G.sc, rise = G.maxAlert - sc.base, el = G.t, score = Math.round(clamp(430 + (100 - rise) * 4.2 - Math.min(150, el / 6) + (G.bonus || 0), 100, 1000));
+  if (score >= 850) award('ghost'); if (rise < 12) award('untouchable'); if (el < 180) award('speedy');
   const grade = score >= 850 ? ['S', 'GHOST'] : score >= 700 ? ['A', 'NINJA'] : score >= 550 ? ['B', 'SNEAKY'] : ['C', 'LUCKY'], isBest = score > (best[sc.id] || 0);
   if (isBest) { best[sc.id] = score; try { localStorage.setItem('dwm-best', JSON.stringify(best)); } catch {} }
+  if (MISSIONS.every((m) => best[m.id])) award('completionist');
+  const achHtml = G.achRun.length ? `<div class="achrun"><b>🏆 Earned this run</b>${G.achRun.map((id) => { const a = ACH.find((x) => x.id === id); return `<span title="${esc(a.d)}">${a.i} ${esc(a.n)}</span>`; }).join('')}</div>` : `<div class="achrun lbl">No achievements this run. Try a different approach, see 🏆 on the menu.</div>`;
   finish(`<h2 class="ok">MISSION COMPLETE</h2><p>${sc.emoji} ${esc(sc.name)}: <b>undetected.</b></p><div class="final">${score}</div><div><b>Grade ${grade[0]} · ${grade[1]}</b>${isBest ? ' · <span class="warn">★ NEW BEST!</span>' : ''}</div>
     <p class="lbl">Loudest moment: ${G.worst.db} dB (${esc(G.worst.t)}) · Mom peaked at ${Math.round(G.maxAlert)}% · ${Math.round(el)} s</p>
-    <div class="btns"><button class="btn" id="again">Play again</button><button class="btn alt" id="mn">Choose scenario</button><button class="btn alt" id="share">Share</button></div>`);
+    ${achHtml}<div class="btns"><button class="btn" id="again">Play again</button><button class="btn alt" id="mn">Choose scenario</button><button class="btn alt" id="share">Share</button></div>`);
   leaderboard($('#lb'), sc.board).show(score);
   $('#again').onclick = () => start(G.i); $('#mn').onclick = toMenu;
   $('#share').onclick = async (e) => { const text = `I finished "${sc.name}" in Don't Wake Mom! with ${score} points (Grade ${grade[0]}). Can you beat me?`, url = 'https://rank-game.com/games/dont-wake-mom';
@@ -745,7 +803,7 @@ function update(dt) {
   m.body.scale.y = 1 + Math.sin(performance.now() / 900) * .04 + (G.stir > G.t ? .15 : 0); m.body.rotation.x = G.stir > G.t ? Math.sin(G.t * 6) * .05 : 0;
   // scheduled noises and busy actions
   for (let i = G.sched.length - 1; i >= 0; i--) if (G.t >= G.sched[i].at) { const s = G.sched.splice(i, 1)[0]; s.f(); if (G.phase !== 'play') return; }
-  if (G.busy) { G.busy.t -= dt; prog(0, G.busy.label, false); if (G.busy.t <= 0) { const a = G.busy.a; G.busy = null; G.fx = null; if (a.bonus) G.bonus = (G.bonus || 0) + a.bonus; a.fn && a.fn(); if (a.say) toast(a.say); } }
+  if (G.busy) { G.busy.t -= dt; prog(0, G.busy.label, false); if (G.busy.t <= 0) { const a = G.busy.a; G.busy = null; G.fx = null; if (a.bonus) G.bonus = (G.bonus || 0) + a.bonus; a.fn && a.fn(); if (a.ach) award(a.ach); if (a.say) toast(a.say); } }
   if (G.actCool > 0) G.actCool -= dt;
   if (G.mg) { MGS[G.mg.type](G.mg, dt); if (G.phase !== 'play') return; if (G.mg) drawMG(G.mg); }
   const locked = G.busy || G.menu || G.mg;
@@ -784,7 +842,7 @@ function update(dt) {
     else if (hit.KeyE && G.target && G.target.name === 'microwave & kettle') { /* handled below */ } }
   // kitchen systems: kettle boiling, pot heating, noodles steeping, and the props that show them
   { const K = World.K, F = G.f;
-    if (G.kettle) { const k = G.kettle; if (k.on) { k.heat = Math.min(1, k.heat + dt / 6.5); k.tick -= dt; if (k.tick <= 0) { k.tick = 1.1; const db = 26 + k.heat * 20 + rnd(-2, 2); Snd.boil(db); noise(db, 'Kettle rumbling', { x: 10.3, z: .55, y: 0 }, { mult: .55 }); } if (k.heat >= 1) { k.on = false; F.kHot = 1; Snd.click(34); Snd.ding(); toast('The kettle clicks off: the water is boiling.', 'ok'); } } else k.heat = Math.max(0, k.heat - dt * .015); }
+    if (G.kettle) { const k = G.kettle; if (k.on) { k.heat = Math.min(1, k.heat + dt / 6.5); k.tick -= dt; if (k.tick <= 0) { k.tick = 1.1; const db = 26 + k.heat * 20 + rnd(-2, 2); Snd.boil(db); noise(db, 'Kettle rumbling', { x: 10.3, z: .55, y: 0 }, { mult: .55 }); } if (k.heat >= 1) { k.on = false; F.kHot = 1; if (F.kOff) award('kettle_whisperer'); Snd.click(34); Snd.ding(); toast('The kettle clicks off: the water is boiling.', 'ok'); } } else k.heat = Math.max(0, k.heat - dt * .015); }
     if (G.heat) { G.heat.t -= dt; G.heat.tick -= dt; if (G.heat.tick <= 0) { G.heat.tick = 1.4; Snd.hiss(30); noise(rnd(26, 34), 'Gas burner hiss', { x: 8, z: .45, y: 0 }); } if (G.heat.t <= 0 && !F.potHot) { F.potHot = 1; G.heat = { t: 99999, tick: .2 }; Snd.boil(36); toast('The water in the pot is boiling!', 'ok'); } }
     if (G.steep) { G.steep.t -= dt; if (G.steep.t <= 0) { G.steep = null; F.ready = 1; G.held.L = 'Cup Noodles (ready!)'; toast('The noodles are ready to eat!', 'ok'); } }
     K.cups[0].visible = !F.noodles; K.pot.visible = !F.pot && !F.potPlaced && !F.potTaken; K.potStove.visible = !!F.potPlaced; K.flame.visible = !!F.burner; K.flame.scale.setScalar(1 + Math.sin(G.t * 22) * .15);
@@ -792,7 +850,7 @@ function update(dt) {
     K.steam.children.forEach((s, i) => { const f = (G.t * .45 + i * .2) % 1; s.position.set(Math.sin(G.t * 2 + i) * .02, f * .28, 0); s.material.opacity = .26 * (1 - f); s.scale.setScalar(.7 + f); }); }
   // doors / holds / taps
   const tg = locked ? null : findTarget(); G.target = tg; let pr = '', prHtml = '';
-  if (G.mw) { $('#big').hidden = false; const s = Math.max(0, G.mw.t); $('#big').textContent = `0:0${Math.ceil(s)}`; $('#big').classList.toggle('go', s <= 1.7); pr = '[E] stop the microwave at 0:01'; if (hit.KeyE) { if (G.mw.t <= 1.7) { Snd.click(26); Snd.ding(); G.mw = null; G.f.cupWater = 2; G.steep = { t: 12 }; G.held.L = 'Cup Noodles (hot, steeping)'; toast('Perfect: stopped at 0:01!', 'ok'); } else toast('Too early. Wait for 0:01!', 'warn'); } }
+  if (G.mw) { $('#big').hidden = false; const s = Math.max(0, G.mw.t); $('#big').textContent = `0:0${Math.ceil(s)}`; $('#big').classList.toggle('go', s <= 1.7); pr = '[E] stop the microwave at 0:01'; if (hit.KeyE) { if (G.mw.t <= 1.7) { Snd.click(26); Snd.ding(); award('microwave_ninja'); G.mw = null; G.f.cupWater = 2; G.steep = { t: 12 }; G.held.L = 'Cup Noodles (hot, steeping)'; toast('Perfect: stopped at 0:01!', 'ok'); } else toast('Too early. Wait for 0:01!', 'warn'); } }
   else $('#big').hidden = true;
   if (tg && !G.mw) {
     if (tg.kind === 'door') {
@@ -800,7 +858,7 @@ function update(dt) {
       pr = d.locked || (tg.id === 'front' && G.f.locked && !G.f.unlocked) ? `Locked: use the deadbolt` : `[E] open · [Q] close (hold, Shift = fast)`;
       if (tg.id === 'front' && G.f.locked && !G.f.unlocked) { /* locked */ }
       else if (tg.id === 'drawer' && d.v < .6 && dirn >= 0) { prHtml = `<div class="pn">nightstand drawer</div><div class="pa"><kbd>E</kbd><span>Slide the drawer open slowly</span><em class="warn">tension game</em></div>`;
-        if (hit.KeyE) startMG({ type: 'tension', title: 'Slide the drawer open', art: 'drawer', speed: .85, sticky: [.5], snd: 'bump', fail: 'The drawer scrapes', hint: 'HOLD E to pull the drawer. Keep the needle in the green zone. The runner sticks halfway: ease off. Yanking it scrapes loudly.', onDone() { D.drawer.v = 1; D.drawer.apply(); Snd.slide(24); noise(rnd(22, 30), 'Drawer slides open', P); } }); }
+        if (hit.KeyE) startMG({ type: 'tension', title: 'Slide the drawer open', achPerfect: 'smooth_drawer', art: 'drawer', speed: .85, sticky: [.5], snd: 'bump', fail: 'The drawer scrapes', hint: 'HOLD E to pull the drawer. Keep the needle in the green zone. The runner sticks halfway: ease off. Yanking it scrapes loudly.', onDone() { D.drawer.v = 1; D.drawer.apply(); Snd.slide(24); noise(rnd(22, 30), 'Drawer slides open', P); } }); }
       else if (dirn) moveDoor(d, dirn, fast ? .7 : .18, dt);
       pr = `${tg.id === 'front' && G.f.locked && !G.f.unlocked ? 'Locked: turn the deadbolt first' : pr}  (${DNAME[tg.id]})`;
     } else if (tg.acts) {

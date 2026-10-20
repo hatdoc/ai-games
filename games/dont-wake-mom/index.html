@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Midnight Stealth: Don't Wake Mom!</title>
-<script src="../cloudsave.js" data-game="dont-wake-mom" data-keys="dwm-best"></script>
+<script src="../cloudsave.js" data-game="dont-wake-mom" data-keys="dwm-best dwm-ach"></script>
 <style>
   :root { --g: #7ef0b0; --y: #ffd36b; --r: #ff7a6a; --dim: #98a3cc; --ink: #eef2ff; --glass: linear-gradient(180deg, rgba(14,20,40,.62), rgba(8,11,24,.5)); --line: rgba(255,255,255,.12);
     --sans: -apple-system, "SF Pro Text", "Segoe UI", Inter, Roboto, system-ui, sans-serif; --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace; }
@@ -70,6 +70,14 @@
   #momface .mfb button:first-child { background: #fff; color: #111; } #momface .mfb button:hover { filter: brightness(1.15); transform: translateY(-1px); }
   @media (max-width: 700px) { #mfStats { display: none; } #momface .mfb { left: 0; right: 0; justify-content: center; } }
   @keyframes pop { from { transform: scale(.2) rotate(-8deg); opacity: 0; } to { transform: scale(1); opacity: 1; } } @keyframes shake { 0%,100% { transform: translate(0); } 25% { transform: translate(-6px, 3px) rotate(-1deg); } 75% { transform: translate(6px, -3px) rotate(1deg); } }
+  #achpop { position: fixed; right: 14px; top: 62px; z-index: 80; display: flex; gap: 12px; align-items: center; max-width: min(360px, 92vw); padding: 12px 16px; border-radius: 16px; background: linear-gradient(135deg, rgba(60,44,10,.95), rgba(24,18,6,.95)); border: 1px solid #ffd36b; box-shadow: 0 12px 40px rgba(255,200,80,.25); }
+  #achpop.show { animation: achin .5s cubic-bezier(.2,1.4,.4,1); } @keyframes achin { from { transform: translateX(120%); opacity: 0; } to { transform: none; opacity: 1; } }
+  #achpop .ai, .ach .ai { font-size: 30px; line-height: 1; } #achpop small { display: block; font: 700 10px var(--mono); letter-spacing: 1.5px; color: #ffd36b; } #achpop b { display: block; font: 800 16px var(--sans); } #achpop em { display: block; font: 12px var(--sans); font-style: normal; color: #e8dcc0; }
+  #achp { position: fixed; inset: 0; z-index: 60; overflow-y: auto; padding: 40px 16px; background: #05070f; } .achbox { max-width: 820px; margin: 0 auto; } .achhead { display: flex; justify-content: space-between; align-items: center; } .achhead h2 { font: 800 26px var(--sans); margin: 0; } .achhead small { color: var(--y); font: 700 14px var(--mono); }
+  .achbox h3 { margin: 18px 0 8px; font: 700 12px var(--mono); letter-spacing: 2px; color: var(--dim); text-transform: uppercase; } .achgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
+  .ach { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid var(--line); opacity: .55; } .ach.on { opacity: 1; background: rgba(255,211,107,.1); border-color: rgba(255,211,107,.5); }
+  .ach b { display: block; font: 700 14px var(--sans); } .ach em { display: block; font: 12px var(--sans); font-style: normal; color: var(--dim); }
+  .achrun { margin: 12px 0; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; } .achrun b { width: 100%; font: 700 12px var(--mono); letter-spacing: 1.5px; color: var(--y); } .achrun span { padding: 4px 10px; border-radius: 99px; background: rgba(255,211,107,.14); border: 1px solid rgba(255,211,107,.4); font: 600 12px var(--sans); }
   #cross { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #fffc; z-index: 15; pointer-events: none; transition: all .15s; box-shadow: 0 0 6px #000a; }
   #cross.act { width: 22px; height: 22px; margin: -11px 0 0 -11px; background: transparent; border: 2px solid var(--g); box-shadow: 0 0 10px #7ef0b088; }
   #prompt { position: fixed; left: 0; right: 0; top: 56%; z-index: 20; text-align: center; font: 650 15px var(--sans); text-shadow: 0 1px 8px #000; pointer-events: none; padding: 0 10px; }
@@ -144,10 +152,12 @@
 <script>if (top !== self) document.getElementById('home').remove();</script>
 <div id="menu"><div class="wrap">
   <div class="eyebrow">FIRST-PERSON STEALTH · 02:14 AM</div><h1>Midnight Stealth:<br>Don't Wake Mom!</h1><p class="lede">You see the house through your own eyes. Every step, hinge and floorboard makes noise. Pick a mission and stay quiet.</p>
+  <button class="btn alt" id="achBtn" style="margin:-6px 0 16px">🏆 Achievements</button>
   <div class="cards" id="cards"></div>
   <div class="keys glass"><span class="desk"><b>W A S D</b> move · <b>mouse</b> look (click to capture) · </span><b>C</b> crouch (quiet) · <b>Shift</b> run (LOUD) · <b>E R T</b> do an action (each shows its noise) · <b>1-5</b> use an item from your item box · hold <b>E</b> to open · hold <b>Q</b> to close · <b>F</b> flashlight · <b>V</b> tell a friend to wait · <b>M</b> mute · (on this menu keys <b>1-5</b> start a mission).<br>
   0–30 dB quiet · 31–55 creaks · 56–80 loud · 81+ <span class="bad">busted</span>. Hold doors with <b>Shift</b> to rush them (squeaky!).</div></div></div>
 <div id="momface" hidden><div class="mf" id="mf"><div class="bubble" id="momSay"></div><div class="mfui" id="mfui" hidden><div id="mfStats"></div><div class="mfb"><button id="mfAgain">Try again</button><button id="mfMenu">Choose scenario</button></div></div></div></div>
+<div id="achpop" hidden></div><div id="achp" hidden></div>
 <div id="end" hidden></div>
 <div id="touch"><button data-k="KeyE">E</button><button data-k="KeyR">R</button><button data-k="KeyT">T</button><button data-k="KeyQ">Close</button><button data-k="KeyC">Crouch</button><button data-k="ShiftLeft">Run</button><button data-k="KeyF">Light</button><button data-k="KeyV">Wait</button></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
