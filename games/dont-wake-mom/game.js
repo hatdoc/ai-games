@@ -89,7 +89,8 @@ addEventListener('keydown', (e) => {
   if (e.target.closest && e.target.closest('.lb,input')) return;
   Snd.init(); if (!keys[e.code]) hit[e.code] = 1; keys[e.code] = 1;
   if (/^(Arrow|Space|Tab)/.test(e.code)) e.preventDefault();
-  if (G.mg && G.mg.type === 'coins' && /^Digit[1-4]$/.test(e.code)) coinAdd(+e.code.slice(5) - 1);
+  if (G.phase === 'busted' && !$('#mfui').hidden && /^(Enter|Space|KeyR)$/.test(e.code)) start(G.i);
+  else if (G.mg && G.mg.type === 'coins' && /^Digit[1-4]$/.test(e.code)) coinAdd(+e.code.slice(5) - 1);
   else if (G.mg && G.mg.type === 'coins' && (e.code === 'Backspace' || e.code === 'KeyQ')) coinUndo();
   else if (e.code === 'Escape' && G.mg) endMG(false);
   else if (G.phase === 'play' && !G.mg && !G.busy && /^Digit[1-5]$/.test(e.code)) useSlot(+e.code.slice(5) - 1);
@@ -707,7 +708,7 @@ function finish(html) {
   $('#end').hidden = false; $('#end').innerHTML = `<div class="endbox">${html}<div id="lb"></div><div id="ad"></div></div>`; adBanner($('#ad'));
 }
 function bust(why) {
-  if (G.phase !== 'play') return; if (G.mg) { G.mg = null; mgEl.hidden = true; } G.faceShown = 0; G.phase = 'busted'; G.bustT = 0; G.why = why; Snd.bump(70); $('#stir').hidden = true; closeChoice(); G.busy = null;
+  if (G.phase !== 'play') return; if (G.mg) { G.mg = null; mgEl.hidden = true; } try { document.exitPointerLock(); } catch {} G.faceShown = 0; G.phase = 'busted'; G.bustT = 0; G.why = why; Snd.bump(70); $('#stir').hidden = true; closeChoice(); G.busy = null;
 }
 function win() {
   const sc = G.sc, rise = G.maxAlert - sc.base, el = G.t, score = Math.round(clamp(430 + (100 - rise) * 4.2 - Math.min(150, el / 6) + (G.bonus || 0), 100, 1000));
