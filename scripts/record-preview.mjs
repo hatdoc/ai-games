@@ -158,6 +158,7 @@ const BOTS = {
       }, 5);
     });
   } },
+  minesweet: { skip: 1, len: 9, poster: 5, async play(page) { await page.evaluate(() => { localStorage.setItem('minesweet', JSON.stringify({ seenHow: true })); }); await page.reload(); await page.waitForTimeout(500); await page.evaluate(() => startDemo()); } },
   'skillshot-gym': { skip: 3, len: 8, poster: 5, async play(page) { // the skillshot drill, with a bot that leads its shots
     await page.evaluate(() => startDemo());
   } },

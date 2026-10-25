@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Minesweet</title>
+<script src="../cloudsave.js" data-game="minesweet" data-keys="minesweet"></script>
+<style>
+  :root { --bg: #15112b; --panel: #211b3f; --panel2: #2d2559; --line: #ffffff1f; --ink: #f4f1ff; --dim: #a79fd1; --mint: #5cf2c0; --pink: #ff5c93; --gold: #ffd24a; --blue: #6cb8ff;
+    --tile: #4b3fa0; --tile2: #5d4fc2; --open: #1a1533; --sans: ui-rounded, "SF Pro Rounded", "Nunito", "Segoe UI", system-ui, sans-serif; --s: 36px; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 15px/1.4 var(--sans); overflow: hidden; touch-action: manipulation; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  [hidden] { display: none !important; }
+  #app { height: 100%; height: 100dvh; display: flex; flex-direction: column; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .screen { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .btn { border: 1px solid var(--line); background: var(--panel2); border-radius: 12px; padding: 10px 14px; font-weight: 700; }
+  .btn:hover { background: #3a3070; }
+  .btn.pri { background: var(--mint); color: #08241b; border-color: var(--mint); }
+  .btn.pri:hover { background: #8bf7d6; }
+  .btn.hot { background: var(--pink); border-color: var(--pink); color: #2a0714; }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .muted { color: var(--dim); } .fine { color: var(--dim); font-size: 12px; margin: 8px 0 0; }
+
+  /* home */
+  #home { overflow-y: auto; align-items: center; padding: 18px 16px 24px; }
+  .wrap { width: min(520px, 100%); display: flex; flex-direction: column; gap: 10px; }
+  .logo { text-align: center; font-weight: 900; font-size: 40px; letter-spacing: 1px; line-height: 1; margin-top: 4px; }
+  .logo b { color: var(--mint); } .logo i { font-style: normal; color: var(--pink); }
+  .tagline { text-align: center; color: var(--dim); margin: 0 0 6px; }
+  .mode { display: flex; align-items: center; gap: 12px; text-align: left; width: 100%; padding: 14px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); }
+  button.mode:hover { background: var(--panel2); }
+  .mode .em { font-size: 28px; } .mode b { display: block; font-size: 17px; } .mode small { color: var(--dim); display: block; }
+  .mode.daily { border-color: var(--mint); background: linear-gradient(135deg, #1f3a45, var(--panel)); }
+  .mode .tag { margin-left: auto; font-size: 12px; font-weight: 800; color: var(--mint); white-space: nowrap; }
+  .mode.trap { border-color: var(--pink); background: linear-gradient(135deg, #43224e, var(--panel)); }
+  .chips { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .chips .btn { flex: 1; padding: 8px 6px; font-size: 14px; white-space: nowrap; }
+  .chips small { display: block; font-weight: 500; color: var(--dim); font-size: 11px; }
+  .chips .btn.on { border-color: var(--mint); background: #1f4a45; }
+  .row4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .row4 .btn { padding: 10px 4px; font-size: 13px; }
+  .who { text-align: center; font-size: 13px; color: var(--dim); }
+  .who a, .who button { color: var(--mint); background: none; border: 0; padding: 0; font-weight: 700; text-decoration: underline; }
+
+  /* play */
+  #play { padding: 8px 8px 10px; gap: 6px; }
+  .top { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+  .ib { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); font-size: 18px; }
+  .stat { display: flex; align-items: baseline; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 7px 12px; min-width: 88px; justify-content: center; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: 20px; } .stat small { color: var(--gold); font-weight: 800; }
+  .face { width: 48px; height: 48px; border-radius: 14px; border: 1px solid var(--mint); background: var(--panel2); font-size: 26px; }
+  .sub { text-align: center; font-size: 13px; color: var(--dim); min-height: 18px; }
+  .sub b { color: var(--ink); }
+  #bwrap { flex: 1; min-height: 0; overflow: auto; display: flex; touch-action: pan-x pan-y; border-radius: 14px; background: #0f0b20; border: 1px solid var(--line); transition: filter .35s; overscroll-behavior: contain; }
+  #bwrap.dark { filter: brightness(.12) contrast(1.4); }
+  .board { margin: auto; padding: 8px; display: grid; grid-template-columns: repeat(var(--w), var(--s)); grid-auto-rows: var(--s); gap: 2px; touch-action: pan-x pan-y; }
+  .c { border-radius: calc(var(--s) * .2); background: linear-gradient(160deg, var(--tile2), var(--tile)); box-shadow: inset 0 -3px 0 #0003, inset 0 2px 0 #ffffff2e; display: grid; place-items: center; font-weight: 900; font-size: calc(var(--s) * .56); line-height: 1; cursor: pointer; position: relative; }
+  .c.o { background: var(--open); box-shadow: none; cursor: default; }
+  .c.o[data-n] { cursor: pointer; }
+  .c.f { background: linear-gradient(160deg, #a23b69, #7a2c6f); } .c.f.wf { background: #5b1d33; }
+  .c.m { background: #3b1f45; } .c.hit { background: var(--pink); }
+  .c.cur { outline: 3px solid var(--gold); outline-offset: -3px; z-index: 1; }
+  .c.n1 { color: var(--blue); } .c.n2 { color: var(--mint); } .c.n3 { color: #ff7a8a; } .c.n4 { color: #b58cff; } .c.n5 { color: #ffb35c; } .c.n6 { color: #4fe3e3; } .c.n7 { color: #fff; } .c.n8 { color: #aaa; }
+  .conf .c.o[data-n] { font-size: 0; } .conf .c.o[data-n]::after { content: "?"; font-size: calc(var(--s) * .56); color: var(--dim); }
+  @media (hover: hover) { .c:not(.o):not(.f):hover { background: linear-gradient(160deg, #7667e0, var(--tile2)); } }
+  .c.pop { animation: pop .38s both; } @keyframes pop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
+  .c.boom { animation: boom .5s both; } @keyframes boom { 0% { transform: scale(.3); } 50% { transform: scale(1.5); background: var(--gold); } 100% { transform: scale(1); } }
+  .c.near { animation: near .6s; } @keyframes near { 0%, 100% { box-shadow: 0 0 0 0 #ff5c9300; } 30% { box-shadow: 0 0 0 6px #ff5c93aa; transform: scale(1.18); } }
+  .shake { animation: shake .45s; } @keyframes shake { 20% { transform: translate(-6px, 3px); } 40% { transform: translate(6px, -3px); } 60% { transform: translate(-4px, -2px); } 80% { transform: translate(4px, 2px); } }
+  .tools { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); }
+  .seg button { border: 0; background: none; padding: 11px 16px; font-weight: 800; min-width: 92px; }
+  .seg button.on { background: var(--mint); color: #08241b; }
+  .zoom { display: flex; gap: 6px; } .zoom button { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); font-size: 20px; font-weight: 800; }
+
+  /* sheets */
+  .sheet { position: fixed; inset: 0; background: #0a0618cc; display: flex; align-items: center; justify-content: center; z-index: 20; padding: 12px; backdrop-filter: blur(3px); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 18px; width: min(460px, 100%); max-height: 94dvh; max-height: calc(100dvh - 24px); overflow-y: auto; position: relative; animation: rise .25s; }
+  @keyframes rise { from { transform: translateY(18px); opacity: 0; } }
+  .card h2 { margin: 0 0 4px; font-size: 22px; } .card h3 { margin: 16px 0 6px; font-size: 14px; letter-spacing: .5px; text-transform: uppercase; color: var(--dim); }
+  .card p { margin: 6px 0; } .card ul { margin: 6px 0; padding-left: 20px; } .card li { margin: 3px 0; }
+  .x { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border-radius: 10px; border: 0; background: #ffffff14; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; } .btns .btn { flex: 1; min-width: 120px; }
+  .big { font-size: 44px; font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .hero { text-align: center; padding: 6px 0 2px; } .hero .em { font-size: 44px; }
+  .pill { display: inline-block; font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 99px; background: #ffffff18; margin: 2px 2px 0 0; }
+  .pill.mint { background: #5cf2c030; color: var(--mint); } .pill.gold { background: #ffd24a30; color: var(--gold); } .pill.pink { background: #ff5c9330; color: var(--pink); }
+  .vs { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; text-align: center; margin: 12px 0 8px; }
+  .vs .side { background: #00000030; border-radius: 14px; padding: 10px 6px; } .vs .side small { color: var(--dim); display: block; font-size: 12px; }
+  .vs .side b { font-size: 26px; display: block; font-variant-numeric: tabular-nums; } .vs .side.win { outline: 2px solid var(--gold); background: #ffd24a1c; }
+  .verdict { text-align: center; font-weight: 900; font-size: 22px; padding: 8px; border-radius: 12px; }
+  .verdict.win { color: var(--gold); background: #ffd24a1c; animation: glow 1.2s infinite alternate; } .verdict.lose { color: var(--pink); } .verdict.tie { color: var(--blue); }
+  @keyframes glow { to { text-shadow: 0 0 14px var(--gold); } }
+  .cardbox { display: flex; gap: 10px; align-items: center; border: 1px solid var(--pink); background: #ff5c9318; border-radius: 14px; padding: 10px 12px; margin: 10px 0; }
+  .cardbox .em { font-size: 30px; } .cardbox.good { border-color: var(--mint); background: #5cf2c015; }
+  .cardlist { display: grid; gap: 8px; } .cardlist .cardbox { margin: 0; } .cardbox b { display: block; } .cardbox small { color: var(--dim); }
+  button.cardbox { width: 100%; text-align: left; } button.cardbox.on { outline: 3px solid var(--pink); } button.cardbox:disabled { opacity: .45; cursor: default; }
+  .gp { border: 1px dashed var(--mint); border-radius: 14px; padding: 10px 12px; margin: 12px 0 0; background: #5cf2c010; } .gp a { color: var(--mint); }
+  .tabs { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; } .tabs button { flex: 1; padding: 7px 4px; border-radius: 99px; border: 1px solid var(--line); background: none; font-weight: 800; font-size: 13px; }
+  .tabs button.on { background: var(--mint); color: #08241b; border-color: var(--mint); }
+  .achs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .ach { border: 1px solid var(--line); border-radius: 14px; padding: 10px; background: #00000025; }
+  .ach.off { opacity: .45; filter: grayscale(1); } .ach .em { font-size: 26px; } .ach small { display: block; color: var(--dim); }
+  input.name { width: 100%; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: #00000030; color: var(--ink); font: inherit; user-select: text; -webkit-user-select: text; }
+  .link { width: 100%; padding: 10px; border-radius: 12px; border: 1px dashed var(--mint); background: #00000030; color: var(--mint); font: 12px ui-monospace, monospace; word-break: break-all; user-select: all; -webkit-user-select: all; margin-top: 8px; }
+  .gp-on .lb .act { display: none; }
+  #toast { position: fixed; left: 50%; top: 16%; transform: translateX(-50%); background: #000d; border: 1px solid var(--line); padding: 9px 16px; border-radius: 99px; font-weight: 800; z-index: 40; pointer-events: none; animation: tin .25s; max-width: 90vw; text-align: center; }
+  @keyframes tin { from { opacity: 0; transform: translate(-50%, 10px); } }
+  #banner { position: fixed; inset: 0; z-index: 35; display: grid; place-items: center; pointer-events: none; text-align: center; font-weight: 900; font-size: clamp(34px, 11vw, 78px); color: var(--gold); text-shadow: 0 0 30px #ffb300, 0 4px 0 #0007; animation: bn 1.6s both; }
+  @keyframes bn { 0% { transform: scale(.3) rotate(-6deg); opacity: 0; } 20% { transform: scale(1.15) rotate(2deg); opacity: 1; } 80% { opacity: 1; } 100% { transform: scale(1); opacity: 0; } }
+  #fx { position: fixed; inset: 0; pointer-events: none; z-index: 30; width: 100%; height: 100%; }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01s !important; animation-delay: 0s !important; } }
+  @media (max-height: 460px) { .logo { font-size: 28px; } .tagline { display: none; } .face { width: 40px; height: 40px; } .ib { height: 36px; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <section id="home" class="screen">
+    <div class="wrap">
+      <div class="logo"><b>MINE</b><i>SWEET</i> 💣</div>
+      <p class="tagline">Minesweeper you can send to a friend.</p>
+      <button class="mode daily" data-act="daily"><span class="em">📅</span><span><b>Daily Duel <span id="dNum"></span></b><small id="dSub">Same board for everyone, every day</small></span><span class="tag" id="dTag"></span></button>
+      <div class="mode" style="display:block">
+        <div style="display:flex;gap:12px;align-items:center"><span class="em">⛏</span><span><b>Classic</b><small>First click is always safe. Fastest times go on the leaderboard.</small></span></div>
+        <div class="chips" id="chips"></div>
+      </div>
+      <button class="mode trap" data-act="trap"><span class="em">🎯</span><span><b>Trap Your Friend</b><small>Clear a board, send the link, let them try to beat you. Add a sabotage card.</small></span></button>
+      <div class="row4">
+        <button class="btn" data-act="boards">🏆<br>Ranks</button>
+        <button class="btn" data-act="cards">🃏<br>Cards</button>
+        <button class="btn" data-act="ach">🏅<br>Badges</button>
+        <button class="btn" data-act="how">❔<br>How to</button>
+      </div>
+      <div class="who" id="who"></div>
+    </div>
+  </section>
+
+  <section id="play" class="screen" hidden>
+    <div class="top">
+      <button class="ib" data-act="home" aria-label="Back to menu">←</button>
+      <div class="stat" title="Mines left"><span>💣</span><b id="mines">0</b></div>
+      <button id="face" class="face" data-act="again" aria-label="Restart">🙂</button>
+      <div class="stat" title="Time"><span>⏱</span><b id="time">0.0</b><small id="pen"></small></div>
+      <button class="ib" data-act="how" aria-label="Help">?</button>
+    </div>
+    <div class="sub" id="sub"></div>
+    <div id="bwrap"><div id="board" class="board" role="grid" aria-label="Minefield"></div></div>
+    <div class="tools">
+      <div class="seg" role="group" aria-label="Tap mode"><button data-tool="dig" class="on">⛏ Dig</button><button data-tool="flag">🚩 Flag</button></div>
+      <button id="revealB" class="btn" data-act="reveal" hidden>🔎 Reveal</button>
+      <div class="zoom"><button data-act="zout" aria-label="Smaller tiles">−</button><button data-act="zin" aria-label="Bigger tiles">+</button></div>
+    </div>
+  </section>
+</div>
+<div id="sheet" class="sheet" hidden><div class="card" id="sheetBody"></div></div>
+<canvas id="fx" hidden></canvas>
+
+<script src="engine.js"></script>
+<script src="../leaderboard.js"></script>
+<script src="../rgroom.js"></script>
+<script>
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (t) => String(t).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const SITE_GAME = 'https://rank-game.com/games/minesweet'; // share links always point at the blog copy (it has ads and rankings)
+const LV = MS.LEVELS, LV_IDS = Object.keys(LV);
+const MINI = { w: 5, h: 5, m: 3, key: 't', name: 'Side board', tries: 200 };
+
+// ---------- saved data (local to this device; cloudsave.js mirrors it for signed-in players) ----------
+const DEF = { name: '', best: {}, stats: { played: 0, won: 0 }, ach: {}, cards: null, cd: {}, daily: {}, ds: { last: '', streak: 0, best: 0 }, zoom: 0, lastLv: 'intermediate', seenHow: false };
+let S = (() => { try { return { ...DEF, ...JSON.parse(localStorage.getItem('minesweet')) }; } catch { return { ...DEF }; } })();
+const save = () => { try { localStorage.setItem('minesweet', JSON.stringify(S)); } catch { /* private mode: play on */ } };
+const A = () => window.rgAuth || { onSite: false, user: null };
+const myName = () => MS.cleanName(S.name || A().user?.nick || '');
+const fmtScore = (v) => MS.fmtTime(MS.fromScore(v));
+
+// ---------- the day comes from the server clock (not the player's), falling back to the device clock offline ----------
+let skew = 0;
+const timeReady = Promise.race([
+  fetch('https://rank-game.com/api/time', { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (Math.abs(j.now - Date.now()) < 3 * 864e5) skew = j.now - Date.now(); }).catch(() => {}),
+  sleep(1500),
+]);
+const now = () => Date.now() + skew;
+const today = () => MS.dayKey(now());
+
+// ---------- small UI helpers ----------
+const haptic = (ms) => { try { navigator.vibrate?.(ms); } catch { /* not supported */ } };
+let toastT = 0;
+function toast(t, ms = 1800) { $('#toast')?.remove(); const e = document.createElement('div'); e.id = 'toast'; e.textContent = t; document.body.append(e); clearTimeout(toastT); toastT = setTimeout(() => e.remove(), ms); }
+function banner(t) { $('#banner')?.remove(); const e = document.createElement('div'); e.id = 'banner'; e.textContent = t; document.body.append(e); setTimeout(() => e.remove(), 1700); }
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch { /* iframe without clipboard permission */ }
+  const t = document.createElement('textarea'); t.value = text; t.style.cssText = 'position:fixed;opacity:0'; document.body.append(t); t.select();
+  let ok = false; try { ok = document.execCommand('copy'); } catch { /* ignore */ } t.remove(); return ok;
+}
+let confettiRun = 0;
+function confetti(gold) {
+  const cv = $('#fx'), ctx = cv.getContext('2d'); cv.hidden = false; cv.width = innerWidth; cv.height = innerHeight;
+  const cols = gold ? ['#ffd24a', '#fff2b0', '#ffb300', '#ff5c93'] : ['#5cf2c0', '#ff5c93', '#6cb8ff', '#ffd24a'], id = ++confettiRun;
+  const ps = Array.from({ length: gold ? 220 : 130 }, () => ({ x: innerWidth / 2 + (Math.random() - .5) * 120, y: innerHeight * .4, vx: (Math.random() - .5) * 15, vy: -Math.random() * 15 - 3, r: 4 + Math.random() * 5, c: cols[(Math.random() * cols.length) | 0], a: Math.random() * 6 }));
+  let t = 0;
+  (function frame() {
+    if (id !== confettiRun) return;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    for (const p of ps) { p.vy += .35; p.x += p.vx; p.y += p.vy; p.a += .2; ctx.fillStyle = p.c; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a); ctx.fillRect(-p.r, -p.r / 2, p.r * 2, p.r); ctx.restore(); }
+    if (++t < 130) requestAnimationFrame(frame); else cv.hidden = true;
+  })();
+}
+
+// ---------- sheets (popups) ----------
+const sheetEl = $('#sheet'), sheetBody = $('#sheetBody');
+let sheetClose = null, sheetLock = false;
+function sheet(html, { lock = false, onclose = null } = {}) {
+  sheetBody.innerHTML = (lock ? '' : '<button class="x" data-act="close" aria-label="Close">✕</button>') + html;
+  sheetEl.hidden = false; sheetLock = lock; sheetClose = onclose; sheetBody.scrollTop = 0;
+}
+function closeSheet() { if (sheetEl.hidden) return; sheetEl.hidden = true; sheetBody.innerHTML = ''; document.body.classList.remove('gp-on'); const f = sheetClose; sheetClose = null; f?.(); }
+sheetEl.addEventListener('pointerdown', (e) => { if (e.target === sheetEl && !sheetLock) closeSheet(); });
+
+// ---------- the board view: drawing + touch/mouse input. It knows nothing about modes or cards. ----------
+let tool = 'dig'; // what a plain tap does; a long press does the other one
+function BoardView(root, onAct) {
+  const v = { root, G: null, cells: [], cur: -1 };
+  v.build = (G) => {
+    v.G = G; root.style.setProperty('--w', G.cfg.w);
+    root.innerHTML = Array.from({ length: G.N }, (_, i) => `<div class="c" data-i="${i}" role="gridcell"></div>`).join('');
+    v.cells = [...root.children]; v.cur = -1; v.paintAll();
+  };
+  v.paint = (i) => {
+    const G = v.G, el = v.cells[i], s = G.st[i], lost = G.status === 'lost', mine = G.board?.mines[i];
+    let cls = 'c', txt = '', label = 'hidden';
+    if (s === 1) { cls += ' o'; const n = G.board.nums[i]; if (n) { cls += ' n' + n; txt = n; el.dataset.n = n; label = n + ' mines nearby'; } else { delete el.dataset.n; label = 'empty'; } }
+    else { delete el.dataset.n; }
+    if (s === 2) { cls += ' f'; txt = '🚩'; label = 'flag'; if (lost && !mine) { cls += ' wf'; txt = '❌'; label = 'wrong flag'; } }
+    if (lost && s !== 1 && mine && s !== 2) { cls += ' m'; txt = '💣'; label = 'mine'; }
+    if (i === G.hit) { cls += ' hit'; txt = '💥'; label = 'mine you hit'; }
+    if (i === v.cur) cls += ' cur';
+    el.className = cls; el.textContent = txt; el.setAttribute('aria-label', `Row ${(i / G.cfg.w | 0) + 1}, column ${i % G.cfg.w + 1}, ${label}`);
+  };
+  v.paintAll = () => { for (let i = 0; i < v.G.N; i++) v.paint(i); };
+  v.pop = (list, step = 14, cls = 'pop') => { // staggered chain reaction, outwards from the first tile
+    const d = Math.min(step, 650 / Math.max(1, list.length));
+    list.forEach((i, k) => { const el = v.cells[i]; el.classList.add(cls); el.style.animationDelay = k * d + 'ms'; el.addEventListener('animationend', () => { el.classList.remove(cls); el.style.animationDelay = ''; }, { once: true }); });
+  };
+  v.moveCur = (i) => { const o = v.cur; v.cur = i; if (o >= 0) v.paint(o); v.paint(i); v.cells[i].scrollIntoView({ block: 'nearest', inline: 'nearest' }); };
+  v.size = (px) => root.style.setProperty('--s', px + 'px');
+
+  let p = null;
+  root.addEventListener('contextmenu', (e) => e.preventDefault());
+  root.addEventListener('pointerdown', (e) => {
+    const c = e.target.closest('.c'); if (!c) return; const i = +c.dataset.i;
+    if (e.pointerType === 'mouse') { p = { i, btn: e.button, mouse: true }; return; }
+    p = { i, x: e.clientX, y: e.clientY, long: false };
+    p.timer = setTimeout(() => { if (p) { p.long = true; haptic(25); onAct(i, tool === 'dig' ? 'flag' : 'dig'); } }, 380);
+  });
+  root.addEventListener('pointermove', (e) => { if (p && !p.mouse && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 10) { clearTimeout(p.timer); p = null; } });
+  root.addEventListener('pointerup', (e) => {
+    if (!p) return; clearTimeout(p.timer); const q = p; p = null;
+    if (q.mouse) { const c = e.target.closest('.c'); if (c && +c.dataset.i === q.i) onAct(q.i, q.btn === 2 ? 'flag' : q.btn === 1 ? 'chord' : 'dig'); return; }
+    if (!q.long) onAct(q.i, tool);
+  });
+  root.addEventListener('pointercancel', () => { if (p) { clearTimeout(p.timer); p = null; } });
+  return v;
+}
+
+// ---------- a run: one play of one board, in one mode ----------
+// modes: classic | daily | make (you clear a board to create a challenge) | chal (you play a friend's challenge)
+const view = BoardView($('#board'), (i, k) => act(i, k));
+let R = null, timerId = 0, lastNear = 0;
+const dailyTries = {};
+
+function begin(mode, o) {
+  closeSheet(); stopClock(); confettiRun++; $('#fx').hidden = true;
+  const lv = o.level; let G;
+  if (mode === 'classic') G = MS.newGame(lv);
+  else G = MS.newGame(lv, { board: MS.fairBoard(lv, o.seed) });
+  R = { mode, lv, G, seed: o.seed || G.seed, t0: 0, ms: 0, penalty: MS.penaltyFor(o.card), usedCards: o.usedCards || 0, attempt: o.attempt || 1, chal: o.chal || null, armed: o.armed || null,
+    round: o.round || 1, to: o.to || '', day: o.day || '', fired: new Set(), over: false, locked: false, card: o.card || null, shielded: !!o.shielded, replay: !!o.replay, flagsPlaced: 0, T: null, miniN: 0 };
+  $('#home').hidden = true; $('#play').hidden = false;
+  $('#face').textContent = '🙂'; $('#time').textContent = '0.0'; $('#pen').textContent = R.penalty ? '+' + R.penalty / 1000 + 's' : '';
+  $('#bwrap').classList.remove('dark'); view.root.classList.remove('conf', 'shake');
+  view.build(G); fit(); hud();
+  $('#revealB').hidden = !(mode === 'chal' && MS.cardsOf(S).includes('reveal'));
+  $('#sub').innerHTML = subtitle();
+  window.rgInvite?.(''); // leaving any earlier challenge link
+}
+function subtitle() {
+  const l = R.lv.name;
+  if (R.mode === 'daily') return `<b>Daily Duel #${MS.dayNumber(R.day)}</b> · ${l}${R.replay ? ' · replay (your result stays)' : ''}`;
+  if (R.mode === 'make') return `<b>Trap Your Friend</b> · ${l}${R.round > 1 ? ` · round ${R.round}` : ''}${R.armed ? ` · ${MS.CARDS[R.armed].icon} ${MS.CARDS[R.armed].name} armed` : ''}`;
+  if (R.mode === 'chal') return `<b>${esc(R.chal.name || 'A friend')}</b> did ${MS.fmtTime(R.chal.ms)} · ${l}${R.card ? ` · ${MS.CARDS[R.card].icon} ${MS.CARDS[R.card].name}` : ''}${R.attempt > 1 ? ` · try ${R.attempt}` : ''}`;
+  return `<b>Classic</b> · ${l}`;
+}
+function hud() { $('#mines').textContent = MS.minesLeft(R.G); }
+function startClock() { if (R.t0) return; R.t0 = performance.now(); timerId = setInterval(() => { $('#time').textContent = ((performance.now() - R.t0) / 1000).toFixed(1); }, 100); }
+function stopClock() { clearInterval(timerId); timerId = 0; }
+
+// size the tiles to the space: big when it fits, never below a finger-friendly minimum (then the board scrolls)
+function fit() {
+  if (!R) return;
+  const wrap = $('#bwrap'), { w, h } = R.G.cfg, coarse = matchMedia('(pointer: coarse)').matches;
+  const fitPx = Math.min(Math.floor((wrap.clientWidth - 18 - (w - 1) * 2) / w), Math.floor((wrap.clientHeight - 18 - (h - 1) * 2) / h));
+  const px = Math.max(coarse ? 30 : 24, Math.min(54, fitPx)) + S.zoom * 4;
+  view.size(Math.max(18, Math.min(64, px)));
+}
+new ResizeObserver(fit).observe($('#bwrap'));
+
+function act(i, kind) {
+  if (!R || R.over || R.locked) return;
+  const G = R.G;
+  if (kind === 'flag' && G.st[i] === 1) kind = 'dig'; // on touch, flag mode + tap an open number still chords
+  if (kind === 'flag') {
+    if (!MS.flag(G, i)) return;
+    if (G.st[i] === 2) R.flagsPlaced++;
+    startClock(); view.paint(i); hud(); haptic(12); return;
+  }
+  if (G.st[i] === 2) return; // flags protect the tile
+  const res = G.st[i] === 1 ? MS.chord(G, i) : MS.reveal(G, i);
+  if (!res.opened.length && !res.hit) return;
+  startClock();
+  for (const j of res.opened) view.paint(j);
+  if (res.hit) { for (const j of G.board.mines.keys()) if (G.board.mines[j]) view.paint(j); view.paint(G.hit); return lose(); }
+  if (res.opened.length >= 18) { view.pop(res.opened); if (res.opened.length >= 30) toast(`💥 Chain reaction ×${res.opened.length}`, 1200); }
+  else if (res.opened.length > 1) view.pop(res.opened, 25);
+  // near miss: you just uncovered a tile touching 3+ mines (and not as part of a big opening). A small flash, never a pause.
+  const first = res.opened[0];
+  if (res.opened.length === 1 && G.board.nums[first] >= 3 && performance.now() - lastNear > 6000) { lastNear = performance.now(); view.cells[first].classList.add('near'); toast('😮 Close one!', 900); haptic(30); }
+  hud();
+  if (G.status === 'won') return win();
+  effects();
+}
+
+// ---------- sabotage effects: temporary, drawn on top, never touching the board ----------
+function effects() {
+  const plan = R.card ? MS.CARDS[R.card].plan : []; const frac = MS.progress(R.G);
+  plan.forEach((e, k) => {
+    if (R.fired.has(k) || frac < e.at) return; R.fired.add(k);
+    const from = MS.CARDS[R.card], who = esc(R.chal?.name || 'Your friend');
+    if (R.card === 'blackout') { toast(`🌑 Blackout from ${R.chal.name || 'your friend'}!`, 1400); $('#bwrap').classList.add('dark'); setTimeout(() => $('#bwrap').classList.remove('dark'), e.ms); }
+    else if (R.card === 'confusion') { toast(`🌀 Confusion from ${R.chal.name || 'your friend'}!`, 1400); view.root.classList.add('conf'); setTimeout(() => view.root.classList.remove('conf'), e.ms); }
+    else if (e.mini) miniGame(who);
+  });
+}
+function miniGame(who) {
+  R.locked = true; let MG, mv;
+  const fresh = () => { MG = MS.newGame(MINI, { board: MS.fairBoard(MINI, R.seed + 'dt' + R.miniN++) }); mv.build(MG); mv.size(Math.min(56, Math.floor((Math.min(innerWidth, 420) - 90) / 5))); };
+  sheet(`<h2>🎲 Double Trouble!</h2><p>${who} sent a side board. Clear it to continue. Your clock keeps running; a mine here just reshuffles it.</p>
+    <div class="seg" style="margin:8px 0;width:max-content" role="group"><button data-tool="dig" class="${tool === 'dig' ? 'on' : ''}">⛏ Dig</button><button data-tool="flag" class="${tool === 'flag' ? 'on' : ''}">🚩 Flag</button></div>
+    <div style="display:flex;justify-content:center;background:#0f0b20;border-radius:14px;padding:6px"><div id="mini" class="board" style="padding:4px"></div></div>`, { lock: true });
+  mv = BoardView($('#mini'), (i, k) => {
+    if (k === 'flag') { if (MS.flag(MG, i)) mv.paint(i); return; }
+    const r = MG.st[i] === 1 ? MS.chord(MG, i) : MS.reveal(MG, i);
+    r.opened.forEach((j) => mv.paint(j));
+    if (r.hit) { mv.paintAll(); haptic(40); toast('💥 Reshuffled', 900); setTimeout(fresh, 700); }
+    else if (MG.status === 'won') { mv.paintAll(); R.locked = false; setTimeout(() => { sheetLock = false; closeSheet(); toast('✅ Side board cleared'); }, 500); }
+  });
+  fresh();
+}
+
+// ---------- end of a run ----------
+const LOSS = ['Boom! The mines send their regards.', 'That tile had other plans.', 'Mines 1, you 0. Rematch?', 'So close. That one was ticklish.', 'A tragic tile. Shake it off.'];
+function lose() {
+  R.over = true; stopClock(); R.ms = Math.round(performance.now() - R.t0); $('#face').textContent = '😵';
+  const G = R.G, h = G.hit, w = G.cfg.w, mines = [...G.board.mines.keys()].filter((j) => G.board.mines[j] && j !== h)
+    .sort((a, b) => Math.hypot(a % w - h % w, (a / w | 0) - (h / w | 0)) - Math.hypot(b % w - h % w, (b / w | 0) - (h / w | 0)));
+  view.pop([h, ...mines], 18, 'boom'); view.root.classList.add('shake'); haptic([60, 40, 90]);
+  if (R.mode !== 'make') { S.stats.played++; save(); }
+  setTimeout(() => result(null), Math.min(1500, 700 + mines.length * 18));
+}
+function win() {
+  R.over = true; stopClock(); R.ms = Math.round(performance.now() - R.t0); $('#face').textContent = '😎'; view.paintAll(); hud();
+  const T = settle(); R.T = T;
+  confetti(T.beat); haptic([30, 30, 60]);
+  if (T.beat) banner(`YOU BEAT ${(R.chal.name || 'YOUR FRIEND').toUpperCase()}!`);
+  else if (T.newBest) banner('NEW BEST!');
+  setTimeout(() => result(T), T.beat ? 1500 : 900);
+}
+
+// everything that changes because you won: stats, best times, streak, cards, badges
+function settle() {
+  const G = R.G, lv = R.lv, res = { ms: R.ms, penalty: R.penalty, mis: G.mistakes }, total = MS.total(res);
+  const T = { mode: R.mode, won: true, lv, res, total, score: MS.toScore(total), key: R.day, round: R.round, chal: R.chal, to: R.to, cardUsed: R.card, newAch: [], earned: null, ranked: null, replay: R.replay };
+  S.stats.played++; S.stats.won++;
+  if (R.mode === 'classic') { const b = S.best[lv.id] || 0; T.newBest = T.score > b; if (T.newBest) S.best[lv.id] = T.score; T.pb = b; if (total >= lv.floor) T.ranked = `minesweet_${lv.id}`; }
+  let streak = S.ds.streak;
+  if (R.mode === 'daily' && !R.replay) {
+    S.daily[R.day] = { ms: R.ms, mis: G.mistakes, tries: R.attempt }; S.ds = MS.bumpStreak(S.ds, R.day); streak = S.ds.streak;
+    for (const d of Object.keys(S.daily)) if (Date.parse(d) < now() - 40 * 864e5) delete S.daily[d];
+    if (total >= lv.floor) T.ranked = 'minesweet_d' + R.day.replace(/-/g, '');
+  }
+  T.streak = streak;
+  if (R.mode === 'chal') { T.cmp = MS.compare(res, { ms: R.chal.ms, penalty: 0, mis: R.chal.mis }); T.beat = T.cmp === -1; }
+  T.earned = MS.earnCard(S); // first, so it ticks cooldowns before this win's card is spent and starts its own
+  if (R.mode === 'make') {
+    if (R.armed && MS.spendCard(S, R.armed)) T.armedCard = R.armed;
+    const c = { d: lv.key, seed: R.seed, ms: R.ms, mis: G.mistakes, card: T.armedCard || null, round: R.round, name: myName(), to: R.to };
+    T.hash = MS.encodeChallenge(c); T.link = `${SITE_GAME}#${T.hash}`;
+    window.rgInvite?.(T.hash, `my ${lv.name} challenge`);
+  }
+  T.newAch = MS.earned({ won: true, level: lv.id, ms: total, mis: G.mistakes, flags: R.flagsPlaced, mode: R.mode, beat: !!T.beat, usedCards: R.usedCards, streak }, S.ach);
+  for (const id of T.newAch) S.ach[id] = Date.now();
+  save(); return T;
+}
+
+// ---------- result popup ----------
+const lvTag = (T) => `<span class="pill">${T.lv.name}</span><span class="pill ${T.res.mis ? '' : 'mint'}">${T.res.mis} mistake${T.res.mis === 1 ? '' : 's'}</span>`
+  + (T.res.penalty ? `<span class="pill gold">+${T.res.penalty / 1000}s from cards</span>` : '');
+function result(T) {
+  let h = '';
+  if (!T) { // lost
+    const chal = R.mode === 'chal';
+    h = `<div class="hero"><div class="em">💥</div><h2>${chal ? 'Your friend\'s board bit back' : LOSS[(Math.random() * LOSS.length) | 0]}</h2></div>
+      <p class="muted" style="text-align:center">${chal ? `Same board again? You now know a bit more. (Try ${R.attempt + 1}) Your friend's time: <b>${MS.fmtTime(R.chal.ms)}</b>.` : R.mode === 'daily' ? 'Today\'s board stays the same, so you can try again.' : 'Every pro has blown up a lot of boards.'}</p>
+      <div class="btns"><button class="btn pri" data-act="again">${R.mode === 'chal' || R.mode === 'daily' ? 'Try again' : 'New board'}</button><button class="btn" data-act="home">Menu</button></div>`;
+    return sheet(h, { onclose: () => {} });
+  }
+  const time = MS.fmtTime(T.total);
+  if (T.mode === 'chal') {
+    const c = T.chal, side = (nm, t, mis, win, extra = '') => `<div class="side ${win ? 'win' : ''}"><small>${esc(nm)}</small><b>${t}</b><small>${mis} mistake${mis === 1 ? '' : 's'}${extra}</small></div>`;
+    h = `<div class="hero"><h2>${T.beat ? 'Revenge is sweet' : T.cmp === 0 ? 'A perfect tie' : 'So close!'}</h2></div>
+      <div class="vs">${side(c.name || 'Friend', MS.fmtTime(c.ms), c.mis, T.cmp === 1)}<b class="muted">VS</b>${side('You', time, T.res.mis, T.cmp === -1, T.res.penalty ? ` · incl. +${T.res.penalty / 1000}s` : '')}</div>
+      <div class="verdict ${T.beat ? 'win' : T.cmp === 0 ? 'tie' : 'lose'}">${T.beat ? 'YOU BEAT YOUR FRIEND! 🏆' : T.cmp === 0 ? 'TIE. Nobody wins.' : `${MS.fmtTime(T.total - c.ms)} slower. One more go?`}</div>
+      <p class="fine">Casual result between you and your friend. It isn't on any official leaderboard. Faster total time wins; equal times go to fewer mistakes.</p>`;
+  } else if (T.mode === 'make') {
+    h = `<div class="hero"><div class="em">🎯</div><h2>Trap is set!</h2></div><div style="text-align:center"><div class="big">${time}</div>${lvTag(T)}${T.cardUsed || T.armedCard ? `<span class="pill pink">${MS.CARDS[T.armedCard].icon} ${MS.CARDS[T.armedCard].name} attached</span>` : ''}</div>
+      <p style="text-align:center">Send the link. They get the exact same board and your time to beat.${T.round > 1 ? ` (Round ${T.round}${T.to ? ` vs ${esc(T.to)}` : ''})` : ''}</p><div class="link">${esc(T.link)}</div>`;
+  } else if (T.mode === 'daily') {
+    h = `<div class="hero"><div class="em">📅</div><h2>Daily Duel #${MS.dayNumber(T.key)} cleared</h2></div><div style="text-align:center"><div class="big">${time}</div>${lvTag(T)}<span class="pill gold">🔥 ${T.streak} day${T.streak === 1 ? '' : 's'}</span>${T.replay ? '<span class="pill">replay: result unchanged</span>' : ''}</div>`;
+  } else {
+    h = `<div class="hero"><div class="em">${T.lv.id === 'expert' ? '👑' : '🎉'}</div><h2>${T.lv.name} cleared</h2></div><div style="text-align:center"><div class="big">${time}</div>${lvTag(T)}${T.newBest ? '<span class="pill gold">New personal best</span>' : T.pb ? `<span class="pill">Best ${fmtScore(T.pb)}</span>` : ''}</div>`;
+  }
+  if (T.newAch.length) h += `<h3>Unlocked</h3>` + T.newAch.map((id) => `<div class="cardbox good"><span class="em">${MS.ACH[id].icon}</span><span><b>${MS.ACH[id].name}</b><small>${MS.ACH[id].text}</small></span></div>`).join('');
+  if (T.earned) h += `<div class="cardbox good"><span class="em">${MS.CARDS[T.earned].icon}</span><span><b>You earned a card: ${MS.CARDS[T.earned].name}</b><small>${MS.CARDS[T.earned].text}</small></span></div>`;
+  if (T.ranked && !T.replay) h += `<div id="gp"></div><div id="lbHost"></div><p class="fine">Official ranking: signed-in account, saved on the server (one best time each). A time on this device only is a personal best, not a ranking.</p>`;
+  else if (T.mode === 'classic' || T.mode === 'daily') h += `<p class="fine">${T.replay ? 'Replays never change your Daily result or ranking.' : 'This time is faster than the ranked minimum, so it stays a personal result.'}</p>`;
+  const share = T.mode === 'make' ? '📤 Send challenge' : '📤 Share result';
+  h += `<div class="btns"><button class="btn pri" data-act="share">${share}</button>${T.mode === 'make' ? '<button class="btn" data-act="copy">🔗 Copy link</button>' : ''}<button class="btn" data-act="savecard">🖼 Save card</button></div><div class="btns">`;
+  if (T.mode === 'chal') h += `<button class="btn hot" data-act="revenge">🔥 REVENGE</button><button class="btn" data-act="again">Replay board</button>`;
+  else if (T.mode === 'make') h += `<button class="btn" data-act="trap">Another challenge</button>`;
+  else h += `<button class="btn hot" data-act="trapfrom">🎯 Challenge a friend</button><button class="btn" data-act="again">${T.mode === 'daily' ? 'Replay' : 'Play again'}</button>`;
+  h += `<button class="btn" data-act="home">Menu</button></div>`;
+  sheet(h);
+  if (T.ranked && !T.replay) mountRank(T);
+}
+function mountRank(T) {
+  const lb = leaderboard($('#lbHost'), T.ranked, fmtScore); lb.show(T.score); guestPrompt();
+}
+let promptOff = false;
+function guestPrompt() {
+  const el = $('#gp'); if (!el) return; const a = A();
+  document.body.classList.toggle('gp-on', !a.user && !promptOff);
+  if (a.user || promptOff) { el.innerHTML = ''; return; }
+  el.innerHTML = a.onSite
+    ? '<div class="gp"><b>Nice run! Want to put your score on the leaderboard?</b><div class="btns"><button class="btn pri" data-act="login">Log in to Rank</button><button class="btn" data-act="guest">Continue as Guest</button></div></div>'
+    : `<div class="gp"><b>Nice run!</b> Official rankings live on <a href="${SITE_GAME}" target="_blank" rel="noopener">rank-game.com</a>. Play there and sign in to rank.</div>`;
+}
+addEventListener('rg-auth', () => { guestPrompt(); renderHome(); });
+
+// ---------- sharing and the result card ----------
+function shareText(T) {
+  const lvn = T.lv.name, t = MS.fmtTime(T.total), m = `${T.res.mis} mistake${T.res.mis === 1 ? '' : 's'}`;
+  if (T.mode === 'make') return { text: `💣 I cleared ${lvn} in ${t} with ${m}${T.armedCard ? ` and sent a ${MS.CARDS[T.armedCard].icon} ${MS.CARDS[T.armedCard].name} card` : ''}. Think you can beat me?`, url: T.link };
+  if (T.mode === 'daily') return { text: `MINESWEET DAILY DUEL #${MS.dayNumber(T.key)}\n⏱ ${t} · ${m} · 🔥${T.streak}\nCan you beat my score?`, url: SITE_GAME + '#daily' };
+  if (T.mode === 'chal') return { text: T.beat ? `🏆 I beat ${T.chal.name || 'my friend'}'s ${MS.fmtTime(T.chal.ms)} on ${lvn} with ${t}!` : `💣 I played ${T.chal.name || 'my friend'}'s ${lvn} challenge: ${t} vs ${MS.fmtTime(T.chal.ms)}.`, url: SITE_GAME };
+  return { text: `💣 MINESWEET ${lvn.toUpperCase()} CLEARED in ${t} with ${m}. Think you can beat me?`, url: SITE_GAME };
+}
+function drawCard(T) {
+  const W = 1080, H = 1920, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+  const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#2b2160'); bg.addColorStop(1, '#15112b'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  for (let y = 0; y < 9; y++) for (let x = 0; x < 12; x++) { g.fillStyle = (x + y) % 3 ? '#ffffff0a' : '#5cf2c014'; g.beginPath(); g.roundRect(30 + x * 85, 1100 + y * 85, 76, 76, 14); g.fill(); }
+  g.textAlign = 'center'; g.font = '900 120px ui-rounded, system-ui, sans-serif';
+  g.fillStyle = '#5cf2c0'; g.fillText('MINE', W / 2 - 190, 220); g.fillStyle = '#ff5c93'; g.fillText('SWEET', W / 2 + 130, 220);
+  g.fillStyle = '#f4f1ff'; g.font = '900 96px ui-rounded, system-ui, sans-serif';
+  const head = T.mode === 'daily' ? `DAILY DUEL #${MS.dayNumber(T.key)}` : T.mode === 'chal' && T.beat ? `BEAT ${(T.chal.name || 'MY FRIEND').toUpperCase()}` : `${T.lv.name.toUpperCase()} CLEARED`;
+  g.fillText(head, W / 2, 520);
+  g.fillStyle = '#ffd24a'; g.font = '900 250px ui-rounded, system-ui, sans-serif'; g.fillText(MS.fmtTime(T.total).replace('s', ''), W / 2, 800);
+  g.fillStyle = '#a79fd1'; g.font = '800 70px ui-rounded, system-ui, sans-serif'; g.fillText('SECONDS', W / 2, 890);
+  g.fillStyle = '#f4f1ff'; g.font = '800 78px ui-rounded, system-ui, sans-serif';
+  g.fillText(`${T.res.mis} MISTAKE${T.res.mis === 1 ? '' : 'S'} · ${T.lv.name.toUpperCase()}`, W / 2, 1010);
+  const ach = T.newAch?.[0] ? MS.ACH[T.newAch[0]] : T.mode === 'daily' ? { icon: '🔥', name: `${T.streak} day streak` } : null;
+  if (ach) { g.fillStyle = '#ff5c93'; g.font = '800 64px ui-rounded, system-ui, sans-serif'; g.fillText(`${ach.icon} ${ach.name}`, W / 2, 1110); }
+  if (myName()) { g.fillStyle = '#a79fd1'; g.font = '700 60px ui-rounded, system-ui, sans-serif'; g.fillText(myName(), W / 2, 1200); }
+  g.fillStyle = '#f4f1ff'; g.font = '900 84px ui-rounded, system-ui, sans-serif'; g.fillText('Think you can beat me?', W / 2, 1730);
+  g.fillStyle = '#5cf2c0'; g.font = '800 56px ui-rounded, system-ui, sans-serif'; g.fillText('rank-game.com/games/minesweet', W / 2, 1830);
+  return cv;
+}
+async function shareResult() {
+  const T = R?.T; if (!T) return;
+  const { text, url } = shareText(T), full = `${text}\n${url}`;
+  try {
+    const blob = await new Promise((r) => drawCard(T).toBlob(r, 'image/png')), file = new File([blob], 'minesweet.png', { type: 'image/png' });
+    if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], text: full }); return; }
+    if (navigator.share) { await navigator.share({ text, url }); return; }
+  } catch (e) { if (e?.name === 'AbortError') return; }
+  toast(await copy(full) ? '🔗 Copied! Paste it to a friend' : 'Copy this link: ' + url, 2400);
+}
+function saveCard() {
+  const T = R?.T; if (!T) return;
+  const a = document.createElement('a'); a.download = 'minesweet.png'; a.href = drawCard(T).toDataURL('image/png'); document.body.append(a); a.click(); a.remove(); toast('🖼 Card saved');
+}
+
+// ---------- menus ----------
+const leaderboardsFor = [['daily', 'Daily'], ['beginner', 'Beginner'], ['intermediate', 'Intermediate'], ['expert', 'Expert']];
+function boardsSheet(tab = 'daily') {
+  const id = tab === 'daily' ? 'minesweet_d' + today().replace(/-/g, '') : 'minesweet_' + tab, mine = tab === 'daily' ? S.daily[today()]?.ms : S.best[tab] && MS.fromScore(S.best[tab]);
+  sheet(`<h2>🏆 Leaderboards</h2><div class="tabs">${leaderboardsFor.map(([k, n]) => `<button data-act="board" data-tab="${k}" class="${k === tab ? 'on' : ''}">${n}</button>`).join('')}</div>
+    <div id="lbHost"></div><p class="fine">${mine ? `Your best on this device: <b>${MS.fmtTime(mine)}</b>. ` : ''}Rankings are for signed-in players: fastest time per player, checked by the site's rules (no impossible times). Friend challenges are casual and never ranked.</p>`);
+  leaderboard($('#lbHost'), id, fmtScore).show(0);
+}
+function cardsSheet() {
+  const inv = MS.cardsOf(S), row = (id, extra = '') => { const c = MS.CARDS[id]; return `<div class="cardbox ${c.kind === 'sabotage' ? '' : 'good'}"><span class="em">${c.icon}</span><span><b>${c.name}</b><small>${c.text}</small>${extra}</span></div>`; };
+  sheet(`<h2>🃏 Cards</h2><p class="muted">Win any board to earn a card. You hold up to ${MS.MAX_CARDS}. Free, forever: nothing to buy.</p><h3>Your cards</h3><div class="cardlist">${inv.length ? inv.map((id) => row(id, MS.cdOf(S, id) ? `<small>Cooldown: ${MS.cdOf(S, id)} more win${MS.cdOf(S, id) === 1 ? '' : 's'}</small>` : '')).join('') : '<p class="muted">None right now. Win a board!</p>'}</div>
+    <h3>Rules</h3><ul><li>Cards only work in friend challenges. Daily Duel and ranked boards never use them.</li><li>Attach one sabotage card to a challenge <b>before</b> you play it. It is spent when you clear the board and the link is made.</li><li>Your friend sees the card before they start, and a Shield blocks it.</li><li>Cards only change timing and looks. The mine layout is never touched, and every board can be cleared without guessing.</li></ul>
+    <h3>All cards</h3><div class="cardlist">${Object.keys(MS.CARDS).map((id) => row(id)).join('')}</div>`);
+}
+function achSheet() {
+  const n = Object.keys(S.ach).length;
+  sheet(`<h2>🏅 Badges</h2><p class="muted">${n}/${Object.keys(MS.ACH).length} earned</p><div class="achs">${Object.entries(MS.ACH).map(([id, a]) => `<div class="ach ${S.ach[id] ? '' : 'off'}"><span class="em">${a.icon}</span><b>${a.name}</b><small>${a.text}</small></div>`).join('')}</div>
+    <p class="fine">Played ${S.stats.played} · cleared ${S.stats.won} · daily streak ${S.ds.streak} (best ${S.ds.best})</p>`);
+}
+function howSheet() {
+  sheet(`<h2>❔ How to play</h2><ul><li><b>Tap / click</b> a tile to dig. Numbers say how many of the 8 touching tiles are mines.</li><li><b>Touch:</b> long-press to flag (or switch the Dig / Flag toggle). <b>Mouse:</b> right-click flags; click a number to open around it once you've flagged enough.</li><li><b>Keyboard:</b> arrows move, Space digs, F flags, R restarts.</li><li>Clear every safe tile to win. Your first click is always safe.</li></ul>
+    <h3>Modes</h3><ul><li><b>Daily Duel:</b> one board a day, the same for everyone (day changes at 00:00 UTC). Streaks, share, leaderboard.</li><li><b>Trap Your Friend:</b> clear a board, send the link. They play the very same board and try to beat your time. Then they can hit <b>Revenge</b>.</li></ul>
+    <h3>Scoring</h3><ul><li>Fastest total time wins. Equal times: fewer mistakes. Still equal: a tie.</li><li>A mistake is a flag on a safe tile (counted once per tile).</li><li>Card penalties are added to the total and always shown: Time Attack +5s, Reveal +3s.</li></ul>
+    <h3>Fair play</h3><ul><li>Daily and challenge boards can be solved by logic alone, no guessing.</li><li>No account needed to play anything. Sign in on rank-game.com only to get on official leaderboards.</li></ul>`);
+}
+function trapSheet(st = { lv: S.lastLv, card: null, round: 1, to: '' }) {
+  const inv = MS.cardsOf(S), sab = Object.keys(MS.CARDS).filter((id) => MS.CARDS[id].kind === 'sabotage');
+  sheet(`<h2>🎯 Trap Your Friend</h2><p class="muted">${st.round > 1 ? `Revenge round ${st.round} against <b>${esc(st.to || 'your friend')}</b>. ` : ''}Clear a board. You get a link to the exact same board, with your time on it.</p>
+    <h3>Difficulty</h3><div class="chips">${LV_IDS.map((id) => `<button class="btn ${st.lv === id ? 'on' : ''}" data-act="trapLv" data-lv="${id}">${LV[id].name}<small>${LV[id].w}×${LV[id].h} · ${LV[id].m}</small></button>`).join('')}</div>
+    <h3>Your name on the link (optional)</h3><input class="name" id="nm" maxlength="14" placeholder="Anonymous" value="${esc(myName())}" autocomplete="off">
+    <h3>Sabotage card (optional, one per challenge)</h3><div class="cardlist">${sab.map((id) => { const c = MS.CARDS[id], has = inv.includes(id), cd = MS.cdOf(S, id), ok = MS.canArm(S, id);
+      return `<button class="cardbox ${st.card === id ? 'on' : ''}" data-act="trapCard" data-card="${id}" ${ok ? '' : 'disabled'}><span class="em">${c.icon}</span><span><b>${c.name}${has ? '' : ' (none)'}${cd ? ` · cooldown ${cd}` : ''}</b><small>${c.text}</small></span></button>`; }).join('')}</div>
+    <div class="btns"><button class="btn pri" data-act="trapGo">Play your board</button></div>`);
+  window.__trap = st;
+}
+
+function renderHome() {
+  const key = today(), rec = S.daily[key], lvd = LV[MS.DAILY.level], a = A();
+  $('#dNum').textContent = '#' + MS.dayNumber(key);
+  const left = MS.msToReset(now()), hh = Math.floor(left / 36e5), mm = Math.floor(left % 36e5 / 6e4);
+  $('#dSub').textContent = rec ? `Cleared in ${MS.fmtTime(rec.ms)} · new board in ${hh}h ${mm}m` : `${lvd.name} · same board for everyone · resets in ${hh}h ${mm}m`;
+  $('#dTag').textContent = S.ds.streak && (S.ds.last === key || S.ds.last === MS.prevDay(key)) ? `🔥 ${S.ds.streak}` : rec ? '✓' : '';
+  $('#chips').innerHTML = LV_IDS.map((id) => `<button class="btn" data-act="classic" data-lv="${id}">${LV[id].name}<small>${LV[id].w}×${LV[id].h} · ${LV[id].m} 💣</small>${S.best[id] ? `<small>🏅 ${fmtScore(S.best[id])}</small>` : ''}</button>`).join('');
+  $('#who').innerHTML = a.user ? `Signed in as <b>${esc(a.user.nick || 'player')}</b>${a.user.nick ? '' : ' · pick a nickname under the game to rank'}`
+    : a.onSite ? 'Playing as a guest, no account needed. <button data-act="login">Sign in</button> only if you want to rank.' : 'Playing as a guest. Official rankings are on <a href="' + SITE_GAME + '" target="_blank" rel="noopener">rank-game.com</a>.';
+}
+
+// ---------- actions ----------
+async function startDaily(replay = false) {
+  await timeReady; const key = today(), lv = LV[MS.DAILY.level];
+  if (S.daily[key] && !replay) return dailyDone(key);
+  dailyTries[key] = (dailyTries[key] || 0) + 1;
+  begin('daily', { level: lv, seed: MS.dailySeed(key), day: key, attempt: dailyTries[key], replay });
+}
+function dailyDone(key) { // today's result, from what we saved
+  const rec = S.daily[key], lv = LV[MS.DAILY.level];
+  const T = { mode: 'daily', won: true, lv, res: { ms: rec.ms, penalty: 0, mis: rec.mis }, total: rec.ms, score: MS.toScore(rec.ms), key, streak: S.ds.streak, newAch: [], ranked: 'minesweet_d' + key.replace(/-/g, '') };
+  R = { mode: 'daily', lv, T, over: true, G: MS.newGame(lv), day: key }; result(T);
+}
+function again() {
+  if (!R) return; const o = { level: R.lv, seed: R.seed, attempt: R.attempt + 1, day: R.day, chal: R.chal, card: R.card, shielded: R.shielded, usedCards: R.usedCards, round: R.round, to: R.to, armed: R.armed, replay: R.replay };
+  if (R.mode === 'classic') return begin('classic', { level: R.lv });
+  if (R.mode === 'make') return begin('make', { ...o, seed: MS.randSeed() });
+  if (R.mode === 'daily') { const rec = S.daily[R.day]; if (rec) { return startDaily(true); } dailyTries[R.day] = (dailyTries[R.day] || 0) + 1; return begin('daily', { ...o, attempt: dailyTries[R.day] }); }
+  begin(R.mode, o);
+}
+function home() { stopClock(); closeSheet(); R = null; $('#play').hidden = true; $('#home').hidden = false; window.rgInvite?.(''); renderHome(); }
+function acceptSheet(c) {
+  const card = c.card && MS.CARDS[c.card], shield = MS.cardsOf(S).includes('shield');
+  sheet(`<div class="hero"><div class="em">${c.round > 1 ? '🔥' : '🎯'}</div><h2>${esc(c.name || 'A friend')} challenges you!</h2>${c.round > 1 ? `<span class="pill pink">Revenge · round ${c.round}</span>` : ''}</div>
+    <div style="text-align:center"><div class="big">${MS.fmtTime(c.ms)}</div><span class="pill">${c.level.name}</span><span class="pill ${c.mis ? '' : 'mint'}">${c.mis} mistake${c.mis === 1 ? '' : 's'}</span></div>
+    <p style="text-align:center">Same board, same mines. Beat the time to win.</p>
+    ${card ? `<div class="cardbox"><span class="em">${card.icon}</span><span><b>Sabotage attached: ${card.name}</b><small>${card.text}</small></span></div>` : ''}
+    <div class="btns"><button class="btn pri" data-act="accept" data-shield="0">${card ? 'Take it on' : 'Accept challenge'}</button>${card && shield ? '<button class="btn" data-act="accept" data-shield="1">🛡 Use Shield &amp; play</button>' : ''}<button class="btn" data-act="home">Not now</button></div>
+    <p class="fine">No account needed. Your result is a casual comparison with ${esc(c.name || 'your friend')}.</p>`, { lock: true });
+  window.__chal = c;
+}
+
+const actions = {
+  close: () => closeSheet(), home, again,
+  daily: () => startDaily(), classic: (el) => begin('classic', { level: LV[el.dataset.lv] }),
+  trap: () => trapSheet(), trapfrom: () => trapSheet({ lv: R.lv.id, card: null, round: 1, to: '' }),
+  trapLv: (el) => { const st = window.__trap; st.lv = el.dataset.lv; st.nm = $('#nm')?.value; trapSheet(st); $('#nm').value = st.nm; },
+  trapCard: (el) => { const st = window.__trap; st.card = st.card === el.dataset.card ? null : el.dataset.card; st.nm = $('#nm').value; trapSheet(st); $('#nm').value = st.nm; },
+  trapGo: () => { const st = window.__trap; S.name = MS.cleanName($('#nm').value); S.lastLv = st.lv; save(); begin('make', { level: LV[st.lv], seed: MS.randSeed(), armed: st.card && MS.canArm(S, st.card) ? st.card : null, round: st.round, to: st.to }); },
+  accept: (el) => { const c = window.__chal, sh = el.dataset.shield === '1' && MS.spendCard(S, 'shield'); save();
+    begin('chal', { level: c.level, seed: c.seed, chal: c, card: sh ? null : c.card, shielded: sh, usedCards: sh ? 1 : 0, round: c.round }); if (sh) toast('🛡 Shield used. Sabotage blocked'); },
+  revenge: () => { const c = R.chal; trapSheet({ lv: c.level.id, card: null, round: c.round + 1, to: c.name }); },
+  share: shareResult, savecard: saveCard,
+  copy: async () => toast(await copy(R.T.link) ? '🔗 Link copied' : 'Select the link and copy it', 1600),
+  boards: () => boardsSheet(), board: (el) => boardsSheet(el.dataset.tab), cards: cardsSheet, ach: achSheet, how: howSheet,
+  login: () => A().login?.(), guest: () => { promptOff = true; guestPrompt(); },
+  zin: () => { S.zoom = Math.min(6, S.zoom + 1); save(); fit(); }, zout: () => { S.zoom = Math.max(-4, S.zoom - 1); save(); fit(); },
+  reveal: () => {
+    if (!R || R.over || R.locked || R.mode !== 'chal' || R.G.status === 'ready' || !MS.spendCard(S, 'reveal')) return;
+    const i = MS.safeTile(R.G); if (i < 0) return; save(); R.penalty += MS.REVEAL_MS; R.usedCards++; $('#pen').textContent = '+' + R.penalty / 1000 + 's';
+    $('#revealB').hidden = !MS.cardsOf(S).includes('reveal'); toast('🔎 Revealed one safe tile (+3s)'); act(i, 'dig');
+  },
+};
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-tool]'); if (t) { tool = t.dataset.tool; document.querySelectorAll('[data-tool]').forEach((b) => b.classList.toggle('on', b.dataset.tool === tool)); return; }
+  const a = e.target.closest('[data-act]'); if (a) actions[a.dataset.act]?.(a);
+});
+addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey || e.target.tagName === 'INPUT') return;
+  if (e.key === 'Escape') { if (!sheetEl.hidden && !sheetLock) closeSheet(); else if (R && sheetEl.hidden) home(); return; }
+  if (!R || !sheetEl.hidden) return;
+  const G = R.G, w = G.cfg.w, c = view.cur < 0 ? (G.board ? G.board.start : 0) : view.cur, k = e.key.toLowerCase(); let n = c;
+  if (k === 'arrowleft' && c % w) n = c - 1; else if (k === 'arrowright' && c % w < w - 1) n = c + 1; else if (k === 'arrowup' && c >= w) n = c - w; else if (k === 'arrowdown' && c + w < G.N) n = c + w;
+  else if (k === ' ' || k === 'enter') { e.preventDefault(); return act(c, 'dig'); } else if (k === 'f') return act(c, 'flag'); else if (k === 'r') return again(); else return;
+  e.preventDefault(); view.moveCur(n);
+});
+
+// ---------- start ----------
+leaderboard(document.createElement('div'), 'minesweet_beginner'); // tells rank-game.com this game has leaderboards (shows the nickname box)
+renderHome(); setInterval(() => { if (!$('#home').hidden) renderHome(); }, 30000);
+timeReady.then(() => { if (!$('#home').hidden) renderHome(); });
+(async () => {
+  const h = location.hash.slice(1);
+  if (/(^|&)c=/.test(h)) { const c = MS.decodeChallenge(h); if (c) { window.rgInvite?.(''); return acceptSheet(c); } toast('That challenge link looks damaged 🤔 Ask your friend to send it again', 3500); }
+  else if (h === 'daily') return startDaily();
+  if (!S.seenHow) { S.seenHow = true; save(); howSheet(); }
+})();
+
+// for tests and the preview recorder
+window.msRun = () => R; window.msState = () => S;
+window.startDemo = async () => { // plays a whole Intermediate board with the solver's deductions
+  closeSheet(); begin('make', { level: LV.intermediate, seed: 'demo2026' });
+  for (const st of MS.solve(R.G.board).steps) { if (R.over) break; if (st.t === 'o' && R.G.st[st.i] === 0) { await sleep(150); act(st.i, 'dig'); } else if (st.t === 'f' && R.G.st[st.i] === 0) { await sleep(60); act(st.i, 'flag'); } }
+};
+</script>
+</body>
+</html>
