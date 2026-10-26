@@ -225,7 +225,7 @@ const CAPS = {
 // ---------- saved data ----------
 const DEF = {
   name: '', face: 'frog', kit: 'lime', hat: 'cap', shoe: 'white', ball: 'classic', trail: 'lime', cele: 'confetti', emote: 'laugh', own: {}, xp: 0, coins: 0, level: 1,
-  cfg: { mode: 'quick', size: 2, diff: 1, chaos: true, ab: 'rocket' },
+  cfg: { mode: 'quick', size: 2, diff: 0.45, chaos: true, ab: 'rocket' }, assist: true,
   st: { played: 0, wins: 0, goals: 0, streak: 0, best: 0, tricks: 0, cups: 0, pens: 0, owng: 0, rage: 0, cupBest: 0, abil: 0 },
   ch: { day: '', list: [] }, wk: { id: '', list: [] }, ach: {}, ds: { last: '', n: 0 }, muted: false, caps: true, shake: true, seen: 0,
 };
@@ -476,7 +476,7 @@ function stepPlayer(p, dt) {
   if (f.reverse) { ix = -ix; iy = -iy; }
   if (p.stun > 0) ix = iy = 0;
   const m = Math.hypot(ix, iy); if (m > 1) { ix /= m; iy /= m; }
-  const base = 238 * (p.rage > 0 ? 1.3 : 1) * (f.speed ? 1.65 : 1) * (p.charging ? 0.74 : 1) * p.spd;
+  const base = 238 * (p.human ? 1.08 : 1) * (p.rage > 0 ? 1.3 : 1) * (f.speed ? 1.65 : 1) * (p.charging ? 0.74 : 1) * p.spd;
   const acc = f.banana ? 2.1 : f.lowg ? 4.2 : 12;
   if (p.dashT > 0) { p.dashT -= dt; p.vx = p.dx * p.dashSpd; p.vy = p.dy * p.dashSpd; if (Math.random() < 0.7) PT.push({ k: 'dot', x: p.x, y: p.y, vx: 0, vy: 0, life: 0.25, max: 0.25, col: p.rage > 0 ? '#ff7a1a' : '#ffffffaa', sz: 9 }); }
   else { p.vx += (ix * base - p.vx) * Math.min(1, acc * dt); p.vy += (iy * base - p.vy) * Math.min(1, acc * dt); }
@@ -515,7 +515,7 @@ function collidePlayers() {
 // ---------- kicking & abilities ----------
 function kick(p, o = {}) {
   let b = null, bd = 1e9;
-  for (const q of M.balls) { if (q.hide > 0) continue; const d = Math.hypot(q.x - p.x, q.y - p.y) - q.r; if (d < p.r + 21 && d < bd) { b = q; bd = d; } }
+  for (const q of M.balls) { if (q.hide > 0) continue; const d = Math.hypot(q.x - p.x, q.y - p.y) - q.r; if (d < p.r + (p.human ? 31 : 21) && d < bd) { b = q; bd = d; } }
   p.kickT = 0.22;
   if (!b) return false;
   const ang = o.dir !== undefined ? o.dir : p.face, ch = o.charge || 0;
@@ -804,6 +804,12 @@ function keeperStep(k, dt) {
 
 // ---------- input ----------
 const K = {}, IN = { wx: CX + 100, wy: CY, mdown: false, dash: false, ab: false, emote: false }, T = { on: false, sx: 0, sy: 0, shoot: false, sid: null };
+const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+function assist(p, ang) { // near-misses get pulled into the goal mouth
+  if (!S.assist) return ang;
+  const gx = p.team ? FX : FX + FW, ga = Math.atan2(CY - p.y, gx - p.x), half = Math.abs(wrapA(Math.atan2(CY + GH / 2 - 16 - p.y, gx - p.x) - Math.atan2(CY - GH / 2 + 16 - p.y, gx - p.x))) / 2, d = wrapA(ang - ga);
+  return Math.abs(d) < half + 0.32 ? ga + clamp(d, -half, half) : ang;
+}
 function controlHuman(p, dt) {
   let ix = (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0), iy = (K.KeyS || K.ArrowDown ? 1 : 0) - (K.KeyW || K.ArrowUp ? 1 : 0);
   if (T.on && (T.sx || T.sy)) { ix = T.sx; iy = T.sy; }
@@ -818,7 +824,7 @@ function controlHuman(p, dt) {
   const hold = IN.mdown || K.ShiftLeft || K.ShiftRight || T.shoot;
   if (hold && !p.charging && p.stun <= 0 && p.kickT <= 0.04) { p.charging = true; p.charge = 0; }
   if (p.charging && hold) p.charge = Math.min(1, p.charge + dt / 0.95);
-  if (p.charging && (!hold || p.stun > 0)) { const c = p.charge; p.charging = false; if (p.stun <= 0) kick(p, { dir: ang, charge: c < 0.2 ? 0 : c }); p.charge = 0; }
+  if (p.charging && (!hold || p.stun > 0)) { const c = p.charge; p.charging = false; if (p.stun <= 0) kick(p, { dir: assist(p, ang), charge: c < 0.2 ? 0 : c }); p.charge = 0; }
   if (IN.dash) { IN.dash = false; dashP(p); }
   if (IN.ab) { IN.ab = false; useAbility(p); }
   if (IN.emote) { IN.emote = false; p.emoteT = 1.5; p.emote = mine('emote').e; if (!M.bg) SFX.blip(); }
@@ -1338,7 +1344,7 @@ async function shareResult() {
 }
 
 // ---------- main menu ----------
-const DIFFS = [['Rookie', 0.45], ['Pro', 0.85], ['Legend', 1.2]];
+const DIFFS = [['Chill', 0.2], ['Rookie', 0.45], ['Pro', 0.85], ['Legend', 1.2]];
 function hideHome() { $('#home').hidden = true; }
 function renderHome() {
   PEN = null; closeSheet(); ensureQuests(); document.body.classList.remove('playing'); setTouch(false);
@@ -1413,7 +1419,7 @@ function friendsSheet() {
 }
 function settingsSheet() {
   const row = (k, lab, on) => `<div class="sw2"><span>${lab}</span><button class="btn${on ? ' on' : ''}" data-act="set" data-k="${k}">${on ? 'On' : 'Off'}</button></div>`;
-  sheet(`<h2>⚙️ Settings</h2>${row('sound', '🔊 Sound', !S.muted)}${row('shake', '📳 Screen shake', S.shake)}${row('caps', '😂 Funny captions', S.caps)}
+  sheet(`<h2>⚙️ Settings</h2>${row('sound', '🔊 Sound', !S.muted)}${row('assist', '🎯 Aim assist (pulls near-misses into the goal)', S.assist)}${row('shake', '📳 Screen shake', S.shake)}${row('caps', '😂 Funny captions', S.caps)}
     <div class="sw2"><span>👤 Name</span><span class="muted">${esc(myName())} (sign in on rank-game.com to set a nickname)</span></div>
     <div class="btns"><button class="btn" data-act="how">How to play</button><button class="btn" data-act="reset">Reset progress</button><button class="btn pri" data-act="close">Done</button></div>`);
 }
