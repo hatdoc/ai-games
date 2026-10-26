@@ -107,7 +107,7 @@ const WEAPONS = [
   { id: 'tri', name: 'Triple Trouble', icon: '🔱', r: 28, dmg: 24, kb: 150, ammo: 2 },
   { id: 'chicken', name: 'Rubber Chicken', icon: '🐔', r: 46, dmg: 42, kb: 220, ammo: 2 },
   { id: 'banana', name: 'Banana Bomb', icon: '🍌', r: 26, dmg: 22, kb: 140, ammo: 2 },
-  { id: 'yeet', name: 'YEET Boot', icon: '🥾', r: 60, dmg: 6, kb: 430, up: 0.9, ammo: 2 },
+  { id: 'yeet', name: 'YEET Boot', icon: '🥾', r: 60, dmg: 6, kb: 470, up: 0.2, push: 0.8, ammo: 2 },
 ];
 const MINI = { id: 'mini', name: 'Mini', icon: '🍌', r: 24, dmg: 20, kb: 130 };
 const DRIVERS = ['🐸', '😼', '🐔', '🦆', '🐙', '🦄', '🐶', '🤖', '👽', '🐷'];
@@ -243,7 +243,7 @@ function startMatch(o) {
   closeSheet(); $('#home').hidden = true; $('#bar').classList.remove('off'); paused = false;
   const seed = o.seed || Math.random().toString(36).slice(2, 8);
   G = { mode: o.mode, seed, diff: o.diff || 'normal', target: o.target, chalName: o.chalName, demo: !!o.demo, wave: 1, shots: 0, turns: 0, kills: 0, dmg: 0, score: 0,
-    tanks: [], turn: null, state: 'aim', settle: 0, wind: 0, crates: [], projs: [], banner: null, slow: 0, timer: 0, over: false, key: o.key,
+    tanks: [], spawn: [], turn: null, state: 'aim', settle: 0, wind: 0, crates: [], projs: [], banner: null, slow: 0, timer: 0, over: false, key: o.key,
     rng: { t: rngOf(seed + 't'), w: rngOf(seed + 'w'), a: rngOf(seed + 'a'), c: rngOf(seed + 'c'), n: rngOf(seed + 'n') } };
   const me = mkTank({ name: A().user?.nick || 'You', emoji: S.driver, hat: S.hat, ai: G.demo });
   if (G.demo) { me.emoji = '🐸'; me.hat = '🎩'; }
@@ -282,7 +282,7 @@ function nextTurn(first) {
   const order = G.tanks, i0 = order.indexOf(G.turn);
   for (let k = 1; k <= order.length; k++) { const t = order[(i0 + k) % order.length]; if (!t.dead) { G.turn = t; break; } }
   const t = G.turn; t.fuel = FUEL; G.state = 'aim'; G.turns++; G.timer = t.ai ? 0 : 25; G.moveAcc = 0;
-  t.ai && (t.aiS = { ph: 'think', tm: 0.9, plan: null, moved: false });
+  t.ai && (t.aiS = { ph: 'think', tm: 0.9, plan: null, moves: 0, wantMove: Math.random() < (G.mode === 'rampage' ? 0.6 : { easy: 0.4, normal: 0.6, hard: 0.8 }[G.diff]) });
   if (first || t === G.tanks[0]) G.round = (G.round || 0) + 1;
   const humans = G.tanks.some((x) => !x.ai);
   if (humans) banner(G.mode === 'two' ? `${t.name.toUpperCase()}'S TURN` : t.ai ? `${t.name}...` : G.wave > 1 || first ? (first && G.mode === 'rampage' ? `WAVE ${G.wave}` : 'YOUR TURN') : 'YOUR TURN', t.team ? '#ff7a7a' : '#7affc8', 1.1);
@@ -311,15 +311,15 @@ function stepProj(p, dt) {
     p.vy += GRAV * sdt; p.vx += G.wind * 5 * sdt; p.px = p.x; p.py = p.y; p.x += p.vx * sdt; p.y += p.vy * sdt;
     if (p.y > WATER && p.vy > 0) { splash(p.x); return false; }
     if (p.x < -80 || p.x > W + 80 || p.y > H + 60) return false;
-    if (p.w.id === 'banana' && !p.split && p.vy > 0) { // pop into five baby bananas at the top of the arc
+    if (p.w.id === 'banana' && !p.split && p.vy > 0 && p.life > 0.25) { // pop into five baby bananas at the top of the arc
       p.split = true;
-      for (let i = -2; i <= 2; i++) G.projs.push({ x: p.x, y: p.y, px: p.x, py: p.y, vx: p.vx + i * 55, vy: p.vy - 40 + Math.abs(i) * 10, w: MINI, owner: p.owner, life: 0.4, bounces: 0 });
+      for (let i = -2; i <= 2; i++) G.spawn.push({ x: p.x, y: p.y, px: p.x, py: p.y, vx: p.vx + i * 26, vy: p.vy - 30 + Math.abs(i) * 8, w: MINI, owner: p.owner, life: 0.4, bounces: 0 });
       for (let i = 0; i < 6; i++) spark(p.x, p.y, '#ffe35c', 90); SFX.blip(); return false;
     }
-    for (const t of G.tanks) if (!t.dead && !(t === p.owner && p.life < 0.35) && Math.hypot(p.x - t.x, p.y - 8 - t.y) < 15) { boom(p.x, p.y, p.w, p.owner); return false; }
+    for (const t of G.tanks) if (!t.dead && !(t === p.owner && p.life < 0.35) && Math.hypot(p.x - t.x, p.y - 8 - t.y) < 15) { boom(p.x, p.y, p.w, p.owner, p.vx); return false; }
     if (solid(p.x, p.y)) {
       if (p.w.id === 'chicken' && p.bounces < 3) { p.x = p.px; p.y = p.py; p.vy = -Math.abs(p.vy) * 0.55 - 40; p.vx *= 0.78; p.bounces++; SFX.cluck(); for (let i = 0; i < 4; i++) spark(p.x, p.y, '#fff', 60); continue; }
-      boom(p.x, p.y, p.w, p.owner); return false;
+      boom(p.x, p.y, p.w, p.owner, p.vx); return false;
     }
   }
   if (p.w.id === 'chicken' && p.life > 5) { boom(p.x, p.y, p.w, p.owner); return false; }
@@ -331,7 +331,7 @@ function splash(x) {
   for (let i = 0; i < 14; i++) fx.parts.push({ x, y: WATER, vx: (Math.random() - 0.5) * 140, vy: -90 - Math.random() * 160, life: 0.8, max: 0.8, c: '#bfe9ff', size: 3 + Math.random() * 2, g: 400 });
   if (G.fired && !G.hit && G.state === 'fly' && G.projs.length <= 1 && Math.random() < 0.7) say(G.fired, pick(LINES.miss));
 }
-function boom(x, y, w, owner) {
+function boom(x, y, w, owner, sv = 0) {
   carve(x, y, w.r); SFX.boom(w.r); fx.shake = Math.max(fx.shake, w.r / 5); fx.flash = Math.max(fx.flash, w.r / 160);
   fx.rings.push({ x, y, r: w.r, t: 0 });
   for (let i = 0; i < 10 + w.r / 3; i++) { const a = Math.random() * 6.3, s = 40 + Math.random() * 220; fx.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 40, life: 0.5 + Math.random() * 0.6, max: 1.1, c: pick(['#ffdd55', '#ff8a2b', '#ff4a2b', '#5a4030', '#888']), size: 2 + Math.random() * 4, g: 300 }); }
@@ -340,7 +340,8 @@ function boom(x, y, w, owner) {
     const dx = t.x - x, dy = t.y - 8 - y, d = Math.hypot(dx, dy), reach = w.r + 14;
     if (d >= reach) continue;
     const f = 1 - d / reach, a = Math.atan2(dy, dx), kb = w.kb * (0.45 + 0.55 * f);
-    t.vx += Math.cos(a) * kb; t.vy += Math.sin(a) * kb - kb * (w.up || 0.4); t.air = true; t.y -= 2; t.vr = (Math.random() - 0.5) * 14;
+    const push = w.push ?? 0.25, sd = Math.sign(sv);
+    t.vx += Math.cos(a) * kb * (1 - push * 0.6) + sd * kb * push; t.vy += Math.sin(a) * kb * (1 - push * 0.6) - kb * (w.up ?? 0.4); t.air = true; t.y -= 2; t.vr = (Math.random() - 0.5) * 14;
     G.hit = true;
     const dmg = Math.round(w.dmg * (0.35 + 0.65 * f));
     if (dmg > 0) damage(t, dmg, owner);
@@ -397,12 +398,12 @@ function pickup(t, c) {
 // ---------- AI ----------
 function simShot(t, f, el, pw, tg) {
   const th = ((f > 0 ? el : 180 - el) * Math.PI) / 180, c = Math.cos(th), s = Math.sin(th);
-  let x = t.x + c * 18, y = t.y - 14 - s * 18, vx = c * pw * 6.2, vy = -s * pw * 6.2, best = 1e9; const dt = 1 / 45;
-  for (let i = 0; i < 500; i++) {
+  let x = t.x + c * 18, y = t.y - 14 - s * 18, vx = c * pw * 6.2, vy = -s * pw * 6.2, best = 1e9; const dt = 1 / 120;
+  for (let i = 0; i < 1200; i++) {
     vy += GRAV * dt; vx += G.wind * 5 * dt; x += vx * dt; y += vy * dt;
     const d = Math.hypot(x - tg.x, y - (tg.y - 8)); if (d < best) best = d;
     if (y > WATER || x < -20 || x > W + 20) break;
-    if (i > 3 && solid(x, y)) break;
+    if (i > 8 && solid(x, y)) break;
   }
   return best;
 }
@@ -425,11 +426,12 @@ function updateAI(t, dt) {
   const a = t.aiS; if (!a) return; a.tm -= dt;
   if (a.ph === 'think' && a.tm <= 0) {
     const p = aiPlan(t); if (!p) return;
-    if (p.err > 30 && t.fuel > 25 && !a.moved) { a.dir = Math.random() < 0.5 ? p.f : -p.f; a.left = 18 + Math.random() * 32; a.ph = 'move'; t.f = a.dir; }
-    else { a.plan = p; a.ph = 'aim'; a.tm = 0.5; t.wi = p.wi; t.f = p.f; }
+    if ((a.wantMove || (p.err > 30 && a.moves < 2)) && t.fuel > 25) { // reposition: usually toward the foe, sometimes away or sideways to dodge
+      a.wantMove = false; a.moves++; a.dir = Math.random() < 0.6 ? p.f : -p.f; a.left = Math.min(t.fuel, 25 + Math.random() * 50); a.ph = 'move'; t.f = a.dir;
+    } else { a.plan = p; a.ph = 'aim'; a.tm = 0.5; t.wi = p.wi; t.f = p.f; }
   } else if (a.ph === 'move') {
-    const step = Math.min(a.left, 55 * dt); const moved = walk(t, a.dir, step); a.left -= step;
-    if (a.left <= 0 || !moved) { a.moved = true; a.ph = 'think'; a.tm = 0.3; }
+    const step = Math.min(a.left, 55 * dt); const moved = walk(t, a.dir, step); a.left -= step; t.fuel -= step;
+    if (a.left <= 0 || !moved || t.y > WATER - 16) { a.ph = 'think'; a.tm = 0.3; }
   } else if (a.ph === 'aim') {
     const p = a.plan; t.f = p.f;
     t.el += Math.max(-70 * dt, Math.min(70 * dt, p.el - t.el)); t.pw += Math.max(-80 * dt, Math.min(80 * dt, p.pw - t.pw));
@@ -474,7 +476,7 @@ function update(dt, rdt) {
       if (G.timer > 0) { const before = G.timer; G.timer -= dt; if (G.timer < 5 && Math.floor(before) !== Math.floor(G.timer)) SFX.tick(); if (G.timer <= 0) { say(t, pick(LINES.late)); fire(t); } }
     }
   } else if (G.state === 'fly') {
-    G.projs = G.projs.filter((p) => stepProj(p, dt));
+    G.spawn = []; G.projs = G.projs.filter((p) => stepProj(p, dt)).concat(G.spawn);
     if (!G.projs.length) { G.state = 'settle'; G.settle = 0; }
   } else if (G.state === 'settle') {
     G.settle += dt;
