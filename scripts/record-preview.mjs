@@ -61,6 +61,9 @@ const BOTS = {
   'crater-clash': { skip: 1, len: 9, poster: 5, async play(page) { // two hard bots trade shells
     await page.evaluate(() => { closeSheet(); startDemo(); });
   } },
+  'goal-rush': { skip: 1, len: 9, poster: 5, async play(page) { // two hard bot teams, a chaos event lands early
+    await page.evaluate(() => startDemo());
+  } },
   'neon-swarm': { skip: 14, len: 7, poster: 6.3, async play(page, until) { // circle the arena, dash now and then; clip catches the 20s SWARM
     await page.keyboard.press('Enter');
     for (let i = 0; Date.now() < until; i++) {
