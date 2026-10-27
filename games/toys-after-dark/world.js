@@ -311,7 +311,7 @@ const TAD = window.TAD = {};
     const s3 = TAD.glb[type + '3d'], rig = TAD.glb[type], need = ['LegL', 'LegR', 'ArmL', 'ArmR', 'Head'];
     if (s3) {
       const root = s3.clone(true), g = new T.Group(); g.add(root);
-      root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material = o.material.clone(); const m = o.material; m.emissive = new T.Color(0xffffff); m.emissiveMap = m.map; m.emissiveIntensity = 0.28; m.roughness = 0.8; m.metalness = 0; } });
+      root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material = o.material.clone(); const m = o.material; m.emissive = new T.Color(0xffffff); m.emissiveMap = m.map; m.emissiveIntensity = 0.28; m.roughness = 0.8; m.metalness = 0; m.side = T.DoubleSide; } }); // double-sided so the seam walls between body parts never show the inside
       const dummy = () => new T.Object3D(), nd = (k) => root.getObjectByName(k) || dummy(); // Blender splits the body into Body, LegL/R and ArmL/R pieces so it really walks
       h = { group: g, legL: nd('LegL'), legR: nd('LegR'), armL: nd('ArmL'), armR: nd('ArmR'), head: dummy(), mom: type === 'mom', s: 1 };
     } else if (rig && need.every((k) => rig.getObjectByName(k))) {
