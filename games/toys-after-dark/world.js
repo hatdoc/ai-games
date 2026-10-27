@@ -275,7 +275,7 @@ const TAD = window.TAD = {};
   };
 
   // ---------- humans ----------
-  TAD.makeHuman = (type) => {
+  const proceduralHuman = (type) => {
     const mom = type === 'mom', g = new T.Group(), K = mom ? 1 : 0.72;
     const skin = std(mom ? 0xe3b48f : 0xecbf9a, 0.7), skinD = std(0xc58f6c, 0.8), top = std(mom ? 0x7a2f45 : 0xf2c62e, 0.9), inner = std(mom ? 0xf0e6d6 : 0xf2c62e, 0.9), pants = std(mom ? 0x2b3a5c : 0x2f5f9f, 0.95), shoe = std(mom ? 0xc7a487 : 0xf4f4f4, 0.6), hair = std(mom ? 0x5a371f : 0x3a2414, 0.85);
     const ell = (r, m, x, y, z, sx, sy, sz) => sph(r, m, x, y, z, sx, sy, sz);
@@ -297,6 +297,18 @@ const TAD = window.TAD = {};
     g.scale.setScalar(K);
     g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     return { group: g, legL, legR, armL, armR, head, mom, s: K };
+  };
+  // realistic humans modelled in Blender (mom.glb / kid.glb); the procedural ones above are the fallback if they fail to load
+  TAD.glb = {};
+  if (T.GLTFLoader) { const L = new T.GLTFLoader(); ['mom', 'kid'].forEach((k) => L.load(k + '.glb', (gl) => { TAD.glb[k] = gl.scene; }, undefined, () => {})); }
+  TAD.makeHuman = (type) => {
+    const src = TAD.glb[type], need = ['LegL', 'LegR', 'ArmL', 'ArmR', 'Head'];
+    if (!src) return proceduralHuman(type);
+    const root = src.clone(true), n = {}; need.forEach((k) => (n[k] = root.getObjectByName(k)));
+    if (need.some((k) => !n[k])) return proceduralHuman(type);
+    const g = new T.Group(), K = type === 'mom' ? 1 : 0.72; g.add(root); g.scale.setScalar(K);
+    root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    return { group: g, legL: n.LegL, legR: n.LegR, armL: n.ArmL, armR: n.ArmR, head: n.Head, mom: type === 'mom', s: K };
   };
   TAD.animateHuman = (h, t, walking) => {
     const s = Math.sin(t * 5) * (walking ? 0.55 : 0);
