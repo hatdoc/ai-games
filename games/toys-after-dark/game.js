@@ -256,6 +256,7 @@ function interact() { // E pressed
   if (P.stun > 0 || P.out > 0) return;
   if (P.hidden) { leaveHide(); return; }
   const st = G.cur;
+  if (st && st.t === 'use' && G.target && dist(P.x, P.z, G.target.x, G.target.z) < G.target.r) return; // holding E here means work on the task, not hide (the toy box is also a hiding spot)
   if (st && st.t === 'get' && !P.carry) { const it = G.target; if (it && !it.held && dist(P.x, P.z, it.x, it.z) < 3.4) { P.carry = it; it.held = true; it.g.visible = false; evid = evid.filter((e) => e !== it); A.pickup(); noise(P.x, P.z, 0.12, 'player'); UI.carry(); stepDone(); return; } }
   if (P.carry && P.carry.carried) {/* carried mission item awaiting drop handled below */}
   if (st && st.t === 'drop' && P.carry && dist(P.x, P.z, G.target.x, G.target.z) < G.target.r) {
