@@ -104,8 +104,10 @@ const TAD = window.TAD = {};
   const shade = cyl(1.2, 2.4, 2.2, std(0xffe0a0, 0.5, 0, { emissive: 0xffa84a, emissiveIntensity: 0.9 }), 13.5, 15.2, -18); shade.rotation.z = 0.4; desk.add(shade);
   desk.add(box(3, 0.7, 2.4, std(0xc94a4a), 19, 10, -18)); desk.add(box(3, 0.6, 2.4, std(0x4a8ac9), 19, 10.65, -18));
   // chair
-  desk.add(box(4.2, 0.8, 4.2, std(0x4a6f8a), 16, 5, -6.5)); desk.add(box(4.2, 5, 0.6, std(0x4a6f8a), 16, 7.8, -4.6));
-  [[14.2, -8.2], [17.8, -8.2], [14.2, -4.8], [17.8, -4.8]].forEach(([x, z]) => desk.add(box(0.5, 4.6, 0.5, std(0x333), x, 2.3, z)));
+  const chair = new T.Group(); chair.position.set(16, 0, -6.5); TAD.chair = chair; // movable: push it to climb
+  chair.add(box(4.2, 0.8, 4.2, std(0x4a6f8a), 0, 5, 0)); chair.add(box(4.2, 5, 0.6, std(0x4a6f8a), 0, 7.8, 1.9));
+  [[-1.8, -1.7], [1.8, -1.7], [-1.8, 1.7], [1.8, 1.7]].forEach(([x, z]) => chair.add(box(0.5, 4.6, 0.5, std(0x333), x, 2.3, z)));
+  desk.add(chair);
   scene.add(desk);
   // wardrobe + bookshelf (right wall)
   const ward = new T.Group();
@@ -146,7 +148,7 @@ const TAD = window.TAD = {};
     const c = blockCols[i % 5]; const t = ctex(64, 64, (g) => { g.fillStyle = '#' + c.toString(16).padStart(6, '0'); g.fillRect(0, 0, 64, 64); g.fillStyle = '#fff'; g.font = 'bold 40px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(letters[i % 6], 32, 34); });
     const m = box(2.6, 2.6, 2.6, std(0xffffff, 0.45, 0, { map: t }), x, y, z); m.rotation.y = ry; scene.add(m); return m;
   }
-  [[-6, 1.3, -4], [-9, 1.3, 2], [-2, 1.3, 15], [12, 1.3, 8], [14, 1.3, -4], [2, 1.3, -9], [0, 1.3, -16]].forEach((p, i) => blocks.push(block(p[0], p[1], p[2], i, Math.random() * 3)));
+  [[-6, 1.3, -4], [-5.5, 1.3, 3], [-2, 1.3, 15], [12, 1.3, 8], [14, 1.3, -1], [2, 1.3, -9], [0, 1.3, -16]].forEach((p, i) => blocks.push(block(p[0], p[1], p[2], i, Math.random() * 3)));
   const tower = []; for (let i = 0; i < 5; i++) { const b = block(6 + Math.sin(i) * 0.2, 1.3 + i * 2.6, 11, i, i * 0.15); tower.push(b); b.userData.home = b.position.clone(); b.userData.vel = new T.Vector3(); }
   Object.assign(TAD, { tower, blocks });
   const car = new T.Group(); car.add(box(4.2, 1.4, 2.2, std(0xe8453f, 0.35, 0.3), 0, 1.3, 0)); car.add(box(2.2, 1.2, 1.9, std(0x9fd0ff, 0.15, 0.1), -0.2, 2.4, 0));
@@ -181,7 +183,7 @@ const TAD = window.TAD = {};
     robot:    { name: 'Bolt the Robot', color: 0x6ec6ff, trim: 0xff5d5d, emoji: '🤖', desc: 'Rock-solid freeze pose: suspicion builds 30% slower. Beeps now and then.', ability: 'Lock-up', speed: 1 },
     ninja:    { name: 'Kage the Ninja', color: 0x2a2f55, trim: 0xe0314b, emoji: '🥷', desc: 'Ability: Shadow Dash, a short burst. Landings are noisy.', ability: 'Shadow Dash', speed: 1.05 },
     teddy:    { name: 'Biscuit the Bear', color: 0xb9794a, trim: 0xf2c14e, emoji: '🧸', desc: 'Carries heavy items at full speed. Slower on foot.', ability: 'Bear Hug', speed: 0.78 },
-    windup:   { name: 'Tick-Tock', color: 0xf2c14e, trim: 0x3d7fd0, emoji: '⏰', desc: 'Ability: Wind-up Sprint for 2s, then a long cooldown.', ability: 'Sprint', speed: 1 },
+    windup:   { name: 'Tick-Tock', color: 0xf2c14e, trim: 0x3d7fd0, emoji: '⏰', desc: 'Spring legs: the ONLY toy that can jump onto desks and bed tops. Ability: wind-up sprint.', ability: 'Sprint', speed: 1 },
     clown:    { name: 'Giggles the Clown', color: 0xb06be0, trim: 0xffd34a, emoji: '🤡', desc: 'Ability: Honk! lures humans toward the noise. Risky.', ability: 'Honk', speed: 1 },
     explorer: { name: 'Pip the Explorer', color: 0x7fb069, trim: 0xe9d8a6, emoji: '🧭', desc: 'Squeezes into tiny hiding spots nobody else fits.', ability: 'Squeeze', speed: 1.02 },
   };

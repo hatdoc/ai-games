@@ -14,7 +14,7 @@ try { const o = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}'); S = Object.a
 const save = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } };
 const levelNeed = (l) => 100 + 60 * (l - 1);
 const level = () => { let x = S.xp, l = 1; while (x >= levelNeed(l)) { x -= levelNeed(l); l++; } return { l, x, need: levelNeed(l) }; };
-const KIND_LVL = { robot: 1, teddy: 1, ninja: 2, windup: 2, clown: 3, explorer: 4 };
+const KIND_LVL = { robot: 1, teddy: 1, ninja: 1, windup: 1, clown: 1, explorer: 1 }; // every toy is playable from the start
 
 // ---------------- missions ----------------
 // step: get (pick an item up), drop (carry it to a spot), use (hold E in a zone; coop needs a teammate beside you)
@@ -38,7 +38,7 @@ const missionById = (id) => MISSIONS.find((m) => m.id === id) || MISSIONS[0];
 // ---------------- world geometry helpers ----------------
 const OBST = TAD.OBST;
 const inObst = (x, z, m = 1.2) => OBST.some((o) => x > o.x0 - m && x < o.x1 + m && z > o.z0 - m && z < o.z1 + m);
-const walkable = (x, z) => Math.abs(x) < 22.4 && z > -22 && z < 22.4 && !inObst(x, z);
+const walkable = (x, z) => Math.abs(x) < 22.4 && z > -22 && z < 22.4 && !inObst(x, z) && !SOL.some((q) => q.mov && Math.abs(q.cx - x) < q.h + 1.6 && Math.abs(q.cz - z) < q.h + 1.6); // not inside a block or the chair
 const WALLS = [{ x0: -25, z0: -26, x1: -4, z1: -24.2, tall: 1 }, { x0: 4, z0: -26, x1: 25, z1: -24.2, tall: 1 }];
 const SIGHT = OBST.filter((o) => o.tall).concat(WALLS);
 function segRect(ax, az, bx, bz, r) { // slab test: does segment a-b cross rect r?
@@ -49,26 +49,53 @@ function segRect(ax, az, bx, bz, r) { // slab test: does segment a-b cross rect 
   return true;
 }
 const los = (ax, az, bx, bz) => !SIGHT.some((r) => segRect(ax, az, bx, bz, r));
+// things toys can stand on or push. top = height of the walkable surface (99 = too tall to climb)
+const SOL = [];
+[['bed', 7.6], ['desk', 9.6], ['toybox', 5.9], ['hq', 6], ['ward', 99], ['shelf', 99]].forEach(([n, t]) => { const o = OBST.find((q) => q.n === n); SOL.push({ x0: o.x0, z0: o.z0, x1: o.x1, z1: o.z1, top: t, n }); });
+TAD.blocks.forEach((m) => SOL.push({ mesh: m, cx: m.position.x, cz: m.position.z, h: 1.4, top: 2.6, mov: 1, n: 'block' }));
+SOL.push({ mesh: TAD.chair, cx: 16, cz: -6.5, h: 2.2, top: 5.3, mov: 1, n: 'chair' });
+SOL.forEach((q) => { if (q.mov) { q.ox = q.cx; q.oz = q.cz; } });
+const resetSol = () => SOL.forEach((q) => { if (q.mov) { q.cx = q.ox; q.cz = q.oz; q.mesh.position.x = q.ox; q.mesh.position.z = q.oz; } });
+const rectOf = (s) => (s.mov ? { x0: s.cx - s.h, x1: s.cx + s.h, z0: s.cz - s.h, z1: s.cz + s.h } : s);
+const JUMP = { windup: 11, default: 3.6 }, GRAV = 60;
+const overlapsOther = (me, r) => SOL.some((q) => { if (q === me) return false; const o = rectOf(q); return r.x1 > o.x0 && r.x0 < o.x1 && r.z1 > o.z0 && r.z0 < o.z1; });
+function groundAt(e) { let g = 0; for (const s of SOL) { const o = rectOf(s); if (e.x > o.x0 - 0.2 && e.x < o.x1 + 0.2 && e.z > o.z0 - 0.2 && e.z < o.z1 + 0.2 && s.top <= (e.y || 0) + 1.2 && s.top > g) g = s.top; } return g; }
 function pushOut(e, rad) {
-  for (const o of OBST) {
+  const y = e.y || 0;
+  for (const s of SOL) {
+    const o = rectOf(s);
+    if (s.top <= y + 1.2) continue; // feet are (nearly) above it: stand on it
     if (e.x > o.x0 - rad && e.x < o.x1 + rad && e.z > o.z0 - rad && e.z < o.z1 + rad) {
       const l = e.x - (o.x0 - rad), r = o.x1 + rad - e.x, f = e.z - (o.z0 - rad), b = o.z1 + rad - e.z, m = Math.min(l, r, f, b);
+      if (s.mov && e === P && !e.hidden) { // shove blocks and the chair around to build steps
+        const dx = m === l ? l : m === r ? -r : 0, dz = m === f ? f : m === b ? -b : 0, nr = { x0: o.x0 + dx, x1: o.x1 + dx, z0: o.z0 + dz, z1: o.z1 + dz };
+        if (nr.x0 > -23.5 && nr.x1 < 23.5 && nr.z0 > -23.5 && nr.z1 < 23.5 && !overlapsOther(s, nr)) { s.cx += dx; s.cz += dz; s.mesh.position.x += dx; s.mesh.position.z += dz; continue; }
+      }
       if (m === l) e.x = o.x0 - rad; else if (m === r) e.x = o.x1 + rad; else if (m === f) e.z = o.z0 - rad; else e.z = o.z1 + rad;
     }
   }
   e.x = clamp(e.x, -22.8, 22.8); e.z = clamp(e.z, -22.8, 22.8);
 }
+function pushOutHuman(h) { // humans are big but not ghosts: walk around beds, desks, the toy box
+  for (const s of SOL) {
+    if (s.mov) continue; const o = rectOf(s), rad = 2.8;
+    if (h.x > o.x0 - rad && h.x < o.x1 + rad && h.z > o.z0 - rad && h.z < o.z1 + rad) {
+      const l = h.x - (o.x0 - rad), r = o.x1 + rad - h.x, f = h.z - (o.z0 - rad), b = o.z1 + rad - h.z, m = Math.min(l, r, f, b);
+      if (m === l) h.x = o.x0 - rad; else if (m === r) h.x = o.x1 + rad; else if (m === f) h.z = o.z0 - rad; else h.z = o.z1 + rad;
+    }
+  }
+}
 
 // ---------------- state ----------------
 const G = { mode: 'menu', t: 0, timeScale: 1, shake: 0 };
 let P = null, bots = [], H = null, items = [], evid = [], movers = [], markers = null, labels = [];
-const input = { ix: 0, iy: 0, freeze: false, act: false, actEdge: false, ability: false, drop: false };
+const input = { ix: 0, iy: 0, freeze: false, act: false, actEdge: false, ability: false, drop: false, jump: false };
 let cy = 0, camPos = new T.Vector3(0, 14, 30), menuT = 0, demo = false, hero = null, heroKey = '';
 const UI = window.UI = window.UI || {};
 
 function makeEnt(kind, tint, acc, name, isBot) {
   const toy = TAD.makeToy(kind, tint, acc); scene.add(toy.group);
-  return { toy, kind, name, isBot, x: 0, z: 0, vx: 0, vz: 0, face: 0, fz: 0, frozen: false, susp: 0, hidden: null, carry: null, cd: { ab: 0 }, boost: 0, speedNow: 0, stun: 0, ai: { wait: 0, goal: null, freezeAt: 0, clumsy: false, follow: 0 }, emote: '', out: 0, obsT: 0, seenBy: 0 };
+  return { toy, kind, name, isBot, onGround: true, y: 0, vy: 0, x: 0, z: 0, vx: 0, vz: 0, face: 0, fz: 0, frozen: false, susp: 0, hidden: null, carry: null, cd: { ab: 0 }, boost: 0, speedNow: 0, stun: 0, ai: { wait: 0, goal: null, freezeAt: 0, clumsy: false, follow: 0 }, emote: '', out: 0, obsT: 0, seenBy: 0 };
 }
 const BOT_NAMES = ['Biscuit', 'Tick-Tock', 'Giggles', 'Kage', 'Bolt', 'Pip'];
 
@@ -79,6 +106,7 @@ function clearRound() {
   movers.forEach((m) => scene.remove(m.mesh)); movers = [];
   if (H) { scene.remove(H.m.group); H = null; }
   if (markers) { scene.remove(markers); markers = null; }
+  coins.forEach((c) => scene.remove(c.g)); coins = []; resetSol();
   TAD.door.rotation.y = 0; TAD.hallLight.intensity = 0; TAD.shaft.material.opacity = 0; TAD.strip.material.opacity = 0; TAD.underShadow.material.opacity = 0;
   TAD.tower.forEach((b) => { b.position.copy(b.userData.home); b.rotation.set(0, 0, 0); b.userData.vel.set(0, 0, 0); b.userData.fall = false; });
   P = null; bots = [];
@@ -89,10 +117,10 @@ function startRound(id) {
   P = makeEnt(S.kind, S.tint, S.acc, 'You', false); const ring = new T.Mesh(new T.RingGeometry(1.7, 2.1, 32), new T.MeshBasicMaterial({ color: 0xffb347, transparent: true, opacity: 0.9, side: T.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.09; P.toy.group.add(ring); P.x = -4; P.z = 7; P.face = 0.5;
   for (let i = 0; i < 3; i++) { const k = kinds.splice(Math.random() * kinds.length | 0, 1)[0]; const b = makeEnt(k, null, pick(['', 'bow', 'shades', 'party']), TAD.KINDS[k].name.split(' ')[0], true); b.x = -8 + i * 3.2; b.z = 10 + i * 0.8; b.ai.clumsy = i === 2; bots.push(b); }
   Object.assign(G, { mode: 'play', def, t: 0, step: 0, timeLeft: Math.round(def.time * 0.8), strikes: 0, won: false, over: 0, timeScale: 1, shake: 0, paused: false, prog: 0, spawnT: 0, evT: rnd(14, 20), fakeT: rnd(30, 45), chatT: 0, tipT: 0,
-    stats: { peak: 0, visits: 0, visitsClean: 0, catches: 0, frozenObs: 0, hides: 0, evidSeen: 0, relocated: 0, noiseT: -99, botCaught: 0, whoT: -99, snitch: 0, worstTm: 0, allBotsDown: 0, falseAlarms: 0, steps: 0, incidents: [], side: { cool: true, statue: false, fast: false }, visitPeak: 0 }, log: [] });
+    stats: { peak: 0, visits: 0, visitsClean: 0, catches: 0, frozenObs: 0, hides: 0, evidSeen: 0, relocated: 0, noiseT: -99, botCaught: 0, whoT: -99, snitch: 0, worstTm: 0, allBotsDown: 0, falseAlarms: 0, steps: 0, coins: 0, incidents: [], side: { cool: true, statue: false, fast: false }, visitPeak: 0 }, log: [] });
   H = { m: TAD.makeHuman('mom'), type: 'mom', x: 0, z: -40, f: 0, phase: 'away', timer: rnd(7, 10), wps: [], wi: 0, pause: 0, speed: 6, inv: null, fake: false, warnT: 0, warnLen: 0, step: 0, visit: 0, ret: false, hold: 0, scan: 0, fav: null, carry: null };
   H.m.group.visible = false; scene.add(H.m.group);
-  rec.length = 0; A.music('safe'); activateStep();
+  rec.length = 0; A.music('safe'); activateStep(); spawnCoins();
   UI.startRound && UI.startRound();
 }
 function activateStep() {
@@ -129,6 +157,18 @@ function missionComplete() {
   A.music('victory'); A.complete(); UI.alert && UI.alert('MISSION COMPLETE!', 'good', 2400);
 }
 function endRound(why) { G.mode = 'results'; G.why = why; if (H) H.m.group.visible = false; UI.results && UI.results(); }
+
+// ---------------- high-up gold coins (reach them by climbing; the desk one needs the spring-legged toy) ----------------
+let coins = [];
+const COIN_SPOTS = [[-16, -9, 7.6], [-9, 17, 5.9], [16, -17, 9.6], [-14, -18, 7.6]];
+function spawnCoins() {
+  coins.forEach((c) => scene.remove(c.g));
+  coins = COIN_SPOTS.map(([x, z, y]) => { const g = new T.Group(), sp = TAD.sprite('🪙', 3.2); g.add(sp); g.position.set(x, y + 2.2, z); scene.add(g); return { g, sp, x, z, y }; });
+}
+function collectCoins() {
+  if (!P || P.out > 0) return;
+  for (const c of coins.slice()) if (dist(P.x, P.z, c.x, c.z) < 2.2 && Math.abs((P.y || 0) - c.y) < 3.2) { scene.remove(c.g); coins = coins.filter((q) => q !== c); G.stats.coins++; S.coins += 20; save(); A.pickup(); UI.toast('+20 🪙 high-up gold coin!'); }
+}
 
 // ---------------- noise ----------------
 function noise(x, z, loud, src) {
@@ -172,7 +212,7 @@ function planRoute() {
   } else {
     wps.push({ x: 0, z: -8, p: 0.2 });
     const pool = [P, ...bots].filter((e) => !e.hidden); H.fav = pick(pool) || P;
-    wps.push({ fav: true, p: 0.2 }); wps.push({ x: -4, z: -14, p: 0 });
+    wps.push({ fav: true, p: 0.2 }); const khd = pick(TAD.HIDES.filter((q) => !q.small)); wps.push({ x: khd.x, z: khd.z, p: 1.3, peek: khd }); wps.push({ x: -4, z: -14, p: 0 });
   }
   H.wps = wps; H.wi = 0; H.pause = 0;
 }
@@ -215,7 +255,7 @@ function updateHuman(dt) {
     const w = h.wps[h.wi];
     if (w) {
       if (w.fav) { const f = h.fav; if (f && !f.hidden) { tx = f.x; tz = f.z; } else if (!f.hidden) { h.wi++; } else { h.wi++; } if (f && dist(h.x, h.z, f.x, f.z) < 3.2 && !f.hidden) { grab(f); h.wi++; h.pause = 0.5; } }
-      else { tx = w.x; tz = w.z; if (dist(h.x, h.z, w.x, w.z) < 1.4) { h.pause = w.p; h.peek = w.peek; h.peeked = false; h.wi++; tx = null; } }
+      else { tx = w.x; tz = w.z; h.wt = (h.wt || 0) + dt; if (h.wt > 7) { h.wi++; h.wt = 0; } if (dist(h.x, h.z, w.x, w.z) < 1.4) { h.wt = 0; h.pause = w.p; h.peek = w.peek; h.peeked = false; h.wi++; tx = null; } }
     } else { h.phase = 'leave'; UI.hint(''); }
     if (h.visitT > h.limit && h.phase === 'in') h.phase = 'leave';
   }
@@ -224,10 +264,11 @@ function updateHuman(dt) {
   if (tx !== null) {
     const dx = tx - h.x, dz = tz - h.z, d = Math.hypot(dx, dz) || 1; walking = true;
     const want = Math.atan2(dx, dz), da = angDiff(want, h.f); h.f += clamp(da, -dt * 3.5, dt * 3.5);
-    if (Math.abs(da) < 1.2) { h.x += Math.sin(h.f) * spd * dt; h.z += Math.cos(h.f) * spd * dt; }
+    if (Math.abs(da) < 1.2) { h.x += Math.sin(h.f) * spd * dt; h.z += Math.cos(h.f) * spd * dt; pushOutHuman(h); }
     h.stepAcc -= dt; if (h.stepAcc <= 0) { const dd = dist(h.x, h.z, P.x, P.z), rx = Math.cos(cy), rz = -Math.sin(cy), pan = clamp(((h.x - P.x) * rx + (h.z - P.z) * rz) / 20, -1, 1); A.step(pan, clamp(1 - dd / 45, 0.15, 1), true); h.stepAcc = mom ? 0.5 : 0.3; if (dd < 14 && !S.set.calm) G.shake = Math.max(G.shake, 0.12); }
   }
-  h.m.group.position.set(h.x, 0, h.z); h.m.group.rotation.y = h.f; TAD.animateHuman(h.m, G.t, walking);
+  h.m.group.position.set(h.x, 0, h.z); h.m.group.rotation.order = 'YXZ'; h.m.group.rotation.y = h.f; TAD.animateHuman(h.m, G.t, walking);
+  h.crouch = (h.crouch || 0) + (((h.pause > 0 && h.peek) ? 1 : 0) - (h.crouch || 0)) * Math.min(1, dt * 6); h.m.group.rotation.x = h.crouch * 0.9; h.m.group.position.y -= h.crouch * 2.5 * h.m.s; // bends down to look under things
   function peek(hd) {
     UI.alert(`SHE'S CHECKING ${hd.n.toUpperCase()}!`, 'warn', 1500);
     [P, ...bots].forEach((e) => { if (e.hidden === hd) { if (e === P) { P.susp += 60; flagReason('found'); } else { e.susp += 60; } } });
@@ -240,7 +281,7 @@ function updateHuman(dt) {
 }
 function relocate(e) { // the kid carries a toy to the bed: funny, recoverable
   e.hidden = null; e.carry && dropItem(e, true);
-  e.x = -13 + rnd(-2, 2); e.z = -2 + rnd(-2, 2); e.stun = 1.6; e.susp = Math.max(e.susp, 40);
+  if (e === P) { e.x = -14 + rnd(-2, 2); e.z = -6 + rnd(-2, 2); e.y = 7.6; e.vy = 0; } else { e.x = -6.5; e.z = -2 + rnd(-2, 2); e.y = 0; } e.stun = 1.6; e.susp = Math.max(e.susp, 40);
   if (e === P) { G.stats.relocated++; UI.alert('THE KID PICKED YOU UP!', 'bad', 1800); addIncident('relocated', 'THE KID YEETED ME ONTO THE BED', P); if (H) H.phase = 'in'; } else addIncident('bot', e.name.toUpperCase() + ' GOT YEETED', e);
   noise(e.x, e.z, 0.3, 'none'); A.thud(0.5);
 }
@@ -264,6 +305,7 @@ function interact() { // E pressed
   }
   // hiding spots
   const hd = TAD.HIDES.filter((h) => !h.small || P.kind === 'explorer').map((h) => ({ h, d: dist(P.x, P.z, h.x, h.z) })).sort((a, b) => a.d - b.d)[0];
+  if (P.carry && !(hd && hd.d < 3.2)) { dropItem(P); UI.carry(); noise(P.x, P.z, 0.1, 'player'); UI.hint('You put it down. A human might notice it!'); return; } // E again puts down what you hold
   if (hd && hd.d < 3.2) { P.hidden = hd.h; P.x = hd.h.hx; P.z = hd.h.hz; P.toy.group.visible = false; G.stats.hides += (H && H.phase !== 'away' && H.phase !== 'warn') ? 1 : 0; UI.hint('Hidden. Press E to come out.'); A.freeze(); return; }
   // sloppy pickup of a dropped item
   const lost = items.find((i) => i.kind === 'step' && !i.held && dist(P.x, P.z, i.x, i.z) < 3.4);
@@ -348,7 +390,11 @@ function updateSuspicion(e, dt) {
   } else { e.obsT = 0; e.curious = 0; e.curNote = false; e.susp = Math.max(0, e.susp - (e.hidden ? 12 : 4.5) * dt); }
   e.susp += gain * dt;
   if (e === P && H && H.phase !== 'away' && H.phase !== 'warn') { // evidence in sight
-    for (const ev of evid.slice()) if (!ev.held && hSeesPoint(ev.x, ev.z)) { ev.seenT = (ev.seenT || 0) + dt; if (ev.seenT > 0.5) { P.susp += 32; G.stats.evidSeen++; UI.alert('"WHY IS THIS ON THE FLOOR?"', 'warn', 1500); respawnItem(ev); H.inv = { x: ev.x, z: ev.z, t: 1.8 }; } }
+    for (const ev of evid.slice()) if (!ev.held && hSeesPoint(ev.x, ev.z)) {
+      ev.seenT = (ev.seenT || 0) + dt;
+      if (ev.seenT > 0.5 && ev.judged !== H.visit) { ev.judged = H.visit; ev.weird = Math.random() < 0.55; if (ev.weird) { H.inv = { x: ev.x, z: ev.z - 3, t: 4 }; UI.alert('"HMM… THAT DOESN\'T BELONG THERE."', 'warn', 1800); } } // sometimes she doesn't care, sometimes she tidies up
+      if (ev.weird && ev.judged === H.visit && dist(H.x, H.z, ev.x, ev.z) < 6) { P.susp += 15; G.stats.evidSeen++; UI.alert('SHE PUT IT BACK!', 'warn', 1500); respawnItem(ev); }
+    }
   }
   e.susp = clamp(e.susp, 0, 100);
 }
@@ -391,12 +437,15 @@ function moveEnt(e, dt, dx, dz, spd) {
   e.vx += (tvx - e.vx) * (e.stun > 0 ? 0.04 : k); e.vz += (tvz - e.vz) * (e.stun > 0 ? 0.04 : k);
   e.x += e.vx * dt; e.z += e.vz * dt; pushOut(e, 1);
   e.speedNow = Math.hypot(e.vx, e.vz);
+  e.y = e.y || 0; e.vy = e.vy || 0; const gnd = groundAt(e); e.gy = gnd; // gravity, landing, walking off edges
+  if (e.y > gnd + 0.01 || e.vy > 0) { e.vy -= GRAV * dt; e.y += e.vy * dt; e.airT = (e.airT || 0) + dt; if (e.y <= gnd) { if (e.airT > 0.5 && e === P && e.vy < -14) noise(e.x, e.z, 0.25, 'player'); e.y = gnd; e.vy = 0; e.airT = 0; } } else { e.y = gnd; e.vy = 0; e.airT = 0; }
+  e.onGround = e.y <= gnd + 0.02;
 }
 function stopNow(e) { e.vx = e.vz = 0; e.speedNow = 0; } // freeze is immediate
 function toyAnim(e, dt) {
   const target = (e.frozen || e.out > 0) ? 1 : 0; e.fz += clamp(target - e.fz, -dt * 7, dt * 7);
   e.toy.carry = !!e.carry; TAD.animateToy(e.toy, dt, e.speedNow, e.out > 0 ? 0 : e.fz, G.t + menuT, e.emote);
-  const g = e.toy.group; g.position.set(e.x, 0, e.z); g.rotation.y = e.face; g.visible = !e.hidden && !(e.isBot && e.out > 0);
+  const g = e.toy.group; g.position.set(e.x, e.y || 0, e.z); g.rotation.y = e.face; e.toy.blob.position.y = 0.06 - ((e.y || 0) - (e.gy || 0)); g.visible = !e.hidden && !(e.isBot && e.out > 0);
   e.toy.blob.visible = true;
   if (e.out > 0 && !e.isBot) { g.visible = G.cine > 0; }
 }
@@ -421,6 +470,7 @@ function playerControl(dt) {
   if (e.hidden || e.frozen) { dx = dz = 0; stopNow(e); }
   const holding = (d0 ? d0.act : input.act);
   if (G.cur && G.cur.t === 'use' && holding && G.target && dist(e.x, e.z, G.target.x, G.target.z) < G.target.r && !e.hidden) { dx = dz = 0; stopNow(e); useStep(dt); } else if (G.prog > 0 && !(G.cur && G.cur.t === 'use' && holding)) G.prog = Math.max(0, G.prog - dt * 2);
+  if (input.jump) { input.jump = false; if (e.onGround && !e.hidden && !e.frozen) { e.vy = Math.sqrt(2 * GRAV * (JUMP[e.kind] || JUMP.default)); e.y += 0.05; A.tick(); } }
   const wasBoost = e.boost > 0; const spd = abilitySpeed(e);
   moveEnt(e, dt, dx, dz, spd);
   if (wasBoost && e.boost <= 0 && e.kind === 'ninja') { A.thud(0.7); noise(e.x, e.z, 0.6, 'player'); }
@@ -469,9 +519,10 @@ function demoInput() {
   const watch = H && H.phase !== 'away'; // autopilot freezes whenever a human is around
   if (!st) return { ix: 0, iy: 0, freeze: false, act: false };
   if (e.hidden) { if (!watch) G.demoAct = true; if (G.demoAct) { input.actEdge = true; G.demoAct = false; } return { ix: 0, iy: 0, freeze: false, act: false }; }
-  if (watch && e.carry) { // holding something with a human around: duck into the nearest hiding spot
+  if (watch && (e.carry || (H && H.phase === 'in' && dist(e.x, e.z, H.x, H.z) < 11))) { // holding something, or a human is close: duck into the nearest hiding spot
     const hd = TAD.HIDES.filter((h) => !h.small || e.kind === 'explorer').sort((p, q) => dist(e.x, e.z, p.x, p.z) - dist(e.x, e.z, q.x, q.z))[0];
     if (dist(e.x, e.z, hd.x, hd.z) < 2.4) { input.actEdge = true; return { ix: 0, iy: 0, freeze: true, act: false }; }
+    if (dist(e.x, e.z, hd.x, hd.z) > 9 || hSees(e)) { if (e.carry) input.actEdge = true; return { ix: 0, iy: 0, freeze: true, act: false }; } // seen or too far to hide: put it down and freeze (it is picked up again later)
     const dx = hd.x - e.x, dz = hd.z - e.z, d = Math.hypot(dx, dz) || 1, rx = Math.cos(cy), rz = -Math.sin(cy), fx = -Math.sin(cy), fz = -Math.cos(cy);
     return { ix: dx / d * rx + dz / d * rz, iy: dx / d * fx + dz / d * fz, freeze: false, act: false };
   }
@@ -480,6 +531,10 @@ function demoInput() {
   else { tx = G.target.x; tz = G.target.z; const near = dist(e.x, e.z, tx, tz) < (G.target.r || 3) - 0.6; if (near) { if (st.t === 'use') act = true; else G.demoAct = true; } }
   if (watch) freeze = true; if (G.demoAct) { input.actEdge = true; G.demoAct = false; }
   const dx = tx - e.x, dz = tz - e.z, d = Math.hypot(dx, dz) || 1; let wx = dx / d, wz = dz / d; if (d < 1.4) { wx = wz = 0; }
+  const moved = dist(e.x, e.z, G.lx === undefined ? e.x : G.lx, G.lz === undefined ? e.z : G.lz); G.lx = e.x; G.lz = e.z;
+  G.dsT = (wx || wz) && moved < 0.05 && !e.frozen && !e.hidden ? (G.dsT || 0) + 1 / 60 : 0; // pressed against something: hop, then sidestep
+  if (G.dsT > 0.25 && e.onGround) input.jump = true;
+  if (G.dsT > 1) { const sx = Math.sin(G.t * 0.9) > 0 ? 1 : -1; const tmp = wx; wx = -wz * sx; wz = tmp * sx; }
   // convert world dir to camera-relative input
   const rx = Math.cos(cy), rz = -Math.sin(cy), fx = -Math.sin(cy), fz = -Math.cos(cy);
   return { ix: wx * rx + wz * rz, iy: wx * fx + wz * fz, freeze, act };
@@ -509,7 +564,7 @@ function update(dt0) {
   if (!G.over || !G.won) { if (!G.won) { if (ps >= 75 && H && H.phase !== 'away') A.music('critical'); else if (H && H.phase === 'warn' && !H.fake) A.music('approach'); else if (human && H.visitT > 1.6) A.music('inspect'); else if (H && H.phase === 'away' && A.state !== 'safe' && A.state !== 'suspicion' && A.state !== 'escape') A.music(ps > 25 ? 'suspicion' : 'safe'); else if (H && H.phase === 'away' && ps > 25) A.music('suspicion'); else if (H && H.phase === 'away' && ps <= 25 && A.state === 'suspicion') A.music('safe'); } }
   if (H && H.phase === 'away' && H.visit > 0 && A.state === 'inspect') A.music('escape');
   recT += dt; if (recT > 0.05) { recT = 0; rec.push({ px: P.x, pz: P.z, pf: P.face, pz2: P.fz, hx: H ? H.x : 0, hz: H ? H.z : 0, hf: H ? H.f : 0, hv: H && H.m.group.visible ? 1 : 0, ht: H ? H.type : 'mom', wk: P.speedNow }); if (rec.length > 100) rec.shift(); }
-  cameraFollow(dt0); renderBits(dt); UI.hud && UI.hud();
+  collectCoins(); cameraFollow(dt0); renderBits(dt); UI.hud && UI.hud();
 }
 function renderBits(dt) {
   [P, ...bots].forEach((e) => e && toyAnim(e, dt, G.t));
@@ -518,13 +573,14 @@ function renderBits(dt) {
   items.forEach((i) => { if (i.sp) { i.sp.position.y = 3 + Math.sin(G.t * 3 + i.x) * 0.35; const k = i === lost ? 4.6 + Math.sin(G.t * 6) * 0.6 : 3.4; i.sp.scale.set(k, k, 1); } });
   if (markers && markers.userData.bob) markers.userData.bob.position.y = 7 + Math.sin(G.t * 3) * 0.5;
   if (G.target && markers) markers.children.forEach((c) => { if (c.geometry && c.geometry.type === 'RingGeometry') c.scale.setScalar(1 + Math.sin(G.t * 4) * 0.06); });
+  coins.forEach((c) => { c.g.position.y = c.y + 2.2 + Math.sin(G.t * 3 + c.x) * 0.4; });
   TAD.dust.rotation.y += dt * 0.02;
 }
 // ---------------- camera ----------------
 function cameraFollow(dt) {
   const f = P || { x: 0, z: 0 }; let tx = f.x, tz = f.z;
   if (G.mode === 'play' && P && P.out > 0) { const b = bots.find((q) => q.out <= 0); if (b) { tx = b.x; tz = b.z; } }
-  let D = 16 * S.set.cam, Hh = 19 * S.set.cam, look = 2;
+  const yy = P && G.mode === 'play' ? (P.y || 0) : 0; let D = 16 * S.set.cam, Hh = 19 * S.set.cam + yy * 0.7, look = 2 + yy * 0.8;
   if (G.mode === 'play' && H && P && P.out <= 0 && (H.phase === 'warn' && !H.fake || H.phase === 'in' || H.phase === 'leave')) { // frame the door and the human too
     const hx = H.phase === 'warn' ? 0 : H.x, hz = H.phase === 'warn' ? -24 : H.z; tx = f.x + (hx - f.x) * 0.4; tz = f.z + (hz - f.z) * 0.4; D *= 1.6; Hh *= 0.8; look = H.type === 'mom' ? 11 : 6;
   }
@@ -573,7 +629,7 @@ addEventListener('keydown', (e) => {
   if (e.repeat && !['KeyQ', 'KeyE'].includes(e.code)) { if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(e.code)) e.preventDefault(); return; }
   if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(e.code)) e.preventDefault();
   down[e.code] = true; recompute();
-  if (e.code === 'KeyE') { input.act = true; input.actEdge = true; } if (e.code === 'KeyQ') input.drop = true; if (e.code === 'Space') input.ability = true;
+  if (e.code === 'KeyE') { input.act = true; input.actEdge = true; } if (e.code === 'KeyQ') input.ability = true; if (e.code === 'Space') input.jump = true;
   if (e.code === 'KeyF' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') input.freeze = true;
   if (e.code === 'KeyT' && P) { P.emote = P.emote ? '' : S.emote; } if (/^Digit[1-6]$/.test(e.code)) chat(+e.code[5] - 1);
   if (e.code === 'KeyP' || e.code === 'Escape') UI.pause && UI.pause();
