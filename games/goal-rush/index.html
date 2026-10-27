@@ -425,6 +425,7 @@ function playStep(dt) {
   collidePlayers();
   if (M.balls.every((b) => Math.hypot(b.vx, b.vy) < 30)) { if ((M.stall = (M.stall || 0) + dt) > 4) { M.stall = 0; for (const b of M.balls) { b.vx = (CX - b.x) * 1.2 + rnd(-60, 60); b.vy = (CY - b.y) * 1.2 + rnd(-60, 60); } pop(M.balls[0].x, M.balls[0].y - 24, 'BOING!', '#ffd23a', 20, 0.8); } } else M.stall = 0;
   for (let i = 0; i < 2; i++) { for (const b of M.balls) { if (b.hide > 0) continue; stepBall(b, dt / 2, true); } ballContacts(); if (M.state !== 'play') break; }
+  for (const b of M.balls) b.carryCd = Math.max(0, (b.carryCd || 0) - dt);
   for (const b of M.balls) if (b.hide > 0 && (b.hide -= dt) <= 0) { b.x = CX; b.y = CY + rnd(-60, 60); b.vx = b.vy = 0; b.trail = []; }
   for (const w of M.walls) w.ttl -= dt; M.walls = M.walls.filter((w) => w.ttl > 0);
   if (M.state === 'play' && (M.recN++ & 1) === 0) record();
@@ -519,6 +520,7 @@ function kick(p, o = {}) {
   for (const q of M.balls) { if (q.hide > 0) continue; const d = Math.hypot(q.x - p.x, q.y - p.y) - q.r; if (d < p.r + (p.human ? 31 : 21) && d < bd) { b = q; bd = d; } }
   p.kickT = 0.22;
   if (!b) return false;
+  b.carrier = null; b.carryCd = 0.3;
   const ang = o.dir !== undefined ? o.dir : p.face, ch = o.charge || 0;
   let sp = ch < 0.2 ? 690 : 690 + ((ch - 0.2) / 0.8) * 520, kind = ch >= 0.2 ? 'power' : 'normal';
   if (o.sup || p.superT > 0) { sp = 1560; kind = 'super'; p.superT = 0; }
@@ -576,11 +578,18 @@ function useAbility(p) {
 // ---------- ball ----------
 function stepBall(b, dt, live) {
   const f = M.f, tr = f.giant ? 27 : f.tiny ? 5.5 : 11; b.r = lerp(b.r, tr, Math.min(1, dt * 12));
+  const cp = b.carrier; let sp;
+  if (cp && live && (cp.stun > 0 || cp.dashT > 0 || cp.dead || M.state !== 'play')) { b.carrier = null; b.carryCd = 0.25; if (cp.dashT > 0) { b.vx = cp.vx * 1.1; b.vy = cp.vy * 1.1; } }
+  if (b.carrier) { // held at the feet: glued in front of the player
+    const q = b.carrier, tx = q.x + Math.cos(q.face) * (q.r + b.r + 2), ty = q.y + Math.sin(q.face) * (q.r + b.r + 2), k = Math.min(1, dt * 22);
+    b.x = lerp(b.x, tx, k); b.y = lerp(b.y, ty, k); b.vx = q.vx; b.vy = q.vy; b.spin = 0; sp = Math.hypot(b.vx, b.vy); b.rot += sp * dt / Math.max(b.r, 6) * 0.7;
+  } else {
   const fr = f.lowg ? 0.16 : 0.7; b.vx *= Math.exp(-fr * dt); b.vy *= Math.exp(-fr * dt);
   if (b.spin) { const a = b.spin * 1.4 * dt, c = Math.cos(a), s = Math.sin(a), vx = b.vx * c - b.vy * s; b.vy = b.vx * s + b.vy * c; b.vx = vx; b.spin *= Math.exp(-0.8 * dt); if (Math.abs(b.spin) < 0.03) b.spin = 0; }
   if (live) for (const p of M.players) if (p.magT > 0) { const dx = p.x - b.x, dy = p.y - b.y, d = Math.hypot(dx, dy); if (d < 360 && d > p.r + b.r) { b.vx += dx / d * 2600 * dt; b.vy += dy / d * 2600 * dt; } }
-  const sp = Math.hypot(b.vx, b.vy); if (sp > 1800) { b.vx *= 1800 / sp; b.vy *= 1800 / sp; }
+  sp = Math.hypot(b.vx, b.vy); if (sp > 1800) { b.vx *= 1800 / sp; b.vy *= 1800 / sp; }
   b.x += b.vx * dt; b.y += b.vy * dt; b.rot += sp * dt / Math.max(b.r, 6) * 0.7; if (sp > b.maxSp) b.maxSp = sp;
+  }
   const e = f.lowg ? 0.96 : 0.84, r = b.r, mouth = Math.abs(b.y - CY) < GH / 2;
   // top / bottom
   if (b.y < FY + r) { b.y = FY + r; if (b.vy < 0) { b.vy = -b.vy * e; b.bounces++; bnc(b); } }
@@ -615,7 +624,10 @@ function ballContacts() {
     if (b.hide > 0) continue;
     for (const p of M.players) {
       const dx = b.x - p.x, dy = b.y - p.y, d = Math.hypot(dx, dy), rr = b.r + p.r; if (d >= rr || d === 0) continue;
+      if (b.carrier === p) continue;
+      if (b.carrier) b.carrier = null, b.carryCd = 0.25; // someone else touches it: stolen
       const nx = dx / d, ny = dy / d; b.x = p.x + nx * rr; b.y = p.y + ny * rr;
+      if (p.human && p.role === 'field' && p.stun <= 0 && p.kickT <= 0 && (b.carryCd || 0) <= 0 && Math.hypot(b.vx - p.vx, b.vy - p.vy) < 520 && !M.f.meteor) { b.carrier = p; b.last = { p, team: p.team, kind: 'touch', sp: 0, x0: b.x, y0: b.y, t: M.clock, ownHalf: false }; continue; }
       const rv = (b.vx - p.vx) * nx + (b.vy - p.vy) * ny, k = p.role === 'keeper';
       if (rv < 0) {
         const e = M.f.meteor ? 1.1 : k ? 0.7 : 0.5, j = -(1 + e) * rv * (M.f.giant ? 0.7 : 1);
@@ -682,6 +694,7 @@ function onGoal(b, team) {
   ring(gx, gy, 20, col, 0.8, 10);
   if (scorer && !own) celebrate(scorer, team);
   if (M.mode === 'party') { // balls keep flying: respawn this one, keep playing
+    b.carrier = null; if (M.ot) return endMatch(); // a tied party match is decided by the next goal
     b.hide = 1.1; b.vx = b.vy = 0; b.x = -999; b.y = -999; b.trail = [];
     announce(`${pts > 1 ? 'DOUBLE ' : ''}GOAL!`, `${M.teams[0].name} ${M.score[0]} - ${M.score[1]} ${M.teams[1].name}`, col, 1.2);
     for (const p of M.players) if (p.team === 1 - team && p.role === 'field') { p.rage = 5; p.ragePow = true; }
@@ -1425,7 +1438,7 @@ function settingsSheet() {
     <div class="btns"><button class="btn" data-act="how">How to play</button><button class="btn" data-act="reset">Reset progress</button><button class="btn pri" data-act="close">Done</button></div>`);
 }
 function howSheet() {
-  sheet(`<h2>How to play</h2><ul><li><b>Goal:</b> outscore the rivals before the clock runs out. Level = tie? Golden Goal overtime.</li><li><b>Move</b> WASD / arrows · <b>aim</b> with the mouse · <b>click</b> to kick (hold to charge a power shot)</li><li><b>Curve:</b> kick while strafing and the ball bends back. <b>Trick shot:</b> kick mid-dash.</li><li><b>Space</b> dash (bowls rivals over) · <b>E</b> your special · <b>Q</b> emote · <b>Esc</b> pause</li><li><b>Rage Mode:</b> concede a goal and your team gets 5 seconds of speed and a stronger next shot. Watch for the warning.</li><li><b>Chaos:</b> every so often the rules change. Read the banner, then adapt.</li><li><b>Phone:</b> left thumb moves, hold SHOOT to charge, release to kick (auto-aimed toward goal).</li></ul><div class="btns"><button class="btn pri" data-act="close">Got it</button></div>`);
+  sheet(`<h2>How to play</h2><ul><li><b>Goal:</b> outscore the rivals before the clock runs out. Level = tie? Golden Goal overtime.</li><li><b>Move</b> WASD / arrows · <b>aim</b> with the mouse · <b>click</b> to kick (hold to charge a power shot)</li><li><b>Hold the ball:</b> run into it gently and it sticks to your feet. Kick, dash or get tackled to let go.</li><li><b>Curve:</b> kick while strafing and the ball bends back. <b>Trick shot:</b> kick mid-dash.</li><li><b>Space</b> dash (bowls rivals over) · <b>E</b> your special · <b>Q</b> emote · <b>Esc</b> pause</li><li><b>Rage Mode:</b> concede a goal and your team gets 5 seconds of speed and a stronger next shot. Watch for the warning.</li><li><b>Chaos:</b> every so often the rules change. Read the banner, then adapt.</li><li><b>Phone:</b> left thumb moves, hold SHOOT to charge, release to kick (auto-aimed toward goal).</li></ul><div class="btns"><button class="btn pri" data-act="close">Got it</button></div>`);
 }
 
 // ---------- actions ----------
