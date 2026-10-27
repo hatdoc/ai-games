@@ -424,6 +424,7 @@ function banner(txt, c, t) { G.banner = { txt, c, t, max: t }; }
 function updateTank(t, dt) {
   t.hurt = Math.max(0, t.hurt - dt); t.recoil = Math.max(0, t.recoil - dt * 4); if (t.say && (t.say.t -= dt) <= 0) t.say = null;
   if (t.dead) return;
+  if (t.y > WATER + 4) { splash(t.x); killTank(t, t.poisonBy && t.poison ? t.poisonBy : null, true); return; } // in the sea = out, even standing on the seabed
   if (t.air) {
     t.vy += GRAV * dt; t.x += t.vx * dt; t.y += t.vy * dt; t.rot += t.vr * dt;
     if (t.x < 10) { t.x = 10; t.vx = Math.abs(t.vx) * 0.3; } if (t.x > W - 10) { t.x = W - 10; t.vx = -Math.abs(t.vx) * 0.3; }
@@ -625,18 +626,18 @@ function draw() {
   g.setTransform(S, 0, 0, S, VW / 2 - cam.x * S + sx, VH / 2 - (H / 2) * S + sy);
   const half = VW / S / 2 + 40, x0 = cam.x - half, x1 = cam.x + half;
   g.fillStyle = '#fff8'; for (const c of clouds) { g.beginPath(); g.ellipse(c.x, c.y, 46 * c.s, 16 * c.s, 0, 0, 6.3); g.ellipse(c.x + 24 * c.s, c.y - 8 * c.s, 30 * c.s, 14 * c.s, 0, 0, 6.3); g.fill(); }
-  g.drawImage(tc, 0, 0);
+  if (WATER < 1e8) { // the sea
+    const wt = performance.now() / 600, xa = Math.floor(x0 / 16) * 16; g.fillStyle = '#2a78d8'; g.beginPath(); g.moveTo(xa, H + 700);
+    for (let x = xa; x <= x1 + 16; x += 16) g.lineTo(x, WATER + Math.sin(x / 40 + wt) * 3); g.lineTo(x1 + 16, H + 700); g.fill();
+    g.strokeStyle = '#ffffffaa'; g.lineWidth = 2; g.beginPath(); for (let x = xa; x <= x1 + 16; x += 16) x === xa ? g.moveTo(x, WATER) : g.lineTo(x, WATER + Math.sin(x / 40 + wt) * 3); g.stroke();
+  }
+  g.drawImage(tc, 0, 0); // land is drawn in front of the sea, so water shows only in the gaps
   for (const z of G.gas) { const gr = g.createRadialGradient(z.x, z.y, 4, z.x, z.y, z.r), a = 0.25 + 0.12 * z.rounds; gr.addColorStop(0, `rgba(120,255,80,${a})`); gr.addColorStop(1, 'rgba(60,200,40,0)'); g.fillStyle = gr; g.beginPath(); g.arc(z.x, z.y, z.r, 0, 6.3); g.fill(); }
   for (const c of G.crates) { if (!solid(c.x, c.y + 9)) emoji('🪂', c.x, c.y - 22, 22); emoji('📦', c.x, c.y, 22); }
   for (const t of G.tanks) if (!t.dead) drawTank(t);
   for (const p of G.projs) drawProj(p);
   for (const p of fx.parts) { g.globalAlpha = Math.max(0, p.life / p.max); if (p.emoji) emoji(p.emoji, p.x, p.y, p.size); else { g.fillStyle = p.c; g.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); } } g.globalAlpha = 1;
   for (const r of fx.rings) { g.strokeStyle = `rgba(255,230,150,${1 - r.t})`; g.lineWidth = 6 * (1 - r.t); g.beginPath(); g.arc(r.x, r.y, r.r * (0.6 + r.t * 0.7), 0, 6.3); g.stroke(); }
-  if (WATER < 1e8) { // the sea
-    const wt = performance.now() / 600, xa = Math.floor(x0 / 16) * 16; g.fillStyle = 'rgba(40,130,230,.62)'; g.beginPath(); g.moveTo(xa, H + 700);
-    for (let x = xa; x <= x1 + 16; x += 16) g.lineTo(x, WATER + Math.sin(x / 40 + wt) * 3); g.lineTo(x1 + 16, H + 700); g.fill();
-    g.strokeStyle = '#ffffffaa'; g.lineWidth = 2; g.beginPath(); for (let x = xa; x <= x1 + 16; x += 16) x === xa ? g.moveTo(x, WATER) : g.lineTo(x, WATER + Math.sin(x / 40 + wt) * 3); g.stroke();
-  }
   for (const x of fx.texts) { g.globalAlpha = Math.min(1, 1.6 - x.t); g.font = '900 20px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = '#000a'; g.strokeText(x.txt, x.x, x.y); g.fillStyle = x.c; g.fillText(x.txt, x.x, x.y); } g.globalAlpha = 1;
   g.setTransform(1, 0, 0, 1, 0, 0);
   for (const t of G.tanks) { // arrows for tanks that are off the screen
