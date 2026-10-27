@@ -340,10 +340,11 @@ function updateSuspicion(e, dt) {
     if (moving) gain = (mom ? 62 : 82) * (dist(e.x, e.z, H.x, H.z) < 10 ? 1.4 : 1) * (e.obsT < 0.25 || (H.grace > 0) ? 0.3 : 1);
     else if (!still) gain = 26; // idle wiggle gives you away
     else if (dist(e.x, e.z, H.x, H.z) < 4.5 && e.obsT > 2.5) { gain = 7; if (e === P) UI.hint('She is standing right over you. Slip away and hide!'); } // a close inspection beats a statue
+    else if (e.carry && dist(e.x, e.z, H.x, H.z) < 22) { gain = 9; e.curious = (e.curious || 0) + dt; if (e === P) { if (e.curious > 1) { H.inv = { x: e.x, z: e.z - 4, t: 2 }; } if (!e.curNote) { e.curNote = true; UI.alert('"WHAT IS THAT TOY HOLDING?"', 'warn', 1800); flagReason('holding'); } } }
     else { e.susp = Math.max(0, e.susp - 0.5 * dt); if (e === P) G.stats.frozenObs += dt; }
     if (e.kind === 'robot' && gain) gain *= 0.7;
     if (gain && e === P) flagReason(moving ? (speed < 3 ? 'twitch' : speed > 10 ? 'sprint' : 'moved') : 'wiggle');
-  } else { e.obsT = 0; e.susp = Math.max(0, e.susp - (e.hidden ? 12 : 4.5) * dt); }
+  } else { e.obsT = 0; e.curious = 0; e.curNote = false; e.susp = Math.max(0, e.susp - (e.hidden ? 12 : 4.5) * dt); }
   e.susp += gain * dt;
   if (e === P && H && H.phase !== 'away' && H.phase !== 'warn') { // evidence in sight
     for (const ev of evid.slice()) if (!ev.held && hSeesPoint(ev.x, ev.z)) { ev.seenT = (ev.seenT || 0) + dt; if (ev.seenT > 0.5) { P.susp += 32; G.stats.evidSeen++; UI.alert('"WHY IS THIS ON THE FLOOR?"', 'warn', 1500); respawnItem(ev); H.inv = { x: ev.x, z: ev.z, t: 1.8 }; } }
@@ -359,6 +360,7 @@ function addIncident(type, caption, e, extra) {
 function caughtCaption(speed, why) {
   if (why === 'found') return pick(['HE REALLY THOUGHT SHE WOULDN\'T LOOK UNDER THERE.', 'CAUGHT HIDING LIKE A LEGEND.']);
   if (why === 'noise') return pick(['HE REALLY THOUGHT SHE WOULDN\'T HEAR.', 'SUBTLE AS A MARCHING BAND.']);
+  if (why === 'holding') return pick(['HE REALLY THOUGHT SHE WOULDN\'T NOTICE THE COOKIE.', 'STATUE HOLDING A COOKIE. SUSPICIOUS.']);
   if (why === 'twitch') return 'BRO MOVED HIS EYEBALL.';
   if (why === 'sprint') return 'CAUGHT IN 4K.';
   if (why === 'wiggle') return 'THE WORST STATUE IN HISTORY.';
@@ -392,7 +394,7 @@ function moveEnt(e, dt, dx, dz, spd) {
 function stopNow(e) { e.vx = e.vz = 0; e.speedNow = 0; } // freeze is immediate
 function toyAnim(e, dt) {
   const target = (e.frozen || e.out > 0) ? 1 : 0; e.fz += clamp(target - e.fz, -dt * 7, dt * 7);
-  TAD.animateToy(e.toy, dt, e.speedNow, e.out > 0 ? 0 : e.fz, G.t + menuT, e.emote);
+  e.toy.carry = !!e.carry; TAD.animateToy(e.toy, dt, e.speedNow, e.out > 0 ? 0 : e.fz, G.t + menuT, e.emote);
   const g = e.toy.group; g.position.set(e.x, 0, e.z); g.rotation.y = e.face; g.visible = !e.hidden && !(e.isBot && e.out > 0);
   e.toy.blob.visible = true;
   if (e.out > 0 && !e.isBot) { g.visible = G.cine > 0; }
@@ -428,7 +430,7 @@ function playerControl(dt) {
   if (input.ability) { input.ability = false; useAbility(e); }
   if (e.carry) { e.carry.g.visible = false; }
   const g = e.toy.group; // carried item floats overhead
-  if (e.carry) { if (!e.carrySp) { e.carrySp = TAD.sprite(e.carry.emoji, 2.4); e.carrySp.position.y = 5.6; g.add(e.carrySp); e.carryEmoji = e.carry.emoji; } else if (e.carryEmoji !== e.carry.emoji) { g.remove(e.carrySp); e.carrySp = null; } } else if (e.carrySp) { g.remove(e.carrySp); e.carrySp = null; }
+  if (e.carry) { if (!e.carrySp) { e.carrySp = TAD.sprite(e.carry.emoji, 2.4); e.carrySp.position.set(0, 2.6, 1.5); g.add(e.carrySp); e.carryEmoji = e.carry.emoji; } else if (e.carryEmoji !== e.carry.emoji) { g.remove(e.carrySp); e.carrySp = null; } } else if (e.carrySp) { g.remove(e.carrySp); e.carrySp = null; }
 }
 function useStep(dt) {
   const st = G.cur; let ok = true;

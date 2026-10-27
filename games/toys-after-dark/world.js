@@ -270,6 +270,7 @@ const TAD = window.TAD = {};
     o.armL.rotation.z = lerp(azL, P.aL[1], f); o.armR.rotation.z = lerp(azR, P.aR[1], f);
     o.body.position.y = lerp(Math.abs(Math.sin(ph)) * 0.18 * w, P.by, f) + (emote === 'dance' ? Math.abs(Math.sin(t * 9)) * 0.4 : 0);
     o.body.rotation.x = lerp(0, P.lean, f); o.head.rotation.z = lerp(0, P.ht, f); o.head.rotation.x = lerp(Math.sin(ph * 0.5) * 0.04 * w, 0, f);
+    if (o.carry) { o.armL.rotation.x = o.armR.rotation.x = -1.4; o.armL.rotation.z = 0.35; o.armR.rotation.z = -0.35; } // holding something out front
     if (o.key) o.key.rotation.z += dt * (f > 0.5 ? 0 : 4 * (0.3 + w));
   };
 
