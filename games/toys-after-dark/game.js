@@ -57,7 +57,7 @@ SOL.push({ mesh: TAD.chair, cx: 16, cz: -6.5, h: 2.2, top: 5.3, mov: 1, n: 'chai
 SOL.forEach((q) => { if (q.mov) { q.ox = q.cx; q.oz = q.cz; } });
 const resetSol = () => SOL.forEach((q) => { if (q.mov) { q.cx = q.ox; q.cz = q.oz; q.mesh.position.x = q.ox; q.mesh.position.z = q.oz; } });
 const rectOf = (s) => (s.mov ? { x0: s.cx - s.h, x1: s.cx + s.h, z0: s.cz - s.h, z1: s.cz + s.h } : s);
-const JUMP = { windup: 11, default: 3.6 }, GRAV = 60;
+const JUMP = { windup: 11, ninja: 5.4, clown: 4.4, explorer: 3.8, teddy: 3.2, default: 3.6 }, GRAV = 60; // passive perk: how high each toy jumps
 const overlapsOther = (me, r) => SOL.some((q) => { if (q === me) return false; const o = rectOf(q); return r.x1 > o.x0 && r.x0 < o.x1 && r.z1 > o.z0 && r.z0 < o.z1; });
 function groundAt(e) { let g = 0; for (const s of SOL) { const o = rectOf(s); if (e.x > o.x0 - 0.2 && e.x < o.x1 + 0.2 && e.z > o.z0 - 0.2 && e.z < o.z1 + 0.2 && s.top <= (e.y || 0) + 1.2 && s.top > g) g = s.top; } return g; }
 function pushOut(e, rad) {
@@ -387,7 +387,7 @@ function updateSuspicion(e, dt) {
     else { e.susp = Math.max(0, e.susp - 0.5 * dt); if (e === P) G.stats.frozenObs += dt; }
     if (e.kind === 'robot' && gain) gain *= 0.7;
     if (gain && e === P) flagReason(moving ? (speed < 3 ? 'twitch' : speed > 10 ? 'sprint' : 'moved') : 'wiggle');
-  } else { e.obsT = 0; e.curious = 0; e.curNote = false; e.susp = Math.max(0, e.susp - (e.hidden ? 12 : 4.5) * dt); }
+  } else { e.obsT = 0; e.curious = 0; e.curNote = false; e.susp = Math.max(0, e.susp - (e.hidden ? 12 : 4.5) * (e.kind === 'clown' ? 1.6 : 1) * dt); }
   e.susp += gain * dt;
   if (e === P && H && H.phase !== 'away' && H.phase !== 'warn') { // evidence in sight
     for (const ev of evid.slice()) if (!ev.held && hSeesPoint(ev.x, ev.z)) {
@@ -438,7 +438,7 @@ function moveEnt(e, dt, dx, dz, spd) {
   e.x += e.vx * dt; e.z += e.vz * dt; pushOut(e, 1);
   e.speedNow = Math.hypot(e.vx, e.vz);
   e.y = e.y || 0; e.vy = e.vy || 0; const gnd = groundAt(e); e.gy = gnd; // gravity, landing, walking off edges
-  if (e.y > gnd + 0.01 || e.vy > 0) { e.vy -= GRAV * dt; e.y += e.vy * dt; e.airT = (e.airT || 0) + dt; if (e.y <= gnd) { if (e.airT > 0.5 && e === P && e.vy < -14) noise(e.x, e.z, 0.25, 'player'); e.y = gnd; e.vy = 0; e.airT = 0; } } else { e.y = gnd; e.vy = 0; e.airT = 0; }
+  if (e.y > gnd + 0.01 || e.vy > 0) { e.vy -= GRAV * dt; e.y += e.vy * dt; e.airT = (e.airT || 0) + dt; if (e.y <= gnd) { if (e.airT > 0.3 && e === P && e.vy < -8) noise(e.x, e.z, e.kind === 'ninja' ? 0.45 : e.vy < -14 ? 0.25 : 0, 'player'); e.y = gnd; e.vy = 0; e.airT = 0; } } else { e.y = gnd; e.vy = 0; e.airT = 0; }
   e.onGround = e.y <= gnd + 0.02;
 }
 function stopNow(e) { e.vx = e.vz = 0; e.speedNow = 0; } // freeze is immediate
@@ -449,7 +449,7 @@ function toyAnim(e, dt) {
   e.toy.blob.visible = true;
   if (e.out > 0 && !e.isBot) { g.visible = G.cine > 0; }
 }
-function abilitySpeed(e) { const K = TAD.KINDS[e.kind]; let s = 9.5 * K.speed; if (e.boost > 0) s *= e.kind === 'ninja' ? 2.8 : 2; if (e.carry && e.carry.st && e.carry.st.heavy && e.kind !== 'teddy') s *= 0.55; return s; }
+function abilitySpeed(e) { let s = 9.5 * TAD.KINDS[e.kind].speed; if (e.carry && e.kind !== 'teddy') s *= e.carry.st && e.carry.st.heavy ? 0.55 : 0.82; return s; } // perks are passive: speed, strength while carrying
 function useAbility(e) {
   if (e.cd.ab > 0 || e.out > 0 || e.hidden) return; const k = e.kind;
   if (k === 'ninja') { e.boost = 0.35; e.cd.ab = 5; e.landing = true; } else if (k === 'windup') { e.boost = 2; e.cd.ab = 9; } else if (k === 'clown') { e.cd.ab = 10; A.honk(); const hp = { x: e.x, z: e.z }; if (H && H.phase === 'in') { H.inv = { x: hp.x + rnd(-14, 14), z: hp.z + rnd(-14, 14), t: 3 }; if (hSees(e)) e.susp += 25; UI.alert('HONK!', 'warn', 900); } UI.say(e, 'HONK!'); noise(e.x + rnd(-12, 12), e.z + rnd(-12, 12), 0.3, 'none'); }
@@ -473,12 +473,9 @@ function playerControl(dt) {
   if (input.jump) { input.jump = false; if (e.onGround && !e.hidden && !e.frozen) { e.vy = Math.sqrt(2 * GRAV * (JUMP[e.kind] || JUMP.default)); e.y += 0.05; A.tick(); } }
   const wasBoost = e.boost > 0; const spd = abilitySpeed(e);
   moveEnt(e, dt, dx, dz, spd);
-  if (wasBoost && e.boost <= 0 && e.kind === 'ninja') { A.thud(0.7); noise(e.x, e.z, 0.6, 'player'); }
   if (e.speedNow > 12 && Math.random() < dt * 2.2) noise(e.x, e.z, 0.25, 'player');
-  if (e.kind === 'robot' && Math.random() < dt * 0.06 && !e.frozen) { A.beep(); noise(e.x, e.z, 0.3, 'player'); UI.say(e, 'beep'); }
   if (input.actEdge) { interact(); } input.actEdge = false;
   if (input.drop) { input.drop = false; if (e.carry && !e.hidden) { const it = e.carry; dropItem(e); UI.carry(); noise(e.x, e.z, 0.1, 'player'); if (it) UI.hint('You left it on the floor. A human might notice!'); } }
-  if (input.ability) { input.ability = false; useAbility(e); }
   if (e.carry) { e.carry.g.visible = false; }
   const g = e.toy.group; // carried item floats overhead
   if (e.carry) { if (!e.carrySp) { e.carrySp = TAD.sprite(e.carry.emoji, 2.4); e.carrySp.position.set(0, 2.6, 1.5); g.add(e.carrySp); e.carryEmoji = e.carry.emoji; } else if (e.carryEmoji !== e.carry.emoji) { g.remove(e.carrySp); e.carrySp = null; } } else if (e.carrySp) { g.remove(e.carrySp); e.carrySp = null; }
@@ -629,7 +626,7 @@ addEventListener('keydown', (e) => {
   if (e.repeat && !['KeyQ', 'KeyE'].includes(e.code)) { if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(e.code)) e.preventDefault(); return; }
   if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(e.code)) e.preventDefault();
   down[e.code] = true; recompute();
-  if (e.code === 'KeyE') { input.act = true; input.actEdge = true; } if (e.code === 'KeyQ') input.ability = true; if (e.code === 'Space') input.jump = true;
+  if (e.code === 'KeyE') { input.act = true; input.actEdge = true; } if (e.code === 'Space') input.jump = true;
   if (e.code === 'KeyF' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') input.freeze = true;
   if (e.code === 'KeyT' && P) { P.emote = P.emote ? '' : S.emote; } if (/^Digit[1-6]$/.test(e.code)) chat(+e.code[5] - 1);
   if (e.code === 'KeyP' || e.code === 'Escape') UI.pause && UI.pause();

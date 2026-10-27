@@ -51,7 +51,7 @@
   function applyQuality() { const q = S.set.quality; TAD.renderer.shadowMap.enabled = q !== 'low'; TAD.lamp.castShadow = q === 'high'; TAD.renderer.setPixelRatio(q === 'low' ? 1 : Math.min(devicePixelRatio, q === 'high' ? 2 : 1.25)); TAD.moon.shadow.mapSize.set(q === 'high' ? 2048 : 1024, q === 'high' ? 2048 : 1024); if (TAD.moon.shadow.map) { TAD.moon.shadow.map.dispose(); TAD.moon.shadow.map = null; } TAD.renderer.setSize(innerWidth, innerHeight, false); TAD.scene.traverse((o) => { if (o.material) o.material.needsUpdate = true; }); document.body.classList.toggle('calm', !!S.set.calm); }
   const pickMission = () => { const pool = g.MISSIONS.filter((m) => !S.lastM || m.id !== S.lastM); return pool[Math.random() * pool.length | 0].id; };
   function play(id) { ensureAudio(); id = id || pickMission(); S.lastM = id; show('#menu', false); show('#sheet', false); show('#results', false); show('#hud', true); show('#touch', isTouch); show('#catch', true); g.startRound(id); G.rewarded = false; }
-  UI.startRound = () => { renderMission(); renderTeam(); UI.hint(isTouch ? 'Hold FREEZE when the door opens. ACT picks up / puts down. Jump onto blocks to climb.' : 'WASD move · hold F freeze · E pick up / put down · Space jump · Q ability · push blocks and the chair to climb'); };
+  UI.startRound = () => { renderMission(); renderTeam(); UI.hint(isTouch ? 'Hold FREEZE when the door opens. ACT picks up / puts down. Jump onto blocks to climb.' : 'WASD move · hold F freeze · E pick up / put down · Space jump · push blocks and the chair to climb'); };
 
   // ---------- sheets ----------
   function sheet(title, html, cls = '') { $('#sheet').hidden = false; $('#sheet').className = cls; $('#sheetBody').innerHTML = `<div class="sh-head"><h2>${title}</h2><button class="x" data-x>✕</button></div>${html}`; $('#sheet').querySelector('[data-x]').onclick = closeSheet; }
@@ -63,7 +63,7 @@
   function toysSheet() {
     const tab = toysSheet.tab || 'toys', lv = g.level().l;
     let body = '';
-    if (tab === 'toys') body = '<div class="kgrid">' + Object.entries(K).map(([id, k]) => { const lock = !owned('kind', id) && lv < g.KIND_LVL[id]; return `<button class="kcard ${S.kind === id ? 'sel' : ''} ${lock ? 'lock' : ''}" data-k="${id}"><span class="ke">${k.emoji}</span><b>${k.name}</b><small>${k.desc}</small><i>${lock ? '🔒 Level ' + g.KIND_LVL[id] : S.kind === id ? '✔ Selected' : 'Ability: ' + k.ability}</i></button>`; }).join('') + '</div>';
+    if (tab === 'toys') body = '<div class="kgrid">' + Object.entries(K).map(([id, k]) => { const lock = !owned('kind', id) && lv < g.KIND_LVL[id]; return `<button class="kcard ${S.kind === id ? 'sel' : ''} ${lock ? 'lock' : ''}" data-k="${id}"><span class="ke">${k.emoji}</span><b>${k.name}</b><small>${k.desc}</small><i>${lock ? '🔒 Level ' + g.KIND_LVL[id] : S.kind === id ? '✔ Selected' : 'Perk: ' + k.ability}</i></button>`; }).join('') + '</div>';
     else { const row = (arr, k, sel, lab) => `<h3>${lab}</h3><div class="crow">` + arr.map((x) => `<button class="cc ${sel(x) ? 'sel' : ''}" data-c="${k}:${x.id}"><span>${x.e || '●'}</span><b>${x.n}</b><i>${owned(k, x.id) ? (sel(x) ? 'Equipped' : 'Owned') : '🪙 ' + x.cost}</i></button>`).join('') + '</div>'; body = row(TINTS.map((t) => ({ ...t, e: '' })), 'tint', (x) => S.tintId === x.id, 'Colours') + row(ACCS, 'acc', (x) => S.acc === x.id, 'Accessories') + row(EMOTES, 'emote', (x) => S.emote === x.id, 'Emotes &amp; victory dance'); }
     sheet('YOUR TOYS', `<div class="tabs"><button class="${tab === 'toys' ? 'on' : ''}" data-t="toys">Characters</button><button class="${tab === 'cos' ? 'on' : ''}" data-t="cos">Cosmetics · 🪙 ${S.coins}</button></div>` + body);
     $$('[data-t]').forEach((b) => (b.onclick = () => { toysSheet.tab = b.dataset.t; toysSheet(); }));
@@ -81,7 +81,7 @@
   }
   function settingsSheet() {
     const s = S.set, sl = (k, lab, mn, mx, st) => `<label class="row">${lab}<input type="range" data-s="${k}" min="${mn}" max="${mx}" step="${st}" value="${s[k]}"></label>`, ck = (k, lab) => `<label class="row">${lab}<input type="checkbox" data-s="${k}" ${s[k] ? 'checked' : ''}></label>`;
-    sheet('SETTINGS', '<div class="set"><h3>Audio</h3>' + sl('master', 'Master', 0, 1, 0.05) + sl('music', 'Music', 0, 1, 0.05) + sl('sfx', 'Sound effects', 0, 1, 0.05) + sl('amb', 'Ambience', 0, 1, 0.05) + '<h3>Camera &amp; controls</h3>' + sl('sens', 'Camera sensitivity', 0.3, 2.5, 0.1) + sl('cam', 'Camera distance', 0.6, 1.5, 0.05) + `<label class="row">Graphics<select data-s="quality">${['low', 'medium', 'high'].map((q) => `<option ${s.quality === q ? 'selected' : ''}>${q}</option>`).join('')}</select></label>` + '<h3>Accessibility</h3>' + ck('calm', 'Reduce screen shake &amp; effects') + ck('assist', 'Auto-freeze when a human can see you') + '<h3>Controls</h3><p class="keys"><kbd>WASD</kbd> move · <kbd>F</kbd> hold to freeze · <kbd>E</kbd> pick up / put down / hold to work · <kbd>Space</kbd> jump · <kbd>Q</kbd> ability · <kbd>T</kbd> emote · <kbd>1-6</kbd> quick chat · drag mouse to turn camera · <kbd>P</kbd> pause</p></div>');
+    sheet('SETTINGS', '<div class="set"><h3>Audio</h3>' + sl('master', 'Master', 0, 1, 0.05) + sl('music', 'Music', 0, 1, 0.05) + sl('sfx', 'Sound effects', 0, 1, 0.05) + sl('amb', 'Ambience', 0, 1, 0.05) + '<h3>Camera &amp; controls</h3>' + sl('sens', 'Camera sensitivity', 0.3, 2.5, 0.1) + sl('cam', 'Camera distance', 0.6, 1.5, 0.05) + `<label class="row">Graphics<select data-s="quality">${['low', 'medium', 'high'].map((q) => `<option ${s.quality === q ? 'selected' : ''}>${q}</option>`).join('')}</select></label>` + '<h3>Accessibility</h3>' + ck('calm', 'Reduce screen shake &amp; effects') + ck('assist', 'Auto-freeze when a human can see you') + '<h3>Controls</h3><p class="keys"><kbd>WASD</kbd> move · <kbd>F</kbd> hold to freeze · <kbd>E</kbd> pick up / put down / hold to work · <kbd>Space</kbd> jump · <kbd>T</kbd> emote · <kbd>1-6</kbd> quick chat · drag mouse to turn camera · <kbd>P</kbd> pause</p></div>');
     $$('[data-s]').forEach((el) => (el.oninput = el.onchange = () => { const k = el.dataset.s; S.set[k] = el.type === 'checkbox' ? el.checked : el.type === 'range' ? +el.value : el.value; g.save(); applyAudio(); if (k === 'quality' || k === 'calm') applyQuality(); }));
   }
   UI.pause = () => { if (G.mode !== 'play') return; if (G.paused) { G.paused = false; $('#sheet').hidden = true; return; } G.paused = true; sheet('PAUSED', '<div class="pbtns"><button class="btn pri" id="pRes">Resume</button><button class="btn" id="pSet">Settings</button><button class="btn" id="pQuit">Quit to menu</button></div>'); $('#pRes').onclick = () => { G.paused = false; $('#sheet').hidden = true; }; $('#pSet').onclick = settingsSheet; $('#pQuit').onclick = () => { G.paused = false; $('#sheet').hidden = true; g.toMenu(); }; };
@@ -128,7 +128,6 @@
     pr.textContent = p; pr.classList.toggle('on', !!p);
     $('#prog').style.width = (G.cur && G.cur.t === 'use' ? G.prog / G.cur.time * 100 : 0) + '%'; $('#progw').classList.toggle('on', G.cur && G.cur.t === 'use' && G.prog > 0);
     // abilities
-    const ab = $('#bAbility'); ab.dataset.cd = P.cd.ab > 0 ? Math.ceil(P.cd.ab) : ''; ab.classList.toggle('cd', P.cd.ab > 0); $('#bAbility b').textContent = K[P.kind].ability;
     $('#bFreeze').classList.toggle('on', P.frozen);
     // team
     if ($$('#team .tm').length !== bots.length + 1) renderTeam();
@@ -191,9 +190,9 @@
     zone.addEventListener('pointerup', end); zone.addEventListener('pointercancel', end);
     const hold = (sel, on, off) => { const b = $(sel); b.addEventListener('pointerdown', (e) => { e.preventDefault(); b.setPointerCapture(e.pointerId); on(); }); ['pointerup', 'pointercancel'].forEach((ev) => b.addEventListener(ev, off)); };
     hold('#bFreeze', () => (g.input.freeze = true), () => (g.input.freeze = false)); hold('#bAct', () => { g.input.act = true; g.input.actEdge = true; }, () => (g.input.act = false));
-    hold('#bAbility', () => (g.input.ability = true), () => {}); hold('#bDrop', () => (g.input.jump = true), () => {});
+    hold('#bDrop', () => (g.input.jump = true), () => {});
     $('#bPause').onclick = UI.pause;
-  } else { $('#bFreeze').addEventListener('pointerdown', () => (g.input.freeze = true)); addEventListener('pointerup', () => { if (!down()) g.input.freeze = false; }); const down = () => false; $('#bAct').onclick = () => { g.input.actEdge = true; }; $('#bAbility').onclick = () => (g.input.ability = true); $('#bDrop').onclick = () => (g.input.jump = true); $('#bPause').onclick = UI.pause; }
+  } else { $('#bFreeze').addEventListener('pointerdown', () => (g.input.freeze = true)); addEventListener('pointerup', () => { if (!down()) g.input.freeze = false; }); const down = () => false; $('#bAct').onclick = () => { g.input.actEdge = true; }; $('#bDrop').onclick = () => (g.input.jump = true); $('#bPause').onclick = UI.pause; }
   $$('#chat button').forEach((b, i) => (b.onclick = () => g.chat(i)));
 
   // ---------- wiring ----------

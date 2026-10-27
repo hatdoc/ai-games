@@ -180,12 +180,12 @@ const TAD = window.TAD = {};
 
   // ---------- toys ----------
   const KINDS = {
-    robot:    { name: 'Bolt the Robot', color: 0x6ec6ff, trim: 0xff5d5d, emoji: '🤖', desc: 'Rock-solid freeze pose: suspicion builds 30% slower. Beeps now and then.', ability: 'Lock-up', speed: 1 },
-    ninja:    { name: 'Kage the Ninja', color: 0x2a2f55, trim: 0xe0314b, emoji: '🥷', desc: 'Ability: Shadow Dash, a short burst. Landings are noisy.', ability: 'Shadow Dash', speed: 1.05 },
-    teddy:    { name: 'Biscuit the Bear', color: 0xb9794a, trim: 0xf2c14e, emoji: '🧸', desc: 'Carries heavy items at full speed. Slower on foot.', ability: 'Bear Hug', speed: 0.78 },
-    windup:   { name: 'Tick-Tock', color: 0xf2c14e, trim: 0x3d7fd0, emoji: '⏰', desc: 'Spring legs: the ONLY toy that can jump onto desks and bed tops. Ability: wind-up sprint.', ability: 'Sprint', speed: 1 },
-    clown:    { name: 'Giggles the Clown', color: 0xb06be0, trim: 0xffd34a, emoji: '🤡', desc: 'Ability: Honk! lures humans toward the noise. Risky.', ability: 'Honk', speed: 1 },
-    explorer: { name: 'Pip the Explorer', color: 0x7fb069, trim: 0xe9d8a6, emoji: '🧭', desc: 'Squeezes into tiny hiding spots nobody else fits.', ability: 'Squeeze', speed: 1.02 },
+    robot:    { name: 'Bolt the Robot', color: 0x6ec6ff, trim: 0xff5d5d, emoji: '🤖', desc: 'Rock-solid freeze: suspicion builds 30% slower. Reliable all-rounder.', ability: 'Steady Nerves', speed: 1.0 },
+    ninja:    { name: 'Kage the Ninja', color: 0x2a2f55, trim: 0xe0314b, emoji: '🥷', desc: 'Fast and agile: runs 30% faster and jumps high enough to hop onto the chair. Landings are a little noisy.', ability: 'Quick Feet', speed: 1.3 },
+    teddy:    { name: 'Biscuit the Bear', color: 0xb9794a, trim: 0xf2c14e, emoji: '🧸', desc: 'Super strong: carries anything at full speed (everyone else slows down), but walks a little slower.', ability: 'Strong Arms', speed: 0.95 },
+    windup:   { name: 'Tick-Tock', color: 0xf2c14e, trim: 0x3d7fd0, emoji: '⏰', desc: 'Spring legs: the ONLY toy that can jump onto desks and bed tops. A touch faster than average.', ability: 'Spring Legs', speed: 1.05 },
+    clown:    { name: 'Giggles the Clown', color: 0xb06be0, trim: 0xffd34a, emoji: '🤡', desc: 'Charmer: suspicion fades 60% faster, and a bouncy jump. Slightly quicker too.', ability: 'Funny Face', speed: 1.1 },
+    explorer: { name: 'Pip the Explorer', color: 0x7fb069, trim: 0xe9d8a6, emoji: '🧭', desc: 'Slips into tiny hiding spots nobody else fits, and moves a bit faster.', ability: 'Tiny & Sneaky', speed: 1.1 },
   };
   TAD.KINDS = KINDS;
   const eyeMat = std(0xffffff, 0.2), pupMat = std(0x111111, 0.1);
