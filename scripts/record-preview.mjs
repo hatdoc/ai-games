@@ -61,6 +61,10 @@ const BOTS = {
   'crater-clash': { skip: 1, len: 9, poster: 5, async play(page) { // two hard bots trade shells
     await page.evaluate(() => { closeSheet(); startDemo(); });
   } },
+  'toys-after-dark': { skip: 1, len: 10, poster: 5, async play(page) { // autopilot runs a mission; Mom visits early so the freeze shows up in the clip
+    await page.evaluate(() => { tadUI.play('birthday'); tad.setDemo(true); tad.H.timer = 3; });
+    await page.waitForTimeout(12000);
+  } },
   'goal-rush': { skip: 1, len: 9, poster: 5, async play(page) { // two hard bot teams, a chaos event lands early
     await page.evaluate(() => startDemo());
   } },
