@@ -462,11 +462,13 @@ function botControl(b, dt) {
 const coopHelper = () => bots.filter((b) => b.out <= 0).sort((a, c) => dist(a.x, a.z, G.target.x, G.target.z) - dist(c.x, c.z, G.target.x, G.target.z))[0];
 
 // ---------------- demo autopilot (preview clip and tests) ----------------
+const lostItem = () => (G.cur && G.cur.t !== 'get' && P && !P.carry) ? items.find((i) => i.kind === 'step' && !i.held) : null; // an item you dropped or lost, still needed
 function demoInput() {
   const e = P, st = G.cur; let tx, tz, act = false, freeze = false;
   const watch = H && hSees(e, 4) || (H && (H.phase === 'warn' && H.warnT < 2));
   if (!st) return { ix: 0, iy: 0, freeze: false, act: false };
   if (st.t === 'get') { tx = G.target.x; tz = G.target.z; if (dist(e.x, e.z, tx, tz) < 2.6 && !e.carry) G.demoAct = true; }
+  else if (!e.carry && lostItem()) { const li = lostItem(); tx = li.x; tz = li.z; if (dist(e.x, e.z, tx, tz) < 2.6) G.demoAct = true; }
   else { tx = G.target.x; tz = G.target.z; const near = dist(e.x, e.z, tx, tz) < (G.target.r || 3) - 0.6; if (near) { if (st.t === 'use') act = true; else G.demoAct = true; } }
   if (watch) freeze = true; if (G.demoAct) { input.actEdge = true; G.demoAct = false; }
   const dx = tx - e.x, dz = tz - e.z, d = Math.hypot(dx, dz) || 1; let wx = dx / d, wz = dz / d; if (d < 1.4) { wx = wz = 0; }
@@ -504,7 +506,8 @@ function update(dt0) {
 function renderBits(dt) {
   [P, ...bots].forEach((e) => e && toyAnim(e, dt, G.t));
   if (P && P.hidden) { /* eyes */ }
-  items.forEach((i) => { if (i.sp) i.sp.position.y = 3 + Math.sin(G.t * 3 + i.x) * 0.35; });
+  const lost = lostItem(); if (lost && G.t - (G.lostHint || -99) > 8) { G.lostHint = G.t; UI.hint('Your item is on the floor. Go pick it back up!'); }
+  items.forEach((i) => { if (i.sp) { i.sp.position.y = 3 + Math.sin(G.t * 3 + i.x) * 0.35; const k = i === lost ? 4.6 + Math.sin(G.t * 6) * 0.6 : 3.4; i.sp.scale.set(k, k, 1); } });
   if (markers && markers.userData.bob) markers.userData.bob.position.y = 7 + Math.sin(G.t * 3) * 0.5;
   if (G.target && markers) markers.children.forEach((c) => { if (c.geometry && c.geometry.type === 'RingGeometry') c.scale.setScalar(1 + Math.sin(G.t * 4) * 0.06); });
   TAD.dust.rotation.y += dt * 0.02;
