@@ -131,7 +131,7 @@
     $('#bFreeze').classList.toggle('on', P.frozen);
     // team
     if ($$('#team .tm').length !== bots.length + 1) renderTeam();
-    if (hudT % 6 === 0) { renderMission(); $$('#team .tm').forEach((el, i) => { const e = i ? bots[i - 1] : P; el.className = 'tm ' + (e.out > 0 ? 'out' : e.frozen ? 'fz' : e.hidden ? 'hid' : ''); }); const lv = $('#lives'); if (lv) lv.textContent = '❤'.repeat(Math.max(0, 3 - G.strikes)) + '🖤'.repeat(Math.min(3, G.strikes)); }
+    if (hudT % 6 === 0) { renderMission(); $$('#team .tm').forEach((el, i) => { const e = i ? bots[i - 1] : P; el.className = 'tm ' + (e.out > 0 ? 'out' : e.frozen ? 'fz' : e.hidden ? 'hid' : ''); }); const lv = $('#lives'); if (lv) lv.textContent = '❤'.repeat(Math.max(0, 1 - G.strikes)) + '🖤'.repeat(Math.min(1, G.strikes)); }
     // name tags and bubbles
     const lb = $('#labels'); const ents = [P, ...bots]; while (lb.children.length < ents.length) lb.appendChild(document.createElement('div'));
     ents.forEach((e, i) => { const el = lb.children[i]; const v = new TAD.T.Vector3(e.x, 5.4, e.z).project(TAD.camera); const vis = v.z < 1 && !e.hidden && !(e.out > 0) && G.mode === 'play'; el.style.display = vis ? '' : 'none'; if (!vis) return; el.style.transform = `translate(${(v.x * 0.5 + 0.5) * innerWidth}px,${(-v.y * 0.5 + 0.5) * innerHeight}px) translate(-50%,-100%)`; const say = e.sayUntil > performance.now() ? `<div class="bub">${esc(e.sayMsg)}</div>` : ''; const html = say + (i ? `<span class="nt">${esc(e.name)}</span>` : '<span class="nt me">YOU</span>'); if (el.dataset.h !== html) { el.innerHTML = html; el.dataset.h = html; } });

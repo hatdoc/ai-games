@@ -372,7 +372,7 @@ function caught(e) {
     P.out = 5.5; P.susp = 0; if (P.carry) dropItem(P, true); if (P.hidden) leaveHide(); P.frozen = false;
     G.slow = 1.5; G.timeScale = 0.25; G.cine = 1.5; G.cap = cap; A.sting(); A.music('entry'); UI.catchCard(cap);
     G.lastCatch = inc;
-    if (G.strikes >= 3) { G.over = 2.6; G.failed = true; }
+    G.over = 2.6; G.failed = true; // one catch ends the game: the slow-mo plays, then the results screen
     G.stats.lastCatchT = G.t;
   } else {
     G.stats.botCaught++; e.out = 6; e.susp = 0; e.toy.group.visible = false; if (e.carry) dropItem(e, true);
@@ -465,8 +465,15 @@ const coopHelper = () => bots.filter((b) => b.out <= 0).sort((a, c) => dist(a.x,
 const lostItem = () => (G.cur && G.cur.t !== 'get' && P && !P.carry) ? items.find((i) => i.kind === 'step' && !i.held) : null; // an item you dropped or lost, still needed
 function demoInput() {
   const e = P, st = G.cur; let tx, tz, act = false, freeze = false;
-  const watch = H && hSees(e, 4) || (H && (H.phase === 'warn' && H.warnT < 2));
+  const watch = H && H.phase !== 'away'; // autopilot freezes whenever a human is around
   if (!st) return { ix: 0, iy: 0, freeze: false, act: false };
+  if (e.hidden) { if (!watch) G.demoAct = true; if (G.demoAct) { input.actEdge = true; G.demoAct = false; } return { ix: 0, iy: 0, freeze: false, act: false }; }
+  if (watch && e.carry) { // holding something with a human around: duck into the nearest hiding spot
+    const hd = TAD.HIDES.filter((h) => !h.small || e.kind === 'explorer').sort((p, q) => dist(e.x, e.z, p.x, p.z) - dist(e.x, e.z, q.x, q.z))[0];
+    if (dist(e.x, e.z, hd.x, hd.z) < 2.4) { input.actEdge = true; return { ix: 0, iy: 0, freeze: true, act: false }; }
+    const dx = hd.x - e.x, dz = hd.z - e.z, d = Math.hypot(dx, dz) || 1, rx = Math.cos(cy), rz = -Math.sin(cy), fx = -Math.sin(cy), fz = -Math.cos(cy);
+    return { ix: dx / d * rx + dz / d * rz, iy: dx / d * fx + dz / d * fz, freeze: false, act: false };
+  }
   if (st.t === 'get') { tx = G.target.x; tz = G.target.z; if (dist(e.x, e.z, tx, tz) < 2.6 && !e.carry) G.demoAct = true; }
   else if (!e.carry && lostItem()) { const li = lostItem(); tx = li.x; tz = li.z; if (dist(e.x, e.z, tx, tz) < 2.6) G.demoAct = true; }
   else { tx = G.target.x; tz = G.target.z; const near = dist(e.x, e.z, tx, tz) < (G.target.r || 3) - 0.6; if (near) { if (st.t === 'use') act = true; else G.demoAct = true; } }
@@ -488,7 +495,7 @@ function update(dt0) {
   if (G.mode === 'results') { cameraFollow(dt0); renderBits(dt); return; }
   if (!G.over) G.timeLeft -= dt;
   if (G.timeLeft <= 0 && !G.over) { G.timeLeft = 0; G.over = 1.2; G.failed = true; UI.alert("TIME'S UP!", 'bad', 1600); }
-  if (G.over > 0) { G.over -= dt; if (G.over <= 0) { endRound(G.won ? 'won' : G.strikes >= 3 ? 'caught' : 'time'); return; } }
+  if (G.over > 0) { G.over -= dt; if (G.over <= 0) { endRound(G.won ? 'won' : G.strikes >= 1 ? 'caught' : 'time'); return; } }
   playerControl(dt); bots.forEach((b) => botControl(b, dt)); if (H) updateHuman(dt); updateEvents(dt);
   [P, ...bots].forEach((e) => { if (e.out > 0 && !e.isBot) return; if (e.out > 0) return; updateSuspicion(e, dt); });
   // suspicion consequences

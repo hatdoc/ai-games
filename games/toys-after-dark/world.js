@@ -312,20 +312,20 @@ const TAD = window.TAD = {};
     if (s3) {
       const root = s3.clone(true), g = new T.Group(); g.add(root);
       root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material = o.material.clone(); const m = o.material; m.emissive = new T.Color(0xffffff); m.emissiveMap = m.map; m.emissiveIntensity = 0.28; m.roughness = 0.8; m.metalness = 0; } });
-      const dummy = () => new T.Object3D();
-      h = { group: g, root, legL: dummy(), legR: dummy(), armL: dummy(), armR: dummy(), head: dummy(), mom: type === 'mom', s: 1 };
+      const dummy = () => new T.Object3D(), nd = (k) => root.getObjectByName(k) || dummy(); // Blender splits the body into Body, LegL/R and ArmL/R pieces so it really walks
+      h = { group: g, legL: nd('LegL'), legR: nd('LegR'), armL: nd('ArmL'), armR: nd('ArmR'), head: dummy(), mom: type === 'mom', s: 1 };
     } else if (rig && need.every((k) => rig.getObjectByName(k))) {
       const root = rig.clone(true), n = {}; need.forEach((k) => (n[k] = root.getObjectByName(k)));
       const g = new T.Group(), K = type === 'mom' ? 0.75 : 0.55; g.add(root); g.scale.setScalar(K); root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
       h = { group: g, legL: n.LegL, legR: n.LegR, armL: n.ArmL, armR: n.ArmR, head: n.Head, mom: type === 'mom', s: K };
     } else h = proceduralHuman(type);
+    const blob = new T.Mesh(new T.CircleGeometry(h.s === 1 && s3 ? (type === 'mom' ? 2.6 : 2) : 3, 20), new T.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0.4, depthWrite: false })); blob.rotation.x = -Math.PI / 2; blob.position.y = 0.08; h.group.add(blob);
     const fan = coneFan(half); fan.scale.setScalar(1 / h.s); h.group.add(fan); h.fan = fan; return h;
   };
   TAD.animateHuman = (h, t, walking) => {
-    const s = Math.sin(t * 5) * (walking ? 0.55 : 0);
+    const s = Math.sin(t * 5) * (walking ? 0.6 : 0);
     h.legL.rotation.x = s; h.legR.rotation.x = -s; h.armL.rotation.x = -s * 0.7; h.armR.rotation.x = s * 0.7;
     h.group.position.y = walking ? Math.abs(Math.sin(t * 5)) * 0.35 * h.s : 0;
-    if (h.root) { h.root.rotation.z = walking ? Math.sin(t * 5) * 0.04 : 0; h.root.rotation.x = walking ? 0.05 : 0; }
     if (h.fan) h.fan.material.opacity = 0.09 + 0.03 * Math.sin(t * 3);
   };
   TAD.resize = () => { const w = innerWidth, h = innerHeight; renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = w / h < 0.8 ? 66 : 52; camera.updateProjectionMatrix(); };
