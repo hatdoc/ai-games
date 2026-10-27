@@ -208,6 +208,7 @@
 <script src="sim.js"></script>
 <script src="render.js"></script>
 <script src="../cloudsave.js" data-game="doodle-brawl" data-keys="doodlebrawl"></script>
+<script src="../share.js"></script>
 <script src="../leaderboard.js"></script>
 <script src="../rgroom.js"></script>
 <script type="module">
@@ -225,6 +226,7 @@ const LABEL = { sword: 'Sword', spear: 'Spear', hammer: 'Hammer', club: 'Club', 
 const QUIP = { sword: 'A classic. Balanced and reliable.', spear: 'Keeps them at a distance. Pointy end goes in the other guy.', hammer: 'Slow. But when it lands… BONK.', club: 'All weight, no subtlety. Send them flying.', dagger: 'Tiny and lightning fast. Get in close!', shield: 'Wide = great at blocking. Bash them with Shield Bash.', curved: 'Curved blades slash harder and build special faster.', experimental: 'Too much ink! It wobbles unpredictably…', star: 'You found the Ninja Star! Throw it with your special.', spiral: 'Hypno Swirl! Your special makes them dizzy.', pebble: "It's… a pebble. Throw pebbles with your special. Good luck." };
 
 // ---------- save data (mirrored to your account by cloudsave.js) ----------
+<script src="../share.js"></script>
 const DEF = { coins: 0, weapons: [], current: null, owned: ['ink-ink', 'hat-none', 'trail-ink'], equip: { ink: '#1d1b2f', hat: null, trail: 'ink' }, disc: [], daily: {}, best: 0, wins: 0, games: 0, bossBeat: [], name: '', first: true };
 let S;
 function loadSave() { try { S = { ...DEF, ...JSON.parse(localStorage.getItem('doodlebrawl') || '{}') }; } catch { S = { ...DEF }; } S.equip = { ...DEF.equip, ...S.equip }; }

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Demolition Rush</title>
 <script src="../cloudsave.js" data-game="demolition-rush" data-keys="dr2-*"></script>
+<script src="../share.js"></script>
 <style>
   [hidden] { display: none !important; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #0e1420; color: #fff;
@@ -588,6 +589,7 @@ document.querySelectorAll('.tabs').forEach((tabs) =>
   tabs.addEventListener('click', (e) => e.target.dataset.tab && setTab(tabs.dataset.board, e.target.dataset.tab)));
 
 // Only players signed in on rank-game.com with a nickname can rank (cloudsave.js rgAuth); saves automatically
+<script src="../share.js"></script>
 const subNote = (html) => { $('subNote').innerHTML = html; };
 let rankBusy = false;
 async function rankUpdate() {
