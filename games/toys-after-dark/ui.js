@@ -48,7 +48,7 @@
   UI.menu = () => { ['#hud', '#results', '#sheet', '#touch', '#catch'].forEach((s) => show(s, false)); show('#menu', true); $('#alert').className = ''; mixes(); const d = dailyDef(); $('#dailyTxt').textContent = d.t; $('#dailyState').textContent = S.daily.done ? '✔ Done today' : '+150 🪙'; document.body.classList.remove('cine'); };
   const ensureAudio = () => { A.resume(); applyAudio(); };
   function applyAudio() { Object.assign(A.vol, { master: S.set.master, music: S.set.music, sfx: S.set.sfx, amb: S.set.amb }); A.setVol(); }
-  function applyQuality() { const q = S.set.quality; TAD.renderer.shadowMap.enabled = q !== 'low'; TAD.lamp.castShadow = q === 'high'; TAD.renderer.setPixelRatio(q === 'low' ? 1 : Math.min(devicePixelRatio, q === 'high' ? 2 : 1.5)); TAD.renderer.setSize(innerWidth, innerHeight, false); TAD.scene.traverse((o) => { if (o.material) o.material.needsUpdate = true; }); document.body.classList.toggle('calm', !!S.set.calm); }
+  function applyQuality() { const q = S.set.quality; TAD.renderer.shadowMap.enabled = q !== 'low'; TAD.lamp.castShadow = q === 'high'; TAD.renderer.setPixelRatio(q === 'low' ? 1 : Math.min(devicePixelRatio, q === 'high' ? 2 : 1.25)); TAD.moon.shadow.mapSize.set(q === 'high' ? 2048 : 1024, q === 'high' ? 2048 : 1024); if (TAD.moon.shadow.map) { TAD.moon.shadow.map.dispose(); TAD.moon.shadow.map = null; } TAD.renderer.setSize(innerWidth, innerHeight, false); TAD.scene.traverse((o) => { if (o.material) o.material.needsUpdate = true; }); document.body.classList.toggle('calm', !!S.set.calm); }
   const pickMission = () => { const pool = g.MISSIONS.filter((m) => !S.lastM || m.id !== S.lastM); return pool[Math.random() * pool.length | 0].id; };
   function play(id) { ensureAudio(); id = id || pickMission(); S.lastM = id; show('#menu', false); show('#sheet', false); show('#results', false); show('#hud', true); show('#touch', isTouch); show('#catch', true); g.startRound(id); G.rewarded = false; }
   UI.startRound = () => { renderMission(); renderTeam(); UI.hint(isTouch ? 'Hold FREEZE when the door opens. Tap ACT to grab things.' : 'WASD move · hold F to freeze · E to interact · Q drop · Space ability'); };
@@ -206,6 +206,8 @@
   addEventListener('pointerdown', () => { A.resume(); applyAudio(); }, { once: true });
   addEventListener('resize', () => TAD.resize());
   document.addEventListener('visibilitychange', () => { if (document.hidden && G.mode === 'play' && !G.paused) UI.pause(); });
+  if (isTouch && !localStorage.getItem('tad-q-set')) { S.set.quality = 'medium'; try { localStorage.setItem('tad-q-set', '1'); } catch (e) { /* ignore */ } g.save(); } // phones: no point-light shadow, lower pixel ratio
+  TAD.renderer.domElement.addEventListener('webglcontextlost', (e) => { e.preventDefault(); UI.toast('Graphics were interrupted. Reload the page, or pick Low graphics in Settings.'); });
   applyQuality(); UI.menu();
   window.tadUI = { play, TINTS, ACCS, DAILY, ACH, dailyDef, sheets: { missionsSheet, toysSheet, dailySheet, recordsSheet, settingsSheet }, applyQuality, applyAudio };
 })();
