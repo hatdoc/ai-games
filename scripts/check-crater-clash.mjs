@@ -44,7 +44,10 @@ const res = await page.evaluate(() => {
   out.gasPoison = e.poison; const hp0 = e.hp; G.state = 'aim'; G.turn = e; e.ai = false; endTurn(); out.gasDmg = hp0 - e.hp; // poison bites at the end of your own turn
   for (let r = 0; r < 4; r++) { G.gas.forEach((z) => z.rounds--); G.gas = G.gas.filter((z) => z.rounds > 0); } out.gasGone = G.gas.length === 0;
   startMatch({ mode: 'duel', map: 'hills', seed: 'n' }); const e2 = G.tanks[1]; G.state = 'fly'; boom(e2.x, e2.y - 8, WEAPONS.find((w) => w.id === 'nuke'), G.tanks[0]); out.nuke = e2.dead;
-  out.oneEach = G.tanks[0].ammo[6] === 1 && G.tanks[0].ammo[7] === 1;
+  out.kits = TANK_IDS.every((id) => { const t = mkTank({ cls: id }); return TANKS[id].kit.every(([w, n]) => t.ammo[widx(w)] === n) && t.ammo.filter((n) => n > 0).length === TANKS[id].kit.length && t.kit.length === 4; });
+  const hv = mkTank({ cls: 'heavy' }), sn = mkTank({ cls: 'sniper' }), sc = mkTank({ cls: 'scout' }), br = mkTank({ cls: 'brawler' }), rk = mkTank({ cls: 'rookie' });
+  out.stats = hv.maxhp > rk.maxhp && sc.fuel > rk.fuel && rk.fuel > hv.fuel && spdOf(sn) > spdOf(rk) && spdOf(rk) > spdOf(br) && hv.ammo[widx('nuke')] === 1 && rk.ammo[widx('gas')] === 1;
+  startMatch({ mode: 'duel', map: 'hills', seed: 'cls', diff: 'hard', tank: 'sniper' }); const g3 = G; g3.tanks[0].ai = true; g3.tanks[0].aiS = { ph: 'think', tm: 0.5, plan: null, moves: 0, wantMove: false }; for (let i = 0; i < 60 * 900 && !g3.over; i++) update(1 / 60, 1 / 60); out.classMatch = g3.over;
   startMatch({ mode: 'rampage' }); const e3 = G.tanks[1]; G.state = 'fly'; G.tanks[0].ai = false; e3.hp = 1; boom(e3.x, e3.y - 8, WEAPONS[1], G.tanks[0]);
   for (let i = 0; i < 600; i++) update(1 / 60, 1 / 60);
   out.wave = G.wave; out.score = G.score; out.kills = G.kills;
@@ -57,6 +60,8 @@ ok(res.wave === 2 && res.score > 0 && res.kills === 1, `rampage kill scores and 
 ok(MAP_IDS_OK(res.maps), `every map works: ${JSON.stringify(res.maps)}`);
 ok(res.void, 'digging all the way through drops a tank out of the map');
 ok(res.gasPoison === 3 && res.gasDmg === 8 && res.gasGone, 'gas poisons for 3 turns, 8 damage each, and the cloud fades');
-ok(res.nuke && res.oneEach, 'a nuke flattens a tank, and each player starts with one nuke and one gas');
+ok(res.nuke, 'a nuke flattens a tank');
+ok(res.kits && res.stats, 'every tank class has its own 4-weapon kit and distinct health, speed and range');
+ok(res.classMatch, 'a match with a non-default class finishes');
 ok(!errors.length, 'no page errors' + (errors.length ? ': ' + errors[0] : ''));
 await browser.close(); server.close(); process.exit(fails.length ? 1 : 0);
