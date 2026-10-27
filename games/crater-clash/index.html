@@ -36,12 +36,20 @@
   #fire { height: 44px; padding: 0 22px; border-radius: 12px; border: 0; background: var(--fire); color: #2b1100; font-weight: 900; font-size: 17px; letter-spacing: .5px; }
   #fire:disabled { opacity: .35; }
   .sep { width: 6px; }
-  #bar.off { visibility: hidden; }
+  #bar.off { display: none; }
 
   /* home */
-  #home { position: absolute; inset: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 18px 16px 24px; background: radial-gradient(circle at 50% 0%, #4a2a6e, var(--bg) 70%); z-index: 5; }
-  .wrap { width: min(520px, 100%); display: flex; flex-direction: column; gap: 10px; }
-  .logo { text-align: center; font-weight: 900; font-size: 46px; line-height: 1; letter-spacing: 1px; margin-top: 6px; text-shadow: 0 4px 0 #0006; }
+  #home { position: absolute; inset: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 8px; background: radial-gradient(circle at 50% 0%, #4a2a6e, var(--bg) 70%); z-index: 5; }
+  .wrap { width: min(600px, 100%); display: flex; flex-direction: column; gap: 8px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid2 .mode { flex-direction: column; justify-content: center; text-align: center; gap: 2px; padding: 10px 8px; min-width: 0; }
+  .grid2 .mode .em { font-size: 24px; } .grid2 .mode b { font-size: 16px; } .grid2 .mode small { font-size: 12px; }
+  .grid2 .mode .tag { margin: 0; }
+  .mode.online { border-color: var(--mint); background: linear-gradient(135deg, #1b4a45, var(--panel)); }
+  .mode.col { padding: 0; overflow: hidden; } .mode.col > button { background: none; border: 0; padding: 10px 8px 4px; width: 100%; display: flex; flex-direction: column; gap: 2px; align-items: center; }
+  .seg { display: flex; gap: 4px; padding: 0 8px 8px; width: 100%; } .seg button { flex: 1; padding: 4px 0; font-size: 13px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel2); } .seg button.on { border-color: var(--gold); background: #4a3a1a; }
+  .row5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; } .row5 .btn { padding: 8px 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .logo { text-align: center; font-weight: 900; font-size: 40px; line-height: 1; letter-spacing: 1px; margin-top: 6px; text-shadow: 0 4px 0 #0006; }
   .logo b { color: var(--fire); } .logo i { font-style: normal; color: var(--gold); }
   .tagline { text-align: center; color: var(--dim); margin: 0 0 4px; }
   .mode { display: flex; align-items: center; gap: 12px; text-align: left; width: 100%; padding: 13px 14px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); }
@@ -50,7 +58,7 @@
   .mode .tag { margin-left: auto; font-size: 12px; font-weight: 800; color: var(--gold); white-space: nowrap; }
   .mode.daily { border-color: var(--fire); background: linear-gradient(135deg, #5a2e1a, var(--panel)); }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
-  .chips button { min-width: 44px; height: 44px; border-radius: 12px; border: 2px solid var(--line); background: var(--panel); font-size: 24px; padding: 0 6px; }
+  .chips button { min-width: 40px; height: 40px; border-radius: 12px; border: 2px solid var(--line); background: var(--panel); font-size: 22px; padding: 0 5px; }
   .chips button.on { border-color: var(--gold); background: #4a3a1a; }
   .chips button.lock { opacity: .35; }
   .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } .row3 .btn { padding: 10px 4px; font-size: 14px; }
@@ -58,7 +66,12 @@
 
   /* sheets */
   .sheet { position: fixed; inset: 0; background: #0a0618cc; display: flex; align-items: center; justify-content: center; z-index: 20; padding: 12px; backdrop-filter: blur(3px); }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 18px; width: min(460px, 100%); max-height: calc(100dvh - 24px); overflow-y: auto; animation: rise .25s; text-align: center; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 16px; width: min(500px, 100%); animation: rise .25s; text-align: center; }
+  .stats { background: #0003; border-radius: 12px; padding: 8px 10px; margin: 6px 0; text-align: left; font-size: 13px; }
+  .stats b { font-size: 15px; } .bar { display: grid; grid-template-columns: 52px 1fr; gap: 6px; align-items: center; margin: 3px 0; color: var(--dim); font-size: 12px; } .bar i { display: block; height: 7px; border-radius: 4px; background: linear-gradient(90deg, var(--fire), var(--gold)); }
+  .kit { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; } .kit span { background: var(--panel2); border-radius: 8px; padding: 2px 7px; font-size: 12px; }
+  .join { display: flex; gap: 6px; margin-top: 10px; justify-content: center; } .join input { width: 110px; text-align: center; font: 800 20px var(--sans); letter-spacing: 4px; text-transform: uppercase; border-radius: 12px; border: 1px solid var(--line); background: #0004; color: var(--ink); padding: 6px; }
+  .code { color: var(--gold); letter-spacing: 4px; } .emos { display: flex; gap: 4px; } .emos .hb { font-size: 20px; }
   @keyframes rise { from { transform: translateY(18px); opacity: 0; } }
   .card h2 { margin: 0 0 4px; font-size: 26px; } .card h3 { margin: 12px 0 4px; font-size: 14px; color: var(--dim); }
   .card ul { text-align: left; padding-left: 18px; margin: 4px 0; } .card li { margin: 3px 0; }
@@ -86,6 +99,7 @@
     <span class="sep"></span>
     <div id="weps"></div>
     <button id="fire">FIRE!</button>
+    <span class="emos" id="emos" hidden><button class="hb" data-emo="😂">😂</button><button class="hb" data-emo="😡">😡</button><button class="hb" data-emo="👍">👍</button><button class="hb" data-emo="💩">💩</button></span>
     <button class="hb" id="zoomBtn" aria-label="Show whole map">🗺</button>
     <button class="hb" id="menuBtn" aria-label="Menu">☰</button>
   </div>
@@ -111,10 +125,21 @@ const WEAPONS = [
   { id: 'chicken', name: 'Rubber Chicken', icon: '🐔', r: 46, dmg: 42, kb: 220, ammo: 2 },
   { id: 'banana', name: 'Banana Bomb', icon: '🍌', r: 26, dmg: 22, kb: 140, ammo: 2 },
   { id: 'yeet', name: 'YEET Boot', icon: '🥾', r: 60, dmg: 6, kb: 470, up: 0.2, push: 0.8, ammo: 2 },
-  { id: 'nuke', name: 'NUKE (one only)', icon: '☢️', r: 66, dmg: 170, kb: 520, ammo: 1, wind: 3.2, jitter: 0.07 },
-  { id: 'gas', name: 'Poison Gas (one only)', icon: '☠️', r: 30, dmg: 0, kb: 0, ammo: 1, gas: true },
+  { id: 'nuke', name: 'Nuke', icon: '☢️', r: 66, dmg: 170, kb: 520, ammo: 1, wind: 3.2, jitter: 0.07, once: true },
+  { id: 'gas', name: 'Poison Gas', icon: '☠️', r: 30, dmg: 0, kb: 0, ammo: 1, gas: true, once: true },
 ];
-const SPECIALS = 6; // weapons before this index come from crates and wave bonuses; the nuke and gas are one per player per match
+// Tank classes: stats plus a short kit (weapon id, ammo). hp = health, move = driving fuel per turn, rng = how far a full-power shot flies, dmg = damage multiplier
+const TANKS = {
+  rookie: { name: 'Rookie', icon: '🛡️', col: ['#3a9bff', '#2468c4'], hp: 100, move: 90, rng: 1, dmg: 1, tag: 'Balanced all-rounder', kit: [['shell', Infinity], ['big', 2], ['tri', 2], ['gas', 1]] },
+  heavy: { name: 'Heavy', icon: '🦾', col: ['#8a8f9c', '#555b66'], hp: 140, move: 50, rng: 0.95, dmg: 1.2, tag: 'Slow and tough, hits hard', kit: [['shell', Infinity], ['big', 3], ['yeet', 2], ['nuke', 1]] },
+  scout: { name: 'Scout', icon: '🏃', col: ['#3ad06a', '#1f8a42'], hp: 75, move: 170, rng: 1.1, dmg: 0.9, tag: 'Fast and fragile', kit: [['shell', Infinity], ['banana', 3], ['chicken', 2], ['tri', 2]] },
+  sniper: { name: 'Sniper', icon: '🎯', col: ['#a45cff', '#6a2fc0'], hp: 80, move: 60, rng: 1.35, dmg: 1.1, tag: 'Shoots across the map', kit: [['shell', Infinity], ['banana', 2], ['tri', 2], ['nuke', 1]] },
+  trickster: { name: 'Trickster', icon: '🧪', col: ['#d6c43a', '#8e8218'], hp: 90, move: 100, rng: 1.05, dmg: 1, tag: 'Chaos and poison', kit: [['shell', Infinity], ['chicken', 3], ['gas', 2], ['yeet', 2]] },
+  brawler: { name: 'Brawler', icon: '🥊', col: ['#ff8a2b', '#c25a10'], hp: 110, move: 80, rng: 0.9, dmg: 1.1, tag: 'Close-range shover', kit: [['shell', Infinity], ['yeet', 3], ['big', 1], ['chicken', 2]] },
+};
+const TANK_IDS = Object.keys(TANKS);
+const widx = (id) => WEAPONS.findIndex((w) => w.id === id);
+const spdOf = (t) => SPD * TANKS[t.cls].rng;
 const MINI = { id: 'mini', name: 'Mini', icon: '🍌', r: 24, dmg: 20, kb: 130 };
 const DRIVERS = ['🐸', '😼', '🐔', '🦆', '🐙', '🦄', '🐶', '🤖', '👽', '🐷'];
 const HATS = [ // need(S) says whether the hat is unlocked; hint tells how
@@ -140,9 +165,10 @@ const LINES = {
   gasHit: ['Cough cough!', 'Ew ew ew', 'My eyes!', 'I feel funny'],
 };
 const pick = (a, r = Math.random) => a[(r() * a.length) | 0];
+const cleanName = (n) => String(n || 'Player').replace(/[^\p{L}\p{N} _.\-!]/gu, '').trim().slice(0, 14) || 'Player';
 
 // ---------- saved data ----------
-const DEF = { driver: '🐸', hat: '🧢', stats: { played: 0, wins: 0, kills: 0, bestWave: 0, bestScore: 0 }, ds: { last: '', streak: 0, best: 0 }, daily: {}, muted: false, seenHow: false };
+const DEF = { driver: '🐸', hat: '🧢', tank: 'rookie', map: 'random', stats: { played: 0, wins: 0, kills: 0, bestWave: 0, bestScore: 0 }, ds: { last: '', streak: 0, best: 0 }, daily: {}, muted: false, seenHow: false };
 let S = (() => { try { const s = JSON.parse(localStorage.getItem('craterclash')); return { ...DEF, ...s, stats: { ...DEF.stats, ...s?.stats }, ds: { ...DEF.ds, ...s?.ds } }; } catch { return { ...DEF, stats: { ...DEF.stats }, ds: { ...DEF.ds } }; } })();
 const save = () => { try { localStorage.setItem('craterclash', JSON.stringify(S)); } catch { /* private mode: play on */ } };
 const A = () => window.rgAuth || { onSite: false, user: null };
@@ -261,36 +287,43 @@ const clouds = Array.from({ length: 14 }, (_, i) => ({ x: i * 140, y: 40 + (i % 
 const cam = { x: W / 2, s: 0.75, over: false }; // camera: world x at the screen centre, zoom, overview toggle
 
 function mkTank(o) {
-  return { team: 0, name: 'Tank', emoji: '🐸', hat: '', hp: 100, x: 100, y: 0, vx: 0, vy: 0, rot: 0, vr: 0, air: false, f: 1, el: 45, pw: 60, wi: 0,
-    ammo: WEAPONS.map((w) => w.ammo), poison: 0, fuel: FUEL, ai: false, say: null, hurt: 0, recoil: 0, dead: false, ...o };
+  const cls = o.cls || 'rookie', C = TANKS[cls], ammo = WEAPONS.map(() => 0); C.kit.forEach(([id, n]) => { ammo[widx(id)] = n; });
+  return { cls, kit: C.kit.map(([id]) => widx(id)), maxhp: C.hp, team: 0, name: 'Tank', emoji: '🐸', hat: '', hp: C.hp, x: 100, y: 0, vx: 0, vy: 0, rot: 0, vr: 0, air: false, f: 1, el: 45, pw: 60, wi: 0,
+    ammo, poison: 0, fuel: C.move, ai: false, say: null, hurt: 0, recoil: 0, dead: false, ...o };
 }
 function placeTank(t, x) {
   x = Math.max(24, Math.min(W - 24, x)); const lim = Math.min(WATER, H) - 14; // needs dry ground under it
   for (let i = 0; i < 90 && groundTop(x) > lim; i++) x = Math.max(24, Math.min(W - 24, x + (i % 2 ? 1 : -1) * 14 * (1 + (i >> 1))));
-  t.x = Math.max(20, Math.min(W - 20, x)); t.y = groundTop(t.x); t.vx = t.vy = 0; t.air = false; t.rot = 0; t.vr = 0; t.fuel = FUEL; t.dead = false; t.poison = 0;
+  t.x = Math.max(20, Math.min(W - 20, x)); t.y = groundTop(t.x); t.vx = t.vy = 0; t.air = false; t.rot = 0; t.vr = 0; t.fuel = TANKS[t.cls].move; t.dead = false; t.poison = 0;
 }
 const alive = (team) => G.tanks.filter((t) => !t.dead && (team === undefined || t.team === team));
 
 function startMatch(o) {
-  closeSheet(); $('#home').hidden = true; $('#bar').classList.remove('off'); paused = false;
+  closeSheet(); $('#home').hidden = true; $('#bar').classList.remove('off'); fit(); $('#emos').hidden = o.mode !== 'online'; paused = false;
   const seed = o.seed || Math.random().toString(36).slice(2, 8);
   G = { mode: o.mode, seed, diff: o.diff || 'normal', target: o.target, chalName: o.chalName, demo: !!o.demo, wave: 1, shots: 0, turns: 0, kills: 0, dmg: 0, score: 0,
-    tanks: [], spawn: [], gas: [], mapId: o.map || S.map || 'random', turn: null, state: 'aim', settle: 0, wind: 0, crates: [], projs: [], banner: null, slow: 0, timer: 0, over: false, key: o.key,
+    tanks: [], spawn: [], gas: [], inbox: [], snaps: {}, me: o.me || 0, mapId: o.map || S.map || 'random', turn: null, state: 'aim', settle: 0, wind: 0, crates: [], projs: [], banner: null, slow: 0, timer: 0, over: false, key: o.key,
     rng: { t: rngOf(seed + 't'), w: rngOf(seed + 'w'), a: rngOf(seed + 'a'), c: rngOf(seed + 'c'), n: rngOf(seed + 'n') } };
   if (o.mode === 'daily' || o.mode === 'chal') G.mapId = MAP_IDS[hash(seed) % MAP_IDS.length]; // the same map for everyone on that seed
   cam.over = false;
-  const me = mkTank({ name: A().user?.nick || 'You', emoji: S.driver, hat: S.hat, ai: G.demo });
-  if (G.demo) { me.emoji = '🐸'; me.hat = '🎩'; }
+  const fair = o.mode === 'daily' || o.mode === 'chal'; // the daily and friend challenges use the same standard tank for everybody
+  const me = mkTank({ name: A().user?.nick || 'You', emoji: S.driver, hat: S.hat, ai: G.demo, cls: fair ? 'rookie' : o.tank || S.tank || 'rookie' });
+  if (G.demo) { me.emoji = '🐸'; me.hat = '🎩'; me.cls = 'rookie'; }
+  if (o.mode === 'online') { // two humans on two computers: the host is team 0 on the left
+    G.mapId = MAP_IDS.includes(o.map) ? o.map : 'random';
+    o.players.forEach((pl, i) => G.tanks.push(mkTank({ team: i, name: cleanName(pl.name), emoji: DRIVERS.includes(pl.driver) ? pl.driver : '🐸', hat: HATS.some((h) => h.e === pl.hat) ? pl.hat : '', cls: TANKS[pl.tank] ? pl.tank : 'rookie', f: i ? -1 : 1, remote: i !== o.me })));
+    newRound(); S.stats.played++; save(); return;
+  }
   G.tanks.push(me);
-  if (o.mode === 'two') G.tanks.push(mkTank({ team: 1, name: 'Player 2', emoji: S.driver === '🐶' ? '😼' : '🐶', hat: '🧢', f: -1 }));
+  if (o.mode === 'two') G.tanks.push(mkTank({ team: 1, name: 'Player 2', emoji: S.driver === '🐶' ? '😼' : '🐶', hat: '🧢', f: -1, cls: o.tank2 || 'rookie' }));
   else if (o.mode !== 'rampage') G.tanks.push(mkEnemy(0));
   newRound();
   S.stats.played++; save();
 }
 function mkEnemy(i) {
-  const r = G.rng.n, e = pick(DRIVERS.filter((d) => d !== S.driver), r);
-  const hp = G.mode === 'rampage' ? 60 + Math.min(40, G.wave * 8) : 100;
-  return mkTank({ team: 1, name: pick(NAMES, r), emoji: e, hat: pick(['', '🎩', '🧀', '🍕', '🚧'], r), f: -1, ai: true, hp, wi: 0 });
+  const r = G.rng.n, e = pick(DRIVERS.filter((d) => d !== S.driver), r), cls = G.mode === 'daily' || G.mode === 'chal' ? 'rookie' : pick(TANK_IDS, r);
+  const k = G.mode === 'rampage' ? 0.6 + Math.min(0.4, G.wave * 0.08) : 1; // rampage enemies start softer and toughen up
+  return mkTank({ team: 1, name: pick(NAMES, r), emoji: e, hat: pick(['', '🎩', '🧀', '🍕', '🚧'], r), f: -1, ai: true, cls, hp: Math.round(TANKS[cls].hp * k), wi: 0 });
 }
 function newRound() {
   G.map = G.mapId === 'random' ? MAP_IDS[(G.rng.t() * MAP_IDS.length) | 0] : G.mapId; genTerrain(G.rng.t, G.map);
@@ -315,22 +348,23 @@ function newRound() {
 function nextTurn(first) {
   const order = G.tanks, i0 = order.indexOf(G.turn);
   for (let k = 1; k <= order.length; k++) { const t = order[(i0 + k) % order.length]; if (!t.dead) { G.turn = t; break; } }
-  const t = G.turn; t.fuel = FUEL; G.state = 'aim'; G.turns++; G.timer = t.ai ? 0 : 25; G.moveAcc = 0;
+  const t = G.turn; t.fuel = TANKS[t.cls].move; G.state = 'aim'; G.turns++; G.timer = t.ai ? 0 : 25; G.moveAcc = 0;
   t.ai && (t.aiS = { ph: 'think', tm: 0.9, plan: null, moves: 0, wantMove: Math.random() < (G.mode === 'rampage' ? 0.6 : { easy: 0.4, normal: 0.6, hard: 0.8 }[G.diff]) });
   if (first || t === G.tanks[0]) { G.round = (G.round || 0) + 1; if (!first) { G.gas.forEach((z) => z.rounds--); G.gas = G.gas.filter((z) => z.rounds > 0); } } // gas clouds thin out one round at a time
   const humans = G.tanks.some((x) => !x.ai);
-  if (humans) banner(G.mode === 'two' ? `${t.name.toUpperCase()}'S TURN` : t.ai ? `${t.name}...` : G.wave > 1 || first ? (first && G.mode === 'rampage' ? `WAVE ${G.wave}` : 'YOUR TURN') : 'YOUR TURN', t.team ? '#ff7a7a' : '#7affc8', 1.1);
+  if (humans) banner(G.mode === 'two' || (G.mode === 'online' && t.remote) ? `${t.name.toUpperCase()}'S TURN` : t.ai ? `${t.name}...` : G.wave > 1 || first ? (first && G.mode === 'rampage' ? `WAVE ${G.wave}` : 'YOUR TURN') : 'YOUR TURN', t.team ? '#ff7a7a' : '#7affc8', 1.1);
   syncBar();
 }
 
 // ---------- weapons and physics ----------
-function fire(t) {
+function fire(t, fromNet) {
   if (G.state !== 'aim') return;
+  if (G.mode === 'online' && !fromNet) netSend({ k: 'fire', n: G.turns, x: t.x, y: t.y, f: t.f, el: t.el, pw: t.pw, wi: t.wi });
   if (t.ammo[t.wi] <= 0) t.wi = 0;
   const w = WEAPONS[t.wi]; t.ammo[t.wi]--;
   if (t.team === 0 || G.mode === 'two') G.shots++;
-  const th = ((t.f > 0 ? t.el : 180 - t.el) * Math.PI) / 180, c = Math.cos(th), s = Math.sin(th), jit = w.jitter || 0, v = t.pw * SPD * (1 + (Math.random() - 0.5) * 2 * jit); // a nuke is heavy and wobbly: it rarely lands where you aimed
-  const mk = (a) => { a += (Math.random() - 0.5) * jit * 0.6; const cc = Math.cos(a), ss = Math.sin(a); return { x: t.x + cc * 18, y: t.y - 14 - ss * 18, px: 0, py: 0, vx: cc * v, vy: -ss * v, w, owner: t, life: 0, bounces: 0, split: false, wm: w.wind || 1 }; };
+  const th = ((t.f > 0 ? t.el : 180 - t.el) * Math.PI) / 180, c = Math.cos(th), s = Math.sin(th), jit = w.jitter || 0, jr = G.shotRng = rngOf(G.seed + 'f' + G.turns), v = t.pw * spdOf(t) * (1 + (jr() - 0.5) * 2 * jit); // a nuke is heavy and wobbly: it rarely lands where you aimed
+  const mk = (a) => { a += (jr() - 0.5) * jit * 0.6; const cc = Math.cos(a), ss = Math.sin(a); return { x: t.x + cc * 18, y: t.y - 14 - ss * 18, px: 0, py: 0, vx: cc * v, vy: -ss * v, w, owner: t, life: 0, bounces: 0, split: false, wm: w.wind || 1 }; };
   if (w.id === 'tri') [-0.11, 0, 0.11].forEach((d) => G.projs.push(mk(th + d))); else G.projs.push(mk(th));
   t.recoil = 1; G.state = 'fly'; G.settle = 0; G.timer = 0; G.hit = false; G.fired = t;
   SFX.shoot(); if (w.id === 'yeet') SFX.yeet(); if (w.id === 'chicken') SFX.cluck(); if (w.id === 'nuke') { SFX.nuke(); banner('☢️ NUKE AWAY!', '#ffe14a', 1.4); }
@@ -381,7 +415,7 @@ function boom(x, y, w, owner, sv = 0) {
     const push = w.push ?? 0.25, sd = Math.sign(sv);
     t.vx += Math.cos(a) * kb * (1 - push * 0.6) + sd * kb * push; t.vy += Math.sin(a) * kb * (1 - push * 0.6) - kb * (w.up ?? 0.4); t.air = true; t.y -= 2; t.vr = (Math.random() - 0.5) * 14;
     G.hit = true;
-    const dmg = Math.round(w.dmg * (0.35 + 0.65 * f));
+    const dmg = Math.round(w.dmg * (owner?.cls ? TANKS[owner.cls].dmg : 1) * (0.35 + 0.65 * f));
     if (dmg > 0) damage(t, dmg, owner);
     if (w.id === 'yeet' && !t.dead) { say(t, pick(LINES.yeet)); SFX.yeet(); }
   }
@@ -443,15 +477,16 @@ function updateTank(t, dt) {
 }
 function pickup(t, c) {
   SFX.pick();
-  if (c.kind === 'heal') { t.hp = Math.min(100, t.hp + 35); text(t.x, t.y - 40, '+35 ❤️', '#7affc8'); }
-  else { t.ammo[c.wi] += 2; text(t.x, t.y - 40, `+2 ${WEAPONS[c.wi].icon}`, '#ffd24a'); }
+  const ok = t.kit.filter((i) => i && !WEAPONS[i].once); if (c.kind === 'ammo' && !ok.length) c.kind = 'heal'; // no restockable weapon in this kit
+  if (c.kind === 'heal') { t.hp = Math.min(t.maxhp, t.hp + 35); text(t.x, t.y - 40, '+35 ❤️', '#7affc8'); }
+  else { const wi = ok[(c.r * ok.length) | 0]; t.ammo[wi] += 2; text(t.x, t.y - 40, `+2 ${WEAPONS[wi].icon}`, '#ffd24a'); }
   say(t, pick(['Ooh, a present!', 'Mine!', 'Nice!', 'Free stuff!']));
 }
 
 // ---------- AI ----------
 function simShot(t, f, el, pw, tg, wm = 1) {
   const th = ((f > 0 ? el : 180 - el) * Math.PI) / 180, c = Math.cos(th), s = Math.sin(th);
-  let x = t.x + c * 18, y = t.y - 14 - s * 18, vx = c * pw * SPD, vy = -s * pw * SPD, best = 1e9; const dt = 1 / 120;
+  let x = t.x + c * 18, y = t.y - 14 - s * 18, vx = c * pw * spdOf(t), vy = -s * pw * spdOf(t), best = 1e9; const dt = 1 / 120;
   for (let i = 0; i < 1800; i++) {
     vy += GRAV * dt; vx += G.wind * WINDK * wm * dt; x += vx * dt; y += vy * dt;
     const d = Math.hypot(x - tg.x, y - (tg.y - 8)); if (d < best) best = d;
@@ -505,10 +540,10 @@ function walk(t, dir, px, safe) { // moves up to px along the ground; false when
 }
 
 // ---------- main loop ----------
-let last = 0, tickAcc = 0;
+let last = 0, acc = 0; const STEP = 1 / 60; // the game steps in fixed 1/60s ticks, so two computers playing online stay in lockstep
 function loop(ts) {
-  const dt = Math.min(0.05, (ts - last) / 1000 || 0); last = ts;
-  if (G && !paused) update(dt * (G.slow > 0 ? 0.3 : 1), dt);
+  const dt = Math.min(0.1, (ts - last) / 1000 || 0); last = ts;
+  if (G && !paused) { G.slow = Math.max(0, G.slow - dt); acc += dt * (G.slow > 0 ? 0.3 : 1); let n = 0; while (acc >= STEP && n++ < 8) { update(STEP, STEP); acc -= STEP; } if (n > 8) acc = 0; }
   if (G) updateCam(dt);
   draw(); requestAnimationFrame(loop);
 }
@@ -516,14 +551,14 @@ function updateCam(dt) { // follow the shot, otherwise the active tank (a little
   const ts = cam.over ? VW / W : 0.75; cam.s += (ts - cam.s) * Math.min(1, dt * 8);
   let tx = W / 2;
   if (!cam.over) {
-    const t = G.turn; tx = t ? t.x + (t.ai || G.state !== 'aim' ? 0 : t.f * 220) : W / 2;
+    const t = G.turn; tx = t ? t.x + (t.ai || t.remote || G.state !== 'aim' ? 0 : t.f * 220) : W / 2;
     if (G.state === 'fly' && G.projs.length) tx = G.projs.reduce((a, p) => a + p.x, 0) / G.projs.length;
     else if (G.state !== 'aim') { const fl = G.tanks.find((x) => !x.dead && x.air); tx = fl ? fl.x : G.lastBoom ? G.lastBoom.x : tx; }
   }
   const half = VW / cam.s / 2; tx = Math.max(half, Math.min(W - half, tx)); cam.x += (tx - cam.x) * Math.min(1, dt * 4);
 }
 function update(dt, rdt) {
-  G.slow = Math.max(0, G.slow - rdt); fx.shake *= 0.9; fx.flash = Math.max(0, fx.flash - rdt * 2.5);
+  fx.shake *= 0.9; fx.flash = Math.max(0, fx.flash - rdt * 2.5);
   for (const c of clouds) { c.x += c.v * dt; if (c.x > W + 80) c.x = -120; }
   for (const z of G.gas) if (Math.random() < 0.5) fx.parts.push({ x: z.x + (Math.random() - 0.5) * z.r * 1.6, y: z.y + (Math.random() - 0.3) * z.r, vx: 0, vy: -18, life: 1.2, max: 1.2, c: '#8f4', size: 4 + Math.random() * 4 });
   if (G.banner && (G.banner.t -= rdt) <= 0) G.banner = null;
@@ -538,8 +573,11 @@ function update(dt, rdt) {
   const t = G.turn;
   if (G.state === 'aim') {
     if (t.ai) updateAI(t, dt);
-    else {
-      controls(t, dt);
+    else if (t.remote) { // the other player: show their pose, and run their shot when it arrives
+      const m = G.inbox.find((x) => x.k === 'fire' && x.n === G.turns);
+      if (m) { G.inbox = G.inbox.filter((x) => x !== m); Object.assign(t, { x: m.x, y: m.y, f: m.f, el: m.el, pw: m.pw, wi: m.wi, air: false, vx: 0, vy: 0 }); fire(t, true); }
+    } else {
+      controls(t, dt); poseTick(t, dt);
       if (G.timer > 0) { const before = G.timer; G.timer -= dt; if (G.timer < 5 && Math.floor(before) !== Math.floor(G.timer)) SFX.tick(); if (G.timer <= 0) { say(t, pick(LINES.late)); fire(t); } }
     }
   } else if (G.state === 'fly') {
@@ -547,7 +585,11 @@ function update(dt, rdt) {
     if (!G.projs.length) { G.state = 'settle'; G.settle = 0; }
   } else if (G.state === 'settle') {
     G.settle += dt;
-    if (G.settle > 0.8 && G.tanks.every((x) => x.dead || !x.air) || G.settle > 6) endTurn();
+    if (G.settle > 0.8 && G.tanks.every((x) => x.dead || !x.air) || G.settle > 6) {
+      if (G.mode !== 'online') endTurn();
+      else if (!G.fired.remote) { netSend({ k: 'snap', n: G.turns, s: snapshot() }); endTurn(); } // the shooter's machine is the referee for tank positions and health
+      else { const sn = G.snaps[G.turns]; G.snapWait = (G.snapWait || 0) + dt; if (sn || G.snapWait > 4) { if (sn) applySnap(sn); G.snapWait = 0; endTurn(); } }
+    }
   }
 }
 function controls(t, dt) {
@@ -571,7 +613,7 @@ function endTurn() {
   if (G.tanks.slice(idx + 1).every((t) => t.dead) && G.rng.c() < 0.55 && G.crates.length < 2) { // a mystery crate every so often
     const kind = G.rng.c() < 0.4 ? 'heal' : 'ammo';
     let cx = 60 + G.rng.c() * (W - 120); for (let k = 0; k < 12 && groundTop(cx) > Math.min(WATER, H) - 30; k++) cx = 60 + G.rng.c() * (W - 120); // land on something
-    G.crates.push({ x: cx, y: -20, kind, wi: 1 + ((G.rng.c() * (SPECIALS - 1)) | 0), got: false }); text(G.turn.x, 90, '📦 Crate incoming!', '#ffd24a');
+    G.crates.push({ x: cx, y: -20, kind, r: G.rng.c(), got: false }); text(G.turn.x, 90, '📦 Crate incoming!', '#ffd24a');
   }
   nextTurn();
 }
@@ -579,9 +621,10 @@ function endTurn() {
 // ---------- end of round / match ----------
 function roundOver(win, draw_) {
   G.state = 'done';
+  if (G.mode === 'online' && G.me === 1) win = !draw_ && !win; // `win` was "team 0 won"; the guest plays team 1
   if (G.mode === 'rampage' && win) {
     G.score += 100 * G.tanks.filter((t) => t.team === 1).length + 150;
-    const me = G.tanks[0]; me.hp = Math.min(100, me.hp + 35); WEAPONS.forEach((w, i) => { if (i && i < SPECIALS) me.ammo[i] += 1; });
+    const me = G.tanks[0]; me.hp = Math.min(me.maxhp, me.hp + 35); WEAPONS.forEach((w, i) => { if (i && !w.once && me.kit.includes(i)) me.ammo[i] += 1; });
     S.stats.bestWave = Math.max(S.stats.bestWave, G.wave); save(); SFX.win();
     banner(`WAVE ${G.wave} CLEARED!`, '#7affc8', 1.8); G.wave++;
     setTimeout(() => { if (G && !G.over) { newRound(); } }, 2000);
@@ -596,7 +639,7 @@ function roundOver(win, draw_) {
   setTimeout(() => finish(win), 1700);
 }
 function finish(win) {
-  const me = G.tanks[0], mode = G.mode;
+  const me = G.tanks[G.mode === 'online' ? G.me : 0], mode = G.mode;
   const T = { mode, win, shots: G.shots, hp: Math.max(0, Math.round(me.hp)), wave: G.wave, kills: G.kills, seed: G.seed, target: G.target, chalName: G.chalName, key: G.key, score: 0, ranked: '' };
   if (mode === 'rampage') {
     T.score = G.score + G.dmg + (G.wave - 1) * 0; T.wave = G.wave; T.ranked = 'crater-clash';
@@ -615,7 +658,7 @@ function updateStreak(key) {
 }
 
 // ---------- drawing ----------
-const tankColor = (t) => (t.team ? ['#e4504a', '#a82c3a'] : ['#3a9bff', '#2468c4']);
+const tankColor = (t) => TANKS[t.cls].col;
 function emoji(ch, x, y, size) { g.font = `${size}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ch, x, y); }
 function draw() {
   g.setTransform(1, 0, 0, 1, 0, 0);
@@ -652,7 +695,7 @@ function draw() {
 function drawTank(t) {
   const [c1, c2] = tankColor(t), cur = G.turn === t && G.state === 'aim';
   g.save(); g.translate(t.x, t.y); g.rotate(t.rot);
-  g.fillStyle = '#222'; g.beginPath(); g.roundRect(-15, -6, 30, 8, 4); g.fill();
+  g.fillStyle = t.team ? '#c23a3a' : '#2a62c8'; g.beginPath(); g.roundRect(-15, -6, 30, 8, 4); g.fill(); // treads show the team
   g.fillStyle = c1; g.beginPath(); g.roundRect(-13, -12, 26, 9, 4); g.fill(); g.fillStyle = c2; g.fillRect(-13, -6, 26, 3);
   g.fillStyle = '#555'; for (let i = -10; i <= 10; i += 5) { g.beginPath(); g.arc(i, -1, 2, 0, 6.3); g.fill(); }
   g.restore();
@@ -664,16 +707,16 @@ function drawTank(t) {
   if (t.hat) emoji(t.hat, t.x + (t.air ? Math.sin(performance.now() / 80) * 3 : 0), t.y - 30, 14);
   // bars
   const bw = 36, bx0 = t.x - bw / 2, by0 = t.y - 47; g.fillStyle = '#000a'; g.fillRect(bx0 - 1, by0 - 1, bw + 2, 7);
-  g.fillStyle = t.hp > 50 ? '#5cf26a' : t.hp > 25 ? '#ffd24a' : '#ff4a4a'; g.fillRect(bx0, by0, bw * Math.max(0, t.hp) / 100, 5);
+  g.fillStyle = t.hp > t.maxhp * 0.5 ? '#5cf26a' : t.hp > t.maxhp * 0.25 ? '#ffd24a' : '#ff4a4a'; g.fillRect(bx0, by0, bw * Math.max(0, t.hp) / t.maxhp, 5);
   if (t.poison > 0) { g.fillStyle = '#7f4'; emoji('☠️', t.x + bw / 2 + 12, by0 + 3, 14); g.font = '800 11px ui-rounded, system-ui, sans-serif'; g.textAlign = 'left'; g.fillText(t.poison, t.x + bw / 2 + 21, by0 + 4); }
   if (cur) { g.fillStyle = '#ffd24a'; g.beginPath(); g.moveTo(t.x, by0 - 4); g.lineTo(t.x - 6, by0 - 13 - Math.sin(performance.now() / 150) * 2); g.lineTo(t.x + 6, by0 - 13 - Math.sin(performance.now() / 150) * 2); g.fill(); }
   if (cur && !t.ai) { // aim guide: power arc + a short preview of the shot
     const len = 18 + t.pw * 0.7; g.strokeStyle = '#ffe9a8'; g.lineWidth = 2; g.setLineDash([2, 5]);
     g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + Math.cos(th) * len, by - Math.sin(th) * len); g.stroke(); g.setLineDash([]);
     g.fillStyle = '#fff'; g.beginPath(); g.arc(bx + Math.cos(th) * len, by - Math.sin(th) * len, 4, 0, 6.3); g.fill();
-    let x = bx + Math.cos(th) * 18, y = by - Math.sin(th) * 18, vx = Math.cos(th) * t.pw * SPD, vy = -Math.sin(th) * t.pw * SPD, wm = WEAPONS[t.wi].wind || 1;
+    let x = bx + Math.cos(th) * 18, y = by - Math.sin(th) * 18, vx = Math.cos(th) * t.pw * spdOf(t), vy = -Math.sin(th) * t.pw * spdOf(t), wm = WEAPONS[t.wi].wind || 1;
     g.fillStyle = '#ffffffaa'; if (WEAPONS[t.wi].id !== 'nuke') for (let i = 0; i < 14; i++) { for (let k = 0; k < 2; k++) { vy += GRAV / 45; vx += G.wind * WINDK * wm / 45; x += vx / 45; y += vy / 45; } g.fillRect(x - 1.5, y - 1.5, 3, 3); } // no guide for the nuke
-    g.fillStyle = '#ffd24a'; g.fillRect(t.x - 18, t.y + 5, 36 * t.fuel / FUEL, 3);
+    g.fillStyle = '#ffd24a'; g.fillRect(t.x - 18, t.y + 5, 36 * t.fuel / TANKS[t.cls].move, 3);
   }
   if (t.say) { g.font = '800 13px ui-rounded, system-ui, sans-serif'; const w = g.measureText(t.say.txt).width + 14, x = Math.max(w / 2 + 4, Math.min(W - w / 2 - 4, t.x)), y = t.y - 66 - (t.poison > 0 ? 10 : 0); g.fillStyle = '#fff'; g.beginPath(); g.roundRect(x - w / 2, y - 12, w, 22, 9); g.fill(); g.beginPath(); g.moveTo(t.x - 4, y + 9); g.lineTo(t.x, y + 16); g.lineTo(t.x + 4, y + 9); g.fill(); g.fillStyle = '#222'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t.say.txt, x, y - 1); }
 }
@@ -699,12 +742,12 @@ function drawHud() {
 
 // ---------- input ----------
 function syncBar() {
-  const t = G?.turn, me = t && !t.ai ? t : null, box = $('#weps');
-  $('#fire').disabled = !me || G.state !== 'aim';
+  const t = G && G.mode === 'online' ? G.tanks[G.me] : G?.turn, me = t && !t.ai ? t : null, box = $('#weps');
+  $('#fire').disabled = !me || G.state !== 'aim' || G.turn !== t;
   if (!me) { box.innerHTML = ''; return; }
-  box.innerHTML = WEAPONS.map((w, i) => `<button class="wp ${i === t.wi ? 'on' : ''} ${t.ammo[i] <= 0 ? 'out' : ''}" data-wi="${i}" title="${w.name}">${w.icon}${t.ammo[i] === Infinity ? '' : `<small>${t.ammo[i]}</small>`}</button>`).join('');
+  box.innerHTML = t.kit.map((i, n) => { const w = WEAPONS[i]; return `<button class="wp ${i === t.wi ? 'on' : ''} ${t.ammo[i] <= 0 ? 'out' : ''}" data-wi="${i}" title="${n + 1}: ${w.name}">${w.icon}${t.ammo[i] === Infinity ? '' : `<small>${t.ammo[i]}</small>`}</button>`; }).join('');
 }
-const myTurn = () => G && !paused && !G.over && G.state === 'aim' && !G.turn.ai;
+const myTurn = () => G && !paused && !G.over && G.state === 'aim' && !G.turn.ai && !G.turn.remote;
 $('#bar').addEventListener('pointerdown', (e) => {
   const h = e.target.closest('[data-hold]'); if (h) { hold.add(h.dataset.hold); try { h.setPointerCapture(e.pointerId); } catch { /* ignore */ } ac(); return; }
   const w = e.target.closest('[data-wi]'); if (w && myTurn()) { const t = G.turn, i = +w.dataset.wi; if (t.ammo[i] > 0) { t.wi = i; syncBar(); SFX.blip(); } }
@@ -713,6 +756,7 @@ for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) $('#bar')
 $('#fire').onclick = () => { if (myTurn()) { ac(); fire(G.turn); } };
 $('#menuBtn').onclick = () => pauseSheet();
 $('#zoomBtn').onclick = () => { if (G) cam.over = !cam.over; };
+$('#emos').onclick = (e) => { const b = e.target.closest('[data-emo]'); if (!b || !G || G.mode !== 'online') return; say(G.tanks[G.me], b.dataset.emo); netSend({ k: 'emo', e: b.dataset.emo }); };
 function aimFrom(e) { // drag anywhere on the field to aim: pull toward where you want to shoot
   if (!myTurn()) return; const t = G.turn, r = cv.getBoundingClientRect(), px = cam.x + ((e.clientX - r.left) * VW / r.width - VW / 2) / cam.s, py = H / 2 + ((e.clientY - r.top) * VH / r.height - VH / 2) / cam.s;
   const dx = px - t.x, dy = t.y - 13 - py; if (Math.hypot(dx, dy) < 12) return;
@@ -730,8 +774,8 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyM' && G && !e.repeat) cam.over = !cam.over;
   if (!myTurn()) return;
   if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); if (!e.repeat) fire(G.turn); }
-  else if (/^Digit[1-8]$/.test(e.code)) { const i = +e.code.slice(5) - 1; if (G.turn.ammo[i] > 0) { G.turn.wi = i; syncBar(); SFX.blip(); } }
-  else if (e.code === 'KeyQ' || e.code === 'KeyE') { const t = G.turn; let i = t.wi; do { i = (i + (e.code === 'KeyE' ? 1 : WEAPONS.length - 1)) % WEAPONS.length; } while (t.ammo[i] <= 0); t.wi = i; syncBar(); SFX.blip(); }
+  else if (/^Digit[1-8]$/.test(e.code)) { const i = G.turn.kit[+e.code.slice(5) - 1]; if (i !== undefined && G.turn.ammo[i] > 0) { G.turn.wi = i; syncBar(); SFX.blip(); } }
+  else if (e.code === 'KeyQ' || e.code === 'KeyE') { const t = G.turn, n = t.kit.length; let k = t.kit.indexOf(t.wi), i = t.wi; do { k = (k + (e.code === 'KeyE' ? 1 : n - 1)) % n; i = t.kit[k]; } while (t.ammo[i] <= 0); t.wi = i; syncBar(); SFX.blip(); }
   if (e.code.startsWith('Arrow')) e.preventDefault();
 });
 addEventListener('keyup', (e) => hold.delete(e.code));
@@ -741,7 +785,7 @@ addEventListener('resize', fit); fit();
 
 // ---------- sheets and toasts ----------
 const sheetEl = $('#sheet');
-function sheet(html) { $('#sheetBody').innerHTML = html; sheetEl.hidden = false; if (G) paused = !G.over ? true : paused; }
+function sheet(html) { $('#sheetBody').innerHTML = html; sheetEl.hidden = false; if (G && G.mode !== 'online') paused = !G.over ? true : paused; fitBox(sheetEl, $('#sheetBody'), 24); }
 function closeSheet() { sheetEl.hidden = true; paused = false; }
 let toastT = 0;
 function toast(t, ms = 1800) { $('#toast')?.remove(); const e = document.createElement('div'); e.id = 'toast'; e.textContent = t; document.body.append(e); clearTimeout(toastT); toastT = setTimeout(() => e.remove(), ms); }
@@ -755,53 +799,87 @@ function pauseSheet() {
   sheet(`<h2>⏸ Paused</h2><div class="btns"><button class="btn pri" data-act="resume">Resume</button><button class="btn" data-act="mute">${S.muted ? '🔇 Sound off' : '🔊 Sound on'}</button><button class="btn" data-act="how">How to play</button><button class="btn" data-act="home">Quit to menu</button></div>`);
 }
 function howSheet() {
-  sheet(`<h2>💥 How to play</h2><ul><li><b>Aim:</b> drag on the battlefield (pull toward where you want to shoot), or use ⬆⬇ for angle and ➕➖ for power. Keys: ↑↓ angle, W/S power.</li><li><b>Move:</b> ◀ ▶ or ←/→ (limited fuel each turn). The map is big: arrows at the screen edge point to off-screen tanks, and 🗺 (or M) shows the whole map.</li><li><b>Fire:</b> FIRE button or Space. Wind pushes your shots, so watch the arrows!</li><li><b>Weapons:</b> tap the icons (or keys 1-8). 🐔 bounces, 🍌 splits, 🥾 YEET shoves rivals away, ☄️ is huge.</li><li><b>☢️ Nuke:</b> one per player. Enormous damage, but it is heavy: the wind throws it around and it wobbles, so it is very hard to land.</li><li><b>☠️ Poison gas:</b> one per player. A green cloud sits for 3 rounds and poisons anyone in it: 8 damage at the end of each of their turns.</li><li><b>Crates 📦</b> drop from the sky: walk into them for ammo or health.</li><li>Terrain is destructible. Dig a hole all the way through and whoever falls in is gone for good. Water (and on The Abyss, the void) is instant death.</li></ul><div class="btns"><button class="btn pri" data-act="close">Got it</button></div>`);
+  sheet(`<h2>💥 How to play</h2><ul><li><b>Aim:</b> drag on the battlefield, or ⬆⬇ angle and ➕➖ power (keys: ↑↓ and W/S). <b>Fire:</b> button or Space.</li><li><b>Move:</b> ◀ ▶ or ←/→ (limited fuel). <b>🗺 / M</b> shows the whole map; edge arrows point to off-screen tanks.</li><li><b>Weapons:</b> tap an icon or press 1-4. Each tank class has its own kit, speed, range and health: pick one in the Garage.</li><li><b>Wind</b> bends every shot. <b>☢️ Nuke</b> is huge but wobbly. <b>☠️ Gas</b> poisons for 3 rounds. <b>🥾 YEET</b> shoves.</li><li>Dig a hole all the way through and whoever falls in is gone. Water is instant death too.</li></ul><div class="btns"><button class="btn pri" data-act="close">Got it</button></div>`);
 }
 
 // ---------- menus ----------
 let diff = 'normal';
 function renderHome() {
-  const home = $('#home'); home.hidden = false; $('#bar').classList.add('off');
-  const key = today(), done = S.daily[key], st = S.stats;
-  home.innerHTML = `<div class="wrap">
+  const home = $('#home'); home.hidden = false; $('#bar').classList.add('off'); $('#emos').hidden = true; fit();
+  const key = today(), done = S.daily[key], st = S.stats, C = TANKS[S.tank] || TANKS.rookie;
+  home.innerHTML = `<div class="wrap" id="homeWrap">
     <div class="logo"><b>CRATER</b> <i>CLASH</i></div>
     <p class="tagline">Blast the ground. Yeet your rivals into the sea.</p>
-    <button class="mode daily" data-act="daily"><span class="em">🎯</span><span><b>Daily Duel #${dayNumber(key)}</b><small>Same map for everyone. Win in the fewest shots.</small></span><span class="tag">${done ? '✓ ' + done : S.ds.streak ? '🔥 ' + S.ds.streak : 'NEW'}</span></button>
-    <button class="mode" data-act="rampage"><span class="em">🌊</span><span><b>Rampage</b><small>Survive endless waves of angry tanks. Ranked.</small></span><span class="tag">${st.bestWave ? 'Best wave ' + st.bestWave : ''}</span></button>
-    <button class="mode" data-act="duel"><span class="em">🤖</span><span><b>Quick Duel</b><small>One-on-one against a bot. Pick how mean it is below.</small></span></button>
-    <div class="row3" id="diffs">${['easy', 'normal', 'hard'].map((d) => `<button class="btn ${d === diff ? 'on' : ''}" data-act="diff" data-d="${d}">${{ easy: '🙂 Easy', normal: '😠 Normal', hard: '😈 Hard' }[d]}</button>`).join('')}</div>
-    <button class="mode" data-act="two"><span class="em">👫</span><span><b>Two Players</b><small>Pass the device. Each picks a map, a coin flip decides.</small></span></button>
-    <div class="h3">MAP (Duel and Rampage)</div><div class="chips">${mapChips(S.map || 'random', 'map')}</div>
-    <div class="h3">YOUR DRIVER</div><div class="chips">${DRIVERS.map((d) => `<button data-act="driver" data-v="${d}" class="${d === S.driver ? 'on' : ''}">${d}</button>`).join('')}</div>
-    <div class="h3">YOUR HAT</div><div class="chips">${HATS.map((h, i) => { const ok = h.need(S); return `<button data-act="hat" data-i="${i}" class="${h.e === S.hat ? 'on' : ''} ${ok ? '' : 'lock'}" title="${ok ? h.n : '🔒 ' + h.hint}">${ok ? h.e || '∅' : '🔒'}</button>`; }).join('')}</div>
-    <div class="row3"><button class="btn" data-act="boards">🏆 Ranks</button><button class="btn" data-act="how">❓ How to play</button><button class="btn" data-act="mute">${S.muted ? '🔇 Off' : '🔊 On'}</button></div>
-    <p class="fine" style="text-align:center">Played ${st.played} · won ${st.wins} · tanks blasted ${st.kills}</p>
+    <div class="grid2">
+      <button class="mode daily" data-act="daily"><span class="em">🎯</span><b>Daily Duel #${dayNumber(key)}</b><small>Same map for everyone</small><span class="tag">${done ? '✓ ' + done : S.ds.streak ? '🔥 ' + S.ds.streak : 'NEW'}</span></button>
+      <button class="mode" data-act="rampage"><span class="em">🌊</span><b>Rampage</b><small>Endless waves · ranked</small><span class="tag">${st.bestWave ? 'Best wave ' + st.bestWave : ''}</span></button>
+      <div class="mode col"><button data-act="duel"><span class="em">🤖</span><b>Quick Duel</b><small>You vs a bot</small></button><div class="seg">${['easy', 'normal', 'hard'].map((d) => `<button class="${d === diff ? 'on' : ''}" data-act="diff" data-d="${d}">${{ easy: '🙂', normal: '😠', hard: '😈' }[d]}</button>`).join('')}</div></div>
+      <button class="mode" data-act="two"><span class="em">👫</span><b>Two Players</b><small>Same screen</small></button>
+    </div>
+    <button class="mode online" data-act="online"><span class="em">🌐</span><span><b>Play Online</b><small>Different computers or phones: quick match or invite a friend</small></span></button>
+    <div class="row5"><button class="btn" data-act="garage">${C.icon} Garage</button><button class="btn" data-act="mapsheet">${S.map === 'random' || !MAPS[S.map] ? '🎲' : MAPS[S.map].icon} Map</button><button class="btn" data-act="boards">🏆 Ranks</button><button class="btn" data-act="how">❓ Help</button><button class="btn" data-act="mute">${S.muted ? '🔇' : '🔊'} Sound</button></div>
+    <p class="fine" style="text-align:center;margin:0">${S.driver} ${C.name} · played ${st.played} · won ${st.wins} · tanks blasted ${st.kills}</p>
   </div>`;
+  fitBox(home, $('#homeWrap'), 16);
 }
+// shrink content a little rather than ever showing a scrollbar on a start page
+function fitBox(box, el, pad = 24) {
+  if (!el) return; el.style.zoom = 1;
+  const k = Math.min(1, (box.clientHeight - pad) / el.offsetHeight, (box.clientWidth - 8) / el.offsetWidth); el.style.zoom = k < 1 ? k.toFixed(3) : 1;
+}
+const fitAll = () => { if (!$('#home').hidden) fitBox($('#home'), $('#homeWrap'), 16); if (!$('#sheet').hidden) fitBox($('#sheet'), $('#sheetBody'), 24); fit(); };
+addEventListener('resize', fitAll);
 const mapChips = (cur, act) => ['random', ...MAP_IDS].map((id) => `<button data-act="${act}" data-v="${id}" class="${id === cur ? 'on' : ''}" title="${id === 'random' ? 'Random map' : MAPS[id].name}">${id === 'random' ? '🎲' : MAPS[id].icon}</button>`).join('');
-let two = { a: 'random', b: 'random' };
+let two = { a: 'random', b: 'random', ta: 'rookie', tb: 'rookie' };
+const tankChips = (cur, act) => TANK_IDS.map((id) => `<button data-act="${act}" data-v="${id}" class="${id === cur ? 'on' : ''}" title="${TANKS[id].name}">${TANKS[id].icon}</button>`).join('');
 function twoSheet() {
   const nm = (id) => (id === 'random' ? '🎲 Random' : `${MAPS[id].icon} ${MAPS[id].name}`);
-  sheet(`<h2>👫 Pick your maps</h2><p class="muted">Each player chooses a map. If you choose different ones, a coin flip decides.</p>
-    <div class="h3">PLAYER 1 · ${nm(two.a)}</div><div class="chips">${mapChips(two.a, 'p1map')}</div>
-    <div class="h3">PLAYER 2 · ${nm(two.b)}</div><div class="chips">${mapChips(two.b, 'p2map')}</div>
+  sheet(`<h2>👫 Two Players</h2><p class="muted">Each player picks a tank and a map. Different maps? A coin flip decides.</p>
+    <div class="h3">PLAYER 1 · ${TANKS[two.ta].name} · ${nm(two.a)}</div><div class="chips">${tankChips(two.ta, 'p1tank')}</div><div class="chips" style="margin-top:4px">${mapChips(two.a, 'p1map')}</div>
+    <div class="h3">PLAYER 2 · ${TANKS[two.tb].name} · ${nm(two.b)}</div><div class="chips">${tankChips(two.tb, 'p2tank')}</div><div class="chips" style="margin-top:4px">${mapChips(two.b, 'p2map')}</div>
     <div class="btns"><button class="btn pri" data-act="twogo">${two.a === two.b ? 'Start' : '🪙 Flip and start'}</button><button class="btn" data-act="close">Back</button></div>`);
 }
+function statBars(C) {
+  const bar = (n, v) => `<div class="bar"><span>${n}</span><i style="width:${Math.round(v * 100)}%"></i></div>`;
+  return `<div class="stats"><b>${C.icon} ${C.name}</b> <span class="muted">${C.tag}</span>${bar('Health', C.hp / 140)}${bar('Speed', C.move / 170)}${bar('Range', C.rng / 1.35)}${bar('Power', C.dmg / 1.2)}
+    <div class="kit">${C.kit.map(([id, n]) => `<span>${WEAPONS[widx(id)].icon} ${WEAPONS[widx(id)].name}${n === Infinity ? '' : ' ×' + n}</span>`).join('')}</div></div>`;
+}
+function garageSheet() {
+  sheet(`<h2>🛠 Garage</h2><div class="chips">${tankChips(S.tank, 'tank')}</div>${statBars(TANKS[S.tank])}
+    <div class="h3">DRIVER</div><div class="chips">${DRIVERS.map((d) => `<button data-act="driver" data-v="${d}" class="${d === S.driver ? 'on' : ''}">${d}</button>`).join('')}</div>
+    <div class="h3">HAT</div><div class="chips">${HATS.map((h, i) => { const ok = h.need(S); return `<button data-act="hat" data-i="${i}" class="${h.e === S.hat ? 'on' : ''} ${ok ? '' : 'lock'}" title="${ok ? h.n : '🔒 ' + h.hint}">${ok ? h.e || '∅' : '🔒'}</button>`; }).join('')}</div>
+    <p class="fine">The Daily Duel and friend challenges always use the Rookie so everyone competes equally.</p>
+    <div class="btns"><button class="btn pri" data-act="homeback">Done</button></div>`);
+}
+function mapSheet() {
+  sheet(`<h2>🗺 Map</h2><p class="muted">For Quick Duel, Rampage and online play.</p><div class="chips">${mapChips(S.map || 'random', 'map')}</div>
+    <div class="stats"><b>${S.map === 'random' || !MAPS[S.map] ? '🎲 Random' : MAPS[S.map].icon + ' ' + MAPS[S.map].name}</b></div><div class="btns"><button class="btn pri" data-act="homeback">Done</button></div>`);
+}
 const actions = {
-  map: (b) => { S.map = b.dataset.v; save(); renderHome(); SFX.blip(); },
+  garage: () => garageSheet(), mapsheet: () => mapSheet(), homeback: () => { closeSheet(); renderHome(); },
+  tank: (b) => { S.tank = b.dataset.v; save(); garageSheet(); SFX.blip(); },
+  map: (b) => { S.map = b.dataset.v; save(); mapSheet(); SFX.blip(); },
+  p1tank: (b) => { two.ta = b.dataset.v; twoSheet(); SFX.blip(); }, p2tank: (b) => { two.tb = b.dataset.v; twoSheet(); SFX.blip(); },
+  online: () => onlineSheet(),
+  oq: async () => { const N = window.NET; N.fail = (m) => { toast(m, 4000); onlineSheet(); }; await N.quickMatch(myInfo().name) || toast('Could not reach the server. Check your internet.'); onlineSheet(); },
+  oc: async () => { const N = window.NET; N.fail = (m) => { toast(m, 4000); onlineSheet(); }; await N.createRoom(false, myInfo().name) || toast('Could not create a room. Check your internet.'); onlineSheet(); },
+  oj: async () => { const c = ($('#codeIn').value || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length !== 5) return toast('Room codes have 5 characters'); const N = window.NET; N.fail = (m) => { toast(m, 4000); onlineSheet(); }; const why = await N.joinRoom(c, myInfo().name); if (why) toast(why, 3000); onlineSheet(); },
+  oleave: async () => { await window.NET?.leave(true); ONL.opp = null; onlineSheet(); },
+  invite: async () => { const u = `https://rank-game.com/games/crater-clash#${window.NET.st.code}`; toast(await copy(u) ? 'Invite link copied! 📋' : u, 2600); },
   p1map: (b) => { two.a = b.dataset.v; twoSheet(); SFX.blip(); }, p2map: (b) => { two.b = b.dataset.v; twoSheet(); SFX.blip(); },
-  twogo: () => { const pick1 = Math.random() < 0.5, id = two.a === two.b ? two.a : pick1 ? two.a : two.b; startMatch({ mode: 'two', map: id }); if (two.a !== two.b) toast(`🪙 Coin flip: ${pick1 ? 'Player 1' : 'Player 2'}'s map${id === 'random' ? '' : ' - ' + MAPS[id].icon + ' ' + MAPS[id].name}`, 3000); },
-  close: () => closeSheet(), resume: () => closeSheet(), how: () => howSheet(),
+  twogo: () => { const pick1 = Math.random() < 0.5, id = two.a === two.b ? two.a : pick1 ? two.a : two.b; startMatch({ mode: 'two', map: id, tank: two.ta, tank2: two.tb }); if (two.a !== two.b) toast(`🪙 Coin flip: ${pick1 ? 'Player 1' : 'Player 2'}'s map${id === 'random' ? '' : ' - ' + MAPS[id].icon + ' ' + MAPS[id].name}`, 3000); },
+  close: () => { ONL.lobby = false; closeSheet(); }, resume: () => closeSheet(), how: () => howSheet(),
   mute: () => { S.muted = !S.muted; save(); G ? pauseSheet() : renderHome(); },
-  home: () => { G = null; closeSheet(); renderHome(); },
+  home: async () => { await window.NET?.leave(true); ONL.lobby = false; ONL.opp = null; G = null; closeSheet(); renderHome(); },
   diff: (b) => { diff = b.dataset.d; renderHome(); },
-  driver: (b) => { S.driver = b.dataset.v; save(); renderHome(); SFX.blip(); },
-  hat: (b) => { const h = HATS[+b.dataset.i]; if (!h.need(S)) return toast('🔒 ' + h.hint); S.hat = h.e; save(); renderHome(); SFX.blip(); },
+  driver: (b) => { S.driver = b.dataset.v; save(); garageSheet(); SFX.blip(); },
+  hat: (b) => { const h = HATS[+b.dataset.i]; if (!h.need(S)) return toast('🔒 ' + h.hint); S.hat = h.e; save(); garageSheet(); SFX.blip(); },
   daily: async () => { await timeReady; const key = today(); startMatch({ mode: 'daily', seed: 'daily' + key, key, diff: 'normal' }); },
   rampage: () => startMatch({ mode: 'rampage' }),
   duel: () => startMatch({ mode: 'duel', diff }),
   two: () => twoSheet(),
-  again: () => { const T = G.T; if (T.mode === 'daily') startMatch({ mode: 'daily', seed: 'daily' + T.key, key: T.key }); else if (T.mode === 'chal') startMatch({ mode: 'chal', seed: T.seed, target: T.target, chalName: T.chalName }); else startMatch({ mode: T.mode, diff: G.diff, map: G.mapId }); },
+  again: () => { const T = G.T; if (T.mode === 'online') return onlineRematch();
+    if (T.mode === 'daily') startMatch({ mode: 'daily', seed: 'daily' + T.key, key: T.key }); else if (T.mode === 'chal') startMatch({ mode: 'chal', seed: T.seed, target: T.target, chalName: T.chalName }); else startMatch({ mode: T.mode, diff: G.diff, map: G.mapId }); },
   boards: () => boardsSheet('daily'),
   board: (b) => boardsSheet(b.dataset.tab),
   share: () => shareResult(), save: () => saveCard(),
@@ -813,22 +891,23 @@ function boardsSheet(tab) {
   const id = tab === 'daily' ? 'crater-clash_d' + today().replace(/-/g, '') : 'crater-clash';
   sheet(`<h2>🏆 Ranks</h2><div class="tabs"><button data-act="board" data-tab="daily" class="${tab === 'daily' ? 'on' : ''}">Daily Duel</button><button data-act="board" data-tab="rampage" class="${tab === 'rampage' ? 'on' : ''}">Rampage</button></div><div id="lbHost"></div>
     <p class="fine">Daily: fewest shots, most health left. Rampage: waves cleared plus damage dealt. Sign in on rank-game.com to appear on the boards.</p><div class="btns"><button class="btn" data-act="close">Close</button></div>`);
-  leaderboard($('#lbHost'), id).show(0);
+  leaderboard($('#lbHost'), id).show(0); setTimeout(fitAll, 700); setTimeout(fitAll, 2500);
 }
 function resultSheet(T) {
   const win = T.win; let h;
   if (T.mode === 'rampage') h = `<h2>💀 You reached wave ${T.wave}</h2><div class="big">${T.score}</div><p class="muted">points · ${T.kills} tank${T.kills === 1 ? '' : 's'} blasted${T.score >= S.stats.bestScore ? ' · 🏅 personal best' : ''}</p>`;
   else if (win && T.target) h = `<h2>${T.shots < T.target ? '🏆 You beat them!' : T.shots === T.target ? '🤝 Tied!' : '😬 So close'}</h2><div class="big">${T.shots} vs ${T.target}</div><p class="muted">${T.shots < T.target ? `${esc(T.chalName || 'Your friend')} needed ${T.target} shots. You needed ${T.shots}.` : `${esc(T.chalName || 'Your friend')} did it in ${T.target}. Try again on the same map!`}</p>`;
   else if (win) h = `<h2>🏆 Victory!</h2><div class="big">${T.shots} shot${T.shots === 1 ? '' : 's'}</div><p class="muted">${T.hp} HP left${T.mode === 'daily' ? ` · 🔥 ${S.ds.streak}-day streak` : ''}</p>`;
+  else if (T.mode === 'online') h = win ? `<h2>🏆 You win!</h2><p class="muted">${esc(G.tanks[1 - G.me].name)} has been blasted. Rematch?</p>` : `<h2>💥 ${esc(G.tanks[1 - G.me].name)} wins</h2><p class="muted">Rematch?</p>`;
   else if (T.mode === 'two') h = `<h2>🏆 ${esc(G.tanks.find((t) => !t.dead)?.name || 'Nobody')} wins!</h2><p class="muted">Rematch?</p>`;
   else h = `<h2>💥 Defeated</h2><p class="muted">Terrain remembers. Try again?</p>`;
   if (T.ranked && (T.score > 0)) h += `<div id="lbHost"></div><div id="gp" class="gp"></div>`;
   h += `<div class="btns">`;
-  if (win || T.mode === 'rampage') h += `<button class="btn hot" data-act="share">📣 Share</button>`;
-  if (win && T.mode !== 'two' && T.mode !== 'rampage') h += `<button class="btn hot" data-act="challenge">🎯 Challenge a friend</button>`;
-  h += `<button class="btn pri" data-act="again">${win ? 'Play again' : 'Try again'}</button><button class="btn" data-act="home">Menu</button></div>`;
+  if ((win && T.mode !== 'online') || T.mode === 'rampage') h += `<button class="btn hot" data-act="share">📣 Share</button>`;
+  if (win && T.mode !== 'two' && T.mode !== 'rampage' && T.mode !== 'online') h += `<button class="btn hot" data-act="challenge">🎯 Challenge a friend</button>`;
+  h += `<button class="btn pri" data-act="again" id="againB">${T.mode === 'online' ? '🔁 Rematch' : win ? 'Play again' : 'Try again'}</button><button class="btn" data-act="home">Menu</button></div>`;
   sheet(h);
-  if (T.ranked && T.score > 0) { leaderboard($('#lbHost'), T.ranked).show(T.score); guestPrompt(); }
+  if (T.ranked && T.score > 0) { leaderboard($('#lbHost'), T.ranked).show(T.score); guestPrompt(); setTimeout(fitAll, 700); setTimeout(fitAll, 2500); }
 }
 function guestPrompt() {
   const el = $('#gp'); if (!el) return; const a = A();
@@ -870,6 +949,69 @@ async function shareResult() {
 }
 function saveCard() { const T = G?.T; if (!T) return; const a = document.createElement('a'); a.download = 'crater-clash.png'; a.href = drawCard(T).toDataURL('image/png'); document.body.append(a); a.click(); a.remove(); toast('🖼 Card saved'); }
 
+// ---------- online: two computers, one fixed-step simulation ----------
+// Each machine runs the whole game. Only the player whose turn it is sends their final aim (a "fire" message); the other machine plays that
+// shot in the same fixed ticks. At the end of a turn the shooter's machine sends a snapshot of tank positions and health so drift can't build up.
+const netSend = (m) => window.NET?.send(m);
+const snapshot = () => G.tanks.map((t) => [t.x, t.y, t.hp, t.poison, t.dead ? 1 : 0, ...t.ammo.map((a) => (a === Infinity ? -1 : a))]);
+function applySnap(sn) {
+  G.tanks.forEach((t, i) => { const a = sn[i]; if (!a) return; t.x = a[0]; t.y = a[1]; t.hp = a[2]; t.poison = a[3]; if (a[4] && !t.dead) { t.dead = true; t.hp = 0; } t.vx = t.vy = 0; t.air = false; t.ammo = a.slice(5).map((v) => (v < 0 ? Infinity : v)); });
+}
+function poseTick(t, dt) { // let the other screen watch you move and aim
+  if (G.mode !== 'online') return; G.poseT = (G.poseT || 0) - dt;
+  if (G.poseT <= 0) { G.poseT = 0.12; netSend({ k: 'pose', n: G.turns, x: t.x, y: t.y, f: t.f, el: t.el, pw: t.pw, wi: t.wi }); }
+}
+const myInfo = () => ({ name: (A().user?.nick || S.name || 'Player').slice(0, 14), tank: S.tank || 'rookie', driver: S.driver, hat: S.hat, map: S.map || 'random' });
+const ONL = { opp: null, votes: new Set(), lobby: false };
+function startOnline(host, mine, opp, seed, map) {
+  const infos = host ? [mine, opp] : [opp, mine];
+  closeSheet(); ONL.votes.clear();
+  startMatch({ mode: 'online', seed, map, me: host ? 0 : 1, players: infos });
+}
+function onNetMsg(m) {
+  const N = window.NET;
+  if (m.k === 'hi') { ONL.opp = m.info; if (N.st.host) hostGo(); return; }
+  if (m.k === 'cfg') { startOnline(false, myInfo(), m.host, m.seed, m.map); return; }
+  if (m.k === 'again') { ONL.votes.add('them'); if (N.st.host) hostGo(true); return; }
+  if (!G || G.mode !== 'online') return;
+  if (m.k === 'fire') G.inbox.push(m);
+  else if (m.k === 'pose') { const t = G.turn; if (G.state === 'aim' && t.remote && m.n === G.turns) Object.assign(t, { x: m.x, y: m.y, f: m.f, el: m.el, pw: m.pw, wi: m.wi }); }
+  else if (m.k === 'snap') G.snaps[m.n] = m.s;
+  else if (m.k === 'emo') { const t = G.tanks[1 - G.me]; if (t && !t.dead && ['😂', '😡', '👍', '💩'].includes(m.e)) say(t, m.e); }
+}
+function hostGo(rematch) { // host decides the seed and map, tells the guest, and both start together
+  const N = window.NET, mine = myInfo(), opp = ONL.opp; if (!opp || (rematch && !(ONL.votes.has('me') && ONL.votes.has('them')))) return;
+  const map = mine.map === opp.map ? mine.map : Math.random() < 0.5 ? mine.map : opp.map, seed = Math.random().toString(36).slice(2, 8);
+  N.send({ k: 'cfg', seed, map, host: mine }); startOnline(true, mine, opp, seed, map);
+  if (mine.map !== opp.map) setTimeout(() => toast(`🪙 Coin flip chose ${map === 'random' ? '🎲 a random map' : MAPS[map].icon + ' ' + MAPS[map].name}`, 2600), 300);
+}
+function onlineRematch() {
+  ONL.votes.add('me'); netSend({ k: 'again' }); const b = $('#againB'); if (b) { b.textContent = 'Waiting for them…'; b.disabled = true; }
+  if (window.NET?.st.host) hostGo(true);
+}
+function onlineSheet() {
+  const N = window.NET, st = N?.st; ONL.lobby = true;
+  if (!N) return sheet(`<h2>🌐 Play Online</h2><p class="muted">Online play needs an internet connection. Reload the page and try again.</p><div class="btns"><button class="btn" data-act="close">Back</button></div>`);
+  if (st.on) {
+    const link = `https://rank-game.com/games/crater-clash#${st.code}`;
+    return sheet(`<h2>🌐 Room <span class="code">${st.code}</span></h2><p class="muted">${st.open ? 'Opponent connected!' : st.pub ? 'Looking for an opponent…' : 'Send this code or link to your friend and wait here.'}</p>
+      <div class="btns"><button class="btn hot" data-act="invite">🔗 Copy invite link</button><button class="btn" data-act="oleave">Cancel</button></div><p class="fine">${esc(link)}</p>`);
+  }
+  const C = TANKS[S.tank || 'rookie'];
+  sheet(`<h2>🌐 Play Online</h2><p class="muted">Play a friend on another computer or phone. Your tank: ${C.icon} ${C.name}</p>
+    <div class="btns"><button class="btn pri" data-act="oq">⚡ Quick Match</button><button class="btn" data-act="oc">🔒 Private room</button></div>
+    <div class="join"><input id="codeIn" maxlength="5" placeholder="CODE" autocomplete="off" autocapitalize="characters"><button class="btn" data-act="oj">Join</button></div>
+    <div class="btns"><button class="btn" data-act="close">Back</button></div>`);
+}
+function wireNet() {
+  const N = window.NET; if (!N) return;
+  N.onmsg = onNetMsg;
+  N.onchange = () => { if (ONL.lobby && !$('#sheet').hidden) onlineSheet(); };
+  N.onopen = () => N.send({ k: 'hi', info: myInfo() });
+  N.onclose = () => { if (G && G.mode === 'online' && !G.over) { G.over = true; closeSheet(); sheet(`<h2>👋 Your opponent left</h2><p class="muted">The match ended.</p><div class="btns"><button class="btn pri" data-act="home">Menu</button></div>`); } else if (ONL.lobby) toast('Opponent left the room'); };
+}
+addEventListener('craternet', wireNet); if (window.NET) wireNet();
+
 // ---------- start ----------
 leaderboard(document.createElement('div'), 'crater-clash'); // tells rank-game.com this game has leaderboards (shows the nickname box)
 requestAnimationFrame(loop);
@@ -879,12 +1021,113 @@ timeReady.then(() => { if (!G) renderHome(); });
   const h = location.hash.slice(1), m = /^c=([a-z0-9]{3,12})\.(\d{1,2})\.?([^&]*)$/i.exec(h);
   if (m) { window.rgInvite?.(''); let nm = ''; try { nm = decodeURIComponent(m[3]).slice(0, 20); } catch { /* ignore */ } sheet(`<h2>🎯 ${esc(nm || 'A friend')} challenged you!</h2><p class="muted">They won this exact map in <b>${+m[2]}</b> shot${+m[2] === 1 ? '' : 's'}. Can you do it in fewer?</p><div class="btns"><button class="btn pri" id="acc">Accept challenge</button><button class="btn" data-act="close">Not now</button></div>`); $('#acc').onclick = () => startMatch({ mode: 'chal', seed: m[1], target: +m[2], chalName: nm, diff: 'normal' }); }
   else if (h === 'daily') actions.daily();
+  else if (/^[A-HJ-NP-Z2-9]{5}$/i.test(h)) { // an invite: #ROOMCODE
+    ONL.lobby = true; sheet(`<h2>🌐 Joining room ${esc(h.toUpperCase())}…</h2><p class="muted">Connecting to your friend.</p>`); let tries = 0;
+    const go = async () => { const N = window.NET; if (!N) return ++tries < 30 ? setTimeout(go, 300) : sheet(`<h2>🌐 Couldn't connect</h2><div class="btns"><button class="btn" data-act="home">Menu</button></div>`); N.fail = (m) => { toast(m, 4000); onlineSheet(); }; const why = await N.joinRoom(h.toUpperCase(), myInfo().name); if (why) { toast(why, 3500); onlineSheet(); } else onlineSheet(); };
+    go();
+  }
   else if (!S.seenHow) { S.seenHow = true; save(); howSheet(); }
 })();
 
 // for tests and the preview recorder
 window.craterState = () => G; window.craterSave = () => S;
 window.startDemo = () => startMatch({ mode: 'duel', demo: true, diff: 'hard' }); // bot vs bot
+</script>
+<script type="module">
+// Online rooms: a Firestore doc holds the lobby and the WebRTC handshake (same shape as Memory Duel's); the match itself runs peer to peer.
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import { getFirestore, doc, onSnapshot, runTransaction, collection, query, where, limit, getDocs } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const ICE = { iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }] };
+const db = getFirestore(initializeApp({ apiKey: 'AIzaSyDz5J34ahi7fP48CU2cPrp1FNmqK-20D5E', authDomain: 'hatdoc-blog-1048.firebaseapp.com', projectId: 'hatdoc-blog-1048' }));
+const ROOMS = 'craterClash', ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const rid = (n, a = ALPHA) => Array.from(crypto.getRandomValues(new Uint32Array(n)), (x) => a[x % a.length]).join('');
+let meId = null; try { meId = localStorage.getItem('cc-id'); } catch { /* private mode */ } if (!meId) { meId = rid(10, 'abcdefghijklmnopqrstuvwxyz0123456789'); try { localStorage.setItem('cc-id', meId); } catch { /* ignore */ } }
+const st = { on: false, host: false, code: '', room: null, unsub: null, peer: null, pub: false, open: false };
+const N = (window.NET = { st, onmsg: null, onchange: null, onopen: null, onclose: null });
+const changed = () => N.onchange?.();
+const gathered = (pc) => new Promise((res) => { if (pc.iceGatheringState === 'complete') return res(); const t = setTimeout(res, 3000); pc.addEventListener('icegatheringstatechange', () => pc.iceGatheringState === 'complete' && (clearTimeout(t), res())); });
+N.send = (m) => { const ch = st.peer?.r; if (ch?.readyState === 'open') ch.send(JSON.stringify(m)); };
+function wire(peer) {
+  peer.r.onmessage = (e) => { try { N.onmsg?.(JSON.parse(e.data)); } catch (err) { console.warn(err); } };
+  let closed = false; const close = () => { if (!closed && st.on) { closed = true; N.onclose?.(); N.leave(true); } };
+  peer.pc.onconnectionstatechange = () => { if (['failed', 'closed', 'disconnected'].includes(peer.pc.connectionState)) close(); };
+  peer.r.onclose = close;
+  peer.r.onopen = () => { st.open = true; N.onopen?.(); changed(); };
+  if (peer.r.readyState === 'open') peer.r.onopen();
+}
+async function mutate(fn) { try { await runTransaction(db, async (t) => { const ref = doc(db, ROOMS, st.code), s = await t.get(ref); if (!s.exists()) return; const r = fn(s.data()); if (r) t.set(ref, r); }); } catch (e) { console.warn(e); } }
+N.createRoom = async (pub, name) => {
+  await N.leave(true);
+  for (let i = 0; i < 5; i++) {
+    const c = rid(5), ref = doc(db, ROOMS, c);
+    try {
+      let ok = false;
+      await runTransaction(db, async (t) => { const s = await t.get(ref); if (s.exists() && Date.now() - s.data().created < 7200e3) return; t.set(ref, { code: c, pub, created: Date.now(), host: meId, phase: 'lobby', players: { [meId]: { n: name } }, sig: {} }); ok = true; });
+      if (!ok) continue;
+      Object.assign(st, { on: true, host: true, pub, code: c, open: false }); location.hash = c;
+      st.unsub = onSnapshot(ref, (s) => { st.room = s.data(); hostSignal(); changed(); });
+      changed(); return true;
+    } catch (e) { console.warn(e); return false; }
+  }
+  return false;
+};
+let answering = false;
+async function hostSignal() {
+  const r = st.room; if (!r || st.peer || answering) return;
+  const [pid, s] = Object.entries(r.sig || {}).find(([, v]) => v.o && !v.a) || []; if (!pid) return;
+  answering = true;
+  const pc = new RTCPeerConnection(ICE), peer = { pc };
+  pc.ondatachannel = (e) => { if (e.channel.label === 'r') { peer.r = e.channel; wire(peer); } };
+  await pc.setRemoteDescription({ type: 'offer', sdp: s.o }); await pc.setLocalDescription(await pc.createAnswer()); await gathered(pc);
+  st.peer = peer;
+  await mutate((r) => { if (!r.sig[pid]) return null; r.sig[pid].a = pc.localDescription.sdp; r.phase = 'play'; return r; });
+  answering = false;
+}
+N.joinRoom = async (c, name) => {
+  await N.leave(true);
+  const ref = doc(db, ROOMS, c), pc = new RTCPeerConnection(ICE), peer = { pc, r: pc.createDataChannel('r') };
+  await pc.setLocalDescription(await pc.createOffer()); await gathered(pc);
+  let ok = false, why = 'Room not found';
+  try {
+    await runTransaction(db, async (t) => {
+      const s = await t.get(ref), r = s.exists() ? s.data() : null;
+      if (!r || Date.now() - r.created > 7200e3) return;
+      if (Object.keys(r.players).length >= 2 || r.phase !== 'lobby') { why = 'That room is full'; return; }
+      r.players[meId] = { n: name }; r.sig[meId] = { o: pc.localDescription.sdp }; t.set(ref, r); ok = true;
+    });
+  } catch (e) { console.warn(e); why = 'Could not connect. Check your internet.'; }
+  if (!ok) { pc.close(); return why; }
+  Object.assign(st, { on: true, host: false, pub: false, code: c, peer, open: false }); location.hash = c;
+  wire(peer);
+  st.unsub = onSnapshot(ref, async (s) => {
+    st.room = s.data(); if (!st.room) return;
+    const a = st.room.sig?.[meId]?.a; if (a && !pc.remoteDescription) await pc.setRemoteDescription({ type: 'answer', sdp: a });
+    if (!st.room.players[st.room.host]) { N.onclose?.(); N.leave(true); }
+    changed();
+  });
+  setTimeout(() => { if (st.on && st.code === c && peer.r.readyState !== 'open') { N.fail?.("Couldn't connect to that player (some networks block direct connections)."); N.leave(true); } }, 16000);
+  changed(); return '';
+};
+N.quickMatch = async (name) => {
+  try {
+    const snap = await getDocs(query(collection(db, ROOMS), where('pub', '==', true), where('phase', '==', 'lobby'), limit(15)));
+    const open = snap.docs.map((d) => d.data()).filter((r) => Date.now() - r.created < 20 * 60e3 && Object.keys(r.players).length === 1 && !r.players[meId]);
+    for (const r of open) if (!(await N.joinRoom(r.code, name))) return true;
+  } catch (e) { console.warn(e); }
+  return N.createRoom(true, name);
+};
+N.leave = async (quiet) => {
+  if (!st.on) return;
+  const c = st.code, host = st.host;
+  st.on = false; st.open = false; st.unsub?.(); st.unsub = null;
+  try { st.peer?.pc.close(); } catch { /* already closed */ }
+  st.peer = null; st.room = null;
+  if (c) { st.code = c; await mutate((r) => { delete r.players[meId]; delete r.sig[meId]; if (host) r.phase = 'play'; return r; }); st.code = ''; }
+  history.replaceState(null, '', location.pathname + location.search);
+  if (!quiet) changed();
+};
+addEventListener('pagehide', () => { if (st.on) N.leave(true); });
+dispatchEvent(new Event('craternet'));
 </script>
 </body>
 </html>
