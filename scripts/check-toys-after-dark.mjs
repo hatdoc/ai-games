@@ -92,6 +92,10 @@ s = await run(() => {
 });
 ok(s.carried && s.dropped && s.regot, 'an item can be picked up, dropped as evidence and picked up again');
 
+// 8b. holding E at the toy box lid works on the task instead of hiding in the box
+s = await run(() => { tad.startRound('rescue'); tad.setDemo(false); tad.H.timer = 999; const P = tad.P; P.x = -9; P.z = 11.5; tad.interact(); const hid = !!P.hidden; tad.input.act = true; for (let i = 0; i < 90; i++) tad.update(1 / 60); const prog = tad.G.prog; tad.input.act = false; return { hid, prog }; });
+ok(!s.hid, 'pressing E at the toy box lid does not hide you (it is the pry task zone); progress ' + s.prog.toFixed(2));
+
 // 9. chaos events all run without errors and make noise
 s = await run(() => {
   tad.startRound('cookie'); tad.setDemo(false); tad.H.timer = 999; const kinds = ['cat', 'vacuum', 'tower', 'ball', 'car', 'books', 'noisy'], done = [];
