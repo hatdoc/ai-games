@@ -145,12 +145,16 @@ s = await run(() => ({ say: !!tad.P.sayMsg, freeze: tad.G.chatFreeze > tad.G.t }
 ok(s.say && s.freeze, 'quick chat shows a bubble and makes teammates freeze');
 await page.click('#bPause').catch(() => {}); await page.keyboard.press('p'); const paused = await run(() => tad.G.paused); ok(paused, 'P pauses the round'); await page.click('#pRes');
 
-// 12. abilities obey the rules; cosmetics purchasable
+// 12. perks are passive (no button): speed, jump height and carrying strength differ per toy
 s = await run(() => {
-  const out = {}; for (const k of ['ninja', 'windup', 'clown', 'robot', 'teddy', 'explorer']) { tad.S.kind = k; tad.startRound('cookie'); tad.H.timer = 999; tad.setDemo(false); const P = tad.P; P.x = -4; P.z = 7; tad.input.ability = true; tad.input.iy = 1; tad.update(1 / 60); for (let i = 0; i < 10; i++) tad.update(1 / 60); out[k] = [Math.round(P.speedNow), P.cd.ab > 0]; tad.input.iy = 0; }
-  return out;
+  const out = {}; for (const k of ['ninja', 'windup', 'clown', 'robot', 'teddy', 'explorer']) {
+    tad.S.kind = k; tad.startRound('cookie'); tad.H.timer = 999; tad.setDemo(false); const P = tad.P; P.x = -4; P.z = 7; tad.cy = 0; tad.input.iy = 1; for (let i = 0; i < 20; i++) tad.update(1 / 60); const run = P.speedNow;
+    tad.input.iy = 0; for (let i = 0; i < 30; i++) tad.update(1 / 60); tad.input.jump = true; let peak = 0; for (let i = 0; i < 60; i++) { tad.update(1 / 60); peak = Math.max(peak, P.y); }
+    P.carry = { st: { heavy: 0 }, g: { visible: true }, emoji: 'x' }; tad.input.iy = 1; for (let i = 0; i < 20; i++) tad.update(1 / 60); const carryRun = P.speedNow; P.carry = null; tad.input.iy = 0;
+    out[k] = [Math.round(run * 10) / 10, Math.round(peak * 10) / 10, Math.round(carryRun * 10) / 10];
+  } return out;
 });
-ok(s.ninja[0] > s.teddy[0] && s.windup[0] > s.teddy[0] && s.ninja[1] && s.windup[1], 'ninja dash and wind-up sprint are faster than the bear and then go on cooldown: ' + JSON.stringify(s));
+ok(s.ninja[0] > s.robot[0] * 1.2 && s.windup[1] > 9 && s.ninja[1] > s.robot[1] && s.teddy[2] > s.robot[2] && s.teddy[2] === s.teddy[0], 'perks: ninja runs faster, spring toy jumps highest, bear carries at full speed while others slow down: ' + JSON.stringify(s));
 s = await run(() => { tad.S.kind = 'explorer'; tad.startRound('cookie'); tad.H.timer = 999; const P = tad.P; P.x = -22; P.z = 10; tad.interact(); const small = !!P.hidden; P.hidden = null; tad.S.kind = 'robot'; tad.startRound('cookie'); tad.P.x = -22; tad.P.z = 10; tad.interact(); return { small, robot: !!tad.P.hidden }; });
 ok(s.small && !s.robot, 'only the Tiny Explorer fits the mouse hole');
 s = await run(() => { tad.S.coins = 500; return 1; }); await page.click('#btnMissions').catch(() => {});
