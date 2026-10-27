@@ -298,22 +298,35 @@ const TAD = window.TAD = {};
     g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     return { group: g, legL, legR, armL, armR, head, mom, s: K };
   };
-  // realistic humans modelled in Blender (mom.glb / kid.glb); the procedural ones above are the fallback if they fail to load
+  // humans: Higgsfield character renders turned into inflated 3D bodies in Blender (mom3d.glb / kid3d.glb).
+  // Fallbacks if they fail to load: the rigged Blender models (mom.glb / kid.glb), then the procedural ones above.
   TAD.glb = {};
-  if (T.GLTFLoader) { const L = new T.GLTFLoader(); ['mom', 'kid'].forEach((k) => L.load(k + '.glb', (gl) => { TAD.glb[k] = gl.scene; }, undefined, () => {})); }
+  if (T.GLTFLoader) { const L = new T.GLTFLoader(); ['mom3d', 'kid3d', 'mom', 'kid'].forEach((k) => L.load(k + '.glb', (gl) => { TAD.glb[k] = gl.scene; }, undefined, () => {})); }
+  const coneFan = (half) => { // faint cone on the floor: where this human can see
+    const geo = new T.CircleGeometry(26, 28, -Math.PI / 2 - half, half * 2); geo.rotateX(-Math.PI / 2);
+    const f = new T.Mesh(geo, new T.MeshBasicMaterial({ color: 0xffc46b, transparent: true, opacity: 0.1, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide })); f.position.y = 0.12; return f;
+  };
   TAD.makeHuman = (type) => {
-    const src = TAD.glb[type], need = ['LegL', 'LegR', 'ArmL', 'ArmR', 'Head'];
-    if (!src) return proceduralHuman(type);
-    const root = src.clone(true), n = {}; need.forEach((k) => (n[k] = root.getObjectByName(k)));
-    if (need.some((k) => !n[k])) return proceduralHuman(type);
-    const g = new T.Group(), K = type === 'mom' ? 1 : 0.72; g.add(root); g.scale.setScalar(K);
-    root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-    return { group: g, legL: n.LegL, legR: n.LegR, armL: n.ArmL, armR: n.ArmR, head: n.Head, mom: type === 'mom', s: K };
+    const half = type === 'mom' ? 1.12 : 1.02; let h;
+    const s3 = TAD.glb[type + '3d'], rig = TAD.glb[type], need = ['LegL', 'LegR', 'ArmL', 'ArmR', 'Head'];
+    if (s3) {
+      const root = s3.clone(true), g = new T.Group(); g.add(root);
+      root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material = o.material.clone(); const m = o.material; m.emissive = new T.Color(0xffffff); m.emissiveMap = m.map; m.emissiveIntensity = 0.28; m.roughness = 0.8; m.metalness = 0; } });
+      const dummy = () => new T.Object3D();
+      h = { group: g, root, legL: dummy(), legR: dummy(), armL: dummy(), armR: dummy(), head: dummy(), mom: type === 'mom', s: 1 };
+    } else if (rig && need.every((k) => rig.getObjectByName(k))) {
+      const root = rig.clone(true), n = {}; need.forEach((k) => (n[k] = root.getObjectByName(k)));
+      const g = new T.Group(), K = type === 'mom' ? 0.75 : 0.55; g.add(root); g.scale.setScalar(K); root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      h = { group: g, legL: n.LegL, legR: n.LegR, armL: n.ArmL, armR: n.ArmR, head: n.Head, mom: type === 'mom', s: K };
+    } else h = proceduralHuman(type);
+    const fan = coneFan(half); fan.scale.setScalar(1 / h.s); h.group.add(fan); h.fan = fan; return h;
   };
   TAD.animateHuman = (h, t, walking) => {
     const s = Math.sin(t * 5) * (walking ? 0.55 : 0);
     h.legL.rotation.x = s; h.legR.rotation.x = -s; h.armL.rotation.x = -s * 0.7; h.armR.rotation.x = s * 0.7;
-    h.group.children[0].position.y = 0; h.group.position.y = walking ? Math.abs(Math.sin(t * 5)) * 0.35 : 0;
+    h.group.position.y = walking ? Math.abs(Math.sin(t * 5)) * 0.35 * h.s : 0;
+    if (h.root) { h.root.rotation.z = walking ? Math.sin(t * 5) * 0.04 : 0; h.root.rotation.x = walking ? 0.05 : 0; }
+    if (h.fan) h.fan.material.opacity = 0.09 + 0.03 * Math.sin(t * 3);
   };
   TAD.resize = () => { const w = innerWidth, h = innerHeight; renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = w / h < 0.8 ? 66 : 52; camera.updateProjectionMatrix(); };
   addEventListener('resize', TAD.resize); TAD.resize();
