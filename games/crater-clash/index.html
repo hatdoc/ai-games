@@ -878,7 +878,12 @@ const actions = {
   oc: async () => { const N = window.NET; N.fail = (m) => { toast(m, 4000); onlineSheet(); }; await N.createRoom(false, myInfo().name) || toast('Could not create a room. Check your internet.'); onlineSheet(); },
   oj: async () => { const c = ($('#codeIn').value || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length !== 5) return toast('Room codes have 5 characters'); const N = window.NET; N.fail = (m) => { toast(m, 4000); onlineSheet(); }; const why = await N.joinRoom(c, myInfo().name); if (why) toast(why, 3000); onlineSheet(); },
   oleave: async () => { await window.NET?.leave(true); ONL.opp = null; onlineSheet(); },
-  invite: async () => { const u = `https://rank-game.com/games/crater-clash#${window.NET.st.code}`; toast(await copy(u) ? 'Invite link copied! 📋' : u, 2600); },
+  invite: async () => { // the phone's share sheet lists Instagram DMs; computers fall back to copying the link
+    const u = `https://rank-game.com/games/crater-clash#${window.NET.st.code}`, text = `💥 Play Crater Clash with me! Tap to join my room ${window.NET.st.code}`;
+    try { if (navigator.share) { await navigator.share({ title: 'Crater Clash', text, url: u }); return; } } catch (e) { if (e?.name === 'AbortError') return; }
+    toast(await copy(`${text}\n${u}`) ? 'Invite copied! Paste it into Instagram, WhatsApp, anywhere 📋' : u, 3200);
+  },
+  copyinv: async () => { const u = `https://rank-game.com/games/crater-clash#${window.NET.st.code}`; toast(await copy(u) ? 'Invite link copied! 📋' : u, 2600); },
   p1map: (b) => { two.a = b.dataset.v; twoSheet(); SFX.blip(); }, p2map: (b) => { two.b = b.dataset.v; twoSheet(); SFX.blip(); },
   twogo: () => { const pick1 = Math.random() < 0.5, id = two.a === two.b ? two.a : pick1 ? two.a : two.b; startMatch({ mode: 'two', map: id, tank: two.ta, tank2: two.tb }); if (two.a !== two.b) toast(`🪙 Coin flip: ${pick1 ? 'Player 1' : 'Player 2'}'s map${id === 'random' ? '' : ' - ' + MAPS[id].icon + ' ' + MAPS[id].name}`, 3000); },
   close: () => { ONL.lobby = false; closeSheet(); }, resume: () => closeSheet(), how: () => howSheet(),
@@ -1008,7 +1013,7 @@ function onlineSheet() {
   if (st.on) {
     const link = `https://rank-game.com/games/crater-clash#${st.code}`;
     return sheet(`<h2>🌐 Room <span class="code">${st.code}</span></h2><p class="muted">${st.open ? 'Opponent connected!' : st.pub ? 'Looking for an opponent…' : 'Send this code or link to your friend and wait here.'}</p>
-      <div class="btns"><button class="btn hot" data-act="invite">🔗 Copy invite link</button><button class="btn" data-act="oleave">Cancel</button></div><p class="fine">${esc(link)}</p>`);
+      <div class="btns"><button class="btn hot" data-act="invite">📤 Send invite</button><button class="btn" data-act="copyinv">🔗 Copy link</button><button class="btn" data-act="oleave">Cancel</button></div><p class="fine">"Send invite" opens your share sheet (Instagram, WhatsApp, Messages…). Your friend taps the link and joins this room. If it won't connect inside an app's built-in browser, open the link in Safari or Chrome.</p><p class="fine">${esc(link)}</p>`);
   }
   const C = TANKS[S.tank || 'rookie'];
   sheet(`<h2>🌐 Play Online</h2><p class="muted">Play a friend on another computer or phone. Your tank: ${C.icon} ${C.name}</p>
