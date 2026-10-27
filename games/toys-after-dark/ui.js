@@ -51,7 +51,7 @@
   function applyQuality() { const q = S.set.quality; TAD.renderer.shadowMap.enabled = q !== 'low'; TAD.lamp.castShadow = q === 'high'; TAD.renderer.setPixelRatio(q === 'low' ? 1 : Math.min(devicePixelRatio, q === 'high' ? 2 : 1.25)); TAD.moon.shadow.mapSize.set(q === 'high' ? 2048 : 1024, q === 'high' ? 2048 : 1024); if (TAD.moon.shadow.map) { TAD.moon.shadow.map.dispose(); TAD.moon.shadow.map = null; } TAD.renderer.setSize(innerWidth, innerHeight, false); TAD.scene.traverse((o) => { if (o.material) o.material.needsUpdate = true; }); document.body.classList.toggle('calm', !!S.set.calm); }
   const pickMission = () => { const pool = g.MISSIONS.filter((m) => !S.lastM || m.id !== S.lastM); return pool[Math.random() * pool.length | 0].id; };
   function play(id) { ensureAudio(); id = id || pickMission(); S.lastM = id; show('#menu', false); show('#sheet', false); show('#results', false); show('#hud', true); show('#touch', isTouch); show('#catch', true); g.startRound(id); G.rewarded = false; }
-  UI.startRound = () => { renderMission(); renderTeam(); UI.hint(isTouch ? 'Hold FREEZE when the door opens. Tap ACT to grab things.' : 'WASD move · hold F to freeze · E to interact · Q drop · Space ability'); };
+  UI.startRound = () => { renderMission(); renderTeam(); UI.hint(isTouch ? 'Hold FREEZE when the door opens. ACT picks up / puts down. Jump onto blocks to climb.' : 'WASD move · hold F freeze · E pick up / put down · Space jump · Q ability · push blocks and the chair to climb'); };
 
   // ---------- sheets ----------
   function sheet(title, html, cls = '') { $('#sheet').hidden = false; $('#sheet').className = cls; $('#sheetBody').innerHTML = `<div class="sh-head"><h2>${title}</h2><button class="x" data-x>✕</button></div>${html}`; $('#sheet').querySelector('[data-x]').onclick = closeSheet; }
@@ -81,7 +81,7 @@
   }
   function settingsSheet() {
     const s = S.set, sl = (k, lab, mn, mx, st) => `<label class="row">${lab}<input type="range" data-s="${k}" min="${mn}" max="${mx}" step="${st}" value="${s[k]}"></label>`, ck = (k, lab) => `<label class="row">${lab}<input type="checkbox" data-s="${k}" ${s[k] ? 'checked' : ''}></label>`;
-    sheet('SETTINGS', '<div class="set"><h3>Audio</h3>' + sl('master', 'Master', 0, 1, 0.05) + sl('music', 'Music', 0, 1, 0.05) + sl('sfx', 'Sound effects', 0, 1, 0.05) + sl('amb', 'Ambience', 0, 1, 0.05) + '<h3>Camera &amp; controls</h3>' + sl('sens', 'Camera sensitivity', 0.3, 2.5, 0.1) + sl('cam', 'Camera distance', 0.6, 1.5, 0.05) + `<label class="row">Graphics<select data-s="quality">${['low', 'medium', 'high'].map((q) => `<option ${s.quality === q ? 'selected' : ''}>${q}</option>`).join('')}</select></label>` + '<h3>Accessibility</h3>' + ck('calm', 'Reduce screen shake &amp; effects') + ck('assist', 'Auto-freeze when a human can see you') + '<h3>Controls</h3><p class="keys"><kbd>WASD</kbd> move · <kbd>F</kbd> hold to freeze · <kbd>E</kbd> interact / hold to work · <kbd>Q</kbd> drop · <kbd>Space</kbd> ability · <kbd>T</kbd> emote · <kbd>1-6</kbd> quick chat · drag mouse to turn camera · <kbd>P</kbd> pause</p></div>');
+    sheet('SETTINGS', '<div class="set"><h3>Audio</h3>' + sl('master', 'Master', 0, 1, 0.05) + sl('music', 'Music', 0, 1, 0.05) + sl('sfx', 'Sound effects', 0, 1, 0.05) + sl('amb', 'Ambience', 0, 1, 0.05) + '<h3>Camera &amp; controls</h3>' + sl('sens', 'Camera sensitivity', 0.3, 2.5, 0.1) + sl('cam', 'Camera distance', 0.6, 1.5, 0.05) + `<label class="row">Graphics<select data-s="quality">${['low', 'medium', 'high'].map((q) => `<option ${s.quality === q ? 'selected' : ''}>${q}</option>`).join('')}</select></label>` + '<h3>Accessibility</h3>' + ck('calm', 'Reduce screen shake &amp; effects') + ck('assist', 'Auto-freeze when a human can see you') + '<h3>Controls</h3><p class="keys"><kbd>WASD</kbd> move · <kbd>F</kbd> hold to freeze · <kbd>E</kbd> pick up / put down / hold to work · <kbd>Space</kbd> jump · <kbd>Q</kbd> ability · <kbd>T</kbd> emote · <kbd>1-6</kbd> quick chat · drag mouse to turn camera · <kbd>P</kbd> pause</p></div>');
     $$('[data-s]').forEach((el) => (el.oninput = el.onchange = () => { const k = el.dataset.s; S.set[k] = el.type === 'checkbox' ? el.checked : el.type === 'range' ? +el.value : el.value; g.save(); applyAudio(); if (k === 'quality' || k === 'calm') applyQuality(); }));
   }
   UI.pause = () => { if (G.mode !== 'play') return; if (G.paused) { G.paused = false; $('#sheet').hidden = true; return; } G.paused = true; sheet('PAUSED', '<div class="pbtns"><button class="btn pri" id="pRes">Resume</button><button class="btn" id="pSet">Settings</button><button class="btn" id="pQuit">Quit to menu</button></div>'); $('#pRes').onclick = () => { G.paused = false; $('#sheet').hidden = true; }; $('#pSet').onclick = settingsSheet; $('#pQuit').onclick = () => { G.paused = false; $('#sheet').hidden = true; g.toMenu(); }; };
@@ -124,6 +124,7 @@
       else if (G.cur.t === 'use' && dd < t.r) p = G.prog > 0 ? `Working… ${Math.round(G.prog / G.cur.time * 100)}%` : `Hold ${isTouch ? 'ACT' : 'E'} – ${G.cur.text}`;
       else { const hd = TAD.HIDES.filter((h) => !h.small || P.kind === 'explorer').find((h) => Math.hypot(P.x - h.x, P.z - h.z) < 3.2); if (hd) p = `${isTouch ? 'ACT' : 'E'} – hide ${hd.n}`; }
     }
+    if (!p && P.carry && P.out <= 0) p = `${isTouch ? 'ACT' : 'E'} – put it down`;
     pr.textContent = p; pr.classList.toggle('on', !!p);
     $('#prog').style.width = (G.cur && G.cur.t === 'use' ? G.prog / G.cur.time * 100 : 0) + '%'; $('#progw').classList.toggle('on', G.cur && G.cur.t === 'use' && G.prog > 0);
     // abilities
@@ -160,7 +161,7 @@
       <div class="rgrid"><div><b>${Math.round(st.peak)}</b>peak suspicion</div><div><b>${st.visits}</b>human visits</div><div><b>${st.catches}</b>caught</div><div><b>${Math.round(st.frozenObs)}s</b>frozen in sight</div></div>
       <h3>Awards</h3><div class="awards">${aw.list.length ? aw.list.map((a) => `<div class="aw"><span>${a.e}</span><b>${a.n}</b></div>`).join('') : '<div class="aw dim"><span>🫥</span><b>NO AWARDS. BORING.</b></div>'}</div>
       <h3>Memorable incidents</h3><div class="incs">${cards}</div>
-      <div class="rew"><span>+${xp} XP</span><span>+${coins} 🪙</span>${dailyHit ? '<span class="gold">DAILY DONE +150 🪙</span>' : ''}${sideDone ? `<span class="gold">${sideDone} side objective${sideDone > 1 ? 's' : ''}</span>` : ''}<span class="sc">Score ${score}</span></div>
+      <div class="rew"><span>+${xp} XP</span><span>+${coins} 🪙</span>${dailyHit ? '<span class="gold">DAILY DONE +150 🪙</span>' : ''}${sideDone ? `<span class="gold">${sideDone} side objective${sideDone > 1 ? 's' : ''}</span>` : ''}${st.coins ? `<span class="gold">${st.coins} high-up coin${st.coins > 1 ? 's' : ''} +${st.coins * 20} 🪙</span>` : ''}<span class="sc">Score ${score}</span></div>
       <div class="rbtns"><button class="btn pri" id="rAgain">Next mission</button><button class="btn" id="rRetry">Retry</button>${best ? '<button class="btn" id="rReplay">▶ Replay catch</button>' : ''}<button class="btn" id="rShare">📸 Save incident card</button><button class="btn ghost" id="rMenu">Menu</button></div><div id="lbHost"></div></div>`;
     show('#results', true); mixes(); A.music(won ? 'victory' : 'suspicion'); if (!won) A.sting();
     $('#rAgain').onclick = () => { A.click(); play(); }; $('#rRetry').onclick = () => { A.click(); play(G.def.id); }; $('#rMenu').onclick = () => { A.click(); g.toMenu(); };
@@ -190,9 +191,9 @@
     zone.addEventListener('pointerup', end); zone.addEventListener('pointercancel', end);
     const hold = (sel, on, off) => { const b = $(sel); b.addEventListener('pointerdown', (e) => { e.preventDefault(); b.setPointerCapture(e.pointerId); on(); }); ['pointerup', 'pointercancel'].forEach((ev) => b.addEventListener(ev, off)); };
     hold('#bFreeze', () => (g.input.freeze = true), () => (g.input.freeze = false)); hold('#bAct', () => { g.input.act = true; g.input.actEdge = true; }, () => (g.input.act = false));
-    hold('#bAbility', () => (g.input.ability = true), () => {}); hold('#bDrop', () => (g.input.drop = true), () => {});
+    hold('#bAbility', () => (g.input.ability = true), () => {}); hold('#bDrop', () => (g.input.jump = true), () => {});
     $('#bPause').onclick = UI.pause;
-  } else { $('#bFreeze').addEventListener('pointerdown', () => (g.input.freeze = true)); addEventListener('pointerup', () => { if (!down()) g.input.freeze = false; }); const down = () => false; $('#bAct').onclick = () => { g.input.actEdge = true; }; $('#bAbility').onclick = () => (g.input.ability = true); $('#bDrop').onclick = () => (g.input.drop = true); $('#bPause').onclick = UI.pause; }
+  } else { $('#bFreeze').addEventListener('pointerdown', () => (g.input.freeze = true)); addEventListener('pointerup', () => { if (!down()) g.input.freeze = false; }); const down = () => false; $('#bAct').onclick = () => { g.input.actEdge = true; }; $('#bAbility').onclick = () => (g.input.ability = true); $('#bDrop').onclick = () => (g.input.jump = true); $('#bPause').onclick = UI.pause; }
   $$('#chat button').forEach((b, i) => (b.onclick = () => g.chat(i)));
 
   // ---------- wiring ----------
