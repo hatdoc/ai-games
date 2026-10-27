@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>Minesweet</title>
 <script src="../cloudsave.js" data-game="minesweet" data-keys="minesweet"></script>
+<script src="../share.js"></script>
 <style>
   :root { --bg: #15112b; --panel: #211b3f; --panel2: #2d2559; --line: #ffffff1f; --ink: #f4f1ff; --dim: #a79fd1; --mint: #5cf2c0; --pink: #ff5c93; --gold: #ffd24a; --blue: #6cb8ff;
     --tile: #4b3fa0; --tile2: #5d4fc2; --open: #1a1533; --sans: ui-rounded, "SF Pro Rounded", "Nunito", "Segoe UI", system-ui, sans-serif; --s: 36px; }
@@ -168,6 +169,7 @@ const LV = MS.LEVELS, LV_IDS = Object.keys(LV);
 const MINI = { w: 5, h: 5, m: 3, key: 't', name: 'Side board', tries: 200 };
 
 // ---------- saved data (local to this device; cloudsave.js mirrors it for signed-in players) ----------
+<script src="../share.js"></script>
 const DEF = { name: '', best: {}, stats: { played: 0, won: 0 }, ach: {}, cards: null, cd: {}, daily: {}, ds: { last: '', streak: 0, best: 0 }, zoom: 0, lastLv: 'intermediate', seenHow: false };
 let S = (() => { try { return { ...DEF, ...JSON.parse(localStorage.getItem('minesweet')) }; } catch { return { ...DEF }; } })();
 const save = () => { try { localStorage.setItem('minesweet', JSON.stringify(S)); } catch { /* private mode: play on */ } };

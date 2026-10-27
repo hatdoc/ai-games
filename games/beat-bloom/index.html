@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Beat Bloom</title>
 <script src="../cloudsave.js" data-game="beat-bloom" data-keys="beatbloom-save"></script>
+<script src="../share.js"></script>
 <style>
   :root { --ink: #f4f1ff; --mut: #a9a3c9; --panel: rgba(18, 12, 38, .78); --line: rgba(255, 255, 255, .14); --acc: #ff5fa8; }
   [hidden] { display: none !important; }
@@ -477,6 +478,7 @@ function previewSong(song) { // short melody snippet on hover/tap in the menu
 let save = { best: {}, speed: 4, offset: 0 };
 try { Object.assign(save, JSON.parse(localStorage.getItem('beatbloom-save')) || {}); } catch {}
 window.cloudSaveChanged = () => { // cloudsave.js merged your other devices' progress: use it without reloading
+<script src="../share.js"></script>
   try { Object.assign(save, JSON.parse(localStorage.getItem('beatbloom-save')) || {}); } catch {}
   if (state === 'menu') renderMenu();
 };
