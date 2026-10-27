@@ -91,7 +91,7 @@
     if (!G.def) return; const d = G.def;
     $('#mName').innerHTML = `<span>${d.emoji}</span> ${d.name}`;
     $('#mSteps').innerHTML = d.steps.map((s, i) => `<li class="${i < G.step ? 'done' : i === G.step ? 'cur' : ''}">${i < G.step ? '✔' : i === G.step ? '▶' : '○'} ${esc(g.stepText(s))}</li>`).join('');
-    const sd = G.stats && G.stats.side || {}; $('#side').innerHTML = `<span class="${sd.cool ? '' : 'fail'}">🧊 Never hit 80 suspicion</span><span class="${sd.statue ? 'ok' : ''}">🗿 Freeze 8s in sight</span><span class="${G.stats && G.stats.completeT && G.stats.completeT < d.time * 0.7 ? 'ok' : ''}">⚡ Finish in ${Math.round(d.time * 0.7)}s</span>`;
+    const sd = G.stats && G.stats.side || {}; $('#side').innerHTML = `<span class="${sd.cool ? '' : 'fail'}">🧊 Never hit 80 suspicion</span><span class="${sd.statue ? 'ok' : ''}">🗿 Freeze 8s in sight</span><span class="${G.stats && G.stats.completeT && G.stats.completeT < d.time * 0.56 ? 'ok' : ''}">⚡ Finish in ${Math.round(d.time * 0.56)}s</span>`;
   }
   function renderTeam() {
     $('#team').innerHTML = [g.P, ...g.bots].map((e, i) => `<div class="tm" data-i="${i}"><span class="ti">${K[e.kind].emoji}</span><b>${i ? esc(e.name) : 'You'}</b><i class="dot"></i></div>`).join('') + '<div class="lives" id="lives"></div>';
@@ -144,7 +144,7 @@
   }
   UI.results = () => {
     show('#hud', false); show('#touch', false); const st = G.stats, won = G.won, d = G.def, side = st.side;
-    side.fast = !!(won && st.completeT < d.time * 0.7);
+    side.fast = !!(won && st.completeT < d.time * 0.56);
     const sideN = (side.cool ? 1 : 0) + (side.statue ? 1 : 0) + (side.fast ? 1 : 0), sideDone = won ? sideN : 0;
     const base = won ? 90 : 20 + st.steps * 12, xp = Math.round(base + 40 + sideDone * 30 + (won ? Math.floor(G.timeLeft / 10) : 0) + (st.peak < 50 && won ? 40 : 0) - st.catches * 5), coins = Math.round(xp * 0.55);
     const score = won ? Math.max(100, Math.round(1000 + G.timeLeft * 4 + (st.peak < 50 ? 300 : 0) + sideDone * 150 - st.catches * 100)) : st.steps * 80;
@@ -156,7 +156,7 @@
     const best = G.lastCatch;
     const title = won ? 'MISSION COMPLETE!' : G.why === 'caught' ? 'THE HUMANS KNOW…' : "TIME'S UP!";
     const cards = st.incidents.slice(-3).map((i, n) => `<div class="inc"><span>${i.type === 'caught' ? K[i.kind].emoji : '😂'}</span><b>${esc(i.caption)}</b><small>${esc(i.name)} · ${i.t}s${i.type === 'caught' ? ' · ' + i.susp + ' susp' : ''}</small></div>`).join('') || '<div class="inc"><span>😇</span><b>NOT A SINGLE INCIDENT</b><small>suspiciously perfect</small></div>';
-    $('#results').innerHTML = `<div class="rpanel"><div class="rtitle ${won ? 'win' : 'lose'}">${title}</div><div class="rsub">${d.emoji} ${d.name} · ${st.steps}/${d.steps.length} steps · ${fmt(d.time - G.timeLeft)}</div>
+    $('#results').innerHTML = `<div class="rpanel"><div class="rtitle ${won ? 'win' : 'lose'}">${title}</div><div class="rsub">${d.emoji} ${d.name} · ${st.steps}/${d.steps.length} steps · ${fmt(Math.round(d.time * 0.8) - G.timeLeft)}</div>
       <div class="rgrid"><div><b>${Math.round(st.peak)}</b>peak suspicion</div><div><b>${st.visits}</b>human visits</div><div><b>${st.catches}</b>caught</div><div><b>${Math.round(st.frozenObs)}s</b>frozen in sight</div></div>
       <h3>Awards</h3><div class="awards">${aw.list.length ? aw.list.map((a) => `<div class="aw"><span>${a.e}</span><b>${a.n}</b></div>`).join('') : '<div class="aw dim"><span>🫥</span><b>NO AWARDS. BORING.</b></div>'}</div>
       <h3>Memorable incidents</h3><div class="incs">${cards}</div>

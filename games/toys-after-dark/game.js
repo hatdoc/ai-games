@@ -88,9 +88,9 @@ function startRound(id) {
   const def = missionById(id), kinds = Object.keys(TAD.KINDS).filter((k) => k !== S.kind);
   P = makeEnt(S.kind, S.tint, S.acc, 'You', false); const ring = new T.Mesh(new T.RingGeometry(1.7, 2.1, 32), new T.MeshBasicMaterial({ color: 0xffb347, transparent: true, opacity: 0.9, side: T.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.09; P.toy.group.add(ring); P.x = -4; P.z = 7; P.face = 0.5;
   for (let i = 0; i < 3; i++) { const k = kinds.splice(Math.random() * kinds.length | 0, 1)[0]; const b = makeEnt(k, null, pick(['', 'bow', 'shades', 'party']), TAD.KINDS[k].name.split(' ')[0], true); b.x = -8 + i * 3.2; b.z = 10 + i * 0.8; b.ai.clumsy = i === 2; bots.push(b); }
-  Object.assign(G, { mode: 'play', def, t: 0, step: 0, timeLeft: def.time, strikes: 0, won: false, over: 0, timeScale: 1, shake: 0, paused: false, prog: 0, spawnT: 0, evT: rnd(14, 20), fakeT: rnd(30, 45), chatT: 0, tipT: 0,
+  Object.assign(G, { mode: 'play', def, t: 0, step: 0, timeLeft: Math.round(def.time * 0.8), strikes: 0, won: false, over: 0, timeScale: 1, shake: 0, paused: false, prog: 0, spawnT: 0, evT: rnd(14, 20), fakeT: rnd(30, 45), chatT: 0, tipT: 0,
     stats: { peak: 0, visits: 0, visitsClean: 0, catches: 0, frozenObs: 0, hides: 0, evidSeen: 0, relocated: 0, noiseT: -99, botCaught: 0, whoT: -99, snitch: 0, worstTm: 0, allBotsDown: 0, falseAlarms: 0, steps: 0, incidents: [], side: { cool: true, statue: false, fast: false }, visitPeak: 0 }, log: [] });
-  H = { m: TAD.makeHuman('mom'), type: 'mom', x: 0, z: -40, f: 0, phase: 'away', timer: rnd(9, 13), wps: [], wi: 0, pause: 0, speed: 6, inv: null, fake: false, warnT: 0, warnLen: 0, step: 0, visit: 0, ret: false, hold: 0, scan: 0, fav: null, carry: null };
+  H = { m: TAD.makeHuman('mom'), type: 'mom', x: 0, z: -40, f: 0, phase: 'away', timer: rnd(7, 10), wps: [], wi: 0, pause: 0, speed: 6, inv: null, fake: false, warnT: 0, warnLen: 0, step: 0, visit: 0, ret: false, hold: 0, scan: 0, fav: null, carry: null };
   H.m.group.visible = false; scene.add(H.m.group);
   rec.length = 0; A.music('safe'); activateStep();
   UI.startRound && UI.startRound();
@@ -125,7 +125,7 @@ function stepText(st) {
   return (st.text || 'Do the thing') + (st.coop ? ' (needs a teammate)' : '');
 }
 function missionComplete() {
-  G.won = true; G.over = 2.4; G.stats.completeT = G.def.time - G.timeLeft; P.emote = S.emote; bots.forEach((b) => (b.emote = 'dance'));
+  G.won = true; G.over = 2.4; G.stats.completeT = Math.round(G.def.time * 0.8) - G.timeLeft; P.emote = S.emote; bots.forEach((b) => (b.emote = 'dance'));
   A.music('victory'); A.complete(); UI.alert && UI.alert('MISSION COMPLETE!', 'good', 2400);
 }
 function endRound(why) { G.mode = 'results'; G.why = why; if (H) H.m.group.visible = false; UI.results && UI.results(); }
@@ -148,16 +148,16 @@ const flagReason = (r) => { lastReason = r; };
 const rec = []; let recT = 0;
 function hSees(e, extra = 0) {
   if (!H || H.fake || (H.phase !== 'in' && H.phase !== 'leave') || e.hidden || e.out > 0) return false;
-  const dx = e.x - H.x, dz = e.z - H.z, d = Math.hypot(dx, dz), rng = (H.type === 'mom' ? 40 : 34) + extra;
+  const dx = e.x - H.x, dz = e.z - H.z, d = Math.hypot(dx, dz), rng = (H.type === 'mom' ? 46 : 38) + extra;
   if (d > rng) return false;
-  const half = H.type === 'mom' ? 0.98 : 0.9, a = Math.abs(angDiff(Math.atan2(dx, dz), H.f));
+  const half = H.type === 'mom' ? 1.12 : 1.02, a = Math.abs(angDiff(Math.atan2(dx, dz), H.f));
   if (a > half && !(d < 4.5 && a < 2.3)) return false;
   return los(H.x, H.z + 0, e.x, e.z);
 }
 function startVisit(fake) {
   H.visit++; H.fake = fake; H.phase = 'warn'; H.ret = false; H.type = H.visit === 1 ? 'mom' : Math.random() < 0.42 ? 'kid' : 'mom';
   scene.remove(H.m.group); H.m = TAD.makeHuman(H.type); H.m.group.visible = false; scene.add(H.m.group);
-  H.warnLen = H.warnT = fake ? rnd(3, 4) : H.type === 'kid' ? rnd(3.6, 4.6) : rnd(5, 6.5); H.step = 0; H.speed = H.type === 'mom' ? 6.2 : 11.5; H.stepAcc = 0;
+  H.warnLen = H.warnT = fake ? rnd(2.6, 3.4) : H.type === 'kid' ? rnd(2.6, 3.4) : rnd(3.6, 4.8); H.step = 0; H.speed = H.type === 'mom' ? 6.2 : 11.5; H.stepAcc = 0;
   H.visitPeak = 0; G.stats.visitPeak = 0;
 }
 function planRoute() {
@@ -165,7 +165,7 @@ function planRoute() {
   if (mom) {
     wps.push({ x: 0, z: -14, p: 0.8 }); wps.push({ x: rnd(-4, 4), z: 2, p: 1.6 });
     const spots = [[8, -9], [-6, -3], [-3, 14], [11, 6], [-8, 9]]; const s1 = pick(spots); wps.push({ x: s1[0], z: s1[1], p: 1.6 });
-    const hd = pick(TAD.HIDES.filter((h) => !h.small).concat(TAD.HIDES.filter((h) => h.small).slice(0, Math.random() < 0.25 ? 2 : 0)));
+    const hd = pick(TAD.HIDES.filter((h) => !h.small).concat(TAD.HIDES.filter((h) => h.small).slice(0, Math.random() < 0.6 ? 2 : 0)));
     wps.push({ x: hd.x, z: hd.z, p: 1.7, peek: hd });
     evid.forEach((ev) => wps.push({ x: ev.x, z: ev.z - 5, p: 0.4 }));
     wps.push({ x: 0, z: -14, p: 0.3 });
@@ -198,8 +198,8 @@ function updateHuman(dt) {
     if (h.warnT <= 0) {
       h.warned = false; h.handled = false; h.opened = false; TAD.underShadow.material.opacity = 0; TAD.strip.material.opacity = 0;
       if (h.fake) { h.phase = 'away'; h.timer = rnd(7, 11); TAD.hallLight.intensity = 0; A.music('safe'); UI.alert('FALSE ALARM…', 'good', 1400); if (P.susp < 90) G.stats.falseAlarm = (G.stats.falseAlarm || 0) + 1; return; }
-      h.phase = 'in'; h.x = 0; h.z = -25.5; h.f = 0; h.m.group.visible = true; h.t0 = G.t; h.visitT = 0; h.grace = 1.0; planRoute(); S0.visits++; A.music('entry'); A.thud(0.6); G.shake = S.set.calm ? 0 : 0.5;
-      UI.alert(mom ? 'FREEZE!' : 'ACT NATURAL!', 'bad', 1800); h.limit = mom ? rnd(15, 20) : rnd(10, 13); G.stats.visitPeak = 0;
+      h.phase = 'in'; h.x = 0; h.z = -25.5; h.f = 0; h.m.group.visible = true; h.t0 = G.t; h.visitT = 0; h.grace = 0.6; planRoute(); S0.visits++; A.music('entry'); A.thud(0.6); G.shake = S.set.calm ? 0 : 0.5;
+      UI.alert(mom ? 'FREEZE!' : 'ACT NATURAL!', 'bad', 1800); h.limit = mom ? rnd(20, 28) : rnd(13, 17); G.stats.visitPeak = 0;
     }
     return;
   }
@@ -208,7 +208,7 @@ function updateHuman(dt) {
   if (h.visitT > 1.6 && A.state === 'entry') A.music('inspect');
   const inv = h.inv;
   let tx = null, tz = null, spd = h.speed;
-  if (h.phase === 'leave') { tx = 0; tz = -27; spd = h.speed * 1.1; if (h.z < -25.2) { h.m.group.visible = false; h.phase = 'away'; TAD.door.rotation.y = 0; TAD.hallLight.intensity = 0; TAD.shaft.material.opacity = 0; h.timer = rnd(16, 26) * (S.set.freq || 1); if (G.stats.visitPeak < 50) G.stats.visitsClean++; if (Math.random() < 0.2 && !G.won) { h.timer = 3; h.ret = true; } A.music(P.susp > 25 ? 'suspicion' : 'safe'); UI.hint(''); if (h.ret) h.timer = 2.8; } }
+  if (h.phase === 'leave') { tx = 0; tz = -27; spd = h.speed * 1.1; if (h.z < -25.2) { h.m.group.visible = false; h.phase = 'away'; TAD.door.rotation.y = 0; TAD.hallLight.intensity = 0; TAD.shaft.material.opacity = 0; h.timer = rnd(9, 16) * (S.set.freq || 1); if (G.stats.visitPeak < 50) G.stats.visitsClean++; if (Math.random() < 0.35 && !G.won) { h.timer = 3; h.ret = true; } A.music(P.susp > 25 ? 'suspicion' : 'safe'); UI.hint(''); if (h.ret) h.timer = 2.8; } }
   else if (inv && inv.t > 0) { inv.t -= dt; if (dist(h.x, h.z, inv.x, inv.z) > 4) { tx = inv.x; tz = inv.z; spd *= 1.2; } else { h.scan += dt; h.f += Math.sin(G.t * 3) * dt * 1.2; } if (inv.t <= 0) h.inv = null; }
   else if (h.pause > 0) { h.pause -= dt; h.scan += dt; if (mom) h.f += Math.sin(h.scan * 2.4) * dt * 1.1; else h.f += dt * 2; if (h.peek && h.pause < 0.7 && !h.peeked) { h.peeked = true; peek(h.peek); } }
   else {
@@ -337,15 +337,16 @@ function updateSuspicion(e, dt) {
   let gain = 0;
   if (vis) {
     e.obsT += dt;
-    if (moving) gain = (mom ? 42 : 58) * (dist(e.x, e.z, H.x, H.z) < 10 ? 1.35 : 1) * (e.obsT < 0.45 || (H.grace > 0) ? 0.3 : 1);
-    else if (!still) gain = 14; // idle wiggle gives you away slowly
-    else { e.susp = Math.max(0, e.susp - 2 * dt); if (e === P) G.stats.frozenObs += dt; }
+    if (moving) gain = (mom ? 62 : 82) * (dist(e.x, e.z, H.x, H.z) < 10 ? 1.4 : 1) * (e.obsT < 0.25 || (H.grace > 0) ? 0.3 : 1);
+    else if (!still) gain = 26; // idle wiggle gives you away
+    else if (dist(e.x, e.z, H.x, H.z) < 4.5 && e.obsT > 2.5) { gain = 7; if (e === P) UI.hint('She is standing right over you. Slip away and hide!'); } // a close inspection beats a statue
+    else { e.susp = Math.max(0, e.susp - 0.5 * dt); if (e === P) G.stats.frozenObs += dt; }
     if (e.kind === 'robot' && gain) gain *= 0.7;
     if (gain && e === P) flagReason(moving ? (speed < 3 ? 'twitch' : speed > 10 ? 'sprint' : 'moved') : 'wiggle');
-  } else { e.obsT = 0; e.susp = Math.max(0, e.susp - (e.hidden ? 18 : 8) * dt); }
+  } else { e.obsT = 0; e.susp = Math.max(0, e.susp - (e.hidden ? 12 : 4.5) * dt); }
   e.susp += gain * dt;
   if (e === P && H && H.phase !== 'away' && H.phase !== 'warn') { // evidence in sight
-    for (const ev of evid.slice()) if (!ev.held && hSeesPoint(ev.x, ev.z)) { ev.seenT = (ev.seenT || 0) + dt; if (ev.seenT > 0.9) { P.susp += 22; G.stats.evidSeen++; UI.alert('"WHY IS THIS ON THE FLOOR?"', 'warn', 1500); respawnItem(ev); H.inv = { x: ev.x, z: ev.z, t: 1.8 }; } }
+    for (const ev of evid.slice()) if (!ev.held && hSeesPoint(ev.x, ev.z)) { ev.seenT = (ev.seenT || 0) + dt; if (ev.seenT > 0.5) { P.susp += 32; G.stats.evidSeen++; UI.alert('"WHY IS THIS ON THE FLOOR?"', 'warn', 1500); respawnItem(ev); H.inv = { x: ev.x, z: ev.z, t: 1.8 }; } }
   }
   e.susp = clamp(e.susp, 0, 100);
 }
@@ -405,7 +406,7 @@ function useAbility(e) {
 
 function playerControl(dt) {
   const e = P; e.cd.ab = Math.max(0, e.cd.ab - dt); e.boost = Math.max(0, e.boost - dt); e.stun = Math.max(0, e.stun - dt); e.hitCd = Math.max(0, (e.hitCd || 0) - dt);
-  if (e.out > 0) { e.out -= dt; if (e.out <= 0) { e.x = -4; e.z = 7; e.susp = 20; e.toy.group.visible = true; UI.alert('BACK IN THE GAME', 'good', 1200); e.stun = 0.5; } stopNow(e); return; }
+  if (e.out > 0) { e.out -= dt; if (e.out <= 0) { e.x = -4; e.z = 7; e.susp = 35; e.toy.group.visible = true; UI.alert('BACK IN THE GAME', 'good', 1200); e.stun = 0.5; } stopNow(e); return; }
   let ix = input.ix, iy = input.iy; const d0 = demo ? demoInput() : null; if (d0) ({ ix, iy } = d0);
   const wantFreeze = d0 ? d0.freeze : input.freeze;
   const seen = H && hSees(e);
