@@ -1,6 +1,13 @@
 {
   "title": "Crater Clash",
-  "description": "A funny artillery tank game: aim, pick wind, blast the destructible ground and yeet rivals into the sea. Play a Daily Duel that is the same map for everyone, survive endless Rampage waves, or challenge a friend to beat your shot count on the exact same map. Rubber chickens, banana bombs, YEET boots, mystery crates and unlockable hats. Free, no download.",
-  "tags": ["artillery", "tanks", "worms-like", "daily", "multiplayer", "casual"],
+  "description": "A funny artillery tank game on huge maps: aim against the wind, blast destructible terrain, bounce rubber chickens, yeet rivals away, drop a one-shot nuke or poison gas, or dig a hole to nowhere and watch tanks fall off the map. Five maps (islands, red canyon, volcano, floating abyss), Daily Duel, endless Rampage, two players with a map coin flip, and friend challenges. Free, no download.",
+  "tags": [
+    "artillery",
+    "tanks",
+    "worms-like",
+    "daily",
+    "multiplayer",
+    "casual"
+  ],
   "emoji": "💥"
 }
