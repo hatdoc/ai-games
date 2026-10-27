@@ -275,19 +275,27 @@ const TAD = window.TAD = {};
 
   // ---------- humans ----------
   TAD.makeHuman = (type) => {
-    const mom = type === 'mom', g = new T.Group(), s = mom ? 1 : 0.7;
-    const skin = std(0xc89a74, 0.8), cloth = std(mom ? 0x6a2f58 : 0xb08a2e, 0.9), pants = std(mom ? 0x23243a : 0x1f4a86, 0.9), hair = std(mom ? 0x4a2a1a : 0x1a1a1a, 0.9);
-    const legL = new T.Group(), legR = new T.Group(); legL.position.set(-1.2, 10 * s, 0); legR.position.set(1.2, 10 * s, 0);
-    [legL, legR].forEach((l) => { l.add(cyl(0.9 * s, 0.8 * s, 10 * s, pants, 0, -5 * s, 0)); l.add(box(1.8 * s, 1 * s, 3 * s, std(0x23232c), 0, -10 * s, 0.6 * s)); g.add(l); });
-    const torso = cyl(2.3 * s, 2.9 * s, 8.4 * s, cloth, 0, 13.8 * s, 0, 24); torso.scale.z = 0.62; g.add(torso);
-    const armL = new T.Group(), armR = new T.Group(); armL.position.set(-3.2 * s, 16.8 * s, 0); armR.position.set(3.2 * s, 16.8 * s, 0);
-    [armL, armR].forEach((a) => { a.add(cyl(0.75 * s, 0.7 * s, 6.5 * s, cloth, 0, -3.2 * s, 0)); a.add(sph(0.8 * s, skin, 0, -6.6 * s, 0)); g.add(a); });
-    const head = new T.Group(); head.position.y = 19.8 * s; g.add(head); head.add(sph(2.2 * s, skin, 0, 0, 0));
-    head.add(sph(2.35 * s, hair, 0, 0.5 * s, -0.5 * s, 1, 0.9, 1));
-    if (mom) { head.add(box(4.4, 6, 1.6, hair, 0, -2.2, -1.6)); } else { head.add(cyl(2.4 * s, 2.4 * s, 0.7, std(0xd8453f), 0, 1.5 * s, 0.4 * s)); head.add(box(3 * s, 0.4, 2.4 * s, std(0xd8453f), 0, 1.3 * s, 2.2 * s)); }
-    [-1, 1].forEach((x) => { head.add(sph(0.42 * s, eyeMat, x * 0.85 * s, 0, 2 * s)); head.add(sph(0.22 * s, pupMat, x * 0.85 * s, 0, 2.3 * s)); });
+    const mom = type === 'mom', g = new T.Group(), K = mom ? 1 : 0.72;
+    const skin = std(mom ? 0xd9a97f : 0xe6b790, 0.75), skinD = std(0xb98560, 0.8), top = std(mom ? 0x5d2a4e : 0xc9a02e, 0.9), inner = std(mom ? 0xe9dfd2 : 0xf3f0e8, 0.9), pants = std(mom ? 0x1f2236 : 0x24508f, 0.95), shoe = std(0x16161c, 0.5), hair = std(mom ? 0x3b2314 : 0x2a1a10, 0.85);
+    const ell = (r, m, x, y, z, sx, sy, sz) => sph(r, m, x, y, z, sx, sy, sz);
+    const mkLeg = (x) => { const l = new T.Group(); l.position.set(x, 10.8, 0); l.add(cyl(1.05, 0.72, 10.6, pants, 0, -5.3, 0, 16)); l.add(ell(1, shoe, 0, -10.9, 0.7, 0.95, 0.55, 1.9)); g.add(l); return l; };
+    const legL = mkLeg(-1.25), legR = mkLeg(1.25);
+    g.add(ell(1, pants, 0, 11.2, 0, 2.55, 1.5, 1.7));
+    const torso = cyl(2.25, 2.5, 7.4, top, 0, 15.2, 0, 24); torso.scale.z = 0.66; g.add(torso);
+    g.add(ell(1, top, 0, 18.5, 0, 2.7, 0.9, 1.35)); g.add(box(1.1, 6.6, 0.2, inner, 0, 15.4, 1.55));
+    g.add(cyl(0.75, 0.85, 1.6, skin, 0, 19.9, 0, 12));
+    const mkArm = (x) => { const a = new T.Group(); a.position.set(x, 18.3, 0); a.add(ell(1, top, 0, 0, 0, 0.85, 0.85, 0.85)); a.add(cyl(0.7, 0.62, 4.4, top, 0, -2.2, 0, 12));
+      const fore = new T.Group(); fore.position.y = -4.4; fore.rotation.x = -0.28; fore.add(cyl(0.58, 0.46, 4.2, mom ? skin : top, 0, -2.1, 0, 12)); fore.add(ell(1, skin, 0, -4.6, 0, 0.62, 0.95, 0.42)); a.add(fore); g.add(a); return a; };
+    const armL = mkArm(-3.25), armR = mkArm(3.25);
+    const head = new T.Group(); head.position.y = 22.6; g.add(head);
+    head.add(ell(2, skin, 0, 0, 0, 0.92, 1.08, 0.97)); head.add(ell(0.34, skinD, 0, -0.35, 1.95, 1, 1.2, 1));
+    [-1, 1].forEach((x) => { head.add(ell(0.34, std(0xf4f0ea, 0.3), x * 0.78, 0.35, 1.7, 1, 0.8, 0.45)); head.add(ell(0.17, std(mom ? 0x4a3322 : 0x2c4a6a, 0.2), x * 0.78, 0.35, 1.93, 1, 1, 0.5)); head.add(box(0.95, 0.13, 0.2, hair, x * 0.8, 0.85, 1.75)); head.add(ell(0.4, skin, x * 1.82, 0, 0, 0.5, 1, 0.8)); });
+    head.add(box(0.95, 0.12, 0.2, std(0x8a3a3a, 0.5), 0, -1.05, 1.75));
+    if (mom) { head.add(ell(2.12, hair, 0, 0.45, -0.5, 1, 1.02, 1)); head.add(ell(1, hair, 0, -0.2, -2.3, 0.8, 1.1, 0.8)); head.add(ell(0.75, hair, 0, -2, -2.5, 0.8, 1.6, 0.8)); head.add(box(3.9, 4.6, 0.8, hair, 0, -1.2, -1.7)); }
+    else { head.add(ell(2.08, hair, 0, 0.5, -0.3, 1, 1, 1)); head.add(cyl(2.05, 2.05, 0.6, std(0xc8402f, 0.8), 0, 1.45, 0.2, 20)); head.add(box(3, 0.3, 2.2, std(0xc8402f, 0.8), 0, 1.25, 2.1)); }
+    g.scale.setScalar(K);
     g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-    return { group: g, legL, legR, armL, armR, head, mom, s };
+    return { group: g, legL, legR, armL, armR, head, mom, s: K };
   };
   TAD.animateHuman = (h, t, walking) => {
     const s = Math.sin(t * 5) * (walking ? 0.55 : 0);

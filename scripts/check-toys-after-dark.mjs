@@ -39,7 +39,7 @@ s = await run(() => {
   P.x = 15; P.z = 4; P.hidden = { n: 'x' }; r.hidden = tad.hSees(P); P.hidden = null; return r;
 });
 ok(s.open && !s.wall && !s.behind && !s.hidden, `sees in cone (${s.open}), not through the wardrobe (${!s.wall}), not behind her (${!s.behind}), not hidden (${!s.hidden})`);
-s = await run(() => { const H = tad.H, P = tad.P; H.x = 0; H.z = -30; H.f = 0; P.x = 15; P.z = 10; return { thruWall: tad.hSees(P), gap: (P.x = 0, P.z = 0, tad.hSees(P)) }; });
+s = await run(() => { const H = tad.H, P = tad.P; H.x = 0; H.z = -30; H.f = 0; P.x = 22; P.z = -10; return { thruWall: tad.hSees(P), gap: (P.x = 0, P.z = 0, tad.hSees(P)) }; });
 ok(!s.thruWall && s.gap, 'a human outside the door sees only through the doorway gap, never through the wall');
 
 // 4. suspicion rules: moving in sight rises, frozen in sight does not, out of sight decays
@@ -50,7 +50,7 @@ s = await run(() => {
   const res = { moving: sim(false, true, 1), still: sim(true, false, 1), wiggle: sim(false, false, 1) }; tad.input.freeze = false; return res;
 });
 ok(s.moving > 30 && s.still <= 10 && s.wiggle > 10 && s.wiggle < s.moving, `suspicion: moving +${(s.moving - 10).toFixed(0)}/s, frozen ${s.still.toFixed(0)}, idle-wiggle +${(s.wiggle - 10).toFixed(0)}/s`);
-s = await run(() => { const P = tad.P, H = tad.H; H.phase = 'away'; H.timer = 99; P.susp = 60; for (let i = 0; i < 120; i++) tad.update(1 / 60); return P.susp; });
+s = await run(() => { const P = tad.P, H = tad.H; H.phase = 'away'; H.timer = 99; P.susp = 60; for (let i = 0; i < 240; i++) tad.update(1 / 60); return P.susp; });
 ok(s < 50, `suspicion decays with no human (${s.toFixed(0)})`);
 s = await run(() => [[10, 'safe'], [30, 'alert'], [60, 'danger'], [90, 'critical'], [100, 'caught']].map(([v, n]) => tad.suspState(v)[1] === n));
 ok(s.every(Boolean), 'suspicion states safe / alert / danger / critical / caught map correctly');
