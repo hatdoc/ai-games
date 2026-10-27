@@ -44,6 +44,15 @@ const res = await page.evaluate(() => {
   out.gasPoison = e.poison; const hp0 = e.hp; G.state = 'aim'; G.turn = e; e.ai = false; endTurn(); out.gasDmg = hp0 - e.hp; // poison bites at the end of your own turn
   for (let r = 0; r < 4; r++) { G.gas.forEach((z) => z.rounds--); G.gas = G.gas.filter((z) => z.rounds > 0); } out.gasGone = G.gas.length === 0;
   startMatch({ mode: 'duel', map: 'hills', seed: 'n' }); const e2 = G.tanks[1]; G.state = 'fly'; boom(e2.x, e2.y - 8, WEAPONS.find((w) => w.id === 'nuke'), G.tanks[0]); out.nuke = e2.dead;
+  { // climbing: out of a steep crater, and along a carved tunnel
+    startMatch({ mode: 'duel', map: 'hills', seed: 'climb' }); const c = G.tanks[0], cx = 700, top = groundTop(cx);
+    carve(cx, top, 70); c.x = cx; c.y = top + 60; for (let i = 0; i < 120; i++) updateTank(c, 1 / 60); // at the bottom of a 70px crater
+    const startY = c.y; let minY = c.y; for (let i = 0; i < 120; i++) { walk(c, 1, 1); minY = Math.min(minY, c.y); } out.climbOut = c.x > cx + 70 && minY < startY - 50;
+    startMatch({ mode: 'duel', map: 'hills', seed: 'tunnel' }); const d = G.tanks[0], tx0 = 900, ty = groundTop(tx0) + 30;
+    for (let x = tx0; x < tx0 + 160; x += 8) carve(x, ty, 14); // a 28px-high tunnel
+    d.x = tx0 + 4; d.y = ty + 13; for (let i = 0; i < 90; i++) updateTank(d, 1 / 60); const dx0 = d.x;
+    for (let i = 0; i < 400; i++) walk(d, 1, 1); out.tunnel = d.x > dx0 + 100 && !d.air;
+  }
   out.kits = TANK_IDS.every((id) => { const t = mkTank({ cls: id }); return TANKS[id].kit.every(([w, n]) => t.ammo[widx(w)] === n) && t.ammo.filter((n) => n > 0).length === TANKS[id].kit.length && t.kit.length === 4; });
   const hv = mkTank({ cls: 'heavy' }), sn = mkTank({ cls: 'sniper' }), sc = mkTank({ cls: 'scout' }), br = mkTank({ cls: 'brawler' }), rk = mkTank({ cls: 'rookie' });
   out.stats = hv.maxhp > rk.maxhp && sc.fuel > rk.fuel && rk.fuel > hv.fuel && spdOf(sn) > spdOf(rk) && spdOf(rk) > spdOf(br) && hv.ammo[widx('nuke')] === 1 && rk.ammo[widx('gas')] === 1;
@@ -60,6 +69,8 @@ ok(res.wave === 2 && res.score > 0 && res.kills === 1, `rampage kill scores and 
 ok(MAP_IDS_OK(res.maps), `every map works: ${JSON.stringify(res.maps)}`);
 ok(res.void, 'digging all the way through drops a tank out of the map');
 ok(res.gasPoison === 3 && res.gasDmg === 8 && res.gasGone, 'gas poisons for 3 turns, 8 damage each, and the cloud fades');
+ok(res.climbOut, 'a tank climbs out of a steep crater');
+ok(res.tunnel, 'a tank drives through a carved tunnel');
 ok(res.nuke, 'a nuke flattens a tank');
 ok(res.kits && res.stats, 'every tank class has its own 4-weapon kit and distinct health, speed and range');
 ok(res.classMatch, 'a match with a non-default class finishes');

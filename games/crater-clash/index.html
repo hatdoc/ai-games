@@ -472,7 +472,7 @@ function updateTank(t, dt) {
       if (fall > 2) damage(t, fall, null);
     }
   } else if (!solid(t.x, t.y + 1)) { t.air = true; t.vy = 0; }
-  else { const l = groundTop(t.x - 9, t.y - 12), r = groundTop(t.x + 9, t.y - 12); t.rot += (Math.atan2(r - l, 18) - t.rot) * Math.min(1, dt * 12); }
+  else { const l = floorNear(t.x - 9, t.y), r = floorNear(t.x + 9, t.y); t.rot += (Math.atan2(r - l, 18) - t.rot) * Math.min(1, dt * 12); }
   for (const c of G.crates) if (!c.got && Math.abs(c.x - t.x) < 20 && Math.abs(c.y - (t.y - 8)) < 24) { c.got = true; pickup(t, c); }
 }
 function pickup(t, c) {
@@ -520,7 +520,7 @@ function updateAI(t, dt) {
       a.wantMove = false; a.moves++; a.dir = Math.random() < 0.6 ? p.f : -p.f; a.left = Math.min(t.fuel, 25 + Math.random() * 50); a.ph = 'move'; t.f = a.dir;
     } else { a.plan = p; a.ph = 'aim'; a.tm = 0.5; t.wi = p.wi; t.f = p.f; }
   } else if (a.ph === 'move') {
-    const step = Math.min(a.left, MOVE * dt); const moved = walk(t, a.dir, step, true); a.left -= step; t.fuel -= step;
+    const step = Math.min(a.left, MOVE * dt); const y0 = t.y, moved = walk(t, a.dir, step, true); a.left -= step; t.fuel -= step + Math.max(0, y0 - t.y) * 0.5;
     if (a.left <= 0 || !moved || t.y > WATER - 16) { a.ph = 'think'; a.tm = 0.3; }
   } else if (a.ph === 'aim') {
     const p = a.plan; t.f = p.f;
@@ -528,13 +528,25 @@ function updateAI(t, dt) {
     if (a.tm <= 0 && Math.abs(p.el - t.el) < 0.5 && Math.abs(p.pw - t.pw) < 0.5) fire(t);
   }
 }
+// A tank is a thin column: it needs ~13px of headroom and can step up to CLIMB px per px of travel, so it scales steep crater walls and
+// drives into carved tunnels and hollows (a low ceiling blocks it, a cliff edge drops it).
+const CLIMB = 16; // the lip of a fresh crater is almost vertical for its last ~15px, so a tank can hop a ledge that high (climbing costs extra fuel)
+const bodyClear = (x, y) => { for (let k = 1; k <= 13; k += 3) if (solid(x, y - k)) return false; return true; };
+const floorNear = (x, y) => { for (let d = 0; d <= 16; d++) for (const yy of [y + d, y - d]) if (solid(x, yy + 1) && !solid(x, yy)) return yy; return y; };
 function walk(t, dir, px, safe) { // moves up to px along the ground; false when blocked
   if (t.air || px <= 0) return false;
   let moved = 0;
   for (let i = 0; i < Math.ceil(px); i++) {
-    const nx = t.x + dir * Math.min(1, px - i);
-    if (nx < 12 || nx > W - 12 || solid(nx, t.y - 3) || solid(nx, t.y - 8)) return moved > 0;
-    t.x = nx; const gy = groundTop(nx, t.y - 3); if (safe && (gy > t.y + 40 || gy >= H || gy > WATER - 20)) return moved > 0; if (gy <= t.y + 3) t.y = gy; else { t.air = true; t.vy = 0; return true; } moved++;
+    const nx = t.x + dir * Math.min(1, px - i); if (nx < 12 || nx > W - 12) return moved > 0;
+    let ny = t.y, c = 0; while (!bodyClear(nx, ny) && c < CLIMB) { ny--; c++; }
+    if (!bodyClear(nx, ny)) return moved > 0; // too steep, or the ceiling is too low
+    let d = 0; while (!solid(nx, ny + 1) && d < 6) { ny++; d++; }
+    if (!solid(nx, ny + 1)) { // a drop: the AI will not walk off ledges or into the sea, a human can
+      let g = ny; while (!solid(nx, g + 1) && g < ny + 40) g++;
+      if (safe && (g - ny >= 40 || g >= H - 4 || g > WATER - 20)) return moved > 0;
+      t.x = nx; t.y = ny; t.air = true; t.vy = 0; return true;
+    }
+    t.x = nx; t.y = ny; moved++;
   }
   return true;
 }
@@ -595,7 +607,7 @@ function update(dt, rdt) {
 function controls(t, dt) {
   const k = (...n) => n.some((x) => hold.has(x));
   if (k('ArrowLeft', 'KeyA', 'mvL')) { t.f = -1; G.moveAcc += dt * MOVE; } else if (k('ArrowRight', 'KeyD', 'mvR')) { t.f = 1; G.moveAcc += dt * MOVE; } else G.moveAcc = 0;
-  if (G.moveAcc >= 1 && t.fuel > 0 && !t.air) { const px = Math.min(G.moveAcc, t.fuel); G.moveAcc = 0; t.fuel -= px; walk(t, t.f, px); }
+  if (G.moveAcc >= 1 && t.fuel > 0 && !t.air) { const px = Math.min(G.moveAcc, t.fuel); G.moveAcc = 0; const y0 = t.y; t.fuel -= px; walk(t, t.f, px); t.fuel = Math.max(0, t.fuel - Math.max(0, y0 - t.y) * 0.5); }
   if (k('ArrowUp', 'elU')) t.el = Math.min(88, t.el + 45 * dt); if (k('ArrowDown', 'elD')) t.el = Math.max(2, t.el - 45 * dt);
   if (k('KeyW', 'pwU')) t.pw = Math.min(100, t.pw + 40 * dt); if (k('KeyS', 'pwD')) t.pw = Math.max(5, t.pw - 40 * dt);
 }
