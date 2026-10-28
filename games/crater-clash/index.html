@@ -131,12 +131,12 @@ const WEAPONS = [
 ];
 // Tank classes: stats plus a short kit (weapon id, ammo). hp = health, move = driving fuel per turn, rng = how far a full-power shot flies, dmg = damage multiplier
 const TANKS = {
-  rookie: { name: 'Rookie', icon: '🛡️', col: ['#3a9bff', '#2468c4'], hp: 100, move: 90, rng: 1, dmg: 1, tag: 'Balanced all-rounder', kit: [['shell', Infinity], ['big', 2], ['tri', 2], ['gas', 1]] },
-  heavy: { name: 'Heavy', icon: '🦾', col: ['#8a8f9c', '#555b66'], hp: 140, move: 50, rng: 0.95, dmg: 1.2, tag: 'Slow and tough, hits hard', kit: [['shell', Infinity], ['big', 3], ['yeet', 2], ['nuke', 1]] },
-  scout: { name: 'Scout', icon: '🏃', col: ['#3ad06a', '#1f8a42'], hp: 75, move: 170, rng: 1.1, dmg: 0.9, tag: 'Fast and fragile', kit: [['shell', Infinity], ['banana', 3], ['chicken', 2], ['tri', 2]] },
-  sniper: { name: 'Sniper', icon: '🎯', col: ['#a45cff', '#6a2fc0'], hp: 80, move: 60, rng: 1.35, dmg: 1.1, tag: 'Shoots across the map', kit: [['shell', Infinity], ['banana', 2], ['tri', 2], ['nuke', 1]] },
-  trickster: { name: 'Trickster', icon: '🧪', col: ['#d6c43a', '#8e8218'], hp: 90, move: 100, rng: 1.05, dmg: 1, tag: 'Chaos and poison', kit: [['shell', Infinity], ['chicken', 3], ['gas', 2], ['yeet', 2]] },
-  brawler: { name: 'Brawler', icon: '🥊', col: ['#ff8a2b', '#c25a10'], hp: 110, move: 80, rng: 0.9, dmg: 1.1, tag: 'Close-range shover', kit: [['shell', Infinity], ['yeet', 3], ['big', 1], ['chicken', 2]] },
+  rookie: { name: 'Rookie', icon: '🛡️', col: ['#3a9bff', '#2468c4'], hp: 100, move: 130, rng: 1, dmg: 1, tag: 'Balanced all-rounder', kit: [['shell', Infinity], ['big', 2], ['tri', 2], ['gas', 1]] },
+  heavy: { name: 'Heavy', icon: '🦾', col: ['#8a8f9c', '#555b66'], hp: 140, move: 75, rng: 0.95, dmg: 1.2, tag: 'Slow and tough, hits hard', kit: [['shell', Infinity], ['big', 3], ['yeet', 2], ['nuke', 1]] },
+  scout: { name: 'Scout', icon: '🏃', col: ['#3ad06a', '#1f8a42'], hp: 75, move: 240, rng: 1.1, dmg: 0.9, tag: 'Fast and fragile', kit: [['shell', Infinity], ['banana', 3], ['chicken', 2], ['tri', 2]] },
+  sniper: { name: 'Sniper', icon: '🎯', col: ['#a45cff', '#6a2fc0'], hp: 80, move: 90, rng: 1.35, dmg: 1.1, tag: 'Shoots across the map', kit: [['shell', Infinity], ['banana', 2], ['tri', 2], ['nuke', 1]] },
+  trickster: { name: 'Trickster', icon: '🧪', col: ['#d6c43a', '#8e8218'], hp: 90, move: 140, rng: 1.05, dmg: 1, tag: 'Chaos and poison', kit: [['shell', Infinity], ['chicken', 3], ['gas', 2], ['yeet', 2]] },
+  brawler: { name: 'Brawler', icon: '🥊', col: ['#ff8a2b', '#c25a10'], hp: 110, move: 115, rng: 0.9, dmg: 1.1, tag: 'Close-range shover', kit: [['shell', Infinity], ['yeet', 3], ['big', 1], ['chicken', 2]] },
 };
 const TANK_IDS = Object.keys(TANKS);
 const widx = (id) => WEAPONS.findIndex((w) => w.id === id);
@@ -285,7 +285,7 @@ let paused = false;
 const hold = new Set();
 const fx = { parts: [], texts: [], rings: [], shake: 0, flash: 0 };
 const clouds = Array.from({ length: 14 }, (_, i) => ({ x: i * 140, y: 40 + (i % 4) * 55, s: 0.6 + (i % 4) * 0.25, v: 6 + (i % 5) * 2 }));
-const cam = { x: W / 2, s: 0.75, over: false }; // camera: world x at the screen centre, zoom, overview toggle
+const cam = { x: W / 2, y: H / 2, s: 0.75, over: false }; // camera: world x at the screen centre, zoom, overview toggle
 
 function mkTank(o) {
   const cls = o.cls || 'rookie', C = TANKS[cls], ammo = WEAPONS.map(() => 0); C.kit.forEach(([id, n]) => { ammo[widx(id)] = n; });
@@ -342,9 +342,9 @@ function newRound() {
   const foes = G.tanks.filter((t) => t.team === 1);
   if (foes.length > 1) foes.forEach((t, i) => placeTank(t, W - 120 - i * (W * 0.5 / foes.length) - xs() * 50));
   G.tanks.forEach((t) => { t.f = t.x < W / 2 ? 1 : -1; t.el = 45; t.pw = 60; t.ai && (t.ai = true); });
-  G.wind = Math.round((G.rng.w() * 2 - 1) * 8);
+  G.wind = Math.round((G.rng.w() * 2 - 1) * 12);
   G.turn = G.tanks[G.tanks.length - 1]; // so startTurn picks the first tank
-  nextTurn(true); cam.x = G.turn.x;
+  nextTurn(true); cam.x = G.turn.x; cam.y = H / 2;
 }
 function nextTurn(first) {
   const order = G.tanks, i0 = order.indexOf(G.turn);
@@ -569,6 +569,9 @@ function updateCam(dt) { // follow the shot, otherwise the active tank (a little
     else if (G.state !== 'aim') { const fl = G.tanks.find((x) => !x.dead && x.air); tx = fl ? fl.x : G.lastBoom ? G.lastBoom.x : tx; }
   }
   const half = VW / cam.s / 2; tx = Math.max(half, Math.min(W - half, tx)); cam.x += (tx - cam.x) * Math.min(1, dt * 4);
+  // tilt up when a tank or shell flies above the top of the map (a nuke or YEET can throw a tank very high)
+  let ty = H / 2; if (!cam.over) { const hy = VH / cam.s / 2, hi = Math.min(...G.tanks.filter((x) => !x.dead).map((x) => x.y - 40), ...G.projs.map((q) => q.y)); ty = Math.max(H / 2 - 600, Math.min(H / 2, hi - 100 + hy)); }
+  cam.y += (ty - cam.y) * Math.min(1, dt * 6);
 }
 function update(dt, rdt) {
   fx.shake *= 0.9; fx.flash = Math.max(0, fx.flash - rdt * 2.5);
@@ -621,7 +624,7 @@ function endTurn() {
   G.tanks.forEach((t) => { if (t.hp <= 0) t.dead = true; });
   const mine = alive(0).length, theirs = alive(1).length;
   if (!mine || !theirs) return roundOver(!!mine && !theirs, !mine && !theirs);
-  G.wind = Math.max(-12, Math.min(12, G.wind + Math.round((G.rng.w() - 0.5) * 8)));
+  G.wind = Math.round((G.rng.w() * 2 - 1) * 12); // a brand new random wind every turn (still seeded, so online and daily games agree)
   const idx = G.tanks.indexOf(G.turn);
   if (G.tanks.slice(idx + 1).every((t) => t.dead) && G.rng.c() < 0.55 && G.crates.length < 2) { // a mystery crate every so often
     const kind = G.rng.c() < 0.4 ? 'heal' : 'ammo';
@@ -679,7 +682,7 @@ function draw() {
   if (!G) return;
   const S = cam.s, sx = (Math.random() - 0.5) * fx.shake, sy = (Math.random() - 0.5) * fx.shake;
   g.fillStyle = hillCol + '88'; g.beginPath(); g.moveTo(0, VH); for (let x = 0; x <= VW; x += 30) g.lineTo(x, VH * 0.6 + Math.sin((x + cam.x * 0.4 * S) / 130) * 40 + Math.sin((x + cam.x * 0.4 * S) / 45) * 12); g.lineTo(VW, VH); g.fill(); // far hills, parallax
-  g.setTransform(S, 0, 0, S, VW / 2 - cam.x * S + sx, VH / 2 - (H / 2) * S + sy);
+  g.setTransform(S, 0, 0, S, VW / 2 - cam.x * S + sx, VH / 2 - cam.y * S + sy);
   const half = VW / S / 2 + 40, x0 = cam.x - half, x1 = cam.x + half;
   g.fillStyle = '#fff8'; for (const c of clouds) { g.beginPath(); g.ellipse(c.x, c.y, 46 * c.s, 16 * c.s, 0, 0, 6.3); g.ellipse(c.x + 24 * c.s, c.y - 8 * c.s, 30 * c.s, 14 * c.s, 0, 0, 6.3); g.fill(); }
   if (WATER < 1e8) { // the sea
@@ -698,7 +701,7 @@ function draw() {
   g.setTransform(1, 0, 0, 1, 0, 0);
   for (const t of G.tanks) { // arrows for tanks that are off the screen
     if (t.dead) continue; const px = VW / 2 + (t.x - cam.x) * S; if (px > 28 && px < VW - 28) continue;
-    const right = px > VW / 2, ex = right ? VW - 26 : 26, ey = Math.max(70, Math.min(VH - 50, VH / 2 + (t.y - H / 2) * S));
+    const right = px > VW / 2, ex = right ? VW - 26 : 26, ey = Math.max(70, Math.min(VH - 50, VH / 2 + (t.y - cam.y) * S));
     g.fillStyle = t.team ? '#e4504acc' : '#3a9bffcc'; g.beginPath(); g.arc(ex, ey, 17, 0, 6.3); g.fill(); emoji(t.emoji, ex, ey, 20);
     g.fillStyle = '#fff'; g.font = '800 11px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText((right ? '' : '◀ ') + Math.round(Math.abs(t.x - cam.x) / 10) + 'm' + (right ? ' ▶' : ''), ex + (right ? -2 : 2), ey + 28);
   }
@@ -771,7 +774,7 @@ $('#menuBtn').onclick = () => pauseSheet();
 $('#zoomBtn').onclick = () => { if (G) cam.over = !cam.over; };
 $('#emos').onclick = (e) => { const b = e.target.closest('[data-emo]'); if (!b || !G || G.mode !== 'online') return; say(G.tanks[G.me], b.dataset.emo); netSend({ k: 'emo', e: b.dataset.emo }); };
 function aimFrom(e) { // drag anywhere on the field to aim: pull toward where you want to shoot
-  if (!myTurn()) return; const t = G.turn, r = cv.getBoundingClientRect(), px = cam.x + ((e.clientX - r.left) * VW / r.width - VW / 2) / cam.s, py = H / 2 + ((e.clientY - r.top) * VH / r.height - VH / 2) / cam.s;
+  if (!myTurn()) return; const t = G.turn, r = cv.getBoundingClientRect(), px = cam.x + ((e.clientX - r.left) * VW / r.width - VW / 2) / cam.s, py = cam.y + ((e.clientY - r.top) * VH / r.height - VH / 2) / cam.s;
   const dx = px - t.x, dy = t.y - 13 - py; if (Math.hypot(dx, dy) < 12) return;
   const a = Math.atan2(dy, dx) * 180 / Math.PI; t.f = dx >= 0 ? 1 : -1; t.el = Math.max(2, Math.min(88, dx >= 0 ? a : 180 - a)); if (dy < 0) t.el = 2;
   t.pw = Math.max(5, Math.min(100, Math.hypot(dx, dy) * 0.3));
@@ -854,7 +857,7 @@ function twoSheet() {
 }
 function statBars(C) {
   const bar = (n, v) => `<div class="bar"><span>${n}</span><i style="width:${Math.round(v * 100)}%"></i></div>`;
-  return `<div class="stats"><b>${C.icon} ${C.name}</b> <span class="muted">${C.tag}</span>${bar('Health', C.hp / 140)}${bar('Speed', C.move / 170)}${bar('Range', C.rng / 1.35)}${bar('Power', C.dmg / 1.2)}
+  return `<div class="stats"><b>${C.icon} ${C.name}</b> <span class="muted">${C.tag}</span>${bar('Health', C.hp / 140)}${bar('Speed', C.move / 240)}${bar('Range', C.rng / 1.35)}${bar('Power', C.dmg / 1.2)}
     <div class="kit">${C.kit.map(([id, n]) => `<span>${WEAPONS[widx(id)].icon} ${WEAPONS[widx(id)].name}${n === Infinity ? '' : ' ×' + n}</span>`).join('')}</div></div>`;
 }
 function garageSheet() {

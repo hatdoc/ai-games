@@ -53,6 +53,11 @@ const res = await page.evaluate(() => {
     d.x = tx0 + 4; d.y = ty + 13; for (let i = 0; i < 90; i++) updateTank(d, 1 / 60); const dx0 = d.x;
     for (let i = 0; i < 400; i++) walk(d, 1, 1); out.tunnel = d.x > dx0 + 100 && !d.air;
   }
+  { // the wind is re-rolled every turn; a tank thrown above the top of the map stays on screen
+    startMatch({ mode: 'duel', map: 'hills', seed: 'wind' }); const ws = new Set([G.wind]); for (let i = 0; i < 12; i++) { G.state = 'aim'; endTurn(); ws.add(G.wind); } out.windVaries = ws.size >= 6;
+    startMatch({ mode: 'duel', map: 'mountain', seed: 'hi' }); const t = G.tanks[0]; G.state = 'fly'; t.vy = -900; t.air = true; let seen = true;
+    for (let i = 0; i < 150; i++) { update(1 / 60, 1 / 60); updateCam(1 / 60); const sy = VH / 2 + (t.y - cam.y) * cam.s; if (i > 10 && (sy < 0 || sy > VH)) seen = false; } out.flyVisible = seen;
+  }
   out.kits = TANK_IDS.every((id) => { const t = mkTank({ cls: id }); return TANKS[id].kit.every(([w, n]) => t.ammo[widx(w)] === n) && t.ammo.filter((n) => n > 0).length === TANKS[id].kit.length && t.kit.length === 4; });
   const hv = mkTank({ cls: 'heavy' }), sn = mkTank({ cls: 'sniper' }), sc = mkTank({ cls: 'scout' }), br = mkTank({ cls: 'brawler' }), rk = mkTank({ cls: 'rookie' });
   out.stats = hv.maxhp > rk.maxhp && sc.fuel > rk.fuel && rk.fuel > hv.fuel && spdOf(sn) > spdOf(rk) && spdOf(rk) > spdOf(br) && hv.ammo[widx('nuke')] === 1 && rk.ammo[widx('gas')] === 1;
@@ -71,6 +76,8 @@ ok(res.void, 'digging all the way through drops a tank out of the map');
 ok(res.gasPoison === 3 && res.gasDmg === 8 && res.gasGone, 'gas poisons for 3 turns, 8 damage each, and the cloud fades');
 ok(res.climbOut, 'a tank climbs out of a steep crater');
 ok(res.tunnel, 'a tank drives through a carved tunnel');
+ok(res.windVaries, 'wind is a fresh random value every turn');
+ok(res.flyVisible, 'a tank thrown above the map stays on screen (camera tilts up)');
 ok(res.nuke, 'a nuke flattens a tank');
 ok(res.kits && res.stats, 'every tank class has its own 4-weapon kit and distinct health, speed and range');
 ok(res.classMatch, 'a match with a non-default class finishes');
