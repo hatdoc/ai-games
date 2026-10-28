@@ -589,7 +589,6 @@ document.querySelectorAll('.tabs').forEach((tabs) =>
   tabs.addEventListener('click', (e) => e.target.dataset.tab && setTab(tabs.dataset.board, e.target.dataset.tab)));
 
 // Only players signed in on rank-game.com with a nickname can rank (cloudsave.js rgAuth); saves automatically
-<script src="../share.js"></script>
 const subNote = (html) => { $('subNote').innerHTML = html; };
 let rankBusy = false;
 async function rankUpdate() {
