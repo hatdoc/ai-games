@@ -478,7 +478,6 @@ function previewSong(song) { // short melody snippet on hover/tap in the menu
 let save = { best: {}, speed: 4, offset: 0 };
 try { Object.assign(save, JSON.parse(localStorage.getItem('beatbloom-save')) || {}); } catch {}
 window.cloudSaveChanged = () => { // cloudsave.js merged your other devices' progress: use it without reloading
-<script src="../share.js"></script>
   try { Object.assign(save, JSON.parse(localStorage.getItem('beatbloom-save')) || {}); } catch {}
   if (state === 'menu') renderMenu();
 };
