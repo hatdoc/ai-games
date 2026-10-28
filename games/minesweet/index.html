@@ -169,7 +169,6 @@ const LV = MS.LEVELS, LV_IDS = Object.keys(LV);
 const MINI = { w: 5, h: 5, m: 3, key: 't', name: 'Side board', tries: 200 };
 
 // ---------- saved data (local to this device; cloudsave.js mirrors it for signed-in players) ----------
-<script src="../share.js"></script>
 const DEF = { name: '', best: {}, stats: { played: 0, won: 0 }, ach: {}, cards: null, cd: {}, daily: {}, ds: { last: '', streak: 0, best: 0 }, zoom: 0, lastLv: 'intermediate', seenHow: false };
 let S = (() => { try { return { ...DEF, ...JSON.parse(localStorage.getItem('minesweet')) }; } catch { return { ...DEF }; } })();
 const save = () => { try { localStorage.setItem('minesweet', JSON.stringify(S)); } catch { /* private mode: play on */ } };

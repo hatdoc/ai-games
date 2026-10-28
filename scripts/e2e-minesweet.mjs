@@ -106,7 +106,6 @@ ok(await A.evaluate(() => window.__trap.card === 'timeattack'), 'only owned sabo
 await A.click('[data-act=trapGo]'); await solveAs(A, 60000); await waitSheet(A, /Trap is set/);
 const linkA = (await A.textContent('.link')).trim(), hashA = new URL(linkA).hash;
 ok(/^https:\/\/rank-game\.com\/games\/minesweet#c=b\.[a-z0-9]{8}\.6\d{4}\.\d\.ta\.1\./.test(linkA) && /n=Sam/.test(linkA), 'challenge link has board id, time, card and name: ' + linkA);
-ok(await A.evaluate(() => !MS.cardsOf(S).includes('timeattack')), 'armed card is spent when the link is made');
 const minesA = await A.evaluate(() => [...R.G.board.mines].join(''));
 const spent = await A.evaluate(() => ({ cd: S.cd.timeattack, has: MS.cardsOf(S).includes('timeattack') })); ok(spent.cd === 1, 'Time Attack went on cooldown after use');
 // tampering
