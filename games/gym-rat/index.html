@@ -59,18 +59,38 @@
   .ba svg { width: 45%; max-height: 190px; background: #262b45; border-radius: 12px; }
   #lb { margin: 10px 0; display: flex; justify-content: center; }
   .sm { opacity: .7; font-size: 13px; }
+  header { background: #ffffff0f; backdrop-filter: blur(6px); border: 1px solid #fff2; border-radius: 14px; padding: 7px 10px; }
+  #mute { background: none; box-shadow: none; padding: 2px 4px; font-size: 16px; }
+  #av { filter: drop-shadow(0 0 1px #000c) drop-shadow(0 4px 0 #0003); }
+  #av g > g, #av .idle { transform-box: fill-box; }
+  .idle { animation: breathe 3s ease-in-out infinite; transform-origin: 50% 100%; }
+  @keyframes breathe { 50% { transform: scale(1.012, 1.02); } }
+  .fx.pr { font-size: 30px; color: #fff; text-shadow: 0 0 12px #ffd84a, 0 3px 0 #c00; animation-duration: 1.8s; top: 28%; }
+  .bar { display: flex; align-items: center; gap: 6px; } .bar div { flex: 1; } .bar em { font-style: normal; font-size: 14px; }
+  .bar i { height: 11px; box-shadow: inset 0 1px 2px #0008; } .bar b { background-image: linear-gradient(#fff4, #0002); }
+  #title { background: linear-gradient(90deg, #ffd84a, #ff9f43); color: #111; padding: 3px 10px; border-radius: 99px; font-size: 13px; box-shadow: 0 2px 0 #0006; }
+  .lift { position: relative; overflow: hidden; } .lift::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: var(--p); background: linear-gradient(90deg, #ffd84a, #ff6b8b); }
+  .lift b { font-size: 24px; } .lift i { display: block; font-style: normal; font-size: 16px; }
+  #tabs button { box-shadow: 0 3px 0 #0006; } #tabs button.on { box-shadow: 0 3px 0 #a8870a; transform: translateY(-1px); }
+  #panel button { background: linear-gradient(#2e3458, #262b4a); border: 1px solid #fff1; padding: 11px 12px; font-size: 15px; }
+  #panel button.own { background: linear-gradient(#25603a, #1c4a2d); }
+  #panel button:not(:disabled):hover { filter: brightness(1.15); }
+  #sleep { background: linear-gradient(#5a55c8, #3d3a8c); padding: 13px; font-size: 15px; }
+  #mbox { background: linear-gradient(#252a4a, #1b1f36); box-shadow: 0 20px 60px #000a; animation: pop .25s ease-out; }
+  @keyframes pop { from { transform: scale(.85); opacity: 0; } }
+  #mopts button { box-shadow: 0 4px 0 #a8870a; } #mopts button:nth-child(n+2) { box-shadow: 0 4px 0 #0007; }
 </style>
 </head>
 <body>
 <div id="app">
   <header>
     <a id="home" href="https://rank-game.com/">← Home</a><script>if (top !== self) home.remove();</script>
-    <span id="day"></span><span id="slots"></span><span id="cash"></span>
+    <span id="day"></span><span id="slots"></span><span id="cash"></span><button id="mute" title="Sound">🔊</button>
   </header>
   <div id="stage"><svg id="bg" viewBox="0 0 400 310" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2d3358"/><stop offset="1" stop-color="#1b1f3a"/></linearGradient><linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a4636"/><stop offset="1" stop-color="#2e2219"/></linearGradient></defs>
 <rect width="400" height="310" fill="url(#wall)"/><rect y="192" width="400" height="118" fill="url(#floor)"/>
 <g stroke="#0003" stroke-width="2"><path d="M0 222H400M0 256H400M0 290H400"/></g>
-<rect x="150" y="26" width="100" height="70" rx="6" fill="#7fd0ff22" stroke="#9fb0ff55" stroke-width="3"/><path d="M200 26V96M150 61H250" stroke="#9fb0ff55" stroke-width="2"/>
+<rect id="sky" x="150" y="26" width="100" height="70" rx="6" fill="#7fd0ff" stroke="#9fb0ff55" stroke-width="3"/><rect id="glow" x="0" y="0" width="400" height="310" fill="#ff9f4322" style="mix-blend-mode:screen"/><path d="M200 26V96M150 61H250" stroke="#9fb0ff55" stroke-width="2"/>
 <g fill="#c9ccd9"><rect x="14" y="40" width="7" height="152"/><rect x="92" y="40" width="7" height="152"/><rect x="10" y="40" width="93" height="6" fill="#ffd84a"/><rect x="10" y="112" width="93" height="5"/></g>
 <g><circle cx="38" cy="108" r="9" fill="#d33"/><circle cx="74" cy="108" r="9" fill="#36c"/></g>
 <g transform="translate(300 100)"><rect width="84" height="92" rx="6" fill="#ffffff10" stroke="#fff3" stroke-width="3"/><path d="M12 80L40 12M44 82L70 20" stroke="#fff2" stroke-width="6"/></g>
@@ -267,7 +287,7 @@ function avatar(m, f, mood, energy, o = {}) {
   const sw = 19 + m * 1.7, hw = 10 + m * 0.45 + f * 1.0, aw = 4.5 + m * 0.75 + f * 0.25, lw = 7 + m * 0.8 + f * 0.35, skin = '#f1c59b', dark = '#d9a679', shirt = '#4aa3ff';
   const lx = hw * 0.45 + lw * 0.35, sm = mood > 50 ? (mood - 50) / 8 : (mood - 50) / 10;
   const up = o.lift, ay = up ? 72 : 162, ax = sw + aw * 0.4 + 4;
-  let s = `<ellipse cx="100" cy="260" rx="${40 + m}" ry="6" fill="#0006"/><g class="${o.pump ? 'pump' : ''}">`;
+  let s = `<ellipse cx="100" cy="260" rx="${40 + m}" ry="6" fill="#0006"/><g class="${o.pump ? 'pump' : 'idle'}">`;
   s += `<line x1="${100 - lx}" y1="172" x2="${100 - lx}" y2="250" stroke="${skin}" stroke-width="${lw}" stroke-linecap="round"/>`
     + `<line x1="${100 + lx}" y1="172" x2="${100 + lx}" y2="250" stroke="${skin}" stroke-width="${lw}" stroke-linecap="round"/>`
     + `<ellipse cx="${100 - lx}" cy="258" rx="${lw * 0.8 + 3}" ry="6" fill="#eee"/><ellipse cx="${100 + lx}" cy="258" rx="${lw * 0.8 + 3}" ry="6" fill="#eee"/>`
@@ -290,7 +310,7 @@ function avatar(m, f, mood, energy, o = {}) {
     for (let i = 0; i < n; i++) for (const d of [-1, 1]) s += `<rect x="${100 + d * (62 + i * 8) - 3.5}" y="${ay - 17 - i}" width="7" height="${30 + i * 2}" rx="2" fill="${['#d33', '#36c', '#eb3', '#2a2', '#eee', '#999'][i % 6]}"/>`; s += '</g>'; }
   return s + '</g>';
 }
-const BARS = [['ENERGY', 'energy', '#4ad3ff', 100], ['FULLNESS', 'fuel', '#ffb84a', 100], ['PROTEIN', 'prot', '#ff6b8b', 100], ['MOOD', 'mood', '#7dff9a', 100], ['SORENESS', 'sore', '#b46bff', 100]];
+const BARS = [['ENERGY', 'energy', '#4ad3ff', '⚡'], ['FULLNESS', 'fuel', '#ffb84a', '🍽️'], ['PROTEIN', 'prot', '#ff6b8b', '🥩'], ['MOOD', 'mood', '#7dff9a', '😊'], ['SORENESS', 'sore', '#b46bff', '🔥']];
 let tab = 'train', busy = false;
 function modal(html, opts) {
   $('#mbody').innerHTML = html; const b = $('#mopts'); b.innerHTML = '';
@@ -301,12 +321,13 @@ function render(pump) {
   $('#day').textContent = `Day ${Math.min(S.day, MAXDAY)}/${MAXDAY}${S.injured ? ' 🤕' : ''}`;
   $('#slots').innerHTML = ['🌅', '☀️', '🌙'].map((e, i) => `<span style="opacity:${i < S.slot ? 0.2 : 1}">${e}</span>`).join('');
   $('#cash').textContent = `$${S.cash}`;
+  const sky = ['#ffb36b', '#7fd0ff', '#6a4fb0'][Math.min(2, S.slot)]; $('#sky').setAttribute('fill', sky); $('#glow').setAttribute('fill', ['#ff9f4333', '#ffffff08', '#3b1f8c44'][Math.min(2, S.slot)]);
   $('#bubble').textContent = S.msg;
   $('#av').innerHTML = avatar(S.muscle, S.fat, S.mood, S.energy, { pump, lift: pump, plates: Math.min(6, 1 + Math.floor(total() / 70)) });
-  $('#bars').innerHTML = BARS.map(([n, k, c]) => `<div class="bar">${n}<i><b style="width:${clamp(S[k], 0, 100)}%;background:${c}"></b></i></div>`).join('');
+  $('#bars').innerHTML = BARS.map(([n, k, c, e]) => `<div class="bar"><em>${e}</em><div>${n}<i><b style="width:${clamp(S[k], 0, 100)}%;background-color:${c}"></b></i></div></div>`).join('');
   $('#bw').textContent = `${(48 + S.muscle + S.fat).toFixed(1)} kg · streak ${S.streak}🔥`;
   $('#title').textContent = titleOf(total());
-  $('#lifts').innerHTML = Object.keys(CAP).map((k) => `<div class="lift"><small>${LNAME[k]}</small><b>${Math.round(S.lift[k])}</b></div>`).join('');
+  $('#lifts').innerHTML = Object.keys(CAP).map((k) => `<div class="lift" style="--p:${Math.min(100, S.lift[k] / CAP[k] * 100)}%"><i>${{ bench: '🛋️', squat: '🦵', dead: '🏗️' }[k]}</i><small>${LNAME[k]} kg</small><b>${Math.round(S.lift[k])}</b></div>`).join('');
   $('#tabs').innerHTML = [['train', '🏋️ Train'], ['eat', '🍗 Eat'], ['work', '💼 Work'], ['rest', '😴 Rest'], ['shop', '🛒 Shop']].map(([k, n]) => `<button data-t="${k}" class="${k === tab ? 'on' : ''}">${n}</button>`).join('');
   $('#tabs').onclick = (e) => { const t = e.target.dataset.t; if (t) { tab = t; render(); } };
   const rows = []; const row = (e, n, r, fn, dis, cls) => rows.push({ h: `<button ${dis ? 'disabled' : ''} class="${cls || ''}">${e} ${n}<span>${r}</span></button>`, fn });
@@ -331,14 +352,25 @@ function render(pump) {
   [...$('#panel').children].forEach((el, i) => { const r = rows[i]; if (r.fn) el.onclick = r.fn; });
   $('#sleep').disabled = !!(S.ev || S.over);
 }
-function fx(t) { const el = document.createElement('div'); el.className = 'fx'; el.textContent = t; $('#stage').append(el); setTimeout(() => el.remove(), 1300); }
+let ac, muted = false; try { muted = localStorage.getItem('gymrat-mute') === '1'; } catch {}
+function beep(f, d = 0.08, type = 'square', v = 0.05) {
+  if (muted) return;
+  try { ac ||= new (window.AudioContext || window.webkitAudioContext)(); const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
+    o.type = type; o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + d); o.connect(g).connect(ac.destination); o.start(); o.stop(t + d); } catch {}
+}
+const sfx = { clank: () => { beep(140, 0.12, 'sawtooth', 0.08); setTimeout(() => beep(90, 0.15, 'sawtooth', 0.08), 90); }, pr: () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, 0.14, 'triangle', 0.08), i * 90)), coin: () => { beep(880, 0.06); setTimeout(() => beep(1175, 0.1), 60); }, click: () => beep(500, 0.04, 'triangle') };
+$('#mute').textContent = muted ? '🔇' : '🔊';
+$('#mute').onclick = () => { muted = !muted; $('#mute').textContent = muted ? '🔇' : '🔊'; try { localStorage.setItem('gymrat-mute', muted ? '1' : '0'); } catch {} sfx.click(); };
+function fx(t, cls = '') { const el = document.createElement('div'); el.className = 'fx ' + cls; el.textContent = t; $('#stage').append(el); setTimeout(() => el.remove(), 1300); }
 function act(fn, lifted) {
   if (busy) return;
-  const before = S.day, hadSlot = S.slot, l0 = { ...S.lift };
+  const l0 = { ...S.lift }, cash0 = S.cash, t0 = titleOf(total());
   const m = fn(); if (m === undefined) return;
   save();
   const d = Object.keys(CAP).map((k) => [k, S.lift[k] - l0[k]]).find((x) => x[1] > 0);
-  if (d) fx(`+${d[1].toFixed(1)} kg`);
+  if (d) { fx(`+${d[1].toFixed(1)} kg`); if (d[1] > 3) { setTimeout(() => fx('💥 BIG PR! 💥', 'pr'), 250); sfx.pr(); } else sfx.clank(); if (navigator.vibrate) navigator.vibrate(30); }
+  else if (S.cash > cash0) sfx.coin(); else sfx.click();
+  if (titleOf(total()) !== t0) setTimeout(() => { fx(`⭐ ${titleOf(total())}!`, 'pr'); sfx.pr(); }, 700);
   if (lifted && d) { busy = true; render(true); setTimeout(() => { busy = false; after(); }, 850); } else { render(); after(); }
 }
 function after() {
