@@ -65,6 +65,20 @@ const BOTS = {
     await page.evaluate(() => { tadUI.play('birthday'); tad.setDemo(true); tad.H.timer = 3; });
     await page.waitForTimeout(12000);
   } },
+  'gym-rat': { skip: 1, len: 9, poster: 4, async play(page) { // mid-run save: a bot clicks through training, meals and events
+    await page.evaluate(() => {
+      gr.setS(Object.assign(gr.fresh(), { day: 25, muscle: 7, fat: 1, mood: 80, cash: 150, streak: 4, items: { member: 1, belt: 1 }, lift: { bench: 70, squat: 95, dead: 120 }, msg: 'Day 25. The skinny kid is gone. Keep lifting.' }));
+      gr.render(); let n = 0;
+      setInterval(() => {
+        const ok = document.querySelector('#modal:not([hidden]) #mopts button');
+        if (ok) return ok.click();
+        const tab = (t) => document.querySelector(`#tabs [data-t=${t}]`).click(), S = gr.S;
+        if (S.fuel < 60) { tab('eat'); document.querySelectorAll('#panel button')[1].click(); return; }
+        tab('train'); const b = [...document.querySelectorAll('#panel button')].slice(0, 3)[n++ % 3];
+        if (S.sore > 60) { tab('rest'); document.querySelector('#panel button').click(); } else if (!b.disabled) b.click();
+      }, 1100);
+    });
+  } },
   'goal-rush': { skip: 1, len: 9, poster: 5, async play(page) { // two hard bot teams, a chaos event lands early
     await page.evaluate(() => startDemo());
   } },
