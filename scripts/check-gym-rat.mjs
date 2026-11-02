@@ -49,7 +49,7 @@ const r = await page.evaluate(() => {
     g.newGame(); const S = g.S; S.muscle = 10; S.lift = { bench: 100, squat: 120, dead: 150 }; S.ev = e[0]; const m = g.resolveEvent(i);
     out.events.push(typeof m === 'string' && m.length > 0 && [S.mood, S.energy, S.fuel, S.cash, S.sore].every((v) => Number.isFinite(v)) && S.mood >= 0 && S.mood <= 100);
   }
-  g.newGame(); g.render(); out.html = document.querySelector('#av').innerHTML.length;
+  g.newGame(); g.render(); out.html = document.querySelector('#hero').src.length;
   return out;
 });
 const avg = (a, k) => Math.round(a.reduce((s, x) => s + x[k], 0) / a.length);
@@ -60,7 +60,7 @@ ok(avg(r.smart, 'total') > avg(r.lazy, 'total') + 100, 'smart play beats lazy pl
 ok(avg(r.smart, 'total') >= 300 && avg(r.smart, 'total') <= 700, `smart total in a sane range (${avg(r.smart, 'total')})`);
 ok(avg(r.lazy, 'total') < 260, `lazy total stays low (${avg(r.lazy, 'total')})`);
 ok(r.events.every(Boolean), `all ${r.events.length} event options resolve cleanly`);
-ok(r.html > 500, 'avatar renders');
+ok(r.html > 10, 'hero image set');
 ok(errors.length === 0, 'no page errors ' + errors.join('|'));
 await browser.close(); server.close();
 process.exit(fails.length ? 1 : 0);
