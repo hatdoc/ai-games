@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Gym Rat Raising</title>
+<script src="../cloudsave.js" data-game="gym-rat" data-keys="gymrat-save gymrat-best"></script>
+<script src="../share.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #14161f; color: #fff; font: 15px system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+  body { background: radial-gradient(circle at 50% -10%, #2a2f55, #14161f 60%); min-height: 100dvh; display: flex; justify-content: center; }
+  #app { width: min(480px, 100%); padding: 10px 12px 28px; }
+  button { font: 700 14px system-ui, sans-serif; border: 0; border-radius: 10px; cursor: pointer; color: #fff; background: #2b3050; box-shadow: 0 3px 0 #0006; padding: 10px 12px; }
+  button:disabled { opacity: .35; cursor: default; }
+  button:not(:disabled):active { transform: scale(.97); }
+  header { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+  header a { color: #fffc; text-decoration: none; font-size: 13px; background: #0005; padding: 5px 9px; border-radius: 8px; }
+  #day { flex: 1; }
+  #slots span { margin-left: 3px; transition: opacity .2s; }
+  #cash { color: #7dff9a; }
+  #stage { position: relative; margin-top: 8px; height: 310px; border-radius: 16px; overflow: hidden;
+    background: #1b1f3a; border: 1px solid #fff3; box-shadow: 0 8px 24px #0008; }
+  #bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #stage #av { position: absolute; left: 50%; bottom: 0; height: 100%; transform: translateX(-50%); }
+  .pump { animation: pump .8s ease-in-out; transform-origin: 50% 100%; }
+  @keyframes pump { 0%,100% { transform: translateY(0) } 25% { transform: translateY(-7px) scaleY(1.02) } 50% { transform: translateY(0) } 75% { transform: translateY(-5px) } }
+  #bubble { position: absolute; z-index: 2; left: 8px; right: 8px; top: 8px; background: #fffef2; box-shadow: 0 3px 0 #0006; color: #111; border-radius: 12px; padding: 8px 10px; font-size: 13px; font-weight: 600; min-height: 36px; }
+  .fx { position: absolute; left: 50%; top: 45%; font-weight: 900; font-size: 22px; color: #ffd84a; text-shadow: 0 2px 0 #000a; animation: fx 1.3s ease-out forwards; pointer-events: none; }
+  @keyframes fx { to { transform: translateY(-60px); opacity: 0; } }
+  #bars { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin: 10px 0; }
+  .bar { font-size: 11px; font-weight: 800; letter-spacing: .5px; }
+  .bar i { display: block; height: 9px; border-radius: 6px; background: #ffffff1c; margin-top: 3px; overflow: hidden; }
+  .bar b { display: block; height: 100%; border-radius: 6px; transition: width .35s; }
+  #lifts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .lift { background: linear-gradient(#262b4a, #1b1f36); border: 1px solid #fff2; border-radius: 12px; padding: 7px 4px; text-align: center; }
+  .lift small { display: block; opacity: .65; font-size: 11px; font-weight: 700; }
+  .lift b { font-size: 21px; font-variant-numeric: tabular-nums; }
+  #rank { display: flex; justify-content: space-between; align-items: center; margin: 8px 2px; font-weight: 800; }
+  #title { color: #ffd84a; }
+  #tabs { display: flex; gap: 5px; margin: 4px 0 8px; }
+  #tabs button { flex: 1; padding: 9px 2px; font-size: 13px; background: #1d2136; }
+  #tabs button.on { background: #ffd84a; color: #111; }
+  #panel { display: grid; gap: 6px; }
+  #panel button { display: flex; justify-content: space-between; align-items: center; text-align: left; gap: 8px; }
+  #panel button span { opacity: .65; font-size: 12px; font-weight: 600; text-align: right; }
+  #panel button.own { background: #1f4a2d; }
+  #sleep { width: 100%; margin-top: 10px; background: #3d3a8c; }
+  #modal { position: fixed; inset: 0; background: #000b; display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 5; overflow-y: auto; }
+  #modal[hidden] { display: none; }
+  #mbox { width: min(420px, 100%); background: #1d2136; border: 1px solid #fff3; border-radius: 16px; padding: 18px; max-height: 94dvh; overflow-y: auto; text-align: center; }
+  #mbox h2 { margin: 0 0 8px; }
+  #mbox p { margin: 6px 0; line-height: 1.4; }
+  #mopts { display: grid; gap: 8px; margin-top: 14px; }
+  #mopts button { background: #ffd84a; color: #111; padding: 12px; }
+  #mopts button:nth-child(n+2) { background: #2b3050; color: #fff; }
+  .big { font-size: 64px; font-weight: 900; line-height: 1; color: #ffd84a; }
+  .ba { display: flex; justify-content: center; gap: 4px; }
+  .ba svg { width: 45%; max-height: 190px; background: #262b45; border-radius: 12px; }
+  #lb { margin: 10px 0; display: flex; justify-content: center; }
+  .sm { opacity: .7; font-size: 13px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <a id="home" href="https://rank-game.com/">← Home</a><script>if (top !== self) home.remove();</script>
+    <span id="day"></span><span id="slots"></span><span id="cash"></span>
+  </header>
+  <div id="stage"><svg id="bg" viewBox="0 0 400 310" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2d3358"/><stop offset="1" stop-color="#1b1f3a"/></linearGradient><linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a4636"/><stop offset="1" stop-color="#2e2219"/></linearGradient></defs>
+<rect width="400" height="310" fill="url(#wall)"/><rect y="192" width="400" height="118" fill="url(#floor)"/>
+<g stroke="#0003" stroke-width="2"><path d="M0 222H400M0 256H400M0 290H400"/></g>
+<rect x="150" y="26" width="100" height="70" rx="6" fill="#7fd0ff22" stroke="#9fb0ff55" stroke-width="3"/><path d="M200 26V96M150 61H250" stroke="#9fb0ff55" stroke-width="2"/>
+<g fill="#c9ccd9"><rect x="14" y="40" width="7" height="152"/><rect x="92" y="40" width="7" height="152"/><rect x="10" y="40" width="93" height="6" fill="#ffd84a"/><rect x="10" y="112" width="93" height="5"/></g>
+<g><circle cx="38" cy="108" r="9" fill="#d33"/><circle cx="74" cy="108" r="9" fill="#36c"/></g>
+<g transform="translate(300 100)"><rect width="84" height="92" rx="6" fill="#ffffff10" stroke="#fff3" stroke-width="3"/><path d="M12 80L40 12M44 82L70 20" stroke="#fff2" stroke-width="6"/></g>
+<g fill="#222" stroke="#555"><rect x="300" y="178" width="84" height="14" rx="3"/></g><g fill="#999"><circle cx="314" cy="170" r="8"/><circle cx="338" cy="170" r="8"/><circle cx="362" cy="170" r="8"/></g>
+<text x="200" y="20" text-anchor="middle" font-family="system-ui" font-weight="900" font-size="12" fill="#ffd84a99" letter-spacing="3">NO PAIN NO GAIN</text></svg><div id="bubble"></div><svg id="av" viewBox="0 0 200 280"></svg></div>
+  <div id="bars"></div>
+  <div id="rank"><span id="bw"></span><span id="title"></span></div>
+  <div id="lifts"></div>
+  <div id="tabs"></div>
+  <div id="panel"></div>
+  <button id="sleep">😴 Call it a day (sleep)</button>
+</div>
+<div id="modal" hidden><div id="mbox"><div id="mbody"></div><div id="mopts"></div></div></div>
+<script src="../leaderboard.js"></script>
+<script src="../ad.js"></script>
+<script>
+const MAXDAY = 90, SLOTS = 3, RENT = 30;
+const CAP = { bench: 200, squat: 280, dead: 330 };
+const LNAME = { bench: 'Bench', squat: 'Squat', dead: 'Deadlift' };
+const FOODS = [
+  { n: 'Instant noodles', e: '🍜', c: 1, fuel: 25, prot: 3, fat: 0.4, mood: 1 },
+  { n: 'Chicken & rice', e: '🍗', c: 4, fuel: 35, prot: 30, fat: 0, mood: 2 },
+  { n: 'Protein shake', e: '🥤', c: 3, fuel: 10, prot: 25, fat: 0, mood: 1 },
+  { n: 'Bulk-up feast', e: '🍱', c: 9, fuel: 60, prot: 45, fat: 0.3, mood: 4 },
+  { n: 'Burger & fries', e: '🍔', c: 6, fuel: 45, prot: 12, fat: 1.2, mood: 8 },
+];
+const JOBS = [
+  { n: 'Convenience store shift', e: '🏪', pay: 30, en: 25, mood: -3, fat: 0 },
+  { n: 'Bike food delivery', e: '🚲', pay: 40, en: 40, mood: -2, fat: 0.4, sore: 8 },
+];
+const ITEMS = [
+  { id: 'member', n: 'Gym membership', e: '🏋️', c: 45, d: 'sessions are free' },
+  { id: 'wraps', n: 'Wrist wraps', e: '🩹', c: 30, d: 'bench +10%' },
+  { id: 'belt', n: 'Lifting belt', e: '🥋', c: 50, d: 'squat +12%, deadlift +8%' },
+  { id: 'straps', n: 'Lifting straps', e: '🪢', c: 25, d: 'deadlift +15%' },
+  { id: 'shoes', n: 'Flat gym shoes', e: '👟', c: 60, d: 'all lifts +5%' },
+  { id: 'creatine', n: 'Creatine tub', e: '🧪', c: 45, d: 'muscle growth +25%' },
+  { id: 'roller', n: 'Foam roller', e: '🧻', c: 20, d: 'recover 15 extra soreness a night' },
+  { id: 'prep', n: 'Meal-prep boxes', e: '🥡', c: 30, d: 'food costs 25% less' },
+  { id: 'app', n: 'Workout log app', e: '📱', c: 20, d: '+3 mood every session' },
+];
+const IB = { wraps: { bench: 1.1 }, belt: { squat: 1.12, dead: 1.08 }, straps: { dead: 1.15 }, shoes: { bench: 1.05, squat: 1.05, dead: 1.05 } };
+const TITLES = [[0, 'Human Twig'], [110, 'Skinny Newbie'], [160, 'Gym Curious'], [210, 'Gym Regular'], [270, 'Gym Rat'], [340, 'Iron Addict'],
+  [420, 'Local Beast'], [500, 'Gym Legend'], [600, 'Mr. Olympia Dreamer']];
+const titleOf = (t) => TITLES.filter((x) => t >= x[0]).pop()[1];
+
+const rnd = Math.random, clamp = (v, a, b) => Math.max(a, Math.min(b, v)), $ = (s) => document.querySelector(s);
+const has = (id) => !!S.items[id];
+const total = () => Math.round(S.lift.bench + S.lift.squat + S.lift.dead);
+const price = (c) => Math.ceil(c * (has('prep') ? 0.75 : 1));
+const fresh = () => ({ day: 1, slot: 0, cash: 20, energy: 100, fuel: 50, prot: 20, mood: 60, sore: 0, muscle: 0, fat: 0, stim: 0, injured: 0, streak: 0, trained: false,
+  lift: { bench: 20, squat: 30, dead: 40 }, items: {}, buff: null, ev: null, lastEv: '', over: false, msg: 'Day 1. You weigh 48 kg and the gym bro called you "a coat hanger". Time to change that.' });
+let S;
+try { S = JSON.parse(localStorage.getItem('gymrat-save')); } catch {}
+if (!S || !S.lift) S = fresh();
+const save = () => { try { localStorage.setItem('gymrat-save', JSON.stringify(S)); } catch {} };
+const say = (m) => { S.msg = m; return m; };
+
+// ---------- game logic (returns a message; no DOM) ----------
+function quality() {
+  const eF = 0.5 + S.energy / 200, mF = 0.7 + S.mood / 200, sF = 1 - S.sore / 200;
+  const fF = S.fuel < 20 ? 0.5 : S.fuel < 45 ? 0.8 : S.fuel <= 110 ? 1 : 0.9;
+  return eF * mF * sF * fF * (S.streak >= 5 ? 1.1 : 1) * (S.buff ? S.buff.m : 1);
+}
+function useSlot() { if (++S.slot >= SLOTS) return night(); return ''; }
+function can(cost) { return !S.over && !S.ev && S.energy >= cost && S.slot < SLOTS; }
+function train(l) { // l: bench | squat | dead | cardio | home
+  const home = l === 'home', cardio = l === 'cardio', gymFee = home ? 0 : has('member') ? 0 : 3;
+  const cost = home ? 15 : cardio ? 20 : 30;
+  if (!can(cost) || S.injured || S.cash < gymFee) return '';
+  S.cash -= gymFee; S.energy -= cost; S.fuel = Math.max(0, S.fuel - (cardio ? 15 : 10));
+  if (cardio) { const b = Math.min(S.fat, 0.7 * (0.6 + S.mood / 200)); S.fat -= b; S.mood = clamp(S.mood + 2, 0, 100); return say(`Cardio done. ${b ? `Burned ${b.toFixed(1)} kg of fat.` : 'You have no fat to lose, you are a noodle.'}`) + useSlot(); }
+  if (S.sore > 70 && rnd() < (S.sore - 70) / 100) {
+    S.injured = 2; S.mood = clamp(S.mood - 15, 0, 100);
+    return say('Ouch! You trained while wrecked and tweaked something. No lifting for 2 days.') + useSlot();
+  }
+  const lift = home ? 'bench' : l, q = quality() * (home ? 0.35 : 1);
+  const bonus = Object.keys(IB).reduce((a, id) => a * (has(id) && IB[id][lift] || 1), 1);
+  const g = 3.6 * Math.max(0.03, 1 - S.lift[lift] / CAP[lift]) * q * bonus * (0.85 + rnd() * 0.3);
+  S.lift[lift] += g; S.stim += (home ? 3 : 10) * (0.7 + S.mood / 200);
+  S.sore = clamp(S.sore + (home ? 8 : 22), 0, 100); S.mood = clamp(S.mood + 3 + (has('app') ? 3 : 0), 0, 100); S.trained = true;
+  if (S.buff && !home && --S.buff.n <= 0) S.buff = null;
+  const lines = g > 3 ? ['New PR energy!', 'Smooth and heavy.', 'The bar flew up.'] : g > 1.5 ? ['Solid set.', 'Felt good.', 'Grind, grind, grind.'] : ['Slow day...', 'The bar felt heavy.', 'Eat and rest more!'];
+  const msg = `${home ? 'Pushups on the floor' : LNAME[lift]}: +${g.toFixed(1)} kg. ${lines[rnd() * 3 | 0]}`;
+  S.lastGain = { lift, g };
+  return say(msg) + useSlot();
+}
+function eat(i) {
+  const f = FOODS[i], c = price(f.c);
+  if (S.over || S.ev || S.cash < c || S.fuel >= 130) return '';
+  S.cash -= c; S.fuel = Math.min(150, S.fuel + f.fuel); S.prot = Math.min(100, S.prot + f.prot); S.fat += f.fat; S.mood = clamp(S.mood + f.mood, 0, 100);
+  return say(`${f.n}. ${S.fuel > 110 ? 'You are STUFFED. Extra food turns into fat tonight.' : f.prot >= 25 ? 'Muscle building material.' : 'Fuel in the tank.'}`);
+}
+function work(i) {
+  const j = JOBS[i];
+  if (!can(j.en)) return '';
+  S.cash += j.pay; S.energy -= j.en; S.mood = clamp(S.mood + j.mood, 0, 100); S.fat = Math.max(0, S.fat - j.fat); S.sore = clamp(S.sore + (j.sore || 0), 0, 100);
+  return say(`${j.n}: +$${j.pay}. Rent is due every 7th day ($${RENT}).`) + useSlot();
+}
+function rest(kind) {
+  if (!can(0)) return '';
+  if (kind === 'mirror') { S.mood = clamp(S.mood + 8 + Math.min(8, S.muscle / 2), 0, 100); S.energy = Math.max(0, S.energy - 5); return say(S.muscle < 3 ? 'You flex at the mirror. Two veins and a dream.' : 'You flex. The mirror flexes back. Confidence up.') + useSlot(); }
+  S.sore = Math.max(0, S.sore - 30); S.energy = Math.min(100, S.energy + 35); S.mood = clamp(S.mood + 2, 0, 100);
+  return say('Nap, stretch, scroll. Soreness down, energy up.') + useSlot();
+}
+function buy(id) {
+  const it = ITEMS.find((x) => x.id === id);
+  if (S.over || S.ev || has(id) || S.cash < it.c) return '';
+  S.cash -= it.c; S.items[id] = 1; return say(`Bought ${it.n}: ${it.d}.`);
+}
+function sleep() { // skip the remaining slots of the day
+  if (S.over || S.ev) return '';
+  S.slot = SLOTS; return night();
+}
+function night() {
+  let out = [], kg0 = S.muscle;
+  const protF = Math.min(1, S.prot / 45), grow = S.stim * 0.0065 * protF * (has('creatine') ? 1.25 : 1) * (0.8 + S.mood / 250);
+  S.muscle += grow;
+  if (S.fuel < 15) { S.muscle = Math.max(0, S.muscle - 0.15); S.mood = clamp(S.mood - 8, 0, 100); out.push('You went to bed starving and lost a little muscle.'); }
+  S.fat = Math.max(0, S.fat + Math.max(0, S.fuel - 100) * 0.04 - (S.fuel < 35 ? 0.15 : 0.03));
+  S.fuel = Math.max(0, S.fuel - 45); S.prot *= 0.25; S.stim = 0;
+  S.sore = Math.max(0, S.sore - 35 - (has('roller') ? 15 : 0));
+  S.energy = S.mood < 25 ? 80 : 100;
+  if (S.injured) S.injured--;
+  if (S.trained) { S.streak++; S.mood = clamp(S.mood + 2, 0, 100); } else { S.streak = 0; S.mood = clamp(S.mood - 4, 0, 100); }
+  S.mood += (50 - S.mood) * 0.08;
+  if (S.day % 7 === 0) {
+    const paid = Math.min(RENT, S.cash); S.cash -= paid;
+    if (paid < RENT) { S.mood = clamp(S.mood - 20, 0, 100); out.push(`Rent day: you could only pay $${paid}. Mom gave you THE LOOK. Mood hit.`); } else out.push(`Rent day: paid Mom $${RENT}.`);
+  }
+  const gained = S.muscle - kg0;
+  out.unshift(S.trained ? `Muscle while you slept: +${gained.toFixed(2)} kg${protF < 0.6 ? ' (eat more protein!)' : ''}.` : 'No training today. Streak lost.');
+  S.recap = out; S.trained = false; S.slot = 0; S.day++;
+  if (S.day > MAXDAY) { S.over = true; S.ev = null; try { localStorage.setItem('gymrat-best', Math.max(+localStorage.getItem('gymrat-best') || 0, total())); } catch {} return ''; }
+  S.ev = rnd() < 0.55 ? pickEvent() : null;
+  return '';
+}
+
+// ---------- morning events: [id, when, text, [[label, fn]]] ----------
+const EVENTS = [
+  ['spot', () => total() > 100, '🦍 A huge guy at the rack grunts: "Need a spot, bro?"', [
+    ['Go heavy with the spotter', () => { if (rnd() < 0.6) { const l = ['bench', 'squat', 'dead'][rnd() * 3 | 0]; S.lift[l] += 5; S.mood += 8; return `He yells "LIGHT WEIGHT!" You hit a ${LNAME[l]} PR: +5 kg.`; } S.sore = clamp(S.sore + 30, 0, 100); S.mood -= 8; return 'The bar crushed you. He lifted it off with one finger. Embarrassing.'; }],
+    ['Politely decline', () => 'You keep it safe today.']]],
+  ['pre', () => true, '⚡ A gym bro offers a scoop of his pre-workout. "It is only 400mg of caffeine."', [
+    ['Chug it', () => { S.energy = 100; S.mood += 10; if (rnd() < 0.3) { S.fuel = Math.max(0, S.fuel - 20); S.mood -= 12; return 'Your heart is in your ears and you cannot sit still. Fuel and mood drop.'; } S.buff = { m: 1.25, n: 2 }; return 'COLORS ARE LOUDER. Next 2 sessions hit +25%.'; }],
+    ['No thanks', () => 'You pass. Your heart thanks you.']]],
+  ['mom', () => true, '👩 Mom left a giant breakfast on the table: "Eat, you are too skinny!"', [
+    ['Eat it all', () => { S.fuel = Math.min(150, S.fuel + 35); S.prot = Math.min(100, S.prot + 20); S.mood += 5; return 'Eggs, rice, more eggs. Mom smiles.'; }],
+    ['Skip it', () => 'Mom sighs. You feel bad.']]],
+  ['cash', () => true, '💵 You find $15 on the sidewalk on the way to the gym.', [['Nice!', () => { S.cash += 15; return '+$15.'; }]]],
+  ['laugh', () => S.muscle < 4, '🤡 Classmates call you "Twig" in the hallway.', [
+    ['Ignore it', () => { S.mood -= 8; return 'It stings more than you let on.'; }],
+    ['Vow revenge', () => { S.mood += 6; S.buff = { m: 1.2, n: 3 }; return 'Rage fuel! Next 3 sessions hit +20%.'; }]]],
+  ['rack', () => true, '🙄 Someone is doing curls in the squat rack. Again.', [
+    ['Wait politely', () => { S.energy -= 10; return 'You wait 20 minutes. Energy -10.'; }],
+    ['Ask to work in', () => { if (rnd() < 0.6) { S.mood += 5; return 'He says "sure bro". Gym friendship unlocked.'; } S.mood -= 6; return 'He gives you the dead-eyed stare. Mood -6.'; }]]],
+  ['selfie', () => S.muscle > 6, '📸 Someone filmed your workout and it is going semi-viral!', [
+    ['Embrace it', () => { S.cash += 25; S.mood += 10; return '+$25 from a sponsor DM, +10 mood.'; }],
+    ['Delete the app', () => 'You stay humble.']]],
+  ['sushi', () => true, '🍣 Gas-station sushi for $2. The label says "best before: yesterday".', [
+    ['Eat it', () => { S.cash -= 2; if (rnd() < 0.5) { S.energy -= 40; S.fuel = Math.max(0, S.fuel - 30); S.mood -= 10; return 'Food poisoning. You will not be lifting well today.'; } S.fuel += 20; S.prot = Math.min(100, S.prot + 10); return 'Somehow fine. Cheap protein!'; }],
+    ['Pass', () => 'Good call.']]],
+  ['crush', () => S.muscle > 8, '👀 Someone glances at your arms across the gym.', [
+    ['Flex casually', () => { S.mood += 12; if (rnd() < 0.25) { S.sore = clamp(S.sore + 20, 0, 100); return 'You dropped a dumbbell on your foot. Smooth. Mood up anyway.'; } return 'Confidence +12.'; }],
+    ['Pretend not to notice', () => { S.mood += 4; return 'Mood +4.'; }]]],
+  ['sale', () => true, '🛒 Supplement store flash sale: protein bars $8 for a whole box.', [
+    ['Buy a box ($8)', () => { if (S.cash < 8) return 'You cannot afford it.'; S.cash -= 8; S.prot = Math.min(100, S.prot + 40); S.fuel += 20; return 'Protein +40, fuel +20.'; }],
+    ['Pass', () => 'Maybe next time.']]],
+  ['wrist', () => true, '🦴 Your wrist has a weird twinge this morning.', [
+    ['Wrap it and rest', () => { S.sore = Math.max(0, S.sore - 10); S.energy -= 5; return 'Probably fine now.'; }],
+    ['Train through it', () => { if (rnd() < 0.3) { S.injured = 2; return 'It was not fine. No lifting for 2 days.'; } S.mood += 3; return 'It was fine. Probably.'; }]]],
+  ['coach', () => total() > 80, '🧓 A retired powerlifter watches you and offers a free form tip.', [
+    ['Listen carefully', () => { S.buff = { m: 1.25, n: 3 }; return 'Chest up, tight back. Next 3 sessions hit +25%.'; }],
+    ['"I got this"', () => { S.mood += 2; return 'He shrugs and walks away.'; }]]],
+  ['bbq', () => true, '🍖 Friends invite you to all-you-can-eat BBQ. They are paying.', [
+    ['Eat like a champion', () => { S.fuel = Math.min(150, S.fuel + 50); S.prot = Math.min(100, S.prot + 30); S.fat += 0.8; S.mood += 10; return 'Fuel +50, protein +30, a little fat. Worth it.'; }],
+    ['Stay disciplined', () => { S.mood -= 2; return 'You eat a boiled egg alone.'; }]]],
+];
+function pickEvent() {
+  const ok = EVENTS.filter((e) => e[1]() && e[0] !== S.lastEv);
+  const e = ok[rnd() * ok.length | 0]; S.lastEv = e[0]; return e[0];
+}
+function resolveEvent(i) {
+  const e = EVENTS.find((x) => x[0] === S.ev);
+  if (!e) return '';
+  const m = e[3][i][1](); S.ev = null;
+  S.mood = clamp(S.mood, 0, 100); S.sore = clamp(S.sore, 0, 100); S.energy = clamp(S.energy, 0, 100); S.cash = Math.max(0, S.cash);
+  return say(m);
+}
+
+// ---------- drawing ----------
+function avatar(m, f, mood, energy, o = {}) {
+  m = Math.min(m, 24); f = Math.min(f, 22);
+  const sw = 19 + m * 1.7, hw = 10 + m * 0.45 + f * 1.0, aw = 4.5 + m * 0.75 + f * 0.25, lw = 7 + m * 0.8 + f * 0.35, skin = '#f1c59b', dark = '#d9a679', shirt = '#4aa3ff';
+  const lx = hw * 0.45 + lw * 0.35, sm = mood > 50 ? (mood - 50) / 8 : (mood - 50) / 10;
+  const up = o.lift, ay = up ? 72 : 162, ax = sw + aw * 0.4 + 4;
+  let s = `<ellipse cx="100" cy="260" rx="${40 + m}" ry="6" fill="#0006"/><g class="${o.pump ? 'pump' : ''}">`;
+  s += `<line x1="${100 - lx}" y1="172" x2="${100 - lx}" y2="250" stroke="${skin}" stroke-width="${lw}" stroke-linecap="round"/>`
+    + `<line x1="${100 + lx}" y1="172" x2="${100 + lx}" y2="250" stroke="${skin}" stroke-width="${lw}" stroke-linecap="round"/>`
+    + `<ellipse cx="${100 - lx}" cy="258" rx="${lw * 0.8 + 3}" ry="6" fill="#eee"/><ellipse cx="${100 + lx}" cy="258" rx="${lw * 0.8 + 3}" ry="6" fill="#eee"/>`
+    + `<rect x="${100 - hw - lw * 0.6 - 1}" y="164" width="${(hw + lw * 0.6 + 1) * 2}" height="34" rx="8" fill="#333"/>`;
+  s += `<path d="M${100 - sw * 0.5} 94 L${100 - sw * 0.5 + 6} 170 L${100 - hw} 170 L${100 - sw} 94Z" fill="#0000"/><path d="M${100 - sw} 94 L${100 + sw} 94 L${100 + hw} 170 L${100 - hw} 170Z" fill="${shirt}" stroke="${shirt}" stroke-width="6" stroke-linejoin="round"/>`;
+  if (f > 0.5) s += `<ellipse cx="100" cy="${148 + f * 0.3}" rx="${hw + f * 0.9}" ry="${16 + f * 0.6}" fill="${shirt}"/>`;
+  if (m > 5) s += `<path d="M${100 - sw * 0.6} 112 Q100 128 ${100 + sw * 0.6} 112" stroke="#1d6fc4" stroke-width="2" fill="none"/>`;
+  s += `<line x1="${100 - ax + 4}" y1="100" x2="${100 - ax - (up ? -6 : 3)}" y2="${ay}" stroke="${skin}" stroke-width="${aw}" stroke-linecap="round"/>`
+    + `<line x1="${100 + ax - 4}" y1="100" x2="${100 + ax + (up ? -6 : 3)}" y2="${ay}" stroke="${skin}" stroke-width="${aw}" stroke-linecap="round"/>`;
+  if (m > 3) s += `<circle cx="${100 - ax - (up ? -2 : 1)}" cy="${up ? 80 : 126}" r="${aw * 0.62}" fill="${skin}" stroke="${dark}" stroke-width="1.5"/>`
+    + `<circle cx="${100 + ax + (up ? -2 : 1)}" cy="${up ? 80 : 126}" r="${aw * 0.62}" fill="${skin}" stroke="${dark}" stroke-width="1.5"/>`;
+  s += `<rect x="${100 - (5 + m * 0.4) / 2 - 2}" y="76" width="${5 + m * 0.4 + 4}" height="18" fill="${skin}"/>`
+    + `<circle cx="100" cy="62" r="17" fill="${skin}"/>`
+    + `<path d="M83 58 Q84 42 100 42 Q116 42 117 58 Q108 50 100 52 Q91 50 83 58Z" fill="#3b2a20"/>`
+    + `<rect x="83" y="49" width="34" height="5" rx="2.5" fill="#e23"/><circle cx="90" cy="68" r="3" fill="#ff8a8a55"/><circle cx="110" cy="68" r="3" fill="#ff8a8a55"/><circle cx="93" cy="63" r="2.2" fill="#222"/><circle cx="107" cy="63" r="2.2" fill="#222"/>`
+    + `<path d="M93 71 Q100 ${71 + sm} 107 71" stroke="#222" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+  if (energy < 30) s += `<path d="M120 52 q4 6 0 9 q-4 -3 0 -9z" fill="#6cf"/>`;
+  if (m > 9 && f < 5) s += `<path d="M94 140 h12 M94 150 h12 M94 160 h12" stroke="#1d6fc4" stroke-width="2"/>`;
+  if (up) { const n = o.plates || 1; s += `<g><line x1="14" y1="${ay - 2}" x2="186" y2="${ay - 2}" stroke="#bbb" stroke-width="5" stroke-linecap="round"/>`;
+    for (let i = 0; i < n; i++) for (const d of [-1, 1]) s += `<rect x="${100 + d * (62 + i * 8) - 3.5}" y="${ay - 17 - i}" width="7" height="${30 + i * 2}" rx="2" fill="${['#d33', '#36c', '#eb3', '#2a2', '#eee', '#999'][i % 6]}"/>`; s += '</g>'; }
+  return s + '</g>';
+}
+const BARS = [['ENERGY', 'energy', '#4ad3ff', 100], ['FULLNESS', 'fuel', '#ffb84a', 100], ['PROTEIN', 'prot', '#ff6b8b', 100], ['MOOD', 'mood', '#7dff9a', 100], ['SORENESS', 'sore', '#b46bff', 100]];
+let tab = 'train', busy = false;
+function modal(html, opts) {
+  $('#mbody').innerHTML = html; const b = $('#mopts'); b.innerHTML = '';
+  for (const [label, fn] of opts) { const el = document.createElement('button'); el.textContent = label; el.onclick = () => { $('#modal').hidden = true; fn(); }; b.append(el); }
+  $('#modal').hidden = false;
+}
+function render(pump) {
+  $('#day').textContent = `Day ${Math.min(S.day, MAXDAY)}/${MAXDAY}${S.injured ? ' 🤕' : ''}`;
+  $('#slots').innerHTML = ['🌅', '☀️', '🌙'].map((e, i) => `<span style="opacity:${i < S.slot ? 0.2 : 1}">${e}</span>`).join('');
+  $('#cash').textContent = `$${S.cash}`;
+  $('#bubble').textContent = S.msg;
+  $('#av').innerHTML = avatar(S.muscle, S.fat, S.mood, S.energy, { pump, lift: pump, plates: Math.min(6, 1 + Math.floor(total() / 70)) });
+  $('#bars').innerHTML = BARS.map(([n, k, c]) => `<div class="bar">${n}<i><b style="width:${clamp(S[k], 0, 100)}%;background:${c}"></b></i></div>`).join('');
+  $('#bw').textContent = `${(48 + S.muscle + S.fat).toFixed(1)} kg · streak ${S.streak}🔥`;
+  $('#title').textContent = titleOf(total());
+  $('#lifts').innerHTML = Object.keys(CAP).map((k) => `<div class="lift"><small>${LNAME[k]}</small><b>${Math.round(S.lift[k])}</b></div>`).join('');
+  $('#tabs').innerHTML = [['train', '🏋️ Train'], ['eat', '🍗 Eat'], ['work', '💼 Work'], ['rest', '😴 Rest'], ['shop', '🛒 Shop']].map(([k, n]) => `<button data-t="${k}" class="${k === tab ? 'on' : ''}">${n}</button>`).join('');
+  $('#tabs').onclick = (e) => { const t = e.target.dataset.t; if (t) { tab = t; render(); } };
+  const rows = []; const row = (e, n, r, fn, dis, cls) => rows.push({ h: `<button ${dis ? 'disabled' : ''} class="${cls || ''}">${e} ${n}<span>${r}</span></button>`, fn });
+  const free = has('member') ? 'free' : '$3';
+  if (tab === 'train') {
+    for (const l of Object.keys(CAP)) row('🏋️', LNAME[l], `${free} · -30 energy`, () => act(() => train(l), true), !can(30) || S.injured || (!has('member') && S.cash < 3));
+    row('🏃', 'Cardio (burn fat)', `${free} · -20 energy`, () => act(() => train('cardio')), !can(20) || (!has('member') && S.cash < 3));
+    row('🤸', 'Pushups at home', 'free · -15 energy · weak', () => act(() => train('home'), true), !can(15) || S.injured);
+  } else if (tab === 'eat') {
+    FOODS.forEach((f, i) => row(f.e, f.n, `$${price(f.c)} · fuel +${f.fuel}${f.prot > 10 ? ` · protein +${f.prot}` : ''}`, () => act(() => eat(i)), S.cash < price(f.c) || S.fuel >= 130 || S.ev || S.over));
+    rows.push({ h: '<p class="sm" style="margin:4px">Eating is free of time. Fuel drops 45 every night. Protein turns your workouts into muscle. Over 100 fuel becomes fat.</p>' });
+  } else if (tab === 'work') {
+    JOBS.forEach((j, i) => row(j.e, j.n, `+$${j.pay} · -${j.en} energy`, () => act(() => work(i)), !can(j.en)));
+    rows.push({ h: `<p class="sm" style="margin:4px">Rent is $${RENT} every 7th day. Skip it and Mom ruins your mood.</p>` });
+  } else if (tab === 'rest') {
+    row('🛋️', 'Nap & stretch', 'soreness -30 · energy +35', () => act(() => rest('nap')), !can(0));
+    row('🪞', 'Flex in the mirror', 'mood up', () => act(() => rest('mirror')), !can(0));
+  } else {
+    for (const it of ITEMS) row(it.e, it.n, has(it.id) ? 'owned ✓' : `$${it.c} · ${it.d}`, () => act(() => buy(it.id)), has(it.id) || S.cash < it.c || S.ev || S.over, has(it.id) ? 'own' : '');
+  }
+  $('#panel').innerHTML = rows.map((r) => r.h).join('');
+  [...$('#panel').children].forEach((el, i) => { const r = rows[i]; if (r.fn) el.onclick = r.fn; });
+  $('#sleep').disabled = !!(S.ev || S.over);
+}
+function fx(t) { const el = document.createElement('div'); el.className = 'fx'; el.textContent = t; $('#stage').append(el); setTimeout(() => el.remove(), 1300); }
+function act(fn, lifted) {
+  if (busy) return;
+  const before = S.day, hadSlot = S.slot, l0 = { ...S.lift };
+  const m = fn(); if (m === undefined) return;
+  save();
+  const d = Object.keys(CAP).map((k) => [k, S.lift[k] - l0[k]]).find((x) => x[1] > 0);
+  if (d) fx(`+${d[1].toFixed(1)} kg`);
+  if (lifted && d) { busy = true; render(true); setTimeout(() => { busy = false; after(); }, 850); } else { render(); after(); }
+}
+function after() {
+  render();
+  if (S.over) return finale();
+  if (!S.slot && S.recap) { const r = S.recap; S.recap = null; modal(`<h2>🌙 Day ${S.day - 1} done</h2>${r.map((x) => `<p>${x}</p>`).join('')}<p class="sm">Bodyweight ${(48 + S.muscle + S.fat).toFixed(1)} kg</p>`, [['Next day ☀️', () => { render(); if (S.ev) showEvent(); }]]); return; }
+  if (S.ev) showEvent();
+}
+function showEvent() {
+  const e = EVENTS.find((x) => x[0] === S.ev); if (!e) return;
+  modal(`<h2>Day ${S.day}</h2><p>${e[2]}</p>`, e[3].map(([l], i) => [l, () => { resolveEvent(i); save(); render(); }]));
+}
+function finale() {
+  const t = total(), best = +(localStorage.getItem('gymrat-best') || 0), look = S.muscle >= 14 && S.fat < 4 ? 'Shredded. People ask if you are on a cutting cycle.' : S.muscle >= 14 ? 'Big and a little soft. A proper bulk.' : S.fat >= 8 ? 'Strong, but mostly pizza.' : S.muscle >= 7 ? 'A real gym build. Your shirts are tighter.' : 'Still lean, but nobody calls you Twig anymore.';
+  modal(`<h2>Day ${MAXDAY} · Gym Showdown</h2><div class="big">${t}</div><p><b>kg total</b> (${Math.round(S.lift.bench)} / ${Math.round(S.lift.squat)} / ${Math.round(S.lift.dead)})</p><p style="font-size:20px;font-weight:900;color:#ffd84a">${titleOf(t)}</p>
+    <div class="ba"><svg viewBox="0 0 200 280">${avatar(0, 0, 60, 100)}</svg><svg viewBox="0 0 200 280">${avatar(S.muscle, S.fat, 90, 100)}</svg></div>
+    <p>${(48).toFixed(0)} kg → ${(48 + S.muscle + S.fat).toFixed(1)} kg. ${look}</p><div id="lb"></div>`,
+    [['Share', share], ['Raise another rat', newGame]]);
+  leaderboard($('#lb'), 'gym-rat').show(Math.min(999, t));
+  void best;
+}
+async function share(e) {
+  const t = total(), text = `I raised a skinny kid into a "${titleOf(t)}" with a ${t} kg total in Gym Rat Raising! Can you beat me?`, url = 'https://rank-game.com/games/gym-rat';
+  try { if (navigator.share) await navigator.share({ title: 'Gym Rat Raising', text, url }); else await navigator.clipboard.writeText(`${text} ${url}`); } catch {}
+  finale();
+}
+function newGame() { S = fresh(); save(); tab = 'train'; render(); }
+$('#sleep').onclick = () => act(sleep);
+leaderboard(document.createElement('div'), 'gym-rat'); // tells rank-game.com this game has a board (shows the nickname box)
+window.gr = { get S() { return S; }, fresh, newGame, train, eat, work, rest, buy, sleep, resolveEvent, total, titleOf, EVENTS, FOODS, ITEMS, setS(s) { S = s; }, render, after, avatar };
+render(); if (S.over) finale(); else if (S.ev) showEvent();
+</script>
+</body>
+</html>
