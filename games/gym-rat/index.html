@@ -20,9 +20,12 @@
   #slots span { margin-left: 3px; transition: opacity .2s; }
   #cash { color: #7dff9a; }
   #stage { position: relative; margin-top: 8px; height: 310px; border-radius: 16px; overflow: hidden;
-    background: #1b1f3a; border: 1px solid #fff3; box-shadow: 0 8px 24px #0008; }
-  #bg { position: absolute; inset: 0; width: 100%; height: 100%; }
-  #stage #av { position: absolute; left: 50%; bottom: 0; height: 100%; transform: translateX(-50%); }
+    background: #1b1f3a url(img/bg.webp) center / cover; border: 1px solid #fff3; box-shadow: 0 8px 24px #0008; }
+  #tint { position: absolute; inset: 0; transition: background 1s; }
+  #hero { position: absolute; left: 50%; bottom: 6px; height: 82%; transform: translateX(-50%); transform-origin: 50% 100%; filter: drop-shadow(0 8px 6px #0007); transition: height .4s; pointer-events: none; }
+  #hero.pump { animation: heropump .8s ease-in-out; }
+  @keyframes heropump { 0%,100% { translate: 0 0 } 25% { translate: 0 -10px } 50% { translate: 0 0 } 75% { translate: 0 -6px } }
+  
   .pump { animation: pump .8s ease-in-out; transform-origin: 50% 100%; }
   @keyframes pump { 0%,100% { transform: translateY(0) } 25% { transform: translateY(-7px) scaleY(1.02) } 50% { transform: translateY(0) } 75% { transform: translateY(-5px) } }
   #bubble { position: absolute; z-index: 2; left: 8px; right: 8px; top: 8px; background: #fffef2; box-shadow: 0 3px 0 #0006; color: #111; border-radius: 12px; padding: 8px 10px; font-size: 13px; font-weight: 600; min-height: 36px; }
@@ -56,7 +59,7 @@
   #mopts button:nth-child(n+2) { background: #2b3050; color: #fff; }
   .big { font-size: 64px; font-weight: 900; line-height: 1; color: #ffd84a; }
   .ba { display: flex; justify-content: center; gap: 4px; }
-  .ba svg { width: 45%; max-height: 190px; background: #262b45; border-radius: 12px; }
+  .ba img { height: 200px; max-width: 46%; object-fit: contain; background: url(img/bg.webp) center / cover; border-radius: 12px; padding: 6px 4px 0; }
   #lb { margin: 10px 0; display: flex; justify-content: center; }
   .sm { opacity: .7; font-size: 13px; }
   header { background: #ffffff0f; backdrop-filter: blur(6px); border: 1px solid #fff2; border-radius: 14px; padding: 7px 10px; }
@@ -87,15 +90,7 @@
     <a id="home" href="https://rank-game.com/">← Home</a><script>if (top !== self) home.remove();</script>
     <span id="day"></span><span id="slots"></span><span id="cash"></span><button id="mute" title="Sound">🔊</button>
   </header>
-  <div id="stage"><svg id="bg" viewBox="0 0 400 310" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2d3358"/><stop offset="1" stop-color="#1b1f3a"/></linearGradient><linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a4636"/><stop offset="1" stop-color="#2e2219"/></linearGradient></defs>
-<rect width="400" height="310" fill="url(#wall)"/><rect y="192" width="400" height="118" fill="url(#floor)"/>
-<g stroke="#0003" stroke-width="2"><path d="M0 222H400M0 256H400M0 290H400"/></g>
-<rect id="sky" x="150" y="26" width="100" height="70" rx="6" fill="#7fd0ff" stroke="#9fb0ff55" stroke-width="3"/><rect id="glow" x="0" y="0" width="400" height="310" fill="#ff9f4322" style="mix-blend-mode:screen"/><path d="M200 26V96M150 61H250" stroke="#9fb0ff55" stroke-width="2"/>
-<g fill="#c9ccd9"><rect x="14" y="40" width="7" height="152"/><rect x="92" y="40" width="7" height="152"/><rect x="10" y="40" width="93" height="6" fill="#ffd84a"/><rect x="10" y="112" width="93" height="5"/></g>
-<g><circle cx="38" cy="108" r="9" fill="#d33"/><circle cx="74" cy="108" r="9" fill="#36c"/></g>
-<g transform="translate(300 100)"><rect width="84" height="92" rx="6" fill="#ffffff10" stroke="#fff3" stroke-width="3"/><path d="M12 80L40 12M44 82L70 20" stroke="#fff2" stroke-width="6"/></g>
-<g fill="#222" stroke="#555"><rect x="300" y="178" width="84" height="14" rx="3"/></g><g fill="#999"><circle cx="314" cy="170" r="8"/><circle cx="338" cy="170" r="8"/><circle cx="362" cy="170" r="8"/></g>
-<text x="200" y="20" text-anchor="middle" font-family="system-ui" font-weight="900" font-size="12" fill="#ffd84a99" letter-spacing="3">NO PAIN NO GAIN</text></svg><div id="bubble"></div><svg id="av" viewBox="0 0 200 280"></svg></div>
+  <div id="stage"><div id="tint"></div><img id="hero" alt="" draggable="false"><div id="bubble"></div></div>
   <div id="bars"></div>
   <div id="rank"><span id="bw"></span><span id="title"></span></div>
   <div id="lifts"></div>
@@ -282,34 +277,6 @@ function resolveEvent(i) {
 }
 
 // ---------- drawing ----------
-function avatar(m, f, mood, energy, o = {}) {
-  m = Math.min(m, 24); f = Math.min(f, 22);
-  const sw = 19 + m * 1.7, hw = 10 + m * 0.45 + f * 1.0, aw = 4.5 + m * 0.75 + f * 0.25, lw = 7 + m * 0.8 + f * 0.35, skin = '#f1c59b', dark = '#d9a679', shirt = '#4aa3ff';
-  const lx = hw * 0.45 + lw * 0.35, sm = mood > 50 ? (mood - 50) / 8 : (mood - 50) / 10;
-  const up = o.lift, ay = up ? 72 : 162, ax = sw + aw * 0.4 + 4;
-  let s = `<ellipse cx="100" cy="260" rx="${40 + m}" ry="6" fill="#0006"/><g class="${o.pump ? 'pump' : 'idle'}">`;
-  s += `<line x1="${100 - lx}" y1="172" x2="${100 - lx}" y2="250" stroke="${skin}" stroke-width="${lw}" stroke-linecap="round"/>`
-    + `<line x1="${100 + lx}" y1="172" x2="${100 + lx}" y2="250" stroke="${skin}" stroke-width="${lw}" stroke-linecap="round"/>`
-    + `<ellipse cx="${100 - lx}" cy="258" rx="${lw * 0.8 + 3}" ry="6" fill="#eee"/><ellipse cx="${100 + lx}" cy="258" rx="${lw * 0.8 + 3}" ry="6" fill="#eee"/>`
-    + `<rect x="${100 - hw - lw * 0.6 - 1}" y="164" width="${(hw + lw * 0.6 + 1) * 2}" height="34" rx="8" fill="#333"/>`;
-  s += `<path d="M${100 - sw * 0.5} 94 L${100 - sw * 0.5 + 6} 170 L${100 - hw} 170 L${100 - sw} 94Z" fill="#0000"/><path d="M${100 - sw} 94 L${100 + sw} 94 L${100 + hw} 170 L${100 - hw} 170Z" fill="${shirt}" stroke="${shirt}" stroke-width="6" stroke-linejoin="round"/>`;
-  if (f > 0.5) s += `<ellipse cx="100" cy="${148 + f * 0.3}" rx="${hw + f * 0.9}" ry="${16 + f * 0.6}" fill="${shirt}"/>`;
-  if (m > 5) s += `<path d="M${100 - sw * 0.6} 112 Q100 128 ${100 + sw * 0.6} 112" stroke="#1d6fc4" stroke-width="2" fill="none"/>`;
-  s += `<line x1="${100 - ax + 4}" y1="100" x2="${100 - ax - (up ? -6 : 3)}" y2="${ay}" stroke="${skin}" stroke-width="${aw}" stroke-linecap="round"/>`
-    + `<line x1="${100 + ax - 4}" y1="100" x2="${100 + ax + (up ? -6 : 3)}" y2="${ay}" stroke="${skin}" stroke-width="${aw}" stroke-linecap="round"/>`;
-  if (m > 3) s += `<circle cx="${100 - ax - (up ? -2 : 1)}" cy="${up ? 80 : 126}" r="${aw * 0.62}" fill="${skin}" stroke="${dark}" stroke-width="1.5"/>`
-    + `<circle cx="${100 + ax + (up ? -2 : 1)}" cy="${up ? 80 : 126}" r="${aw * 0.62}" fill="${skin}" stroke="${dark}" stroke-width="1.5"/>`;
-  s += `<rect x="${100 - (5 + m * 0.4) / 2 - 2}" y="76" width="${5 + m * 0.4 + 4}" height="18" fill="${skin}"/>`
-    + `<circle cx="100" cy="62" r="17" fill="${skin}"/>`
-    + `<path d="M83 58 Q84 42 100 42 Q116 42 117 58 Q108 50 100 52 Q91 50 83 58Z" fill="#3b2a20"/>`
-    + `<rect x="83" y="49" width="34" height="5" rx="2.5" fill="#e23"/><circle cx="90" cy="68" r="3" fill="#ff8a8a55"/><circle cx="110" cy="68" r="3" fill="#ff8a8a55"/><circle cx="93" cy="63" r="2.2" fill="#222"/><circle cx="107" cy="63" r="2.2" fill="#222"/>`
-    + `<path d="M93 71 Q100 ${71 + sm} 107 71" stroke="#222" stroke-width="2" fill="none" stroke-linecap="round"/>`;
-  if (energy < 30) s += `<path d="M120 52 q4 6 0 9 q-4 -3 0 -9z" fill="#6cf"/>`;
-  if (m > 9 && f < 5) s += `<path d="M94 140 h12 M94 150 h12 M94 160 h12" stroke="#1d6fc4" stroke-width="2"/>`;
-  if (up) { const n = o.plates || 1; s += `<g><line x1="14" y1="${ay - 2}" x2="186" y2="${ay - 2}" stroke="#bbb" stroke-width="5" stroke-linecap="round"/>`;
-    for (let i = 0; i < n; i++) for (const d of [-1, 1]) s += `<rect x="${100 + d * (62 + i * 8) - 3.5}" y="${ay - 17 - i}" width="7" height="${30 + i * 2}" rx="2" fill="${['#d33', '#36c', '#eb3', '#2a2', '#eee', '#999'][i % 6]}"/>`; s += '</g>'; }
-  return s + '</g>';
-}
 const BARS = [['ENERGY', 'energy', '#4ad3ff', '⚡'], ['FULLNESS', 'fuel', '#ffb84a', '🍽️'], ['PROTEIN', 'prot', '#ff6b8b', '🥩'], ['MOOD', 'mood', '#7dff9a', '😊'], ['SORENESS', 'sore', '#b46bff', '🔥']];
 let tab = 'train', busy = false;
 function modal(html, opts) {
@@ -317,13 +284,21 @@ function modal(html, opts) {
   for (const [label, fn] of opts) { const el = document.createElement('button'); el.textContent = label; el.onclick = () => { $('#modal').hidden = true; fn(); }; b.append(el); }
   $('#modal').hidden = false;
 }
+const stage = (m) => m < 2 ? 0 : m < 7 ? 1 : m < 14 ? 2 : 3, STAGE_LO = [0, 2, 7, 14], STAGE_HI = [2, 7, 14, 24];
+function setHero(pump) {
+  const st = stage(S.muscle), t = clamp((S.muscle - STAGE_LO[st]) / (STAGE_HI[st] - STAGE_LO[st]), 0, 1), h = $('#hero');
+  if (!h.src.endsWith(`c${st}.webp`)) h.src = `img/c${st}.webp`;
+  h.style.transform = `translateX(-50%) scale(${(0.94 + 0.12 * t + Math.min(S.fat, 12) * 0.022).toFixed(3)}, ${(0.98 + 0.04 * t).toFixed(3)})`;
+  h.style.height = `${[78, 80, 78, 84][st]}%`;
+  h.classList.toggle('pump', !!pump);
+}
 function render(pump) {
   $('#day').textContent = `Day ${Math.min(S.day, MAXDAY)}/${MAXDAY}${S.injured ? ' 🤕' : ''}`;
   $('#slots').innerHTML = ['🌅', '☀️', '🌙'].map((e, i) => `<span style="opacity:${i < S.slot ? 0.2 : 1}">${e}</span>`).join('');
   $('#cash').textContent = `$${S.cash}`;
-  const sky = ['#ffb36b', '#7fd0ff', '#6a4fb0'][Math.min(2, S.slot)]; $('#sky').setAttribute('fill', sky); $('#glow').setAttribute('fill', ['#ff9f4333', '#ffffff08', '#3b1f8c44'][Math.min(2, S.slot)]);
+  $('#tint').style.background = ['#ff9f4333', '#ffffff00', '#2b1a7a66'][Math.min(2, S.slot)];
   $('#bubble').textContent = S.msg;
-  $('#av').innerHTML = avatar(S.muscle, S.fat, S.mood, S.energy, { pump, lift: pump, plates: Math.min(6, 1 + Math.floor(total() / 70)) });
+  setHero(pump);
   $('#bars').innerHTML = BARS.map(([n, k, c, e]) => `<div class="bar"><em>${e}</em><div>${n}<i><b style="width:${clamp(S[k], 0, 100)}%;background-color:${c}"></b></i></div></div>`).join('');
   $('#bw').textContent = `${(48 + S.muscle + S.fat).toFixed(1)} kg · streak ${S.streak}🔥`;
   $('#title').textContent = titleOf(total());
@@ -386,7 +361,7 @@ function showEvent() {
 function finale() {
   const t = total(), best = +(localStorage.getItem('gymrat-best') || 0), look = S.muscle >= 14 && S.fat < 4 ? 'Shredded. People ask if you are on a cutting cycle.' : S.muscle >= 14 ? 'Big and a little soft. A proper bulk.' : S.fat >= 8 ? 'Strong, but mostly pizza.' : S.muscle >= 7 ? 'A real gym build. Your shirts are tighter.' : 'Still lean, but nobody calls you Twig anymore.';
   modal(`<h2>Day ${MAXDAY} · Gym Showdown</h2><div class="big">${t}</div><p><b>kg total</b> (${Math.round(S.lift.bench)} / ${Math.round(S.lift.squat)} / ${Math.round(S.lift.dead)})</p><p style="font-size:20px;font-weight:900;color:#ffd84a">${titleOf(t)}</p>
-    <div class="ba"><svg viewBox="0 0 200 280">${avatar(0, 0, 60, 100)}</svg><svg viewBox="0 0 200 280">${avatar(S.muscle, S.fat, 90, 100)}</svg></div>
+    <div class="ba"><img src="img/c0.webp"><img src="img/c${stage(S.muscle)}.webp"></div>
     <p>${(48).toFixed(0)} kg → ${(48 + S.muscle + S.fat).toFixed(1)} kg. ${look}</p><div id="lb"></div>`,
     [['Share', share], ['Raise another rat', newGame]]);
   leaderboard($('#lb'), 'gym-rat').show(Math.min(999, t));
@@ -400,7 +375,7 @@ async function share(e) {
 function newGame() { S = fresh(); save(); tab = 'train'; render(); }
 $('#sleep').onclick = () => act(sleep);
 leaderboard(document.createElement('div'), 'gym-rat'); // tells rank-game.com this game has a board (shows the nickname box)
-window.gr = { get S() { return S; }, fresh, newGame, train, eat, work, rest, buy, sleep, resolveEvent, total, titleOf, EVENTS, FOODS, ITEMS, setS(s) { S = s; }, render, after, avatar };
+window.gr = { get S() { return S; }, fresh, newGame, train, eat, work, rest, buy, sleep, resolveEvent, total, titleOf, EVENTS, FOODS, ITEMS, setS(s) { S = s; }, render, after };
 render(); if (S.over) finale(); else if (S.ev) showEvent();
 </script>
 </body>
