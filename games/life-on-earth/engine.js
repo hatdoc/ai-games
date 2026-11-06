@@ -135,6 +135,12 @@
     }
     // a plain account of this stretch of life, so quiet time still tells you what happened
     if (M.diary && s.steps % (M.diaryEvery || 1) === 0) { const line = M.diary(s, R); if (line) LE.say(s, line, { tone: 'diary' }); }
+    // chance events fire at real annual rates: p = 1 - exp(-rate * dt), rolled independently, at most one per step
+    for (const c of M.chance || []) {
+      if (c.when && !c.when(s)) continue;
+      const r = typeof c.rate === 'function' ? c.rate(s) : c.rate;
+      if (r > 0 && R.chance(LE.pDeath(r, dt))) { c.fx(s, R); return; }
+    }
     // decisions at meaningful moments, never more than one pending
     for (const d of M.decisions) {
       if (s.done[d.id] || !d.when(s)) continue;

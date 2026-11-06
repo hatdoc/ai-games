@@ -72,6 +72,17 @@ for (const sp of Object.keys(STAGES)) {
 const by = {}; for (let i = 0; i < 60000; i++) { const s = LE.birth('H' + i, { speciesId: 'human' }); LE.autoRun(s); const k = s.born.country.iso; (by[k] ||= { c: s.born.country, a: [] }).a.push(s.age); }
 for (const iso of ['IND', 'NGA', 'CHN', 'USA']) { const g = by[iso]; if (!g || g.a.length < 150) continue; const m = g.a.reduce((x, y) => x + y, 0) / g.a.length; console.log(`   ${g.c.name}: simulated mean ${m.toFixed(1)} vs life expectancy ${g.c.le} (n=${g.a.length})`); ok(Math.abs(m - g.c.le) < 2.5, `${g.c.name}: simulated lifespan within 2.5 y of life expectancy (decisions shift it a little)`); }
 
+// 5b. chance events fire at their stated yearly rates (lifetime share of 3000 humans)
+{
+  const N = 3000, hit = {}; const RE = { car: /crash involving|minor collision/, fire: /A fire damaged/, dx: /diagnosis of cancer/, jackpot: /jackpot/ };
+  for (let i = 0; i < N; i++) { const s = LE.birth('C' + i, { speciesId: 'human' }); LE.autoRun(s); const t = s.log.map((e) => e.text).join('|'); for (const [k, re] of Object.entries(RE)) if (re.test(t)) hit[k] = (hit[k] || 0) + 1; }
+  const f = (k) => (hit[k] || 0) / N; console.log(`   lifetime shares: crash ${(f('car') * 100).toFixed(1)}%, home fire ${(f('fire') * 100).toFixed(1)}%, cancer diagnosis ${(f('dx') * 100).toFixed(1)}%, jackpot ${(f('jackpot') * 100).toFixed(2)}%`);
+  ok(f('car') > 0.15 && f('car') < 0.4, 'road crash lifetime share is in the 15-40% range implied by about 0.65% of people injured per year');
+  ok(f('fire') > 0.04 && f('fire') < 0.2, 'home fire lifetime share is in the 4-20% range implied by roughly 1 in 300-400 households a year');
+  ok(f('dx') > 0.1 && f('dx') < 0.3, 'cancer diagnosis lifetime share is 10-30% (WHO: about 1 in 5)');
+  ok(f('jackpot') < 0.005, 'a lottery jackpot is vanishingly rare (Powerball odds are 1 in 292.2 million per ticket)');
+}
+
 // 6. what-if is a separate, different life
 const o = run('WHATIF-1', 'human'), w = LE.whatIf(o);
 ok(w.born.key !== o.born.key && !w.alive && o.seed === w.seed, 'what-if: separate life, different circumstances, original untouched');
