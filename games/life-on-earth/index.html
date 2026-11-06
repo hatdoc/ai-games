@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Life on Earth</title>
-<meta name="description" content="Billions of beginnings. Countless ways to live. Be born as a human, dog, lion, penguin, sea turtle, blue whale or butterfly, drawn from an evidence-based birth lottery, and live the whole life.">
+<meta name="description" content="Billions of beginnings. Countless ways to live. Be born as a human or one of 17 animals, from elephants and wolves to tigers and butterflies, drawn from an evidence-based birth lottery, and live the whole life.">
 <script src="../cloudsave.js" data-game="life-on-earth" data-keys="life-on-earth-museum life-on-earth-current life-on-earth-settings"></script>
 <script src="../share.js"></script>
 <style>
@@ -165,10 +165,11 @@
     <div class="eyebrow">A living world simulation</div>
     <h1>Life on Earth</h1>
     <p class="tag">Billions of beginnings.<br>Countless ways to live.</p>
-    <p class="exp">You don't choose the life you're given. You are born as a human, a dog, a lion, a penguin or something stranger, then discover what you can make of it, from first breath to last.</p>
+    <p class="exp">You don't choose the life you're given. You are born as a human, a dog, an elephant, a penguin or something stranger, then discover what you can make of it, from first breath to last.</p>
     <div class="row">
       <button id="begin" class="primary">Begin a Life</button>
       <button id="continue" class="hidden">Continue your life</button>
+      <button id="choose">Choose a species</button>
     </div>
     <div class="modes" role="group" aria-label="Birth mode">
       <button data-mode="earth" aria-pressed="true">Earth Birth Lottery</button>
@@ -237,6 +238,11 @@
 </section>
 
 <!-- ============ ODDS ============ -->
+<section id="pick" class="screen hidden">
+  <div class="backbar"><div class="wrap"><button id="pk-back">&larr; Back</button></div></div>
+  <div class="wrap page" id="pick-body"></div>
+</section>
+
 <section id="odds" class="screen hidden">
   <div class="backbar"><div class="wrap"><button id="od-back">&larr; Back</button></div></div>
   <div class="wrap page" id="odds-body"></div>
@@ -249,6 +255,9 @@
 <script src="lives-b.js"></script>
 <script src="lives-c.js"></script>
 <script src="lives-d.js"></script>
+<script src="lives-e.js"></script>
+<script src="lives-f.js"></script>
+<script src="lives-g.js"></script>
 <script src="../ad.js"></script>
 <script>
 (() => {
@@ -262,14 +271,14 @@
   const oneIn = (p) => { const x = 1 / p; return x < 10 ? x.toFixed(1) : Math.round(x).toLocaleString('en-US'); };
   const pct = (p) => (p >= 0.01 ? (p * 100).toFixed(1) + '%' : p >= 0.00001 ? (p * 100).toFixed(3) + '%' : '< 0.001%');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const SCREENS = ['landing', 'birth', 'life', 'memorial', 'museum', 'odds'];
+  const SCREENS = ['landing', 'birth', 'life', 'memorial', 'museum', 'odds', 'pick'];
   let backTo = 'landing';
   const show = (id) => { SCREENS.forEach((s) => $(s).classList.toggle('hidden', s !== id)); scrollTo(0, 0); };
   const img = (sp) => `img/${LE.byId(sp).img}.jpg`;
   const MOD = (s) => LE.modules[s.module];
 
   // ------------------------------------------------------------ landing
-  const MODENOTE = { earth: 'An evidence-based lottery across the playable species. Each species is weighted by its estimated births per year, so most draws are a cat, a dog or a human. It is not a census of all life on Earth.',
+  const MODENOTE = { earth: 'An evidence-based lottery across the playable species. Each species is weighted by its estimated births per year, so most draws are a cat, a dog or a human, and rare wild animals almost never come up. Try Discovery Mode or Choose a species to meet them. It is not a census of all life on Earth.',
     discovery: 'ADJUSTED FOR DISCOVERY: every playable species is equally likely so you can meet rare lives. These are NOT real birth probabilities.' };
   const syncModes = () => { document.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.mode === settings.mode)); $('modenote').textContent = MODENOTE[settings.mode]; $('gentle').checked = settings.gentle; };
   document.querySelectorAll('[data-mode]').forEach((b) => (b.onclick = () => { settings.mode = b.dataset.mode; save(); syncModes(); }));
@@ -278,23 +287,24 @@
   $('nav-odds').onclick = () => openOdds();
   $('begin').onclick = () => beginLife($('seed').value.trim() || LE.newSeed());
   $('seed').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('begin').click(); });
+  $('choose').onclick = () => openPick();
   $('continue').onclick = () => { const s = store.get('life-on-earth-current'); if (s) { life = s; enterLife(true); } };
 
   // ------------------------------------------------------------ birth reveal
   let life = null, birthTimer = null;
-  function beginLife(seed) {
-    life = LE.birth(seed, { mode: settings.mode, scope: settings.scope, gentle: settings.gentle });
+  function beginLife(seed, speciesId) {
+    life = LE.birth(seed, { mode: speciesId ? 'chosen' : settings.mode, scope: settings.scope, gentle: settings.gentle, speciesId });
     store.set('life-on-earth-current', life);
     runBirth();
   }
   function runBirth() {
     const s = life, sp = LE.byId(s.sp), b = s.born, M = MOD(s);
     show('birth'); $('birth').classList.remove('sharp'); $('birthbg').style.backgroundImage = `url(${img(s.sp)})`;
-    const tab = LE.table(s.scope, s.mode), row = tab.find((r) => r.sp.id === s.sp), conf = sp.births.confidence;
-    const mode = s.mode === 'discovery' ? 'Discovery Mode (equal odds, adjusted for discovery, not real probability)' : 'Earth Birth Lottery';
+    const tab = LE.table(s.scope, s.mode === 'chosen' ? 'earth' : s.mode), row = tab.find((r) => r.sp.id === s.sp) || { p: 0, births: LE.point(sp) }, conf = sp.births.confidence;
+    const chosen = s.mode === 'chosen', mode = s.mode === 'discovery' ? 'Discovery Mode (equal odds, adjusted for discovery, not real probability)' : 'Earth Birth Lottery';
     const steps = [
       `<div class="step dice">&middot; &middot; &middot;</div><div class="step lbl">Drawing a life from seed ${esc(s.seed)}</div>`,
-      `<div class="step lbl">You are</div><div class="step big">${esc(sp.name)}</div><div class="step sci">${esc(sp.sci)} &middot; ${esc(sp.group)}</div><div class="step odds">${mode}. Chance of this draw: <b>1 in ${oneIn(row.p)}</b> (${pct(row.p)}). ${s.mode === 'discovery' ? '' : `Based on about ${fmt(row.births)} births a year. Data confidence: <b>${conf}</b>.`}</div>`,
+      `<div class="step lbl">You are</div><div class="step big">${esc(sp.name)}</div><div class="step sci">${esc(sp.sci)} &middot; ${esc(sp.group)}</div><div class="step odds">${chosen ? `You chose this species, so nothing was drawn. In the real Earth lottery this would be a <b>1 in ${oneIn(row.p || LE.point(sp) / LE.table('all').reduce((a, r) => a + r.births, 0))}</b> draw. Based on about ${fmt(row.births)} births a year. Data confidence: <b>${conf}</b>.` : `${mode}. Chance of this draw: <b>1 in ${oneIn(row.p)}</b> (${pct(row.p)}). ${s.mode === 'discovery' ? '' : `Based on about ${fmt(row.births)} births a year. Data confidence: <b>${conf}</b>.`}`}</div>`,
       `<div class="step lbl">Where</div><div class="step txt big" style="font-size:clamp(26px,5vw,44px)">${esc(b.place)}</div><div class="step txt">${esc(sp.habitat)}. ${esc(b.env)}.</div>`,
       `<div class="step lbl">Your beginning</div><div class="step txt">${esc(b.story)}</div>`,
       `<div class="step lbl">A life of your own</div><div class="step txt">${esc(sp.blurb)}</div><div class="step"><button class="primary" id="enter">Live this life</button></div>`,
@@ -407,7 +417,7 @@
       </div>
       <div class="panel"><h3>The butterfly effect</h3><p style="color:var(--mut);margin-top:0">Small moments that echoed. This is what the simulation recorded, not a prediction.</p>${chains}</div>
       <div class="grid2"><div class="panel"><h3>Turning points</h3>${turning}</div><div class="panel"><h3>Important decisions</h3>${decisions}</div></div>
-      <div class="panel"><h3>How this life began, according to the evidence</h3><p style="margin-top:0">${s.lottery.p ? `Chance of this draw: 1 in ${oneIn(s.lottery.p)} (${esc(s.lottery.mode === 'discovery' ? 'Discovery Mode: adjusted, not real' : pct(s.lottery.p))}).` : 'This was a hypothetical life.'} ${esc(sp.births.method)} Confidence: <span class="chip ${sp.births.confidence}">${sp.births.confidence}</span></p></div>
+      <div class="panel"><h3>How this life began, according to the evidence</h3><p style="margin-top:0">${s.lottery.p ? `Chance of this draw: 1 in ${oneIn(s.lottery.p)} (${esc(s.lottery.mode === 'discovery' ? 'Discovery Mode: adjusted, not real' : pct(s.lottery.p))}).` : (s.mode === 'chosen' ? 'You chose this species rather than drawing it.' : 'This was a hypothetical life.')} ${esc(sp.births.method)} Confidence: <span class="chip ${sp.births.confidence}">${sp.births.confidence}</span></p></div>
       ${m ? `<div class="panel" style="margin-top:14px"><h3>Your note</h3><textarea id="note" aria-label="Personal note" placeholder="Leave a note about this life…">${esc(note)}</textarea><div style="margin-top:8px"><button id="savenote">Save note</button> <span id="notemsg" style="color:var(--mut);font-size:13px"></span></div></div>` : ''}
       <p style="color:var(--mut);font-size:13px;margin-top:20px">Fictional narrative events on top of modelled biology and real demographic indicators. A simulated life is not a prediction of anyone's real future.</p>`;
     if (m) $('savenote').onclick = () => { const all = museum(), t = all.find((x) => x.id === m.id); t.note = $('note').value.slice(0, 800); store.set('life-on-earth-museum', all); $('notemsg').textContent = 'Saved.'; };
@@ -468,6 +478,13 @@
   };
 
   // ------------------------------------------------------------ how the odds work
+  function openPick() {
+    show('pick'); const groups = {}; LE.SPECIES.forEach((sp) => (groups[sp.group] ||= []).push(sp));
+    $('pick-body').innerHTML = `<div class="eyebrow">Your choice</div><h1>Choose a species</h1><p style="color:var(--mut);max-width:640px">Pick a life instead of drawing one. Nothing is drawn, so no odds apply, but its birthplace, family and circumstances are still decided by the seed. ${LE.SPECIES.length - 1} animals and humans are playable.</p>` +
+      Object.entries(groups).map(([g, list]) => `<h2 style="margin-top:28px">${esc(g)}</h2><div class="cards">${list.map((sp) => `<button class="lcard" data-sp="${sp.id}" style="background-image:url(${img(sp.id)});min-height:150px"><div class="c"><h3>${sp.emoji} ${esc(sp.name)}</h3><small>${esc(sp.habitat)}</small></div></button>`).join('')}</div>`).join('');
+    document.querySelectorAll('#pick-body .lcard').forEach((c) => (c.onclick = () => beginLife($('seed').value.trim() || LE.newSeed(), c.dataset.sp)));
+    $('pk-back').onclick = () => { show('landing'); refreshLanding(); };
+  }
   function openOdds() {
     show('odds'); const scope = settings.scope, t = LE.table(scope), cm = LE.countriesMeta;
     $('odds-body').innerHTML = `<div class="eyebrow">Transparency</div><h1>How the odds work</h1>
@@ -477,6 +494,7 @@
       <table class="odds"><thead><tr><th>Species</th><th>Chance</th><th>Births per year (range)</th><th>Confidence</th></tr></thead><tbody>
       ${t.map((r) => { const sp = r.sp, [lo, hi] = LE.range(sp); return `<tr><td><b>${esc(sp.name)}</b><br><i style="color:var(--mut)">${esc(sp.sci)}</i></td><td>${pct(r.p)}<div class="oddsbar"><i style="width:${Math.max(1, Math.round(Math.pow(r.p, 0.35) * 100))}%"></i></div><small style="color:var(--mut)">1 in ${oneIn(r.p)}</small></td><td>${fmt(r.births)}<br><small style="color:var(--mut)">${fmt(lo)} to ${fmt(hi)}</small></td><td><span class="chip ${sp.births.confidence}">${sp.births.confidence}</span><br><small style="color:var(--mut)">${esc(sp.births.kind)}</small></td></tr><tr><td colspan="4" style="border:0;padding-top:0"><details><summary>Method, sources and assumptions</summary><p style="margin:6px 0">${esc(sp.births.method)}<br><b>Population:</b> ${esc(sp.births.popn)}</p><ul style="margin:4px 0 6px 18px">${sp.births.assumptions.map((a) => `<li>${esc(a)}</li>`).join('')}</ul><p style="margin:0">${sp.births.sources.map((s) => `<a href="${s.url}" target="_blank" rel="noopener">${esc(s.label)}</a>`).join(' &middot; ')}</p></details></td></tr>`; }).join('')}</tbody></table>
       <h2 style="margin-top:30px">Discovery Mode</h2><p>Gives every playable species equal odds so rare lives are easy to meet. These are <b>not</b> real birth probabilities and are labelled as adjusted wherever they appear.</p>
+      <h2 style="margin-top:30px">Where animals are born</h2><p>Every life starts at a real place. Humans are born in one of ${cm.countries.length} countries, weighted by real births. Dogs and cats are born in a country weighted by human births, a stand-in because no country-level pet census exists, so treat that as modelled. Wild animals start in real regions of their range (for example the Serengeti, Svalbard, the Sundarbans or Moreton Bay); how likely each region is, is a <b>gameplay choice</b>, not a population count, and each region changes food and danger a little.</p>
       <h2 style="margin-top:30px">Researched but not in the lottery yet</h2><ul>${LE.UNAVAILABLE.map((u) => `<li><b>${esc(u.name)}</b>: ${esc(u.why)}</li>`).join('')}</ul>
       <h2 style="margin-top:30px">Human data</h2><p>${cm.countries.length} countries; births per country = crude birth rate × population, with life expectancy, under-5 mortality, income, health spending and school enrolment for the starting circumstances. Source: ${esc(cm.source)}, licence ${esc(cm.licence)}. Limitations: ${esc(cm.limitations)} Inside a country, household income is modelled as a lognormal spread around the country average.</p>
       <h2 style="margin-top:30px">What is real, and what is not</h2><ul><li><b>Observed or derived from data:</b> human birth counts and country indicators; cited population counts.</li><li><b>Modelled estimates:</b> animal births per year, survival at each life stage (tuned to published lifespans).</li><li><b>Gameplay adjustments:</b> where a creature starts inside its range, Discovery Mode, leaving insects out of the default lottery.</li><li><b>Fiction:</b> every story event and every name.</li></ul>`;
