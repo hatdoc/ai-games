@@ -79,6 +79,15 @@ const BOTS = {
       }, 1100);
     });
   } },
+  'life-on-earth': { skip: 1, len: 10, poster: 6, async play(page) { // a lion cub's life on Auto at 2x, after the birth reveal
+    await page.waitForFunction(() => window.__ready);
+    await page.evaluate(async () => {
+      let sd; for (let i = 0; i < 99999; i++) { if (LE.draw('CUB' + i, { mode: 'discovery' }).sp.id === 'lion') { sd = 'CUB' + i; break; } }
+      document.querySelector('[data-mode="discovery"]').click(); document.getElementById('seed').value = sd; document.getElementById('begin').click();
+      await new Promise((r) => setTimeout(r, 6500)); document.getElementById('skip').click();
+      document.querySelector('[data-speed="2"]').click(); document.getElementById('auto').click(); document.getElementById('irrev').click();
+    });
+  } },
   'goal-rush': { skip: 1, len: 9, poster: 5, async play(page) { // two hard bot teams, a chaos event lands early
     await page.evaluate(() => startDemo());
   } },
