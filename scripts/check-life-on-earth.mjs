@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 const dir = new URL('../games/life-on-earth/', import.meta.url);
-for (const f of ['species.js', 'engine.js', 'lives-a.js', 'lives-human.js', 'lives-b.js', 'lives-c.js']) await import(new URL(f, dir));
+for (const f of ['species.js', 'engine.js', 'lives-a.js', 'lives-human.js', 'lives-b.js', 'lives-c.js', 'lives-d.js']) await import(new URL(f, dir));
 const LE = globalThis.LE;
 LE.setCountries(JSON.parse(fs.readFileSync(new URL('data/countries.json', dir))));
 let fails = 0;
