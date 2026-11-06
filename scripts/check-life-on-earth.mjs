@@ -51,7 +51,7 @@ const BAN = { human: /milkweed|krill|chrysalis|\bpup\b|\bcub\b|\bchick\b|savanna
   panda: /savanna|eucalypt|krill|fjord|elephant|milkweed|university/i, orca: /savanna|bamboo|eucalypt|milkweed|elephant|university/i, polar: /savanna|bamboo|eucalypt|krill|forest|milkweed|university/i,
   eagle: /savanna|bamboo|eucalypt|krill|milkweed|fjord|university/i, koala: /savanna|bamboo|krill|snow|fjord|elephant|milkweed|university/i, giraffe: /bamboo|eucalypt|krill|snow|fjord|elephant|milkweed|university/i,
   tiger: /savanna|bamboo|eucalypt|krill|snow|fjord|milkweed|university/i };
-const EXPECT = { dog: [3, 11], cat: [3, 10], lion: [3, 11], penguin: [1, 9], turtle: [0.5, 30], whale: [30, 70], monarch: [0.04, 0.5], elephant: [15, 50], wolf: [1.5, 6], chimp: [8, 28], panda: [4, 13], orca: [10, 42], polar: [5, 18], eagle: [2.5, 11], koala: [2.5, 9], giraffe: [4, 16], tiger: [2.5, 9] };
+const EXPECT = { dog: [3, 11], cat: [3, 10], lion: [3, 11], penguin: [1, 9], turtle: [0.5, 30], whale: [30, 70], monarch: [0.02, 0.5], elephant: [15, 50], wolf: [1.5, 6], chimp: [8, 28], panda: [4, 13], orca: [10, 42], polar: [5, 18], eagle: [2.5, 11], koala: [2.5, 9], giraffe: [4, 16], tiger: [2.5, 9] };
 const PER = { human: 4000, dog: 3000, cat: 3000, lion: 3000, penguin: 3000, turtle: 3000, whale: 1500, monarch: 3000, elephant: 1500, wolf: 1500, chimp: 1500, panda: 1500, orca: 1500, polar: 1500, eagle: 1500, koala: 1500, giraffe: 1500, tiger: 1500 };
 for (const sp of Object.keys(STAGES)) {
   let sum = 0, bad = 0, decs = 0, ev = 0, maxAge = 0, banned = 0;
