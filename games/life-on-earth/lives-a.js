@@ -20,8 +20,14 @@
   // Survival model: child mortality from the country's under-5 rate; adult Gompertz hazard calibrated so the
   // average lifespan matches the country's life expectancy at birth.
   function childH(c) { const q5 = cl(c.u5 / 1000, 0.002, 0.4); const q1 = 0.75 * q5; return { h0: LE.hz(1 - q1, 1), h1: LE.hz((1 - q5) / (1 - q1), 4) }; }
-  function e0(c, A) { const { h0, h1 } = childH(c); let S = 1, sum = 0; const dt = 0.25;
-    for (let a = 0; a < 120; a += dt) { const h = a < 1 ? h0 : a < 5 ? h1 : 0.0004 + A * Math.exp(0.085 * (a - 5)); const S2 = S * Math.exp(-h * dt); sum += (S + S2) / 2 * dt; S = S2; } return sum; }
+  // average life expectancy over the spread of household incomes inside a country (7-point normal quadrature),
+  // so the whole population, not just the average household, matches the published life expectancy
+  const ZS = [-2.5, -1.67, -0.83, 0, 0.83, 1.67, 2.5], ZW = ZS.map((z) => Math.exp(-z * z / 2)), ZT = ZW.reduce((a, b) => a + b);
+  function e0(c, A) { const { h0, h1 } = childH(c); let tot = 0;
+    ZS.forEach((z, zi) => { const rel = Math.exp(SIG * z - SIG * SIG / 2), mc = Math.pow(rel, -0.25) * normA(0.25), ma = Math.pow(rel, -0.15) * normA(0.15); let S = 1, sum = 0; const dt = 0.25;
+      for (let a = 0; a < 120; a += dt) { const h = a < 1 ? h0 * mc : a < 5 ? h1 * mc : (0.0004 + A * Math.exp(0.085 * (a - 5))) * ma; const S2 = S * Math.exp(-h * dt); sum += (S + S2) / 2 * dt; S = S2; }
+      tot += sum * ZW[zi]; });
+    return tot / ZT; }
   function calib(c) {
     if (calSafe(c)) return calCache[c.iso];
     let lo = 1e-6, hi = 0.05; for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (e0(c, m) > c.le) lo = m; else hi = m; }
@@ -154,6 +160,8 @@
       { id: 'opportunity', w: 2, when: (s) => s.age >= 20 && s.age < 60 && s.career, tone: 'joy', wf: (s) => (LE.hasFlag(s, 'crew') ? 1.8 : 1), fx: (s) => { N(s, 'money', 10); say(s, LE.hasFlag(s, 'crew') ? 'An old friend from your crew offered you a better job.' : 'A better job came up, through work and a bit of luck.', { tone: 'turn', turn: true, because: LE.hasFlag(s, 'crew') ? 'crew' : null }); } },
     ],
   };
+
+  LE._h = { cl, NAMES, PETNAMES, SIG, EDU };
 
   // =============== COMPANION ANIMALS (dog, cat) ===============
   const VAR = {
