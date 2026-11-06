@@ -34,8 +34,8 @@
     hazard(s) {
       const a = s.age, e = s.env, p = 1.35 - e.prey, m = s.mods.h * (1 + Math.max(0, 40 - s.n.health) / 50);
       const f = s.sex === 'female', sen = 0.004 * Math.exp(0.33 * a);
-      if (a < 0.4) return { starvation: 0.25 * p * m, 'illness': 0.2 * p * m, 'the dangers of the savanna': 0.3 * p * m };
-      if (a < 1.5) return { starvation: 0.15 * p * m, 'illness': 0.1 * p * m, 'the dangers of the savanna': 0.15 * p * m };
+      if (a < 0.4) return { starvation: 0.4 * p * m, 'illness': 0.32 * p * m, 'the dangers of the savanna': 0.48 * p * m, 'infanticide by new males': 0.3 * p * m };
+      if (a < 1.5) return { starvation: 0.2 * p * m, 'illness': 0.13 * p * m, 'the dangers of the savanna': 0.2 * p * m };
       if (a < 2.5) return { starvation: 0.06 * p * m, 'the dangers of the savanna': 0.08 * m };
       const b = f ? 0.06 : (a < 4 ? 0.2 : 0.14);
       return { 'hardship during a poor season': b * 0.35 * p * m, 'a territorial clash': (f ? 0.15 : 0.5) * b * m, 'conflict with people': e.threat * 0.04 * m, illness: b * 0.15 * m, 'old age': sen * m };
@@ -113,10 +113,10 @@
     },
     hazard(s) {
       const a = s.age, ice = s.env.ice, m = s.mods.h * (1 + Math.max(0, 40 - s.n.health) / 60);
-      if (a < 0.18) return { 'a cold snap': hz(0.78, 0.18) * m };
-      if (a < 0.3) return { 'a storm': hz(0.88, 0.12) * (1.6 - ice) * m };
-      if (a < 0.6) return { 'starvation in a poor year': hz(0.8, 0.3) * (1.8 - ice) * m * 0.7, 'a giant petrel': hz(0.8, 0.3) * m * 0.3 };
-      if (a < 1.6) return { 'a leopard seal': hz(0.62, 1) * 0.55 * m, 'starvation at sea': hz(0.62, 1) * 0.45 * m * (1.4 - ice * 0.4) };
+      if (a < 0.18) return { 'a cold snap': hz(0.82, 0.18) * m };
+      if (a < 0.3) return { 'a storm': hz(0.9, 0.12) * (1.6 - ice) * m };
+      if (a < 0.6) return { 'starvation in a poor year': hz(0.85, 0.3) * (1.8 - ice) * m * 0.7, 'a giant petrel': hz(0.85, 0.3) * m * 0.3 };
+      if (a < 1.6) return { 'a leopard seal': hz(0.3, 1) * 0.55 * m, 'starvation at sea': hz(0.3, 1) * 0.45 * m * (1.4 - ice * 0.4) };
       if (a < 5) return { 'a leopard seal': hz(0.88, 1) * 0.5 * m, 'a hard winter at sea': hz(0.88, 1) * 0.5 * m };
       return { 'a hard winter': hz(0.95, 1) * 0.5 * m * (1.2 - ice * 0.2), 'a leopard seal or orca': hz(0.95, 1) * 0.5 * m, 'old age': 0.015 * Math.exp(0.25 * (a - 14)) * m };
     },
@@ -189,7 +189,7 @@
       if (a < 0.15) return { 'a flooded nest': hz(0.6, 0.15) * m * 0.4, 'a ghost crab or predator in the nest': hz(0.6, 0.15) * m * 0.6 };
       if (a < 0.17) return { 'predators on the beach': hz(0.7, 0.02) * m };
       if (a < 1) return { 'seabirds and fish in the open ocean': hz(0.5, 0.83) * m };
-      if (a < 5) return { 'predators in the open ocean': hz(0.55, 4) * m * 0.7, 'floating plastic and nets': hz(0.55, 4) * m * 0.3 };
+      if (a < 5) return { 'predators in the open ocean': hz(0.2, 4) * m * 0.7, 'floating plastic and nets': hz(0.2, 4) * m * 0.3 };
       if (a < 30) return { 'sharks': hz(0.85, 1) * m * 0.3, 'fishing nets and boats': hz(0.85, 1) * m * 0.5, disease: hz(0.85, 1) * m * 0.2 };
       return { 'fishing nets and boats': hz(0.95, 1) * m * 0.5, 'disease and sharks': hz(0.95, 1) * m * 0.5, 'old age': 0.004 * Math.exp(0.1 * (a - 60)) * m };
     },
@@ -319,8 +319,8 @@
     },
     hazard(s) {
       const d = s.age / D, m = s.mods.h * (1 + Math.max(0, 40 - s.n.health) / 60), W = 365;
-      if (d < 4) return { 'ants and rain': 0.06 * W * m };
-      if (d < 18) return { 'wasps and spiders': (d < 8 ? 0.1 : 0.05) * W * m * (1.4 - s.env.milk), 'a parasitic fly': 0.015 * W * m, 'disease': 0.01 * W * m };
+      if (d < 4) return { 'ants and rain': 0.09 * W * m };
+      if (d < 18) return { 'wasps and spiders': (d < 8 ? 0.25 : 0.125) * W * m * (1.4 - s.env.milk), 'a parasitic fly': 0.03 * W * m, 'disease': 0.02 * W * m };
       if (d < 28) return { 'parasites': 0.015 * W * m, 'a storm': 0.015 * W * m * (s.site === 'sheltered' ? 0.4 : 1) };
       if (s.mig) { const t = s.south && d < 120 ? 0.004 : 0.0015; return { 'birds': 0.0015 * W * m, 'cold nights and storms': t * W * m * (s.env.weather < 0.4 ? 1.8 : 1), 'old age': 0.0012 * W * Math.exp((d - 28) / 70) * m, 'traffic': 0.001 * W * m }; }
       return { birds: 0.01 * W * m, 'a storm': 0.006 * W * m, 'traffic': 0.004 * W * m, 'old age': 0.004 * W * Math.exp((d - 28) / 11) * m };
