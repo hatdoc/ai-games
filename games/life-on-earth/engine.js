@@ -54,11 +54,15 @@
   };
 
   // ---------- life log, flags (butterfly effect), decisions ----------
-  LE.say = (s, text, o = {}) => s.log.push({ i: s.log.length, age: s.age, stage: s.stage, text, tone: o.tone || 'calm', turn: !!o.turn, because: o.because || null, key: o.key || null });
+  LE.LABELS = { health: 'Health', joy: 'Wellbeing', money: 'Money', friends: 'Friends', skills: 'Skills', food: 'Food', calm: 'Calm', trust: 'Trust', bond: 'Bond', skill: 'Skill', safety: 'Safety', warmth: 'Warmth', energy: 'Energy', status: 'Standing', voice: 'Voice', fat: 'Fat reserves', growth: 'Growth', homing: 'Homing', family: 'Family', stress: 'Stress' };
+  LE.say = (s, text, o = {}) => {
+    const d = {}; for (const [k, v] of Object.entries(s._d || {})) if (Math.abs(v) >= 1) d[k] = Math.round(v); s._d = {};
+    s.log.push({ i: s.log.length, age: s.age, stage: s.stage, text, tone: o.tone || 'calm', turn: !!o.turn, because: o.because || null, key: o.key || null, d: Object.keys(d).length ? d : null });
+  };
   // A flag is a small cause remembered for later. `why` is how the end-of-life story names it.
   LE.flag = (s, key, why) => { if (!s.flags[key]) { s.flags[key] = { age: s.age, why }; LE.say(s, why, { tone: 'turn', turn: true, key }); } };
   LE.hasFlag = (s, k) => !!s.flags[k];
-  LE.mod = (s, k, d, lo = 0, hi = 100) => { s.n[k] = Math.max(lo, Math.min(hi, (s.n[k] == null ? 50 : s.n[k]) + d)); };
+  LE.mod = (s, k, d, lo = 0, hi = 100) => { const was = s.n[k] == null ? 50 : s.n[k]; s.n[k] = Math.max(lo, Math.min(hi, was + d)); (s._d = s._d || {})[k] = ((s._d || {})[k] || 0) + (s.n[k] - was); };
 
   const mod = (s) => LE.modules[s.module];
   const decDef = (s) => s.pending && mod(s).decisions.find((d) => d.id === s.pending.id);
@@ -71,7 +75,8 @@
     const d = decDef(s); const o = d && d.options.find((x) => x.k === k); if (!o) return false;
     const R = LE.R(s);
     s.choices.push({ id: d.id, k, label: typeof o.label === 'function' ? o.label(s) : o.label, title: typeof d.title === 'function' ? d.title(s) : d.title, age: s.age });
-    s.pending = null;
+    s.pending = null; s._d = {};
+    LE.say(s, `You chose: ${s.choices[s.choices.length - 1].label}`, { tone: 'choice' });
     o.fx(s, R);
     return true;
   };
@@ -118,8 +123,8 @@
     s.age += dt; s.steps++;
     const st = M.stage(s);
     if (st !== s.stage) { s.stage = st; const t = M.stageText && M.stageText(s, st); LE.say(s, t || `You are now ${/^[aeiou]/i.test(st) ? 'an' : 'a'} ${st.toLowerCase()}.`, { tone: 'calm', key: 'stage:' + st }); }
-    M.tick(s, dt, R);
-    const h = M.hazard(s);
+    M.tick(s, dt, R); s._d = {};
+    const a1 = s.age; s.age = a1 - dt; const h = M.hazard(s); s.age = a1; // risk over a step is set by the age at its start
     const tot = LE.sumH(h);
     if (R.chance(LE.pDeath(tot, dt))) {
       let x = R.r() * tot, cause = Object.keys(h)[0];
@@ -128,6 +133,8 @@
       LE.say(s, s.end.text, { tone: 'end', turn: true });
       return;
     }
+    // a plain account of this stretch of life, so quiet time still tells you what happened
+    if (M.diary && s.steps % (M.diaryEvery || 1) === 0) { const line = M.diary(s, R); if (line) LE.say(s, line, { tone: 'diary' }); }
     // decisions at meaningful moments, never more than one pending
     for (const d of M.decisions) {
       if (s.done[d.id] || !d.when(s)) continue;

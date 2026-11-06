@@ -100,6 +100,9 @@
   #timeline li.joy::before { background:var(--joy); } #timeline li.hard::before { background:var(--hard); } #timeline li.turn::before { background:var(--gold); box-shadow:0 0 0 4px var(--bg),0 0 16px var(--gold); } #timeline li.end::before { background:var(--end); }
   #timeline .when { font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--mut); }
   #timeline .t { font-size:16px; } #timeline li.turn .t { font-family:var(--serif); font-size:18px; }
+  #timeline li.diary::before { background:#ffffff40; width:8px; height:8px; left:-22px; top:9px; } #timeline li.diary .t { color:#c9d1e4; font-size:15px; }
+  #timeline li.choice::before { background:transparent; border:2px solid var(--gold); } #timeline li.choice .t { color:var(--gold); font-size:15px; font-style:italic; }
+  .fx { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; } .fx .c { font-size:12px; padding:1px 9px; border-radius:99px; border:1px solid var(--line); } .fx .up { color:#8fd694; border-color:#8fd69455; } .fx .dn { color:#e58a7b; border-color:#e58a7b55; }
   #timeline .because { font-size:13px; color:var(--gold); margin-top:3px; }
   #timeline li.end .t { font-family:var(--serif); font-size:19px; }
   .waiting { color:var(--mut); font-size:14px; padding:4px 0 14px; }
@@ -172,6 +175,7 @@
       <button data-mode="discovery" aria-pressed="false">Discovery Mode</button>
     </div>
     <div class="modenote" id="modenote"></div>
+    <div class="modenote" style="margin-top:4px">A human life takes about 10 to 15 minutes at normal pace: every year is told, and you choose at the moments that matter. Pause, slow down or speed up any time. Animal lives are shorter.</div>
     <div class="seedrow">
       <label for="seed" class="sr">Seed</label>
       <input type="text" id="seed" maxlength="9" placeholder="Seed (optional)" autocomplete="off" spellcheck="false">
@@ -196,7 +200,8 @@
     <button id="life-home" aria-label="Back to start">&larr; Start</button><span class="eyebrow" id="life-seed"></span><span class="sp"></span>
     <div class="ctl" role="group" aria-label="Simulation controls">
       <button id="playpause" aria-pressed="false">Pause</button>
-      <button data-speed="1" aria-pressed="true">1x</button><button data-speed="2" aria-pressed="false">2x</button><button data-speed="4" aria-pressed="false">4x</button>
+      <button id="next" class="hidden" title="Show the next moment">Next</button>
+      <button data-speed="0.5" aria-pressed="false">Slow</button><button data-speed="1" aria-pressed="true">1x</button><button data-speed="2" aria-pressed="false">2x</button><button data-speed="4" aria-pressed="false">4x</button>
       <button id="auto" aria-pressed="false" title="Let the creature's personality decide">Auto-decide</button>
     </div>
   </div></div>
@@ -240,7 +245,9 @@
 <script src="species.js"></script>
 <script src="engine.js"></script>
 <script src="lives-a.js"></script>
+<script src="lives-human.js"></script>
 <script src="lives-b.js"></script>
+<script src="lives-c.js"></script>
 <script src="../ad.js"></script>
 <script>
 (() => {
@@ -300,25 +307,28 @@
 
   // ------------------------------------------------------------ life dashboard
   let paused = false, speed = 1, auto = false, timer = null, shown = 0;
-  const DELAY = () => (reduced ? 200 : 1500 / speed);
+  let lastLen = 120; // time to read what was just shown
+  const DELAY = () => (reduced ? 300 : (1400 + lastLen * 22) / speed);
   function enterLife(resume) {
     show('life'); const s = life, sp = LE.byId(s.sp);
     $('portrait').style.backgroundImage = `url(${img(s.sp)})`; $('portrait').querySelector('.kb').style.backgroundImage = `url(${img(s.sp)})`;
     $('p-name').textContent = s.name || sp.name; $('p-sub').textContent = `${sp.name} · ${s.born.place}`; $('life-seed').textContent = `Seed ${s.seed}`;
-    $('timeline').innerHTML = ''; shown = 0; paused = false; auto = false; $('irrev').checked = settings.autoIrrev;
+    $('timeline').innerHTML = ''; shown = 0; paused = false; auto = false; $('next').classList.add('hidden'); $('irrev').checked = settings.autoIrrev;
     $('playpause').textContent = 'Pause'; $('playpause').setAttribute('aria-pressed', 'false'); $('auto').setAttribute('aria-pressed', 'false');
     backTo = 'life'; flush(true); render(); schedule(0);
   }
   $('life-home').onclick = () => { clearTimeout(timer); show('landing'); refreshLanding(); };
-  $('playpause').onclick = () => { paused = !paused; $('playpause').textContent = paused ? 'Resume' : 'Pause'; $('playpause').setAttribute('aria-pressed', paused); if (!paused) schedule(0); else clearTimeout(timer); };
+  $('playpause').onclick = () => { paused = !paused; $('playpause').textContent = paused ? 'Resume' : 'Pause'; $('playpause').setAttribute('aria-pressed', paused); $('next').classList.toggle('hidden', !paused); if (!paused) schedule(0); else clearTimeout(timer); render(); };
+  $('next').onclick = () => { if (!life.alive) return finish(); if (life.pending) return; LE.advance(life); flush(); render(); store.set('life-on-earth-current', life); if (!life.alive) setTimeout(finish, 1200); };
   document.querySelectorAll('[data-speed]').forEach((b) => (b.onclick = () => { speed = +b.dataset.speed; document.querySelectorAll('[data-speed]').forEach((x) => x.setAttribute('aria-pressed', x === b)); }));
   $('auto').onclick = () => { auto = !auto; $('auto').setAttribute('aria-pressed', auto); schedule(0); };
   $('irrev').onchange = (e) => { settings.autoIrrev = e.target.checked; save(); schedule(0); };
 
   function ageLabel(a) { return MOD(life).fmtAge(a); }
   function addEntry(e) {
-    const li = document.createElement('li'); li.className = e.tone === 'turn' ? 'turn' : e.tone;
-    li.innerHTML = `<div class="when">${esc(ageLabel(e.age))} &middot; ${esc(e.stage || '')}${e.turn && e.tone !== 'end' ? ' &middot; turning point' : ''}</div><div class="t">${esc(e.text)}</div>${e.because && life.flags[e.because] ? `<div class="because">&#8627; Because: ${esc(life.flags[e.because].why)}</div>` : ''}`;
+    const li = document.createElement('li'); li.className = e.tone === 'turn' ? 'turn' : e.tone; lastLen = e.tone === 'choice' ? 40 : e.text.length + (e.because ? 60 : 0);
+    const chips = e.d ? `<div class="fx">${Object.entries(e.d).map(([k, v]) => { const good = (k === 'stress') ? v < 0 : v > 0; return `<span class="c ${good ? 'up' : 'dn'}">${v > 0 ? '+' : ''}${v} ${esc(LE.LABELS[k] || k)}</span>`; }).join('')}</div>` : '';
+    li.innerHTML = `<div class="when">${esc(ageLabel(e.age))} &middot; ${esc(e.stage || '')}${e.turn && e.tone !== 'end' ? ' &middot; turning point' : ''}</div><div class="t">${esc(e.text)}</div>${chips}${e.because && life.flags[e.because] ? `<div class="because">&#8627; Because: ${esc(life.flags[e.because].why)}</div>` : ''}`;
     $('timeline').appendChild(li);
   }
   function flush(all) { while (shown < life.log.length) addEntry(life.log[shown++]); }
@@ -388,6 +398,7 @@
     $('memorial-body').innerHTML = `
       <div class="hero-m" style="background-image:url(${img(s.sp)})"><div class="c"><div class="eyebrow">${esc(sp.group)} &middot; ${esc(s.alt ? 'a hypothetical life' : 'a life lived')}</div><h1>${esc(s.name)}</h1><div style="color:#d7d0bf">${esc(sp.name)} &middot; ${esc(s.born.place)}</div><div style="margin-top:6px;font-family:var(--serif);font-size:22px">${esc(sum.lifespan)}</div></div></div>
       <p class="story">${esc(s.end ? s.end.text : s.born.story)}</p>
+      ${s.end && s.end.recap ? `<div class="panel" style="margin-bottom:14px"><h3>Life in brief</h3><p style="margin:0;font-size:17px">${esc(s.end.recap)}</p></div>` : ''}
       <div>${ach.map((a) => `<span class="chip" style="margin:0 6px 6px 0">&#9733; ${esc(a)}</span>`).join('')}</div>
       <div class="grid2">
         <div class="panel"><h3>Life statistics</h3>${[['Seed', s.seed], ['Species', sp.name], ['Lifespan', sum.lifespan], ...sum.stats].map(([k, v]) => `<div class="stat"><span>${esc(k)}</span><span>${esc(v)}</span></div>`).join('')}</div>

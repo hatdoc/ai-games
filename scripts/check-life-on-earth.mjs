@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 const dir = new URL('../games/life-on-earth/', import.meta.url);
-for (const f of ['species.js', 'engine.js', 'lives-a.js', 'lives-b.js']) await import(new URL(f, dir));
+for (const f of ['species.js', 'engine.js', 'lives-a.js', 'lives-human.js', 'lives-b.js', 'lives-c.js']) await import(new URL(f, dir));
 const LE = globalThis.LE;
 LE.setCountries(JSON.parse(fs.readFileSync(new URL('data/countries.json', dir))));
 let fails = 0;
@@ -61,7 +61,7 @@ for (const sp of Object.keys(STAGES)) {
 
 // 5. human mortality calibrated to country life expectancy
 const by = {}; for (let i = 0; i < 60000; i++) { const s = LE.birth('H' + i, { speciesId: 'human' }); LE.autoRun(s); const k = s.born.country.iso; (by[k] ||= { c: s.born.country, a: [] }).a.push(s.age); }
-for (const iso of ['IND', 'NGA', 'CHN', 'USA']) { const g = by[iso]; if (!g || g.a.length < 150) continue; const m = g.a.reduce((x, y) => x + y, 0) / g.a.length; console.log(`   ${g.c.name}: simulated mean ${m.toFixed(1)} vs life expectancy ${g.c.le} (n=${g.a.length})`); ok(Math.abs(m - g.c.le) < 5, `${g.c.name}: simulated lifespan within 5 y of life expectancy (decisions shift it a little)`); }
+for (const iso of ['IND', 'NGA', 'CHN', 'USA']) { const g = by[iso]; if (!g || g.a.length < 150) continue; const m = g.a.reduce((x, y) => x + y, 0) / g.a.length; console.log(`   ${g.c.name}: simulated mean ${m.toFixed(1)} vs life expectancy ${g.c.le} (n=${g.a.length})`); ok(Math.abs(m - g.c.le) < 2.5, `${g.c.name}: simulated lifespan within 2.5 y of life expectancy (decisions shift it a little)`); }
 
 // 6. what-if is a separate, different life
 const o = run('WHATIF-1', 'human'), w = LE.whatIf(o);
