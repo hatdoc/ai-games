@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 const dir = new URL('../games/life-on-earth/', import.meta.url);
-for (const f of ['species.js', 'engine.js', 'lives-a.js', 'lives-human.js', 'lives-b.js', 'lives-c.js', 'lives-d.js']) await import(new URL(f, dir));
+for (const f of ['species.js', 'engine.js', 'lives-a.js', 'lives-human.js', 'lives-b.js', 'lives-c.js', 'lives-d.js', 'lives-e.js', 'lives-f.js', 'lives-g.js']) await import(new URL(f, dir));
 const LE = globalThis.LE;
 LE.setCountries(JSON.parse(fs.readFileSync(new URL('data/countries.json', dir))));
 let fails = 0;
@@ -39,11 +39,20 @@ ok(JSON.stringify(LE.draw('ABCD-1234')) === JSON.stringify(LE.draw('abcd-1234'))
 const STAGES = { human: ['Infancy', 'Childhood', 'Adolescence', 'Young adulthood', 'Adulthood', 'Middle age', 'Old age'],
   dog: ['Newborn puppy', 'Puppy', 'Adolescent', 'Adult', 'Senior'], cat: ['Newborn kitten', 'Kitten', 'Adolescent', 'Adult', 'Senior'],
   lion: ['Newborn cub', 'Young cub', 'Juvenile', 'Subadult', 'Adult', 'Senior'], penguin: ['Egg', 'Hatchling', 'Chick', 'Juvenile', 'Adult'],
-  turtle: ['Egg', 'Hatchling', 'Juvenile (ocean)', 'Juvenile (coast)', 'Adult'], whale: ['Calf', 'Juvenile', 'Subadult', 'Adult'], monarch: ['Egg', 'Caterpillar', 'Chrysalis', 'Butterfly'] };
+  turtle: ['Egg', 'Hatchling', 'Juvenile (ocean)', 'Juvenile (coast)', 'Adult'], whale: ['Calf', 'Juvenile', 'Subadult', 'Adult'], monarch: ['Egg', 'Caterpillar', 'Chrysalis', 'Butterfly'],
+  elephant: ['Newborn calf', 'Calf', 'Juvenile', 'Young adult', 'Adult', 'Elder'], wolf: ['Newborn pup', 'Pup', 'Yearling', 'Young adult', 'Adult', 'Senior'],
+  chimp: ['Newborn infant', 'Infant', 'Juvenile', 'Adolescent', 'Adult', 'Elder'], panda: ['Newborn cub', 'Cub', 'Young cub', 'Juvenile', 'Adult', 'Senior'],
+  orca: ['Newborn calf', 'Calf', 'Juvenile', 'Adult', 'Elder'], polar: ['Newborn cub', 'Cub', 'Subadult', 'Adult', 'Senior'],
+  eagle: ['Egg', 'Nestling', 'Fledgling', 'Juvenile', 'Adult', 'Senior'], koala: ['Pouch joey', 'Back-riding joey', 'Juvenile', 'Adult', 'Senior'],
+  giraffe: ['Newborn calf', 'Calf', 'Juvenile', 'Young adult', 'Adult', 'Elder'], tiger: ['Newborn cub', 'Cub', 'Juvenile', 'Subadult', 'Adult', 'Senior'] };
 const BAN = { human: /milkweed|krill|chrysalis|\bpup\b|\bcub\b|\bchick\b|savanna/i, dog: /milkweed|krill|chrysalis|university|salary/i, cat: /milkweed|krill|chrysalis|university|bark/i,
-  lion: /milkweed|krill|university|human life/i, penguin: /milkweed|savanna|university|pride/i, turtle: /milkweed|krill|savanna|university|pride/i, whale: /milkweed|savanna|university|pride|ice floe/i, monarch: /krill|savanna|university|pride|ocean basin/i };
-const EXPECT = { dog: [3, 11], cat: [3, 10], lion: [3, 11], penguin: [1, 9], turtle: [0.5, 30], whale: [30, 70], monarch: [0.04, 0.5] };
-const PER = { human: 4000, dog: 3000, cat: 3000, lion: 3000, penguin: 3000, turtle: 3000, whale: 1500, monarch: 3000 };
+  lion: /milkweed|krill|university|human life/i, penguin: /milkweed|savanna|university|pride/i, turtle: /milkweed|krill|savanna|university|pride/i, whale: /milkweed|savanna|university|pride|ice floe/i, monarch: /krill|savanna|university|pride|ocean basin/i,
+  elephant: /bamboo|eucalypt|krill|snow|fjord|milkweed|university/i, wolf: /savanna|bamboo|eucalypt|krill|fjord|elephant|milkweed|university/i, chimp: /savanna|bamboo|eucalypt|krill|snow|fjord|milkweed|university/i,
+  panda: /savanna|eucalypt|krill|fjord|elephant|milkweed|university/i, orca: /savanna|bamboo|eucalypt|milkweed|elephant|university/i, polar: /savanna|bamboo|eucalypt|krill|forest|milkweed|university/i,
+  eagle: /savanna|bamboo|eucalypt|krill|milkweed|fjord|university/i, koala: /savanna|bamboo|krill|snow|fjord|elephant|milkweed|university/i, giraffe: /bamboo|eucalypt|krill|snow|fjord|elephant|milkweed|university/i,
+  tiger: /savanna|bamboo|eucalypt|krill|snow|fjord|milkweed|university/i };
+const EXPECT = { dog: [3, 11], cat: [3, 10], lion: [3, 11], penguin: [1, 9], turtle: [0.5, 30], whale: [30, 70], monarch: [0.04, 0.5], elephant: [15, 50], wolf: [1.5, 6], chimp: [8, 28], panda: [4, 13], orca: [10, 42], polar: [5, 18], eagle: [2.5, 11], koala: [2.5, 9], giraffe: [4, 16], tiger: [2.5, 9] };
+const PER = { human: 4000, dog: 3000, cat: 3000, lion: 3000, penguin: 3000, turtle: 3000, whale: 1500, monarch: 3000, elephant: 1500, wolf: 1500, chimp: 1500, panda: 1500, orca: 1500, polar: 1500, eagle: 1500, koala: 1500, giraffe: 1500, tiger: 1500 };
 for (const sp of Object.keys(STAGES)) {
   let sum = 0, bad = 0, decs = 0, ev = 0, maxAge = 0, banned = 0;
   for (let i = 0; i < PER[sp]; i++) {

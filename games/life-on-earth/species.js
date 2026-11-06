@@ -103,6 +103,31 @@
         assumptions: ['Range is a wide order-of-magnitude ASSUMPTION; no defensible precise value exists.', 'Excluded from the default lottery for gameplay: insects hatch in such numbers that including them would make nearly every draw an insect.'],
       },
     },
+    ...[
+      ['elephant', 'African elephant', 'Loxodonta africana', 'Wild mammals', '🐘', 'African savanna and woodland', 'Endangered (IUCN 2021)', 'Calf of a herd led by a grandmother. Memory, drought and the long walk to water.', 12700, 29000, 'low',
+        'Adult females (20-28% of the population) divided by the calving interval (4-5.5 years).', '~350,000 savanna elephants counted in 2016 (Great Elephant Census) to ~415,000 estimated', 2016, 'Loxodonta africana', ['Adult-female share and calving interval are ASSUMPTIONS from field studies.', 'Forest elephants are excluded.']],
+      ['wolf', 'Grey wolf', 'Canis lupus', 'Wild mammals', '🐺', 'Northern forest, tundra and steppe', 'Least Concern (IUCN)', 'A pup in a pack. Scent, snow, rivals and the question of whether to leave home.', 50000, 100000, 'low',
+        'Births per year ~ population / life expectancy at birth (3-5 years, high pup mortality).', '~250,000-300,000 wolves worldwide', 2018, 'Canis lupus', ['Life expectancy at birth of 3-5 years is an ASSUMPTION.', 'Global population is a rough sum of national estimates.']],
+      ['chimp', 'Chimpanzee', 'Pan troglodytes', 'Wild mammals', '🐒', 'Tropical African forest', 'Endangered (IUCN 2016)', 'An infant clinging to its mother in the canopy. Fig trees, tools and community politics.', 10800, 30000, 'low',
+        'Births per year ~ population / life expectancy at birth (10-16 years).', '~172,700-299,700 chimpanzees (IUCN 2016)', 2016, 'Pan troglodytes', ['Life expectancy at birth of 10-16 years is an ASSUMPTION.', 'Population ranges come from IUCN modelling, not a census.']],
+      ['panda', 'Giant panda', 'Ailuropoda melanoleuca', 'Wild mammals', '🐼', 'Bamboo forest in the mountains', 'Vulnerable (IUCN 2016)', 'A hundred-gram cub in a hollow tree. Bamboo, mist and a mountain to yourself.', 120, 312, 'low',
+        'Births per year ~ wild population / life expectancy at birth (8-15 years). Captive pandas excluded.', 'About 1,800 wild adults and subadults (China national survey, 2014); later estimates are higher', 2014, 'Ailuropoda melanoleuca', ['Life expectancy at birth of 8-15 years is an ASSUMPTION.', 'Population figures exclude cubs; the range allows for growth since 2014.']],
+      ['orca', 'Orca', 'Orcinus orca', 'Marine mammals', '🐬', 'Cold coastal and open ocean', 'Data Deficient (IUCN)', 'Born into a family led by a grandmother. Calls, culture, and a long, social life.', 1500, 3500, 'low',
+        'Mature females (~25% of the population) divided by a calving interval of about 5 years.', 'Roughly 50,000 orcas worldwide', 2018, 'Orcinus orca', ['Global population is a rough estimate (IUCN lists the species as Data Deficient).', 'Ecotypes differ widely; the game uses pooled figures.']],
+      ['polar', 'Polar bear', 'Ursus maritimus', 'Wild mammals', '🐻‍❄️', 'Arctic sea ice', 'Vulnerable (IUCN)', 'Born in a snow den in mid-winter. Seals, shrinking ice, and a long walk home.', 1470, 3440, 'medium',
+        'Births per year ~ population / life expectancy at birth (9-15 years).', '~22,000-31,000 polar bears (IUCN Polar Bear Specialist Group)', 2015, 'Ursus maritimus', ['Life expectancy at birth of 9-15 years is an ASSUMPTION.', 'Some subpopulations have no recent count.']],
+      ['eagle', 'Bald eagle', 'Haliaeetus leucocephalus', 'Birds', '🦅', 'Tall trees beside lakes, rivers and coasts', 'Least Concern (IUCN)', 'An egg in a nest the size of a car. A river, a long fall, and white feathers at five.', 107000, 157000, 'medium',
+        'Nesting pairs x eggs per clutch (1.5-2.2 eggs laid per pair per year).', '~71,000 nesting pairs in the lower 48 US states (USFWS 2020 estimate)', 2020, 'Haliaeetus leucocephalus', ['Counts only the lower 48 US states; Alaska and Canada hold many more.', 'Clutch size range is an ASSUMPTION from published averages.']],
+      ['koala', 'Koala', 'Phascolarctos cinereus', 'Wild mammals', '🐨', 'Eucalyptus forest and woodland', 'Vulnerable (IUCN); Endangered in parts of Australia', 'A jelly-bean joey in a pouch. Eucalyptus, heat, and a forest cut by roads.', 30000, 115000, 'low',
+        'Adult females (about half the population) x joeys born per female per year (0.6-0.7).', '~100,000 to 330,000 koalas (estimates conflict)', 2018, 'Phascolarctos cinereus', ['Population estimates conflict widely, so the range is wide.', 'Joeys per female per year is an ASSUMPTION.']],
+      ['giraffe', 'Giraffe', 'Giraffa camelopardalis', 'Wild mammals', '🦒', 'African savanna and acacia woodland', 'Vulnerable (IUCN)', 'Born standing up, a two-metre fall. Lions, long necks and a very tall view.', 12000, 21000, 'low',
+        'Mature females (28-33% of the population) x calves per female per year (0.45-0.55).', '~97,500-117,000 giraffes (IUCN assessments)', 2018, 'Giraffa camelopardalis', ['Female share and calving rate are ASSUMPTIONS.', 'Treats giraffe as one group; taxonomy is debated.']],
+      ['tiger', 'Tiger', 'Panthera tigris', 'Wild mammals', '🐅', 'Forest, grassland and mangrove', 'Endangered (IUCN)', 'A cub in a thicket. A solitary giant in a world of rivals, prey and people.', 373, 930, 'low',
+        'Births per year ~ wild population / life expectancy at birth (6-10 years; cub mortality is high).', '~3,700-5,600 wild tigers (IUCN 2022)', 2022, 'Panthera tigris', ['Life expectancy at birth of 6-10 years is an ASSUMPTION.', 'Captive tigers are excluded.']],
+    ].map(([id, name, sci, group, emoji, habitat, conservation, blurb, low, high, confidence, method, popn, year, q, assumptions]) => ({
+      id, name, sci, group, module: id, scope: 'core', emoji, habitat, conservation, img: id, blurb,
+      births: { low, high, confidence, kind: 'modelled estimate', method, popn, year, sources: [S('https://www.iucnredlist.org/search?query=' + encodeURIComponent(q) + '&searchType=species', 'IUCN Red List: ' + sci)], assumptions },
+    })),
   ];
 
   // Species researched but excluded from the evidence-based lottery until a defensible estimate exists.
@@ -112,5 +137,6 @@
     { name: 'Great white shark', why: 'No reliable global abundance estimate.' },
     { name: 'Octopus', why: 'Hundreds of species with unknown populations; single-species data are too sparse.' },
     { name: 'Snow leopard, red panda, axolotl', why: 'Reliable data exist for population size, but no gameplay module is built yet. They join when their lives are playable.' },
+    { name: 'Farmed animals (chickens, pigs, cattle)', why: 'Tens of billions are born each year, so in an honest lottery nearly every draw would be a farmed animal. They would need an opt-in scope, not a default.' },
   ];
 })(typeof window !== 'undefined' ? window : globalThis);
