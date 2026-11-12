@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Pan Panic</title>
+<script src="../cloudsave.js" data-game="pan-panic" data-keys="panpanic-best"></script>
+<script src="../share.js"></script>
+<style>
+  :root { --ink: #fff8ee; --dim: #cbbfd8; --gold: #ffc23d; --green: #3ee07a; --red: #ff5a4d;
+    --font: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", Nunito, system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #17121f; color: var(--ink); font: 16px/1.35 var(--font);
+    user-select: none; -webkit-user-select: none; touch-action: none; -webkit-tap-highlight-color: transparent; }
+  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; display: block; }
+
+  #hud { position: fixed; top: 0; left: 0; right: 0; height: 62px; z-index: 5; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    padding: 0 60px 0 14px; pointer-events: none; text-shadow: 0 2px 8px #000a; }
+  #hud[hidden] { display: none; }
+  #lives { font-size: 20px; letter-spacing: 2px; }
+  #mid { text-align: center; }
+  #score { font-size: 30px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  #score.pop { animation: pop .25s; }
+  @keyframes pop { 40% { transform: scale(1.25); color: var(--gold); } }
+  #meter { width: min(170px, 40vw); height: 8px; margin: 6px auto 0; border-radius: 99px; background: #ffffff22; overflow: hidden; }
+  #meter i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, #ff7a1a, var(--gold)); transition: width .15s; }
+  #meter.fever i { background: linear-gradient(90deg, #fff, var(--gold), #ff7a1a); transition: none; }
+  #mult { justify-self: end; font-weight: 900; font-size: 15px; padding: 4px 10px; border-radius: 99px; background: #ffffff1c; white-space: nowrap; }
+  #mult.hot { background: var(--gold); color: #2a1500; text-shadow: none; }
+  #mute { position: fixed; top: 12px; right: 12px; z-index: 20; width: 38px; height: 38px; border: 0; border-radius: 12px; background: #ffffff1c; font-size: 18px; cursor: pointer; }
+
+  .screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 16px;
+    padding: 24px 16px; text-align: center; overflow-y: auto; touch-action: pan-y; background: radial-gradient(ellipse at 50% 35%, #17121fb8, #0b0810f5); }
+  .screen[hidden] { display: none; }
+  h1 { margin: 0; font-size: clamp(52px, 15vw, 104px); line-height: .86; font-weight: 900; letter-spacing: -2px; color: #fff; transform: rotate(-4deg);
+    text-shadow: 0 5px 0 #7b2d12, 0 14px 34px #ff7a1a77; }
+  h1 b { display: block; color: var(--gold); }
+  .tag { font-size: 17px; color: var(--dim); max-width: 340px; }
+  .how { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 460px; }
+  .how div { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 14px; background: #ffffff12; border: 1px solid #ffffff1c; font-size: 14px; font-weight: 700; }
+  .how span { font-size: 20px; }
+  .btn { font: 900 20px var(--font); padding: 14px 34px; border: 0; border-radius: 18px; cursor: pointer; color: #2a1500;
+    background: linear-gradient(#ffd766, #ffab1f); box-shadow: 0 6px 0 #b3600f, 0 12px 26px #ff8a1a55; transition: transform .08s, box-shadow .08s; }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #b3600f; }
+  .btn.alt { color: #fff; background: #ffffff1f; box-shadow: 0 6px 0 #00000055; }
+  #play { font-size: 26px; padding: 16px 56px; animation: bob 1.4s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: scale(1.06); } }
+  #best { font-weight: 800; color: var(--gold); min-height: 22px; }
+  #home { position: fixed; top: 16px; left: 14px; z-index: 20; color: #fffc; text-decoration: none; font-size: 14px; font-weight: 800; background: #0006; padding: 7px 11px; border-radius: 10px; }
+
+  .card { width: min(360px, 94vw); padding: 20px 18px; border-radius: 24px; background: linear-gradient(#2c2238, #1d1626); border: 1px solid #ffffff22; box-shadow: 0 20px 60px #000a; }
+  #oTag { font-weight: 900; letter-spacing: 3px; font-size: 13px; color: var(--red); }
+  #oRank { margin-top: 8px; font-size: 22px; font-weight: 900; }
+  #oEmoji { font-size: 46px; display: block; line-height: 1.15; }
+  #oScore { font-size: 64px; font-weight: 900; line-height: 1; margin-top: 8px; color: var(--gold); font-variant-numeric: tabular-nums; }
+  .sub { color: var(--dim); font-size: 13px; font-weight: 700; }
+  #oNew { color: var(--green); font-weight: 900; margin-top: 4px; }
+  #oNew[hidden] { display: none; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 10px; }
+  .stats div { padding: 8px 4px; border-radius: 12px; background: #ffffff10; font-size: 12px; color: var(--dim); font-weight: 700; }
+  .stats b { display: block; font-size: 20px; color: #fff; }
+  #oStrip { font-size: 18px; letter-spacing: 1px; min-height: 26px; }
+  blockquote { margin: 10px 0 16px; font-style: italic; color: var(--dim); font-size: 14px; }
+  .btns { display: flex; gap: 10px; justify-content: center; }
+  .btns .btn { padding: 12px 20px; font-size: 17px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud" hidden>
+  <div id="lives"></div>
+  <div id="mid"><div id="score">$0</div><div id="meter"><i></i></div></div>
+  <div id="mult">×1</div>
+</div>
+<button id="mute" aria-label="Sound">🔊</button>
+
+<div id="menu" class="screen">
+  <!-- Shown only when played standalone; inside the blog's iframe the site navbar covers it. -->
+  <a id="home" href="https://rank-game.com/">← Home</a>
+  <script>if (top !== self) home.remove();</script>
+  <h1>PAN<b>PANIC!</b></h1>
+  <div class="tag">Flip at the green. Burn three dishes and you're fired.</div>
+  <div class="how">
+    <div><span>🟢</span>Tap a pan in the green</div>
+    <div><span>🔥</span>Too late and it burns</div>
+    <div><span>🐀</span>Bonk the rats</div>
+  </div>
+  <button id="play" class="btn">PLAY</button>
+  <div id="best"></div>
+</div>
+
+<div id="over" class="screen" hidden>
+  <div class="card">
+    <div id="oTag">YOU'RE FIRED!</div>
+    <div id="oRank"><span id="oEmoji"></span><span id="oTitle"></span></div>
+    <div id="oScore">$0</div><div class="sub">in tips</div>
+    <div id="oNew" hidden>★ NEW BEST ★</div>
+    <div class="stats"><div><b id="oDish">0</b>dishes</div><div><b id="oPerf">0%</b>perfect</div><div><b id="oStreak">0</b>best streak</div></div>
+    <div id="oStrip"></div>
+    <blockquote id="oQuote"></blockquote>
+    <div class="btns"><button id="retry" class="btn">Play again</button><button id="share" class="btn alt">Share</button></div>
+  </div>
+  <div id="lb"></div>
+  <div id="ad"></div>
+</div>
+
+<script src="../leaderboard.js"></script>
+<script src="../ad.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+adBanner($('ad'));
+const lb = leaderboard($('lb'), 'pan-panic', (s) => `$${s}`);
+const cv = $('c'), ctx = cv.getContext('2d');
+const FONT = 'ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", Nunito, system-ui, sans-serif';
+const EMOJI = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+const GREEN = '#3ee07a', GOLD = '#ffc23d', RED = '#ff5a4d', ORANGE = '#ff9d2e';
+const KEYS = matchMedia('(pointer: fine)').matches;
+let W, H, DPR;
+function resize() { DPR = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * DPR; cv.height = H * DPR; }
+addEventListener('resize', resize); resize();
+
+// ---- rules ----
+// t: seconds until the green window opens · w: green window width factor · from: dishes served before it shows up
+const FOODS = [
+  { e: '🥟', sides: 1, t: 2.8, base: 5, from: 0, w: 1 },
+  { e: '🥞', sides: 2, t: 2.6, base: 8, from: 0, w: 1 },
+  { e: '🥓', sides: 2, t: 1.9, base: 10, from: 5, w: 1 },
+  { e: '🍤', sides: 2, t: 1.3, base: 12, from: 12, w: 0.9 },
+  { e: '🥩', sides: 2, t: 3.6, base: 18, from: 20, w: 0.7 },
+  { e: '🍗', sides: 3, t: 2.2, base: 24, from: 30, w: 0.9 },
+];
+const VIP = { e: '🦞', sides: 2, t: 2.2, base: 50, w: 0.75, vip: true };
+const LATE = 0.55, FEVER_AT = 12, FEVER_SECS = 8, DROP = 0.35, FLIP = 0.32;
+const speed = () => Math.min(2.4, 1 + S.served * 0.018);
+const greenWin = () => Math.max(0.38, 0.95 - S.served * 0.012);
+const panCount = () => 2 + [3, 8, 16, 28].filter((n) => S.served >= n).length;
+const interval = () => Math.max(0.65, 2.3 - S.served * 0.04);
+const mult = () => Math.min(5, 1 + Math.floor(S.streak / 4) * 0.5);
+const RANKS = [[0, '🧽', 'Dishwasher'], [150, '🍞', 'Toast Burner'], [500, '🔪', 'Line Cook'], [1500, '🧑‍🍳', 'Sous Chef'], [4000, '👨‍🍳', 'Head Chef'], [10000, '⭐', 'Star Chef'], [25000, '👑', 'Kitchen Legend']];
+const QUOTES = [
+  ['I ordered dinner. I received a crime scene.', 'The smoke alarm was the best thing on the menu.'],
+  ['A bold choice, serving charcoal.', 'Crunchy. Everything was crunchy.'],
+  ['Edible! Mostly! Three stars for effort.', 'My pancake was cooked on one side, which is one more than I expected.'],
+  ['Solid cooking. The rat seemed to enjoy it too.', 'Good food, and only a little bit on fire.'],
+  ['Fast hands, hot pans. I would come back.', 'I came for the chaos and stayed for the shrimp.'],
+  ['I wept into my steak. Tears of joy.', 'Ten out of ten. I licked the plate. And the pan.'],
+  ['I have eaten everywhere. From now on I eat only here.', 'This is not cooking. This is art with a spatula.'],
+];
+const rankOf = (score) => RANKS.reduce((best, r, i) => (score >= r[0] ? i : best), 0);
+
+// ---- state ----
+let S, best = 0, parts = [], popups = [], flyers = [], faces = [];
+try { best = +localStorage.getItem('panpanic-best') || 0; } catch {}
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = (a) => a[Math.random() * a.length | 0];
+const buzz = (ms) => { if (!S.bot) navigator.vibrate?.(ms); };
+
+function start(bot = false) {
+  S = { t: 0, score: 0, lives: 3, served: 0, perfects: 0, streak: 0, bestStreak: 0, meter: 0, fever: 0, fevers: 0, hist: [],
+    spawnT: 0.5, ratT: rnd(10, 16), pans: [], rats: [], shake: 0, over: false, overT: 0, shown: false, bot };
+  parts = []; popups = []; flyers = []; faces = Array.from({ length: 5 }, () => ({ e: '', t: 0 }));
+  $('menu').hidden = !bot; $('over').hidden = true; $('hud').hidden = bot;
+}
+
+function spawn(p) {
+  const k = S.served >= 15 && Math.random() < 0.07 ? VIP : pick(FOODS.filter((f) => S.served >= f.from));
+  p.food = { k, side: 0, s: 0, T: k.t / speed(), G: greenWin() * k.w, drop: DROP, flip: 0, perfect: true };
+}
+
+function tapPan(p) {
+  const f = p.food;
+  if (S.over || !f || p.burn > 0 || f.drop > 0 || f.flip > 0) return;
+  if (f.s < f.T) return ruin(p, 'R');
+  const perfect = f.s < f.T + f.G;
+  if (perfect) {
+    S.streak++; S.bestStreak = Math.max(S.bestStreak, S.streak);
+    if (S.fever <= 0 && ++S.meter >= FEVER_AT) fever();
+  } else { S.streak = 0; S.meter = 0; f.perfect = false; }
+  p.flash = 1; p.flashC = perfect ? GREEN : ORANGE;
+  burst(p.x, p.y, perfect ? GREEN : ORANGE, perfect ? 14 : 6, p.r);
+  if (++f.side < f.k.sides) {
+    f.s = 0; f.T = f.k.t / speed() * 0.8; f.flip = FLIP; // later sides cook a little faster
+    popup(p.x, p.y - p.r * 1.5, perfect ? 'PERFECT' : 'LATE', perfect ? GREEN : ORANGE, 0.26);
+    tone(perfect ? 520 : 300, 0.09, 'triangle', 0.12, perfect ? 300 : -80);
+  } else serve(p);
+  buzz(8);
+}
+
+function serve(p) {
+  const f = p.food, tip = Math.round(f.k.base * (f.perfect ? 2 : 1) * mult() * (S.fever > 0 ? 2 : 1));
+  const before = panCount();
+  S.score += tip; S.served++; if (f.perfect) S.perfects++; S.hist.push(f.perfect ? 'P' : 'G');
+  p.food = null;
+  const slot = Math.random() * faces.length | 0, [fx, fy] = facePos(slot);
+  flyers.push({ e: f.k.e, x0: p.x, y0: p.y, x1: fx, y1: fy + 12, t: 0, d: 0.4, size: p.r, done() { faces[slot] = { e: f.perfect ? '🤩' : '😋', t: 1.2 }; } });
+  popup(p.x, p.y - p.r * 0.6, `+$${tip}`, f.perfect ? GOLD : '#fff', f.k.vip ? 0.62 : 0.46);
+  const n = Math.min(S.streak, 16);
+  tone(660 * 2 ** (n / 24), 0.12, 'sine', 0.16);
+  if (f.perfect) tone(990 * 2 ** (n / 24), 0.2, 'sine', 0.14, 0, 0.07);
+  $('score').classList.remove('pop'); void $('score').offsetWidth; $('score').classList.add('pop');
+  if (panCount() > before) popup(W / 2, H * 0.5, 'NEW BURNER!', '#fff', 0, 30);
+}
+
+function ruin(p, why) { // 'R' tapped while raw · 'B' left to burn
+  const f = p.food;
+  S.hist.push(why);
+  if (why === 'B') { p.burn = 1.1; f.burnt = true; popup(p.x, p.y - p.r * 1.5, 'BURNT!', RED, 0.4); burst(p.x, p.y, '#555', 12, p.r); }
+  else {
+    p.food = null;
+    flyers.push({ e: f.k.e, x0: p.x, y0: p.y, x1: p.x + rnd(-80, 80), y1: H + 80, t: 0, d: 0.6, size: p.r, spin: 9 });
+    popup(p.x, p.y - p.r * 1.5, 'RAW! 🤢', RED, 0.4);
+  }
+  S.lives--; S.streak = 0; S.meter = 0; S.shake = 0.35;
+  faces[Math.random() * faces.length | 0] = { e: why === 'B' ? '😡' : '🤢', t: 1.5 };
+  tone(140, 0.35, 'sawtooth', 0.14, -60);
+  buzz(120);
+  if (S.lives <= 0) {
+    S.over = true;
+    popup(W / 2, H * 0.45, "YOU'RE FIRED!", RED, 0, Math.min(54, W / 8));
+    [0, -3, -7, -12].forEach((s, i) => tone(392 * 2 ** (s / 12), 0.3, 'sawtooth', 0.09, 0, 0.3 + i * 0.16));
+  }
+}
+
+function fever() {
+  S.fever = FEVER_SECS; S.meter = 0; S.fevers++;
+  const healed = S.lives < 3; if (healed) S.lives++;
+  popup(W / 2, H * 0.42, healed ? '🔥 FEVER! ×2 tips  +❤️' : '🔥 FEVER! ×2 tips', GOLD, 0, Math.min(36, W / 11));
+  [0, 4, 7, 12].forEach((s, i) => tone(523 * 2 ** (s / 12), 0.18, 'square', 0.08, 0, i * 0.08));
+}
+
+function spawnRat() {
+  const targets = S.pans.filter((p) => p.food && p.burn <= 0);
+  if (!targets.length) return;
+  const p = pick(targets), left = Math.random() < 0.5;
+  S.rats.push({ p, x0: left ? -40 : W + 40, x: 0, y: 0, t: 0, d: Math.max(1.4, 2.6 - S.served * 0.01), st: 'run', loot: '' });
+  popup(left ? 46 : W - 46, p.y - 30, '🐀!', '#fff', 0, 24);
+  tone(1800, 0.08, 'square', 0.05, 600);
+}
+function bonk(r) {
+  r.st = 'bonk'; r.t = 0; S.score += 5;
+  popup(r.x, r.y - 30, 'BONK! +$5', '#fff', 0, 22); burst(r.x, r.y, '#fff', 8, 30);
+  tone(220, 0.12, 'square', 0.12, -120); buzz(20);
+}
+
+function update(dt) {
+  for (const q of parts) { q.x += q.vx * dt; q.y += q.vy * dt; q.vy += (q.g || 0) * dt; q.t -= dt; }
+  parts = parts.filter((q) => q.t > 0);
+  for (const q of popups) q.t -= dt;
+  popups = popups.filter((q) => q.t > 0);
+  for (const f of flyers) { f.t += dt; if (f.t >= f.d && f.done) f.done(); }
+  flyers = flyers.filter((f) => f.t < f.d);
+  for (const f of faces) f.t -= dt;
+  S.shake = Math.max(0, S.shake - dt);
+  while (S.pans.length < panCount()) S.pans.push({ food: null, burn: 0, flash: 0 });
+  layout(dt);
+  if (S.over) { S.overT += dt; if (S.overT > 1.2 && !S.shown) { S.shown = true; showOver(); } return; }
+
+  S.t += dt;
+  if (S.fever > 0) S.fever -= dt;
+
+  const free = S.pans.filter((p) => !p.food);
+  if (free.length === S.pans.length) S.spawnT = Math.min(S.spawnT, 0.3); // never leave the kitchen idle
+  S.spawnT -= dt;
+  if (S.spawnT <= 0 && free.length) { spawn(pick(free)); S.spawnT = interval() * rnd(0.8, 1.2); }
+
+  for (const p of S.pans) {
+    p.flash = Math.max(0, p.flash - dt * 4);
+    const f = p.food; if (!f) continue;
+    if (p.burn > 0) { p.burn -= dt; if (p.burn <= 0) p.food = null; else if (Math.random() < dt * 20) smoke(p, '#333'); continue; }
+    if (f.drop > 0) { f.drop -= dt; continue; }
+    if (f.flip > 0) { f.flip -= dt; continue; }
+    f.s += dt;
+    if (Math.random() < dt * 5) smoke(p, f.s > f.T + f.G ? '#444' : '#fff');
+    if (S.bot && f.s >= f.T + f.G * 0.45) tapPan(p);
+    else if (f.s >= f.T + f.G + LATE) ruin(p, 'B');
+  }
+
+  if (S.served >= 10 && (S.ratT -= dt) <= 0) { spawnRat(); S.ratT = rnd(9, 17); }
+  for (const r of S.rats) {
+    r.t += dt;
+    const k = Math.min(1, r.t / r.d);
+    if (r.st === 'run') {
+      r.x = r.x0 + (r.p.x - r.x0) * k; r.y = r.p.y + r.p.r * 0.7 + Math.sin(r.t * 22) * 3;
+      if (S.bot && k > 0.5) bonk(r);
+      else if (k >= 1) {
+        const f = r.p.food;
+        if (f && r.p.burn <= 0) { // steals the dish: no strike, but the streak is gone
+          r.loot = f.k.e; r.p.food = null; S.streak = 0; S.meter = 0; S.hist.push('S');
+          popup(r.p.x, r.p.y - r.p.r * 1.5, 'STOLEN!', ORANGE, 0.4); tone(500, 0.2, 'square', 0.08, -300);
+        }
+        r.st = 'flee'; r.t = 0; r.x1 = r.x;
+      }
+    } else if (r.st === 'flee') { r.x = r.x1 + (r.x0 - r.x1) * Math.min(1, r.t / 0.8); r.y = r.p.y + r.p.r * 0.7 + Math.sin(r.t * 30) * 3; }
+    else { r.x += (r.x0 < 0 ? -1 : 1) * 260 * dt; r.y -= (420 - r.t * 1400) * dt; }
+  }
+  S.rats = S.rats.filter((r) => !(r.st !== 'run' && r.t > 0.8));
+}
+
+// ---- layout ----
+const TOP = 124; // HUD + the pass where diners sit
+const facePos = (i) => [W * (i + 1) / (faces.length + 1), 88];
+function layout(dt) {
+  const n = S.pans.length, aw = W - 16, ah = H - TOP - 14;
+  let size = 0, cols = 1;
+  for (let c = 1; c <= n; c++) { const s = Math.min(aw / c, ah / Math.ceil(n / c)); if (s > size + 0.01) { size = s; cols = c; } }
+  size = Math.min(size, 250);
+  const rows = Math.ceil(n / cols), oy = TOP + (ah - rows * size) / 2, k = Math.min(1, dt * 10);
+  S.pans.forEach((p, i) => {
+    const row = i / cols | 0, inRow = row === rows - 1 ? n - row * cols : cols; // a short last row sits centred
+    const tx = (W - inRow * size) / 2 + (i % cols + 0.5) * size, ty = oy + (row + 0.5) * size, tr = size * 0.29;
+    if (p.x === undefined) { p.x = tx; p.y = ty; p.r = tr; }
+    p.x += (tx - p.x) * k; p.y += (ty - p.y) * k; p.r += (tr - p.r) * k;
+  });
+}
+
+// ---- effects ----
+function popup(x, y, text, color, rel, px) { popups.push({ x, y, text, color, t: 1, size: px || Math.max(15, rel * (S.pans[0]?.r || 60) * 1.6) }); }
+function burst(x, y, c, n, r) { for (let i = 0; i < n; i++) { const a = Math.random() * 7, v = rnd(80, 300); parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60, g: 500, t: rnd(0.3, 0.6), life: 0.6, r: rnd(2, r * 0.09), c }); } }
+function smoke(p, c) { parts.push({ x: p.x + rnd(-0.5, 0.5) * p.r, y: p.y - p.r * 0.3, vx: rnd(-12, 12), vy: -rnd(40, 80), t: 0.9, life: 0.9, r: rnd(4, p.r * 0.16), c, soft: true }); }
+
+// Emoji as cached sprites, tinted pale while raw and dark as they burn (canvas filters don't work in every browser)
+const sprites = new Map();
+function sprite(e, tint = 0) {
+  const key = e + tint; let c = sprites.get(key);
+  if (c) return c;
+  c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d');
+  x.font = `96px ${EMOJI}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(e, 64, 70);
+  if (tint) { x.globalCompositeOperation = 'source-atop'; x.fillStyle = tint < 0 ? `rgba(255,250,235,${-tint * 0.2})` : `rgba(18,8,0,${tint * 0.22})`; x.fillRect(0, 0, 128, 128); }
+  sprites.set(key, c); return c;
+}
+function emoji(e, x, y, size, tint, rot = 0, sx = 1, sy = 1, alpha = 1) {
+  ctx.save(); ctx.translate(x, y); if (rot) ctx.rotate(rot); ctx.scale(sx, sy); ctx.globalAlpha = alpha;
+  ctx.drawImage(sprite(e, tint), -size / 2, -size / 2, size, size); ctx.restore();
+}
+const circle = (x, y, r) => { ctx.beginPath(); ctx.arc(x, y, r, 0, 7); };
+const arc = (x, y, r, a, b, c) => { ctx.beginPath(); ctx.arc(x, y, r, a, b); ctx.strokeStyle = c; ctx.stroke(); };
+
+// ---- drawing ----
+function drawPan(p, i) {
+  const { x, y, r } = p, f = p.food, cooking = f && !f.burnt && f.drop <= 0;
+  if (cooking) { const g = ctx.createRadialGradient(x, y, r * 0.6, x, y, r * 1.7); g.addColorStop(0, 'rgba(255,120,30,.34)'); g.addColorStop(1, 'rgba(255,120,30,0)'); ctx.fillStyle = g; circle(x, y, r * 1.7); ctx.fill(); }
+  ctx.save(); ctx.translate(x, y); ctx.rotate(0.62); ctx.fillStyle = '#100d15'; ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(r * 0.9, -r * 0.13, r * 0.78, r * 0.26, r * 0.13) : ctx.rect(r * 0.9, -r * 0.13, r * 0.78, r * 0.26); ctx.fill(); ctx.restore();
+  ctx.fillStyle = '#16131c'; circle(x, y + r * 0.06, r * 1.08); ctx.fill();
+  ctx.fillStyle = '#2a2633'; circle(x, y, r * 1.06); ctx.fill();
+  const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r); g.addColorStop(0, '#5a5668'); g.addColorStop(1, '#34303f');
+  ctx.fillStyle = g; circle(x, y, r * 0.9); ctx.fill();
+  if (p.flash > 0) { ctx.globalAlpha = p.flash; ctx.lineWidth = r * 0.14; ctx.strokeStyle = p.flashC; circle(x, y, r * (1.5 - p.flash * 0.3)); ctx.stroke(); ctx.globalAlpha = 1; }
+  if (KEYS && !S.bot) { ctx.font = `800 ${Math.max(11, r * 0.24)}px ${FONT}`; ctx.fillStyle = '#ffffff55'; ctx.textAlign = 'center'; ctx.fillText(i + 1, x - r * 1.4, y - r * 1.3); }
+  if (!f) return;
+
+  let oy = 0, sy = 1, tint = 4;
+  if (f.drop > 0) oy = -((f.drop / DROP) ** 2) * r * 4;
+  if (f.flip > 0) { const k = 1 - f.flip / FLIP; oy = -Math.sin(k * Math.PI) * r * 1.5; sy = Math.cos(k * Math.PI * 2); }
+  if (!f.burnt) tint = f.s < f.T ? -Math.ceil((1 - f.s / f.T) * 2) : f.s < f.T + f.G ? 0 : 1 + Math.floor((f.s - f.T - f.G) / LATE * 2);
+  const jit = cooking && f.flip <= 0 ? Math.sin(S.t * 46 + i * 2) * r * 0.012 : 0;
+  ctx.fillStyle = '#0005'; ctx.beginPath(); ctx.ellipse(x, y + r * 0.42, r * 0.5 * (1 + oy / (r * 6)), r * 0.13, 0, 0, 7); ctx.fill();
+  emoji(f.k.e, x + jit, y + oy, r * 1.5, tint, 0, 1, sy || 0.01);
+  if (f.burnt) emoji('🔥', x, y - r * 0.3, r * (1.5 + Math.sin(S.t * 30) * 0.12), 0);
+}
+
+function drawRing(p) {
+  const f = p.food; if (!f || f.burnt || f.drop > 0) return;
+  const { x, y, r } = p, R = r * 1.3, lw = r * 0.17, tot = f.T + f.G + LATE, a0 = -Math.PI / 2, A = (s) => a0 + Math.min(1, s / tot) * Math.PI * 2;
+  const z = f.s < f.T ? 0 : f.s < f.T + f.G ? 1 : 2, a = A(f.s);
+  ctx.lineWidth = lw;
+  arc(x, y, R, 0, 7, 'rgba(255,255,255,.1)');
+  arc(x, y, R, A(f.T), A(f.T + f.G), z === 1 ? '#7dffb0' : '#2fbf68');
+  arc(x, y, R, A(f.T + f.G), a0 + Math.PI * 2, z === 2 ? '#ffb347' : '#a8551a');
+  ctx.lineWidth = lw * 0.4; arc(x, y, R, a0, a, 'rgba(255,255,255,.8)');
+  if (f.k.vip) { ctx.lineWidth = 2; ctx.setLineDash([5, 6]); arc(x, y, R + lw * 0.9, S.t, S.t + 7, GOLD); ctx.setLineDash([]); }
+  if (z === 1) { ctx.lineWidth = 3; ctx.globalAlpha = 0.5 + 0.5 * Math.sin(S.t * 22); arc(x, y, R + lw * 0.85, 0, 7, GREEN); ctx.globalAlpha = 1; }
+  ctx.fillStyle = '#fff'; ctx.shadowColor = '#fff'; ctx.shadowBlur = 10; circle(x + Math.cos(a) * R, y + Math.sin(a) * R, lw * 0.72); ctx.fill(); ctx.shadowBlur = 0;
+
+  // under the pan: what a tap does right now, or how many sides are left
+  const ly = y + r * 1.62;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (z && f.flip <= 0) {
+    ctx.font = `900 ${r * 0.34 * (1 + 0.08 * Math.sin(S.t * 22))}px ${FONT}`; ctx.fillStyle = z === 1 ? GREEN : ORANGE;
+    ctx.fillText(f.side + 1 < f.k.sides ? 'FLIP!' : 'SERVE!', x, ly);
+  } else for (let s = 0; s < f.k.sides; s++) {
+    ctx.fillStyle = s < f.side ? GREEN : '#ffffff40'; circle(x + (s - (f.k.sides - 1) / 2) * r * 0.3, ly, r * 0.085); ctx.fill();
+  }
+  if (!S.bot && !best && S.served === 0 && S.lives === 3 && !z) { ctx.font = `800 ${Math.max(13, r * 0.26)}px ${FONT}`; ctx.fillStyle = '#fffc'; ctx.fillText('wait for the green…', x, y - r * 1.66); }
+  ctx.textBaseline = 'alphabetic';
+}
+
+function draw() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const fev = S.fever > 0, bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, fev ? '#4d2a12' : '#2b1e36'); bg.addColorStop(1, fev ? '#1d0f08' : '#120d18');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  if (fev) {
+    ctx.save(); ctx.translate(W / 2, (TOP + H) / 2); ctx.rotate(S.t * 0.5); ctx.fillStyle = 'rgba(255,190,60,.07)';
+    const R = Math.hypot(W, H);
+    for (let i = 0; i < 10; i++) { ctx.rotate(Math.PI / 5); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(R, -R * 0.14); ctx.lineTo(R, R * 0.14); ctx.fill(); }
+    ctx.restore();
+  }
+  ctx.save();
+  if (S.shake > 0) ctx.translate(rnd(-1, 1) * S.shake * 26, rnd(-1, 1) * S.shake * 26);
+
+  // the stove top
+  const steel = ctx.createLinearGradient(0, TOP, 0, H); steel.addColorStop(0, '#ffffff12'); steel.addColorStop(1, '#ffffff05');
+  ctx.fillStyle = steel; ctx.strokeStyle = '#ffffff14'; ctx.lineWidth = 1.5; ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(8, TOP + 8, W - 16, H - TOP - 16, 22) : ctx.rect(8, TOP + 8, W - 16, H - TOP - 16); ctx.fill(); ctx.stroke();
+
+  // the pass: diners waiting behind a wooden counter
+  faces.forEach((f, i) => {
+    const [x, y] = facePos(i), on = f.t > 0, pop = on ? 1 + Math.max(0, f.t - 0.9) * 2 : 1;
+    emoji(on ? f.e : '🙂', x, y - (on ? 4 : 0), 38 * pop, 0, 0, 1, 1, on ? 1 : 0.7);
+  });
+  const wood = ctx.createLinearGradient(0, 106, 0, 120); wood.addColorStop(0, '#a8683a'); wood.addColorStop(1, '#6b3d1f');
+  ctx.fillStyle = wood; ctx.fillRect(-30, 106, W + 60, 14);
+  ctx.fillStyle = '#0004'; ctx.fillRect(-30, 120, W + 60, 5);
+
+  S.pans.forEach(drawPan);
+  S.pans.forEach(drawRing);
+
+  for (const r of S.rats) {
+    const dir = r.st === 'run' ? (r.x0 < 0 ? 1 : -1) : (r.x0 < 0 ? -1 : 1), size = Math.max(40, r.p.r * 0.95);
+    emoji('🐀', r.x, r.y, size, 0, r.st === 'bonk' ? r.t * 14 : 0, -dir, 1, r.st === 'bonk' ? 1 - r.t / 0.8 : 1); // the emoji faces left
+    if (r.loot) emoji(r.loot, r.x, r.y - size * 0.5, size * 0.7, 0);
+  }
+  for (const f of flyers) {
+    const k = f.t / f.d, x = f.x0 + (f.x1 - f.x0) * k, y = f.y0 + (f.y1 - f.y0) * k - Math.sin(k * Math.PI) * 60;
+    emoji(f.e, x, y, f.size * 1.5 * (1 - k * 0.45), 0, (f.spin || 0) * k);
+  }
+  for (const q of parts) { ctx.globalAlpha = Math.max(0, q.t / q.life) * (q.soft ? 0.3 : 1); ctx.fillStyle = q.c; circle(q.x, q.y, q.soft ? q.r * (2 - q.t / q.life) : q.r); ctx.fill(); }
+  ctx.globalAlpha = 1; ctx.textAlign = 'center'; ctx.lineJoin = 'round';
+  for (const q of popups) {
+    const k = 1 - q.t, s = q.size * (k < 0.12 ? 0.6 + k / 0.12 * 0.5 : 1.1 - Math.min(0.1, (k - 0.12)));
+    ctx.globalAlpha = Math.min(1, q.t * 3); ctx.font = `900 ${s}px ${FONT}`;
+    ctx.lineWidth = Math.max(3, s * 0.18); ctx.strokeStyle = '#1a0f22'; ctx.strokeText(q.text, q.x, q.y - k * 46);
+    ctx.fillStyle = q.color; ctx.fillText(q.text, q.x, q.y - k * 46);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  if (fev) { ctx.strokeStyle = `rgba(255,190,60,${0.35 + 0.2 * Math.sin(S.t * 8)})`; ctx.lineWidth = 10; ctx.strokeRect(0, 0, W, H); }
+}
+
+const shown = {};
+function set(id, prop, v) { if (shown[id + prop] !== v) { shown[id + prop] = v; $(id)[prop] = v; } }
+function hud() {
+  set('lives', 'textContent', '❤️'.repeat(Math.max(0, S.lives)) + '🖤'.repeat(3 - Math.max(0, S.lives)));
+  set('score', 'textContent', `$${S.score}`);
+  const fev = S.fever > 0, m = mult() * (fev ? 2 : 1);
+  set('mult', 'textContent', fev ? `🔥 ×${m}` : `×${m}`); set('mult', 'className', m > 1 ? 'hot' : '');
+  set('meter', 'className', fev ? 'fever' : '');
+  $('meter').firstChild.style.width = `${(fev ? S.fever / FEVER_SECS : S.meter / FEVER_AT) * 100}%`;
+}
+
+// ---- game over ----
+function showOver() {
+  if (S.bot) return;
+  const s = S.score, isBest = s > best, rank = rankOf(s);
+  if (isBest) { best = s; try { localStorage.setItem('panpanic-best', s); } catch {} }
+  $('oEmoji').textContent = RANKS[rank][1]; $('oTitle').textContent = RANKS[rank][2];
+  $('oScore').textContent = `$${s}`; $('oNew').hidden = !isBest;
+  $('oDish').textContent = S.served; $('oStreak').textContent = S.bestStreak;
+  $('oPerf').textContent = `${S.served ? Math.round(S.perfects / S.served * 100) : 0}%`;
+  $('oStrip').textContent = strip(); $('oQuote').textContent = `“${pick(QUOTES[rank])}”`;
+  $('share').textContent = 'Share';
+  $('over').hidden = false; $('hud').hidden = true;
+  lb.show(s);
+}
+const strip = () => S.hist.slice(-10).map((h) => ({ P: '🟩', G: '🟨', B: '⬛', R: '🟥', S: '🐀' })[h]).join('');
+$('share').onclick = async (e) => {
+  const text = `🍳 Pan Panic: $${S.score} in tips before I got fired\n${RANKS[rankOf(S.score)][1]} ${RANKS[rankOf(S.score)][2]} · ${S.served} dishes · best streak ${S.bestStreak}\n${strip()}\nCan you last longer in the kitchen?`;
+  const url = 'https://rank-game.com/games/pan-panic';
+  try {
+    if (navigator.share) await navigator.share({ title: 'Pan Panic', text, url });
+    else { await navigator.clipboard.writeText(`${text} ${url}`); e.target.textContent = 'Copied!'; }
+  } catch {}
+};
+
+// ---- sound ----
+let ac, sizzle, muted = false;
+function audio() {
+  if (ac) return;
+  try {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = ac.createBufferSource(), hp = ac.createBiquadFilter();
+    src.buffer = buf; src.loop = true; hp.type = 'highpass'; hp.frequency.value = 3500;
+    sizzle = ac.createGain(); sizzle.gain.value = 0;
+    src.connect(hp).connect(sizzle).connect(ac.destination); src.start();
+  } catch {}
+}
+function tone(f, d, type, v, slide = 0, at = 0) {
+  if (!ac || muted || S.bot) return;
+  const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + at;
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (slide) o.frequency.linearRampToValueAtTime(Math.max(40, f + slide), t + d);
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d + 0.02);
+}
+$('mute').onclick = () => { muted = !muted; $('mute').textContent = muted ? '🔇' : '🔊'; };
+
+// ---- input ----
+function play() { audio(); ac?.resume(); start(); }
+$('play').onclick = play; $('retry').onclick = play;
+cv.addEventListener('pointerdown', (e) => {
+  if (S.bot || S.over) return;
+  const x = e.clientX, y = e.clientY;
+  const rat = S.rats.find((r) => r.st === 'run' && Math.hypot(r.x - x, r.y - y) < Math.max(44, r.p.r));
+  if (rat) return bonk(rat);
+  let hit = null, d = Infinity;
+  for (const p of S.pans) { const q = Math.hypot(p.x - x, p.y - y); if (q < d && q < p.r * 1.75) { d = q; hit = p; } }
+  if (hit) tapPan(hit);
+});
+addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  if (S.bot || !$('over').hidden) { if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); if (S.bot || S.overT > 2) play(); } return; }
+  const n = +e.key;
+  if (n >= 1 && n <= S.pans.length) tapPan(S.pans[n - 1]);
+  else if (e.code === 'Space') { e.preventDefault(); const r = S.rats.find((q) => q.st === 'run'); if (r) bonk(r); }
+});
+
+// ---- loop ----
+let last = performance.now();
+function loop(now) {
+  update(Math.min((now - last) / 1000, 0.05)); last = now;
+  draw(); if (!S.bot) hud();
+  if (sizzle) sizzle.gain.setTargetAtTime(muted || S.bot || S.over ? 0 : Math.min(0.05, S.pans.filter((p) => p.food && !p.food.burnt).length * 0.012), ac.currentTime, 0.1);
+  requestAnimationFrame(loop);
+}
+start(true); // the menu sits over a kitchen that cooks itself
+$('best').textContent = best ? `Best: $${best}` : '';
+requestAnimationFrame(loop);
+window.pp = { get S() { return S; }, start, update, tapPan, spawnRat, FEVER_AT, LATE }; // for scripts/check-pan-panic.mjs and the preview recorder
+</script>
+</body>
+</html>
