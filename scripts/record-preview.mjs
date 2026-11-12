@@ -79,6 +79,10 @@ const BOTS = {
       }, 1100);
     });
   } },
+  'pan-panic': { skip: 3, len: 9, poster: 5, async play(page) { // the built-in bot cooks a busy six-pan service, with a rat on the way
+    await page.evaluate(() => { pp.start(); pp.S.bot = true; pp.S.served = 40; pp.S.ratT = 6; document.getElementById('hud').hidden = false; setInterval(hud, 50); });
+    await page.waitForTimeout(13000);
+  } },
   'life-on-earth': { skip: 1, len: 10, poster: 6, async play(page) { // a lion cub's life on Auto at 2x, after the birth reveal
     await page.waitForFunction(() => window.__ready);
     await page.evaluate(async () => {
