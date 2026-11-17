@@ -71,7 +71,8 @@ const Market = (() => {
       if (c.dps > 0) c.divs.push({ decl: d, pay: d + DIV_LAG, cents: Math.max(1, Math.round(c.dps * 25)) });
     };
     const list = (c, d) => { c.listDay = d; c.F = Math.log(c.price); c.close[d - GENESIS] = c.price; report(c, d); };
-    let nextReserve = cos.findIndex((c) => c.reserve), reg = 0;
+    const reserve = cos.filter((c) => c.reserve).map((c) => c.id); // companies still waiting to list, in order
+    let reg = 0;
     const ipos = []; // { day, id } listings waiting to happen
     for (const c of cos) if (!c.reserve) list(c, GENESIS);
     index[0] = 1000;
@@ -173,8 +174,8 @@ const Market = (() => {
         if (c.health <= 0) { // bankrupt: shares crash today and are worth nothing from tomorrow
           px = prev * (0.02 + 0.06 * u(d, c.id, 4)); c.deadDay = d;
           todo.length = 0; todo.push({ cat: 'Company', level: 'Severe', kind: 'bankrupt', after: 'as it files for bankruptcy', body: `${c.name} has run out of money and filed for bankruptcy. Its shares stop trading after today and shareholders are not expected to recover anything.` });
-          // ponytail: new listings come from a fixed list of 16; when it runs out (many years) the exchange just shrinks. Append more to RESERVE.
-          if (nextReserve >= 0 && nextReserve < cos.length) ipos.push({ day: d + 30 + Math.floor(u(d, c.id, 6) * 60), id: nextReserve++ });
+          // ponytail: new listings come from a fixed list; when it runs out (many years) the exchange just shrinks. Append a new list in companies.js.
+          if (reserve.length) ipos.push({ day: d + 30 + Math.floor(u(d, c.id, 6) * 60), id: reserve.shift() });
         }
         c.close[t] = px; if (c.deadDay === null) { sum += Math.log(px / prev); cnt++; }
         const ch = px / prev - 1;

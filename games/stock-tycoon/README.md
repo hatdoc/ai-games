@@ -6,7 +6,7 @@ A stock trading sim on a fictional exchange (the Meridian Exchange, MRX). Plain 
 
 | File | What it holds |
 |---|---|
-| `companies.js` | The 24 industries and 74 companies (58 listed at the start, 16 that list later). |
+| `companies.js` | The 24 industries and 108 companies (84 listed at the start, 24 that list later). |
 | `events.js` | World, industry and company events, how hard they hit, and the news wording. |
 | `engine.js` | The market. `Market.build(day)` returns every price, news story, dividend and economic figure up to that day. |
 | `account.js` | The player: cash, calendar, salary, trading, orders, margin, dividends, levels, lifestyle, weekly challenge, save. |
@@ -28,7 +28,8 @@ Shared with other games: `../cloudsave.js` (signed-in saves and `rgAuth`), `../s
 ## The rule that matters after launch
 
 **Changing any number or formula in `engine.js`, `events.js` or `companies.js` rewrites the price history for every player.**
-Holdings stay, but their prices, past and present, change. Only append companies to the end of `RESERVE`, and treat
+Holdings stay, but their prices, past and present, change. New companies go in a new list at the very end of
+`companies.js` (after `RESERVE2`), which leaves every existing company's history untouched. Treat
 everything else in those three files as frozen. Tuning has to be finished before the game is published.
 
 `account.js` is safe to change. Bump `VERSION` and add a migration line in `decode` when the save shape changes.

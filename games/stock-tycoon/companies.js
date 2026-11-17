@@ -1,6 +1,7 @@
 // Stock Tycoon company database: every company on the fictional Meridian Exchange (MRX). All names and tickers are invented.
 // IMPORTANT: the order of COMPANIES is part of the simulation (a company's position seeds its random numbers).
-// Only ever append; never reorder, insert or delete, or every player's price history changes.
+// Only ever append new lists at the very end (see the bottom of this file); never reorder, insert or delete,
+// or every player's price history changes.
 const Companies = (() => {
   // key: [name, beta, daily volatility, growth/yr, price-to-sales, profit margin, debt load, cyclicality]
   // cyclicality > 1 is hurt more than the market in a recession and helped more in a recovery; < 1 is defensive.
@@ -110,7 +111,48 @@ const Companies = (() => {
     ['TPCN', 'Tapcoin Payments', 'fin', 23, 450, 4, 0, 'Newly listed. Lets shoppers split purchases into instalments.'],
     ['BRKW', 'Brickwren Builders', 'build', 27, 380, 3, 1.2, 'Newly listed. Builds factory-made homes that go up in a week.'],
   ];
-  const COMPANIES = [...LISTED, ...RESERVE].map(([sym, name, sec, price, sharesM, risk, yld, about], id) => ({ id, sym, name, sec, price, sharesM, risk, yld, about, reserve: id >= LISTED.length }));
+  // A second wave of companies listed from the start (added after the first lists, so it sits after them).
+  const LISTED2 = [
+    ['PRSW', 'Parsewell AI', 'ai', 54, 380, 4, 0, 'AI agents that answer customer service calls. Signing big clients quickly, at a loss.'],
+    ['DHRB', 'Deepharbor Robotics', 'ai', 83, 290, 4, 0, 'Warehouse robots that learn by watching people work. Orders are lumpy and large.'],
+    ['CPLF', 'Copperleaf Systems', 'tech', 68, 1200, 2, 0.9, 'Makes the routers and switches that carry the internet. Unglamorous and everywhere.'],
+    ['INKC', 'Inkwell Cloud', 'soft', 42, 520, 3, 0, 'Online storage and file sharing for businesses. Steady subscriptions, fierce competition.'],
+    ['QWSE', 'Queuewise', 'soft', 17, 260, 4, 0, 'Booking and scheduling software for clinics and salons. Small, fast and unproven.'],
+    ['MRBH', 'Marrowbridge Hospitals', 'health', 77, 640, 2, 1.4, 'Owns specialist hospitals for heart and cancer care.'],
+    ['VRDP', 'Verdane Pharma', 'pharma', 58, 900, 2, 2.6, 'Makes low-cost copies of medicines whose patents have run out. Thin margins, huge volumes.'],
+    ['RDGT', 'Ridgeback Trucks', 'auto', 36, 700, 3, 1.8, 'Pickup trucks and off-roaders with a loyal rural following.'],
+    ['LMRD', 'Lumenride', 'ev', 14, 620, 4, 0, 'Electric buses for city transport fleets. Depends on council budgets.'],
+    ['HYVP', 'Hydrovale Power', 'renew', 61, 800, 2, 2.2, 'Runs hydroelectric dams built decades ago. Cheap power, as long as it rains.'],
+    ['TRNW', 'Tarnwick Energy', 'oil', 33, 950, 3, 3.9, 'Drills offshore in deep water. Expensive to run and very profitable when oil is dear.'],
+    ['SMSB', 'Saltmarsh Savings Bank', 'bank', 29, 1500, 2, 3.6, 'A mortgage lender for first-time buyers. Lives and dies by house prices.'],
+    ['FHAM', 'Fernhill Asset Management', 'fin', 72, 380, 2, 2.4, 'Manages pension money. Its fees rise and fall with the market.'],
+    ['GRSR', 'Graniteshield Re', 'ins', 95, 300, 3, 2.8, 'Insures other insurers against catastrophes. Quiet years are golden; bad ones are brutal.'],
+    ['WFLR', 'Wharfside Logistics REIT', 're', 44, 850, 2, 4.1, 'Owns the warehouses that online shops rent.'],
+    ['THTH', 'Thimble and Thread', 'retail', 26, 420, 3, 1.0, 'High-street fashion. One bad season of stock can wipe out a year of profit.'],
+    ['HNCD', 'Honeycroft Dairies', 'food', 48, 760, 2, 2.6, 'Milk, cheese and yoghurt. People buy it every week, whatever the economy does.'],
+    ['BRLM', 'Brasslight Music', 'ent', 52, 340, 3, 0.6, 'A record label and concert promoter. A handful of stars bring in most of the money.'],
+    ['TKTG', 'Tinker Tavern Games', 'game', 21, 240, 3, 0, 'Cosy farming and crafting games with a devoted audience.'],
+    ['LMWF', 'Loomwire Fibre', 'tel', 19, 1100, 3, 2.7, 'Lays fibre broadband to towns the big carriers skipped. Heavy borrowing, long payback.'],
+    ['HLYD', 'Halcyard Defence', 'aero', 112, 430, 2, 2.0, 'Radar, missiles and naval systems. Governments are its only customers.'],
+    ['GDMR', 'Goldmoor Resources', 'mine', 38, 900, 3, 1.6, 'Gold mines on three continents. Tends to shine when everything else looks shaky.'],
+    ['ORGF', 'Orchardgate Farms', 'agri', 31, 500, 2, 2.3, 'Grows and packs fruit for supermarkets. A late frost matters more than a recession.'],
+    ['IRNN', 'Ironrail Northern', 'trans', 86, 450, 2, 2.5, 'Owns the main freight railway to the northern ports.'],
+    ['SLBC', 'Slatebrook Cement', 'build', 63, 380, 2, 2.4, 'Cement and aggregates. Every road and tower starts here.'],
+    ['PXPN', 'Pixelpane Displays', 'elec', 27, 680, 3, 0.4, 'Makes the screens that go into other brands\' phones and televisions.'],
+  ];
+  // More companies that list later. New entries, of either kind, go in a new list after this one.
+  const RESERVE2 = [
+    ['NTBD', 'Nettlebank Digital', 'fin', 18, 500, 4, 0, 'Newly listed. A bank with no branches, only an app.'],
+    ['SBWS', 'Sablewood Studios', 'ent', 23, 300, 4, 0, 'Newly listed. An animation studio with one beloved series.'],
+    ['KLNC', 'Kilnfire Ceramics', 'build', 29, 280, 3, 1.3, 'Newly listed. Tiles and bathroom fittings for new homes.'],
+    ['OSPT', 'Osprey Tidal', 'renew', 12, 600, 5, 0, 'Newly listed. Turbines on the sea bed that run on the tide. Promising and unproven.'],
+    ['MGPS', 'Marigold Pet Supplies', 'retail', 34, 260, 3, 0.9, 'Newly listed. Pet food and vets under one roof.'],
+    ['VLHT', 'Vellum Health Tech', 'health', 20, 340, 4, 0, 'Newly listed. Software that lets doctors see patients by video.'],
+    ['CDPB', 'Cinderpath Batteries', 'ev', 16, 480, 5, 0, 'Newly listed. A new battery chemistry that could halve charging time, if it works at scale.'],
+    ['JNCW', 'Juniper Cloudworks', 'soft', 25, 310, 4, 0, 'Newly listed. Tools that help companies cut their cloud computing bills.'],
+  ];
+  const COMPANIES = [[LISTED, false], [RESERVE, true], [LISTED2, false], [RESERVE2, true]].flatMap(([list, reserve]) => list.map((row) => [row, reserve]))
+    .map(([[sym, name, sec, price, sharesM, risk, yld, about], reserve], id) => ({ id, sym, name, sec, price, sharesM, risk, yld, about, reserve }));
   return { SECTORS, COMPANIES };
 })();
 if (typeof module !== 'undefined') module.exports = Companies;
