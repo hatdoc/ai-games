@@ -33,6 +33,18 @@ const GENERIC = { skip: 6, len: 7, poster: 3, async play(page, until) {
 } };
 
 const BOTS = {
+  'stock-tycoon': { skip: 1, len: 8, poster: 2, async play(page) { // a stock page: timeframes, candles, a purchase, then the news
+    const tap = (sel) => page.evaluate((q) => document.querySelector(q).click(), sel); // clicks without scrolling the name and price off screen
+    await tap('#sumDlg [data-close]').catch(() => {});
+    await page.evaluate(() => { sym = 'NVCR'; render(); });
+    for (const f of ['6M', 'Y', '5Y']) { await page.waitForTimeout(800); await tap(`[data-frame="${f}"]`); }
+    await page.waitForTimeout(800); await tap('[data-act=kind]');
+    await page.waitForTimeout(900); await tap('[data-frame="M"]');
+    await page.waitForTimeout(900); await tap('[data-act=buy]'); await page.fill('#tq', '5');
+    await page.waitForTimeout(900); await tap('#tgo');
+    await page.waitForTimeout(800); await tap('[data-tab=news]');
+    await page.waitForTimeout(2500);
+  } },
   snake: { skip: 14, len: 6, poster: 3, crop: { x: 125, y: 45, width: 711, height: 400 }, async play(page) {
     await page.keyboard.press('ArrowRight');
     await page.evaluate(() => setInterval(() => { // greedy: head for the food, never into the tail

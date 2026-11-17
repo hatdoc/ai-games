@@ -1,0 +1,6 @@
+{
+  "title": "Stock Tycoon",
+  "description": "A stock market simulator that runs in real time. Start with $10,000 and trade over 80 fictional companies on the Meridian Exchange. Prices move once a day, driven by earnings, rumours, scandals, wars, recessions and interest rates, and every news story is a real event in the simulation. Collect dividends, place limit orders, borrow or short if you dare, climb from Beginner to Billionaire, and take on the weekly challenge where everyone starts equal. Free, no download, works on phone.",
+  "tags": ["simulation", "stocks", "trading", "investing", "tycoon", "strategy", "economy"],
+  "emoji": "📈"
+}
