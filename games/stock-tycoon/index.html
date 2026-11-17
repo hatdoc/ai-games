@@ -12,26 +12,55 @@
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body { background: var(--bg); color: var(--text); font: 15px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
-  button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 0; background: none; }
   b, .num { font-variant-numeric: tabular-nums; }
   #app { height: 100%; display: grid; grid-template: 'head' auto 'main' 1fr 'nav' auto / minmax(0, 1fr); max-width: 1100px; margin: 0 auto; }
   header { grid-area: head; display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--card); }
   header .when { flex: 1; min-width: 0; }
   header .when b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  header small, .label { color: var(--muted); font-size: 12px; display: block; }
+  small, .label { color: var(--muted); font-size: 12px; display: block; }
   header .bal { text-align: right; }
-  #theme { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); }
+  @media (max-width: 400px) { header .bal.cash { display: none; } }
+  .round { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); flex: none; }
   main { grid-area: main; overflow-y: auto; padding: 16px; }
   main h1 { font-size: 22px; margin: 0 0 12px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
   .card h2 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 8px; text-transform: uppercase; letter-spacing: .5px; }
-  .big { font-size: 34px; font-weight: 700; letter-spacing: -.5px; }
+  .big { font-size: 34px; font-weight: 700; letter-spacing: -.5px; line-height: 1.15; }
   .row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
   .row:first-of-type { border-top: 0; }
+  .row b { text-align: right; }
   .muted { color: var(--muted); }
   .up { color: var(--up); } .down { color: var(--down); }
-  .btn { background: var(--accent); color: var(--on-accent); min-height: 44px; padding: 0 18px; border-radius: 10px; font-weight: 700; }
-  .btn:disabled { background: none; color: var(--muted); border: 1px solid var(--line); cursor: default; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-bottom: 12px; }
+  .cols .card { margin: 0; }
+  .btn { background: var(--accent); color: var(--on-accent); min-height: 46px; padding: 0 18px; border-radius: 12px; font-weight: 700; flex: 1; }
+  .btn.sell { background: none; border: 1px solid var(--line); color: var(--text); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .stock { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 0; border-top: 1px solid var(--line); text-align: left; }
+  .stock:first-of-type { border-top: 0; }
+  .stock .nm { flex: 1; min-width: 0; }
+  .stock .nm b, .stock .nm small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .stock .px { text-align: right; }
+  .logo { width: 38px; height: 38px; border-radius: 10px; color: #fff; font-weight: 800; font-size: 13px; display: grid; place-items: center; flex: none; letter-spacing: .5px; }
+  .logo.lg { width: 52px; height: 52px; font-size: 17px; border-radius: 14px; }
+  .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .filters input, .filters #sort { grid-column: 1 / -1; }
+  input, select { min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); padding: 0 12px; width: 100%; min-width: 0; }
+  .head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .head .nm { flex: 1; min-width: 0; }
+  .head .nm b { font-size: 18px; display: block; }
+  canvas { width: 100%; height: 220px; display: block; touch-action: pan-y; cursor: crosshair; margin-top: 8px; }
+  .chips { display: flex; gap: 4px; margin: 10px 0 0; }
+  .chips button { flex: 1; min-height: 36px; border-radius: 8px; font-weight: 700; font-size: 13px; color: var(--muted); }
+  .chips button[aria-pressed=true] { background: var(--bg); color: var(--text); }
+  .buy { display: flex; gap: 10px; margin-bottom: 12px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
+  .stats .row:nth-of-type(2) { border-top: 0; }
+  .stats .row { flex-direction: column; gap: 0; }
+  .stats .row b { text-align: left; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--bg); color: var(--muted); vertical-align: middle; }
   nav { grid-area: nav; display: flex; background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
   nav button { flex: 1; min-height: 56px; font-size: 11px; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
   nav button span { font-size: 20px; }
@@ -39,15 +68,25 @@
   dialog { border: 0; border-radius: 18px; padding: 20px; width: min(460px, calc(100vw - 24px)); max-height: 88vh; background: var(--card); color: var(--text); }
   dialog::backdrop { background: #0008; }
   dialog h1 { font-size: 20px; margin: 0 0 4px; }
-  #toast { position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 99px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
+  dialog label { display: block; margin: 12px 0 0; font-size: 13px; color: var(--muted); }
+  .two { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+  .two .btn { flex: none; min-height: 44px; }
+  .err { color: var(--down); min-height: 20px; margin: 8px 0 0; font-size: 13px; }
+  #toast { position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 99px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; z-index: 9; }
   #toast.on { opacity: 1; }
-  /* tablet and desktop: navigation becomes a sidebar, content gets room */
+  /* tablet and desktop: navigation becomes a sidebar, cards sit side by side */
   @media (min-width: 820px) {
     #app { grid-template: 'head head' auto 'nav main' 1fr / 200px minmax(0, 1fr); }
     nav { flex-direction: column; border-top: 0; border-right: 1px solid var(--line); padding: 12px 8px; gap: 4px; }
     nav button { flex: 0; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 14px; font-size: 15px; border-radius: 10px; min-height: 48px; }
     nav button[aria-current=page] { background: var(--bg); }
     main { padding: 24px; }
+    .cols { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+    canvas { height: 300px; }
+    .filters { grid-template-columns: 2fr 1fr 1fr 1fr; }
+    .filters input, .filters #sort { grid-column: auto; }
+    .stats { grid-template-columns: repeat(4, 1fr); }
+    .stats .row:nth-of-type(-n+4) { border-top: 0; }
   }
 </style>
 </head>
@@ -55,26 +94,35 @@
 <div id="app">
   <header>
     <div class="when"><b id="date"></b><small id="dayn"></small></div>
-    <div class="bal"><small>Cash</small><b id="cash"></b></div>
+    <div class="bal cash"><small>Cash</small><b id="cash"></b></div>
     <div class="bal"><small>Net worth</small><b id="worth"></b></div>
-    <button id="theme" aria-label="Switch light or dark theme">◐</button>
+    <button id="theme" class="round" aria-label="Switch light or dark theme">◐</button>
   </header>
   <main id="view"></main>
   <nav id="nav"></nav>
 </div>
+<dialog id="tradeDlg"></dialog>
 <dialog id="sumDlg"></dialog>
 <div id="toast" role="status"></div>
 
+<script src="companies.js"></script>
+<script src="engine.js"></script>
 <script src="account.js"></script>
+<script src="chart.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const money = (c) => (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+const signed = (c) => (c > 0 ? '+' : '') + money(c);
+const big = (dollars) => dollars.toLocaleString('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 });
+const pct = (x) => (x > 0 ? '+' : '') + (x * 100).toFixed(2) + '%';
+const cls = (x) => (x > 0 ? 'up' : x < 0 ? 'down' : '');
 const longDate = (day) => Account.date(day).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 const days = (n) => n + (n === 1 ? ' day' : ' days');
 const TABS = [['market', '📈', 'Market'], ['discover', '🔎', 'Discover'], ['news', '📰', 'News'], ['portfolio', '💼', 'Portfolio'], ['friends', '👥', 'Friends']];
+const FRAME_NAME = { D: 'today', W: 'past week', M: 'past month', '6M': 'past 6 months', Y: 'past year', '5Y': 'past 5 years', MAX: 'since listing' };
 
 // Today comes from the web server's clock (the Date header of this page), shifted to the player's timezone, so
-// moving the device clock forward does not bring payday closer.
+// moving the device clock forward does not bring tomorrow's prices or payday closer.
 // ponytail: falls back to the device clock when that request fails; the weekly challenge (Stage 7) gets real server checks.
 let skew = 0;
 const today = () => { const now = Date.now() + skew; return Account.dayNumber(now, new Date(now).getTimezoneOffset()); };
@@ -86,64 +134,244 @@ async function syncClock() {
   } catch {}
 }
 
-let s, tab = 'market';
+// s: the account. mkt: the market for the account's day. sym: the open stock page (or null). frame: chart timeframe.
+let s, mkt, tab = 'market', sym = null, frame = 'M', disc = { q: '', sector: '', risk: '', sort: 'gain' }, trade = null;
 const save = () => { if (!Account.save(localStorage, s)) toast('Could not save. Check your browser storage.'); };
+const market = () => (mkt && mkt.day === s.day ? mkt : (mkt = Market.build(s.day)));
 
 let toastT;
 function toast(msg) { $('toast').textContent = msg; $('toast').classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => $('toast').classList.remove('on'), 2200); }
 
+// ---- pieces
+const logo = (c, lg) => `<span class="logo ${lg ? 'lg' : ''}" style="background:hsl(${c.hue} 55% 40%)">${c.sym.slice(0, 2)}</span>`;
+const stockRow = (c, sub) => {
+  const on = mkt.trading(c), ch = mkt.change(c);
+  return `<button class="stock" data-sym="${c.sym}">${logo(c)}<span class="nm"><b>${c.name}</b><small>${sub || `${c.sym} · ${c.sector}`}</small></span>
+    <span class="px"><b>${on ? money(mkt.cents(c)) : 'Delisted'}</b><small class="${cls(ch)}">${on ? pct(ch) : 'Bankrupt'}</small></span></button>`;
+};
+const rows = (list, empty) => (list.length ? list.map((c) => stockRow(c)).join('') : `<p class="muted" style="margin:0">${empty}</p>`);
 const soon = (title, what, stage) => `<h1>${title}</h1><div class="card"><h2>Opens in Stage ${stage}</h2><p class="muted" style="margin:0">${what}</p></div>`;
 const payCard = () => { const n = Account.nextPayIn(s); return `<div class="card"><h2>Next payday</h2><b>${money(Account.SALARY)} in ${days(n)}</b>
   <div class="muted">${longDate(s.day + n)} · your job pays every ${Account.PAY_EVERY} days, whatever the market does</div></div>`; };
+const live = () => mkt.companies.filter((c) => mkt.trading(c));
+// a bankrupt company stays visible for 90 days, or for as long as the player still holds it
+const visible = () => mkt.companies.filter((c) => mkt.trading(c) || s.holdings[c.sym] || s.day - c.deadDay <= 90);
+const dayMove = () => Account.holdingsValue(s, mkt) - Account.holdingsValue(s, mkt, s.day - 1);
+
+const SORTS = {
+  gain: ['Biggest gain today', (a, b) => mkt.change(b) - mkt.change(a)],
+  loss: ['Biggest loss today', (a, b) => mkt.change(a) - mkt.change(b)],
+  high: ['Highest price', (a, b) => mkt.px(b) - mkt.px(a)],
+  low: ['Lowest price', (a, b) => mkt.px(a) - mkt.px(b)],
+  cap: ['Largest company', (a, b) => mkt.cap(b) - mkt.cap(a)],
+  yield: ['Highest dividend yield', (a, b) => mkt.yield(b) - mkt.yield(a)],
+  growth: ['Fastest growing', (a, b) => b.growth - a.growth],
+  vol: ['Most volatile', (a, b) => b.vol - a.vol],
+  new: ['Newly listed', (a, b) => b.listDay - a.listDay],
+  name: ['Name', (a, b) => a.name.localeCompare(b.name)],
+};
+function discoverList() {
+  const q = disc.q.trim().toLowerCase();
+  const list = visible().filter((c) => (!q || c.name.toLowerCase().includes(q) || c.sym.toLowerCase().includes(q)) && (!disc.sector || c.sec === disc.sector)
+    && (!disc.risk || (disc.risk === 'low' ? c.risk <= 2 : disc.risk === 'mid' ? c.risk === 3 : c.risk >= 4))).sort(SORTS[disc.sort][1]);
+  const sub = { yield: (c) => `Yield ${(mkt.yield(c) * 100).toFixed(1)}%`, cap: (c) => `Worth ${big(mkt.cap(c))}`, growth: (c) => `Growing ${(c.growth * 100).toFixed(0)}% a year`,
+    vol: (c) => `${c.riskLabel} risk`, new: (c) => `Listed ${longDate(c.listDay)}` }[disc.sort];
+  return list.length ? list.map((c) => stockRow(c, sub && `${c.sym} · ${sub(c)}`)).join('') : '<p class="muted" style="margin:0">No companies match.</p>';
+}
+
 const VIEWS = {
-  market: () => `<h1>Today</h1>
-    <div class="card"><h2>Net worth</h2><div class="big num">${money(Account.netWorth(s))}</div><div class="muted">All in cash for now</div></div>
-    ${payCard()}
-    <div class="card"><h2>Meridian Exchange</h2><p class="muted" style="margin:0">The exchange and its listed companies open in Stage 2. The market will move once a day, at midnight your time.</p></div>`,
-  discover: () => soon('Discover', 'Search, filters and your watchlist arrive with the exchange.', 2),
+  market() {
+    const mv = dayMove(), worth = Account.netWorth(s, mkt), idx = mkt.indexAt() / mkt.indexAt(s.day - 1) - 1, all = live().sort(SORTS.gain[1]);
+    const held = Object.keys(s.holdings).map((k) => mkt.get(k)).filter(Boolean), watch = s.watch.map((k) => mkt.get(k)).filter(Boolean);
+    return `<h1>Today</h1>
+    <div class="cols">
+      <div class="card"><h2>Net worth</h2><div class="big num">${money(worth)}</div>
+        <div class="${cls(mv)}">${held.length ? `${signed(mv)} today on your stocks` : '<span class="muted">All in cash. Pick a company to invest in.</span>'}</div></div>
+      <div class="card"><h2>MRX Composite</h2><div class="big num">${mkt.indexAt().toFixed(0)}</div>
+        <div><span class="${cls(idx)}">${pct(idx)} today</span> <span class="muted">· ${live().length} companies · economy in ${mkt.regime.toLowerCase()}</span></div></div>
+    </div>
+    ${held.length ? `<div class="card"><h2>Your stocks</h2>${rows(held)}</div>` : ''}
+    ${watch.length ? `<div class="card"><h2>Watchlist</h2>${rows(watch)}</div>` : ''}
+    <div class="cols">
+      <div class="card"><h2>Top gainers</h2>${rows(all.slice(0, 5))}</div>
+      <div class="card"><h2>Top losers</h2>${rows(all.slice(-5).reverse())}</div>
+    </div>
+    ${payCard()}`;
+  },
+  discover: () => `<h1>Discover</h1>
+    <div class="filters">
+      <input id="q" type="search" placeholder="Search name or ticker" value="${disc.q.replace(/[&<>"]/g, '')}" aria-label="Search companies">
+      <select id="sector" aria-label="Industry"><option value="">All industries</option>${Object.entries(Companies.SECTORS).map(([k, v]) => `<option value="${k}" ${disc.sector === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select>
+      <select id="risk" aria-label="Risk">${[['', 'Any risk'], ['low', 'Low risk'], ['mid', 'Medium risk'], ['high', 'High risk']].map(([k, v]) => `<option value="${k}" ${disc.risk === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+      <select id="sort" aria-label="Sort by">${Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${disc.sort === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select>
+    </div>
+    <div class="card" id="list">${discoverList()}</div>`,
   news: () => soon('News', 'World and company news arrive with the live economy.', 3),
-  portfolio: () => `<h1>Portfolio</h1>
-    <div class="card"><h2>Overview</h2>
-      <div class="row"><span>Cash</span><b>${money(s.cash)}</b></div>
-      <div class="row"><span>Net worth</span><b>${money(Account.netWorth(s))}</b></div>
-      <div class="row"><span>Starting savings</span><b>${money(Account.START_CASH)}</b></div>
-      <div class="row"><span>Salary received, all time</span><b>${money(s.payTotal)}</b></div>
-      <div class="row"><span>Investing since</span><b>${longDate(s.start)}</b></div>
-    </div>${payCard()}`,
+  portfolio() {
+    const hv = Account.holdingsValue(s, mkt), cost = Object.values(s.holdings).reduce((a, h) => a + h.cost, 0), un = hv - cost;
+    const held = Object.entries(s.holdings).map(([k, h]) => ({ c: mkt.get(k), h })).filter((x) => x.c);
+    return `<h1>Portfolio</h1>
+    <div class="cols">
+      <div class="card"><h2>Overview</h2>
+        <div class="row"><span>Net worth</span><b>${money(s.cash + hv)}</b></div>
+        <div class="row"><span>Cash</span><b>${money(s.cash)}</b></div>
+        <div class="row"><span>Stocks</span><b>${money(hv)}</b></div>
+        <div class="row"><span>Today on your stocks</span><b class="${cls(dayMove())}">${signed(dayMove())}</b></div>
+      </div>
+      <div class="card"><h2>Performance</h2>
+        <div class="row"><span>Profit on stocks you hold</span><b class="${cls(un)}">${signed(un)}${cost ? ` (${pct(un / cost)})` : ''}</b></div>
+        <div class="row"><span>Profit on stocks you sold</span><b class="${cls(s.realised)}">${signed(s.realised)}</b></div>
+        <div class="row"><span>Starting savings</span><b>${money(Account.START_CASH)}</b></div>
+        <div class="row"><span>Salary received</span><b>${money(s.payTotal)}</b></div>
+      </div>
+    </div>
+    <div class="card"><h2>Holdings</h2>${held.length ? held.map(({ c, h }) => { const v = h.sh * mkt.cents(c), pl = v - h.cost; return `<button class="stock" data-sym="${c.sym}">${logo(c)}
+      <span class="nm"><b>${c.name}</b><small>${h.sh} shares · avg ${money(Math.round(h.cost / h.sh))} · now ${mkt.trading(c) ? money(mkt.cents(c)) : 'delisted'}</small></span>
+      <span class="px"><b>${money(v)}</b><small class="${cls(pl)}">${signed(pl)} (${pct(h.cost ? pl / h.cost : 0)})</small></span></button>`; }).join('')
+      : '<p class="muted" style="margin:0">You hold no stocks yet.</p>'}</div>
+    <div class="card"><h2>Trade history</h2>${s.trades.length ? s.trades.slice(-200).reverse().map((t) => `<div class="row"><span>${{ B: 'Bought', S: 'Sold', X: 'Wrote off' }[t.t]} ${t.sh} ${t.k}
+      <small>${longDate(t.d)}${t.t === 'X' ? ' · company went bankrupt' : ` · ${money(t.px)} each`}</small></span>
+      <b>${t.t === 'X' ? '' : money(t.sh * t.px)}${t.t === 'B' ? '' : `<small class="${cls(t.pl)}">${signed(t.pl)}</small>`}</b></div>`).join('')
+      + (s.trades.length > 200 ? `<p class="muted">Showing the latest 200 of ${s.trades.length} trades.</p>` : '') : '<p class="muted" style="margin:0">Every buy and sell is recorded here.</p>'}</div>
+    ${payCard()}`;
+  },
   friends: () => soon('Friends', 'Friend comparison and the weekly challenge arrive last.', 7),
+  stock() {
+    const c = mkt.get(sym), alive = mkt.trading(c), h = s.holdings[sym], watching = s.watch.includes(sym);
+    const stat = (k, v) => `<div class="row"><small>${k}</small><b>${v}</b></div>`;
+    const pos = h ? (() => { const v = h.sh * mkt.cents(c), pl = v - h.cost; return `<div class="card"><h2>Your position</h2>
+      <div class="row"><span>${h.sh} shares · avg ${money(Math.round(h.cost / h.sh))}</span><b>${money(v)}</b></div>
+      <div class="row"><span>Profit or loss</span><b class="${cls(pl)}">${signed(pl)} (${pct(h.cost ? pl / h.cost : 0)})</b></div>
+      ${alive ? '' : '<div style="display:flex;margin-top:8px"><button class="btn sell" data-act="writeoff">Write off these shares</button></div>'}</div>`; })() : '';
+    return `<div class="head"><button class="round" data-act="back" aria-label="Back">←</button>${logo(c, true)}
+        <div class="nm"><b>${c.name}</b><small>MRX: ${c.sym} · ${c.sector}${s.day - c.listDay < 180 && c.listDay > Market.GENESIS ? ' <span class="tag">NEW</span>' : ''}</small></div>
+        <button class="round" data-act="watch" aria-label="${watching ? 'Remove from' : 'Add to'} watchlist" aria-pressed="${watching}">${watching ? '★' : '☆'}</button></div>
+    <div class="card">
+      <div class="big num" id="cpx"></div><div id="cch"></div>
+      <canvas id="chart" aria-label="Price chart"></canvas>
+      <div class="chips" id="frames">${Object.keys(Market.FRAMES).map((f) => `<button data-frame="${f}" aria-pressed="${f === frame}">${f}</button>`).join('')}</div>
+    </div>
+    ${alive ? `<div class="buy"><button class="btn" data-act="buy">Buy</button><button class="btn sell" data-act="sell" ${h ? '' : 'disabled'}>Sell</button></div>`
+      : `<div class="card"><b class="down">Bankrupt and delisted on ${longDate(c.deadDay)}.</b><div class="muted">Its shares are worthless and no longer trade.</div></div>`}
+    ${pos}
+    <div class="card"><h2>About</h2><p style="margin:0">${c.about}</p></div>
+    <div class="card"><h2>Key numbers</h2><div class="stats">
+      ${stat('Company value', big(mkt.cap(c)))}${stat('Shares traded today', mkt.volume(c).toLocaleString('en-US'))}
+      ${stat('Dividend yield', (mkt.yield(c) * 100).toFixed(2) + '%')}${stat('Dividend per share, yearly', money(Math.round(c.dps * 100)))}
+      ${stat('Revenue, yearly', big(c.revenue))}${stat('Profit, yearly', big(c.profit))}
+      ${stat('Debt', big(c.debtAbs))}${stat('Growth rate', (c.growth * 100).toFixed(1) + '%')}
+      ${stat('Risk', c.riskLabel)}${stat('Typical daily move', (c.vol * 100).toFixed(1) + '%')}
+      ${stat('Financial health', mkt.healthLabel(c))}${stat('Management reputation', c.rep + ' / 100')}
+      ${stat('Last earnings report', longDate(c.lastReport))}${stat('Listed since', longDate(c.listDay))}
+    </div></div>`;
+  },
 };
 
+function drawChart() {
+  const c = mkt.get(sym), pts = mkt.series(c, frame);
+  const show = (p) => {
+    const v = p ? p.v : pts[pts.length - 1].v, ch = pts[0].v ? v / pts[0].v - 1 : 0;
+    $('cpx').textContent = money(Math.round(v * 100));
+    $('cch').innerHTML = `<span class="${cls(ch)}">${signed(Math.round((v - pts[0].v) * 100))} (${pct(ch)})</span> <span class="muted">${p ? longDate(p.d) + (frame === 'D' ? ' · during the day' : '') : FRAME_NAME[frame]}</span>`;
+  };
+  show(null);
+  Chart.attach($('chart'), pts, show);
+}
+
 function render() {
+  market();
+  if (sym && !mkt.get(sym)) sym = null;
   $('date').textContent = longDate(s.day);
   $('dayn').textContent = 'Day ' + Account.dayCount(s);
   $('cash').textContent = money(s.cash);
-  $('worth').textContent = money(Account.netWorth(s));
+  $('worth').textContent = money(Account.netWorth(s, mkt));
   $('nav').innerHTML = TABS.map(([id, em, name]) => `<button data-tab="${id}" ${id === tab ? 'aria-current="page"' : ''}><span>${em}</span>${name}</button>`).join('');
-  $('view').innerHTML = VIEWS[tab]();
+  $('view').innerHTML = VIEWS[sym ? 'stock' : tab]();
+  if (sym) drawChart();
 }
 
-// Bring the account up to today; if days went by, say what happened while the player was away.
+// ---- buy and sell
+function openTrade(mode) {
+  trade = { mode }; const c = mkt.get(sym);
+  $('tradeDlg').innerHTML = `<h1>${mode === 'buy' ? 'Buy' : 'Sell'} ${c.name}</h1><p class="muted" style="margin:0">${c.sym} · ${money(mkt.cents(c))} a share</p>
+    <div class="two"><label>Shares<input id="tq" type="number" inputmode="numeric" min="1" step="1" placeholder="0"></label>
+      <label>${mode === 'buy' ? 'or amount in $' : 'or value in $'}<input id="ta" type="number" inputmode="decimal" min="0" step="any" placeholder="0.00"></label>
+      <button class="btn sell" data-max>Max</button></div>
+    <div id="tsum" style="margin-top:12px"></div><p class="err" id="terr"></p>
+    <div style="display:flex;gap:10px"><button class="btn sell" data-close>Cancel</button><button class="btn" id="tgo">${mode === 'buy' ? 'Buy' : 'Sell'}</button></div>`;
+  updateTrade(); $('tradeDlg').showModal(); $('tq').focus();
+}
+function updateTrade() {
+  const c = mkt.get(sym), px = mkt.cents(c), sh = Math.floor(+$('tq').value) || 0, total = sh * px, h = s.holdings[sym], buy = trade.mode === 'buy';
+  const avg = h ? h.cost / h.sh : 0, pl = Math.round(total - avg * sh), after = s.cash - total;
+  $('tsum').innerHTML = buy
+    ? `<div class="row"><span>Total cost</span><b>${money(total)}</b></div><div class="row"><span>Cash left</span><b class="${after < 0 ? 'down' : ''}">${money(after)}</b></div>`
+    : `<div class="row"><span>You own</span><b>${h ? h.sh : 0} shares</b></div><div class="row"><span>You receive</span><b>${money(total)}</b></div>
+       <div class="row"><span>Profit or loss on this sale</span><b class="${cls(pl)}">${signed(pl)}</b></div>`;
+  $('terr').textContent = buy && after < 0 ? `You can afford ${Math.floor(s.cash / px)} shares at most.` : !buy && h && sh > h.sh ? `You only own ${h.sh}.` : '';
+  $('tgo').disabled = sh <= 0 || !!$('terr').textContent;
+}
+$('tradeDlg').oninput = (e) => {
+  if (e.target.id === 'ta') $('tq').value = Math.floor(+$('ta').value * 100 / mkt.cents(mkt.get(sym))) || '';
+  else $('ta').value = '';
+  updateTrade();
+};
+$('tradeDlg').onclick = (e) => {
+  if (e.target === $('tradeDlg') || e.target.closest('[data-close]')) return $('tradeDlg').close();
+  if (e.target.closest('[data-max]')) { $('tq').value = trade.mode === 'buy' ? Math.floor(s.cash / mkt.cents(mkt.get(sym))) : (s.holdings[sym] || { sh: 0 }).sh; $('ta').value = ''; return updateTrade(); }
+  if (e.target.id !== 'tgo') return;
+  const sh = Math.floor(+$('tq').value);
+  if (catchUp()) return; // midnight passed while the sheet was open: prices changed, so nothing is traded
+  const r = Account[trade.mode](s, market(), sym, sh);
+  if (!r.ok) { $('terr').textContent = r.error; return; }
+  save(); $('tradeDlg').close(); render();
+  toast(trade.mode === 'buy' ? `Bought ${sh} ${sym} for ${money(r.total)}` : `Sold ${sh} ${sym} · ${signed(r.pl)}`);
+};
+
+// Bring the account up to today; if days went by, say what happened while the player was away. Returns true if the day changed.
 function catchUp() {
+  const from = s.day, before = Account.holdingsValue(s, market()), held = Object.keys(s.holdings);
   const r = Account.tick(s, today());
-  if (!r.days) return;
+  if (!r.days) return false;
   save(); render();
+  const move = Account.holdingsValue(s, mkt) - before, idx = mkt.indexAt() / mkt.indexAt(from) - 1;
+  const moves = held.map((k) => mkt.get(k)).filter((c) => c && mkt.px(c, from)).map((c) => ({ c, ch: mkt.px(c) / mkt.px(c, from) - 1 })).sort((a, b) => b.ch - a.ch);
+  const bust = moves.filter((m) => !mkt.trading(m.c));
+  $('tradeDlg').close();
   $('sumDlg').innerHTML = `<h1>${r.days === 1 ? 'A new day' : days(r.days) + ' went by'}</h1><p class="muted" style="margin:0 0 8px">${longDate(s.day)}</p>
+    <div class="row"><span>MRX Composite</span><b class="${cls(idx)}">${pct(idx)}</b></div>
+    ${held.length ? `<div class="row"><span>Your stocks</span><b class="${cls(move)}">${signed(move)}${before ? ` (${pct(move / before)})` : ''}</b></div>` : ''}
+    ${moves.length > 1 ? `<div class="row"><span>Best: ${moves[0].c.name}</span><b class="${cls(moves[0].ch)}">${pct(moves[0].ch)}</b></div>
+      <div class="row"><span>Worst: ${moves.at(-1).c.name}</span><b class="${cls(moves.at(-1).ch)}">${pct(moves.at(-1).ch)}</b></div>` : ''}
+    ${bust.map((m) => `<div class="row"><span class="down">${m.c.name} went bankrupt. Your shares are worthless.</span></div>`).join('')}
     ${r.pay ? `<div class="row"><span>${r.paydays > 1 ? r.paydays + ' paydays' : 'Payday'}</span><b class="up">+${money(r.pay)}</b></div>` : ''}
-    <div class="row"><span>Cash</span><b>${money(s.cash)}</b></div>
-    <div class="row"><span>Net worth</span><b>${money(Account.netWorth(s))}</b></div>
+    <div class="row"><span>Net worth</span><b>${money(Account.netWorth(s, mkt))}</b></div>
     <div class="row"><span>Next payday</span><b>in ${days(Account.nextPayIn(s))}</b></div>
-    <button class="btn" data-close style="width:100%;margin-top:14px">Continue</button>`;
+    <div style="display:flex;margin-top:14px"><button class="btn" data-close>Continue</button></div>`;
   if (!$('sumDlg').open) $('sumDlg').showModal();
+  return true;
 }
 
-$('nav').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; render(); $('view').scrollTop = 0; } };
+$('nav').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; sym = null; render(); $('view').scrollTop = 0; } };
+$('view').onclick = (e) => {
+  const t = e.target.closest('[data-sym],[data-frame],[data-act]'); if (!t) return;
+  if (t.dataset.sym) { sym = t.dataset.sym; render(); $('view').scrollTop = 0; }
+  else if (t.dataset.frame) { frame = t.dataset.frame; for (const b of $('frames').children) b.setAttribute('aria-pressed', b === t); drawChart(); }
+  else if (t.dataset.act === 'back') { sym = null; render(); }
+  else if (t.dataset.act === 'watch') { toast(Account.toggleWatch(s, sym) ? 'Added to your watchlist' : 'Removed from your watchlist'); save(); render(); }
+  else if (t.dataset.act === 'writeoff') { const r = Account.writeOff(s, mkt, sym); if (r.ok) { save(); render(); toast(`Written off · ${signed(r.pl)}`); } }
+  else openTrade(t.dataset.act);
+};
+$('view').oninput = (e) => { if (!(e.target.id in disc)) return; disc[e.target.id] = e.target.value; $('list').innerHTML = discoverList(); };
 $('sumDlg').onclick = (e) => { if (e.target === $('sumDlg') || e.target.closest('[data-close]')) $('sumDlg').close(); };
 $('theme').onclick = () => {
   const dark = (document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
   document.documentElement.dataset.theme = dark ? 'light' : 'dark';
   try { localStorage.setItem('stock-tycoon-theme', document.documentElement.dataset.theme); } catch {}
+  if (sym) drawChart();
 };
 try { const t = localStorage.getItem('stock-tycoon-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+addEventListener('resize', () => { if (sym && s) drawChart(); });
 window.cloudSaveChanged = () => { s = Account.load(localStorage) || s; render(); catchUp(); }; // a newer save arrived from another device
 
 syncClock().then(() => {
