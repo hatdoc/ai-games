@@ -2,54 +2,56 @@
 import { createRequire } from 'node:module';
 const A = createRequire(import.meta.url)('../games/stock-tycoon/account.js');
 const fails = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails.push(m); };
-const mem = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), m }; };
+const mem = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)) }; };
+const D0 = 22000;
+
+// calendar follows the player's timezone
+const t = Date.UTC(2026, 10, 17, 23, 30); // 23:30 UTC
+ok(A.dayNumber(t, -600) === A.dayNumber(t, 0) + 1 && A.dayNumber(t, 300) === A.dayNumber(t, 0), 'at 23:30 UTC it is already tomorrow in UTC+10, still today in UTC-5');
+ok(A.dayNumber(t + 30 * 60000, 0) === A.dayNumber(t, 0) + 1, 'the day changes at local midnight');
+ok(A.date(A.dayNumber(t, 0)).toISOString().startsWith('2026-11-17'), 'a day number maps back to its calendar date');
 
 // new player
-let s = A.fresh();
-ok(s.cash === A.START_CASH && s.day === 1 && s.energy === A.ENERGY, 'new player starts on day 1 with starting cash and full energy');
-ok(A.date(1).getUTCDay() === 1 && A.date(2) - A.date(1) === 864e5, 'calendar: day 1 is a Monday, each day is one day later');
+let s = A.fresh(D0);
+ok(s.cash === A.START_CASH && A.START_CASH >= 1000000 && A.dayCount(s) === 1 && A.nextPayIn(s) === 14, 'new player starts with savings, on day 1, 14 days from payday');
 
-// work
-let r = A.work(s, 'food');
-ok(r.ok && s.cash === A.START_CASH + 3500 && s.energy === A.ENERGY - 1 && s.earnedToday === 3500 && s.shifts === 1, 'a shift pays once and costs energy');
-ok(!A.work(s, 'venture').ok && !A.work(s, 'nope').ok && s.cash === A.START_CASH + 3500, 'locked and unknown jobs pay nothing');
-while (A.work(s, 'food').ok);
-ok(s.energy === 0 && s.earnedToday === 3500 * A.ENERGY && !A.work(s, 'retail').ok, 'no more work once energy is spent');
-
-// daily earning limit: the best possible day, with every job unlocked and hiring
-const best = (e) => Math.max(0, ...A.JOBS.filter((j) => j.energy <= e).map((j) => j.pay + best(e - j.energy)));
-ok(best(A.ENERGY) <= 44000, `daily work limit is ${best(A.ENERGY) / 100} dollars at most`);
-{ // a veteran grinding every day never beats that limit, and some jobs are closed some days
-  const v = A.fresh(); v.shifts = 999; let max = 0, closed = 0;
-  for (let d = 0; d < 300; d++) {
-    closed += A.jobs(v).filter((j) => j.why === 'Not hiring today').length;
-    const open = () => A.jobs(v).filter((j) => !j.why).sort((a, b) => b.pay / b.energy - a.pay / a.energy)[0];
-    for (let j; (j = open());) A.work(v, j.id);
-    max = Math.max(max, A.endDay(v).work);
-  }
-  ok(max <= best(A.ENERGY) && closed > 0 && v.day === 301, 'over 300 days no day beats the limit, and availability varies');
+// salary
+ok(A.tick(s, D0).pay === 0 && s.cash === A.START_CASH, 'nothing happens on the same day');
+let r = A.tick(s, D0 + 13);
+ok(r.days === 13 && r.pay === 0 && A.nextPayIn(s) === 1, '13 days in: no pay yet, payday tomorrow');
+r = A.tick(s, D0 + 14);
+ok(r.pay === A.SALARY && s.cash === A.START_CASH + A.SALARY && A.nextPayIn(s) === 14, 'day 14: one salary, next payday 14 days out');
+ok(A.tick(s, D0 + 14).pay === 0 && A.tick(s, D0 + 14).pay === 0 && s.cash === A.START_CASH + A.SALARY, 'checking again (reload, reconnect) never pays twice');
+r = A.tick(s, D0 + 3);
+ok(r.days === 0 && r.pay === 0 && s.day === D0 + 14, 'a clock set backwards changes nothing');
+r = A.tick(s, D0 + 100);
+ok(r.paydays === 6 && s.paid === 7 && s.cash === A.START_CASH + 7 * A.SALARY && s.payTotal === 7 * A.SALARY, 'away 86 days: the 6 missed paydays arrive at once, 7 in total');
+{ // broke player: waiting is the way back
+  const b = A.fresh(D0); b.cash = 0;
+  A.tick(b, D0 + 13); const before = b.cash; A.tick(b, D0 + 14);
+  ok(before === 0 && b.cash === A.SALARY, 'a player at zero has money again after the fortnight, not before');
 }
-
-// end day
-const before = s.cash, sum = A.endDay(s);
-ok(sum.day === 1 && sum.work === 3500 * A.ENERGY && sum.worth === before && s.day === 2 && s.energy === A.ENERGY && s.earnedToday === 0 && s.cash === before,
-  'End Day reports the day, moves the calendar one day, refills energy, leaves cash alone');
-const idle = A.fresh(); A.endDay(idle);
-ok(idle.day === 2 && idle.cash === A.START_CASH, 'a day can be ended without doing anything');
+{ // paying day by day equals paying in one jump
+  const a = A.fresh(D0), b = A.fresh(D0);
+  for (let d = 1; d <= 365; d++) A.tick(a, D0 + d);
+  A.tick(b, D0 + 365);
+  ok(a.cash === b.cash && a.paid === 26, 'a year day by day pays the same as a year in one jump (26 paydays)');
+}
 
 // save and rejoin
 const st = mem();
-A.work(s, 'food'); ok(A.save(st, s), 'save succeeds');
-const back = A.load(st);
-ok(JSON.stringify(back) === JSON.stringify(s), 'rejoining restores the exact account');
-ok(back.energy === A.ENERGY - 1, 'reloading mid-day does not refill energy');
-A.work(s, 'food'); A.save(st, s); // main = 2 shifts today, backup = 1 shift today
+ok(A.save(st, s), 'save succeeds');
+ok(JSON.stringify(A.load(st)) === JSON.stringify(s), 'rejoining restores the exact account');
+const again = A.load(st);
+ok(A.tick(again, D0 + 100).pay === 0, 'rejoining the same day pays nothing');
+A.tick(s, D0 + 101); A.save(st, s);
 st.setItem(A.KEY, st.getItem(A.KEY).replace(/\d/, 'x'));
 ok(A.load(st)?.rev === s.rev - 1, 'a corrupted save falls back to the previous good one');
 const forged = JSON.parse(A.encode(s)); forged.body = forged.body.replace(`"cash":${s.cash}`, '"cash":99999999');
 ok(A.decode(JSON.stringify(forged)) === null, 'a save edited without its checksum is rejected');
-ok(A.decode(A.encode({ ...s, cash: -5 })) === null && A.decode(A.encode({ ...s, energy: 99 })) === null, 'negative cash or impossible energy is rejected');
+ok(A.decode(A.encode({ ...s, cash: -5 })) === null && A.decode(A.encode({ ...s, paid: 0, day: s.start - 1 })) === null && A.decode(A.encode({ ...s, paid: 99 })) === null,
+  'negative cash, a day before the start, or more paydays than days allow is rejected');
 ok(A.load(mem()) === null && A.load({ getItem() { throw new Error('blocked'); } }) === null, 'no save, or blocked storage, means a new game instead of a crash');
-ok(A.save({ getItem: () => null, setItem() { throw new Error('full'); } }, A.fresh()) === false, 'a failed save is reported, not thrown');
+ok(A.save({ getItem: () => null, setItem() { throw new Error('full'); } }, A.fresh(D0)) === false, 'a failed save is reported, not thrown');
 
 console.log(fails.length ? `\n${fails.length} FAILED` : '\nall ok'); process.exit(fails.length ? 1 : 0);

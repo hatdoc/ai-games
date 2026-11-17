@@ -14,7 +14,7 @@
   body { background: var(--bg); color: var(--text); font: 15px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
   button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
   b, .num { font-variant-numeric: tabular-nums; }
-  #app { height: 100%; display: grid; grid-template: 'head' auto 'main' 1fr 'actions' auto 'nav' auto / 1fr; max-width: 1100px; margin: 0 auto; }
+  #app { height: 100%; display: grid; grid-template: 'head' auto 'main' 1fr 'nav' auto / minmax(0, 1fr); max-width: 1100px; margin: 0 auto; }
   header { grid-area: head; display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--card); }
   header .when { flex: 1; min-width: 0; }
   header .when b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -30,12 +30,7 @@
   .row:first-of-type { border-top: 0; }
   .muted { color: var(--muted); }
   .up { color: var(--up); } .down { color: var(--down); }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .grid2 .card { margin: 0; }
-  .actions { grid-area: actions; display: flex; gap: 10px; padding: 10px 16px; background: var(--card); border-top: 1px solid var(--line); }
-  .actions button { flex: 1; min-height: 48px; border-radius: 12px; font-weight: 700; border: 1px solid var(--line); }
-  .actions .primary, .btn { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-  .btn { min-height: 44px; padding: 0 18px; border-radius: 10px; font-weight: 700; }
+  .btn { background: var(--accent); color: var(--on-accent); min-height: 44px; padding: 0 18px; border-radius: 10px; font-weight: 700; }
   .btn:disabled { background: none; color: var(--muted); border: 1px solid var(--line); cursor: default; }
   nav { grid-area: nav; display: flex; background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
   nav button { flex: 1; min-height: 56px; font-size: 11px; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
@@ -44,23 +39,15 @@
   dialog { border: 0; border-radius: 18px; padding: 20px; width: min(460px, calc(100vw - 24px)); max-height: 88vh; background: var(--card); color: var(--text); }
   dialog::backdrop { background: #0008; }
   dialog h1 { font-size: 20px; margin: 0 0 4px; }
-  .job { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
-  .job .em { font-size: 26px; width: 34px; text-align: center; }
-  .job .info { flex: 1; min-width: 0; }
-  .job.off { opacity: .55; }
-  .close { float: right; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); }
-  #toast { position: fixed; left: 50%; bottom: 140px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 99px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
+  #toast { position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 99px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
   #toast.on { opacity: 1; }
   /* tablet and desktop: navigation becomes a sidebar, content gets room */
   @media (min-width: 820px) {
-    #app { grid-template: 'head head' auto 'nav main' 1fr 'nav actions' auto / 200px 1fr; }
+    #app { grid-template: 'head head' auto 'nav main' 1fr / 200px minmax(0, 1fr); }
     nav { flex-direction: column; border-top: 0; border-right: 1px solid var(--line); padding: 12px 8px; gap: 4px; }
     nav button { flex: 0; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 14px; font-size: 15px; border-radius: 10px; min-height: 48px; }
     nav button[aria-current=page] { background: var(--bg); }
     main { padding: 24px; }
-    .actions { justify-content: flex-end; }
-    .actions button { flex: 0 0 200px; }
-    #toast { bottom: 90px; }
   }
 </style>
 </head>
@@ -73,13 +60,8 @@
     <button id="theme" aria-label="Switch light or dark theme">◐</button>
   </header>
   <main id="view"></main>
-  <div class="actions">
-    <button id="workBtn"></button>
-    <button id="endBtn" class="primary">End Day →</button>
-  </div>
   <nav id="nav"></nav>
 </div>
-<dialog id="workDlg"></dialog>
 <dialog id="sumDlg"></dialog>
 <div id="toast" role="status"></div>
 
@@ -88,76 +70,73 @@
 const $ = (id) => document.getElementById(id);
 const money = (c) => (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 const longDate = (day) => Account.date(day).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const days = (n) => n + (n === 1 ? ' day' : ' days');
 const TABS = [['market', '📈', 'Market'], ['discover', '🔎', 'Discover'], ['news', '📰', 'News'], ['portfolio', '💼', 'Portfolio'], ['friends', '👥', 'Friends']];
 
-let s = Account.load(localStorage) || Account.fresh(), tab = 'market';
+// Today comes from the web server's clock (the Date header of this page), shifted to the player's timezone, so
+// moving the device clock forward does not bring payday closer.
+// ponytail: falls back to the device clock when that request fails; the weekly challenge (Stage 7) gets real server checks.
+let skew = 0;
+const today = () => { const now = Date.now() + skew; return Account.dayNumber(now, new Date(now).getTimezoneOffset()); };
+async function syncClock() {
+  try {
+    const r = await fetch(location.href, { method: 'HEAD', cache: 'no-store', signal: AbortSignal.timeout(2500) });
+    const t = Date.parse(r.headers.get('date'));
+    if (t) skew = t - Date.now();
+  } catch {}
+}
+
+let s, tab = 'market';
 const save = () => { if (!Account.save(localStorage, s)) toast('Could not save. Check your browser storage.'); };
-window.cloudSaveChanged = () => { s = Account.load(localStorage) || s; render(); }; // a newer save arrived from another device
 
 let toastT;
 function toast(msg) { $('toast').textContent = msg; $('toast').classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => $('toast').classList.remove('on'), 2200); }
 
 const soon = (title, what, stage) => `<h1>${title}</h1><div class="card"><h2>Opens in Stage ${stage}</h2><p class="muted" style="margin:0">${what}</p></div>`;
+const payCard = () => { const n = Account.nextPayIn(s); return `<div class="card"><h2>Next payday</h2><b>${money(Account.SALARY)} in ${days(n)}</b>
+  <div class="muted">${longDate(s.day + n)} · your job pays every ${Account.PAY_EVERY} days, whatever the market does</div></div>`; };
 const VIEWS = {
   market: () => `<h1>Today</h1>
     <div class="card"><h2>Net worth</h2><div class="big num">${money(Account.netWorth(s))}</div><div class="muted">All in cash for now</div></div>
-    <div class="grid2">
-      <div class="card"><h2>Earned today</h2><b>${money(s.earnedToday)}</b></div>
-      <div class="card"><h2>Energy left</h2><b>${s.energy} of ${Account.ENERGY}</b></div>
-    </div>
-    <div class="card" style="margin-top:12px"><h2>Meridian Exchange</h2><p class="muted" style="margin:0">The exchange and its listed companies open in Stage 2. Until then: work, save, and end the day.</p></div>`,
+    ${payCard()}
+    <div class="card"><h2>Meridian Exchange</h2><p class="muted" style="margin:0">The exchange and its listed companies open in Stage 2. The market will move once a day, at midnight your time.</p></div>`,
   discover: () => soon('Discover', 'Search, filters and your watchlist arrive with the exchange.', 2),
   news: () => soon('News', 'World and company news arrive with the live economy.', 3),
   portfolio: () => `<h1>Portfolio</h1>
     <div class="card"><h2>Overview</h2>
       <div class="row"><span>Cash</span><b>${money(s.cash)}</b></div>
       <div class="row"><span>Net worth</span><b>${money(Account.netWorth(s))}</b></div>
-      <div class="row"><span>Earned from work, all time</span><b>${money(s.workTotal)}</b></div>
-      <div class="row"><span>Shifts worked</span><b>${s.shifts}</b></div>
-    </div>
-    <div class="card"><h2>Recent days</h2>${s.history.length ? s.history.slice(-10).reverse().map((d) =>
-      `<div class="row"><span>Day ${d.day} <span class="muted">· ${longDate(d.day)}</span></span><b>${money(d.worth)}</b></div>`).join('')
-      : '<p class="muted" style="margin:0">Your finished days show up here.</p>'}</div>`,
+      <div class="row"><span>Starting savings</span><b>${money(Account.START_CASH)}</b></div>
+      <div class="row"><span>Salary received, all time</span><b>${money(s.payTotal)}</b></div>
+      <div class="row"><span>Investing since</span><b>${longDate(s.start)}</b></div>
+    </div>${payCard()}`,
   friends: () => soon('Friends', 'Friend comparison and the weekly challenge arrive last.', 7),
 };
 
 function render() {
   $('date').textContent = longDate(s.day);
-  $('dayn').textContent = 'Day ' + s.day;
+  $('dayn').textContent = 'Day ' + Account.dayCount(s);
   $('cash').textContent = money(s.cash);
   $('worth').textContent = money(Account.netWorth(s));
-  $('workBtn').textContent = `💼 Work · ${s.energy} energy`;
   $('nav').innerHTML = TABS.map(([id, em, name]) => `<button data-tab="${id}" ${id === tab ? 'aria-current="page"' : ''}><span>${em}</span>${name}</button>`).join('');
   $('view').innerHTML = VIEWS[tab]();
-  if ($('workDlg').open) renderWork();
 }
 
-function renderWork() {
-  $('workDlg').innerHTML = `<button class="close" data-close aria-label="Close">✕</button><h1>Work</h1>
-    <p class="muted" style="margin:0 0 8px">${s.energy} of ${Account.ENERGY} energy left today · ${money(s.earnedToday)} earned</p>
-    ${Account.jobs(s).map((j) => `<div class="job ${j.why ? 'off' : ''}"><div class="em">${j.emoji}</div>
-      <div class="info"><b>${j.name}</b><small class="label">${j.why || `${money(j.pay)} · ${j.energy} energy`}</small></div>
-      <button class="btn" data-job="${j.id}" ${j.why ? 'disabled' : ''}>${money(j.pay)}</button></div>`).join('')}`;
+// Bring the account up to today; if days went by, say what happened while the player was away.
+function catchUp() {
+  const r = Account.tick(s, today());
+  if (!r.days) return;
+  save(); render();
+  $('sumDlg').innerHTML = `<h1>${r.days === 1 ? 'A new day' : days(r.days) + ' went by'}</h1><p class="muted" style="margin:0 0 8px">${longDate(s.day)}</p>
+    ${r.pay ? `<div class="row"><span>${r.paydays > 1 ? r.paydays + ' paydays' : 'Payday'}</span><b class="up">+${money(r.pay)}</b></div>` : ''}
+    <div class="row"><span>Cash</span><b>${money(s.cash)}</b></div>
+    <div class="row"><span>Net worth</span><b>${money(Account.netWorth(s))}</b></div>
+    <div class="row"><span>Next payday</span><b>in ${days(Account.nextPayIn(s))}</b></div>
+    <button class="btn" data-close style="width:100%;margin-top:14px">Continue</button>`;
+  if (!$('sumDlg').open) $('sumDlg').showModal();
 }
 
 $('nav').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; render(); $('view').scrollTop = 0; } };
-$('workBtn').onclick = () => { renderWork(); $('workDlg').showModal(); };
-$('workDlg').onclick = (e) => {
-  if (e.target === $('workDlg') || e.target.closest('[data-close]')) return $('workDlg').close();
-  const b = e.target.closest('[data-job]'); if (!b) return;
-  const r = Account.work(s, b.dataset.job);
-  if (r.ok) { save(); toast('+' + money(r.pay)); } else toast(r.error);
-  render();
-};
-$('endBtn').onclick = () => {
-  const d = Account.endDay(s); save(); $('workDlg').close(); render();
-  $('sumDlg').innerHTML = `<h1>Day ${d.day} results</h1><p class="muted" style="margin:0 0 8px">${longDate(d.day)}</p>
-    <div class="row"><span>Work earnings</span><b class="${d.work ? 'up' : ''}">${d.work ? '+' : ''}${money(d.work)}</b></div>
-    <div class="row"><span>Cash</span><b>${money(d.cash)}</b></div>
-    <div class="row"><span>Net worth</span><b>${money(d.worth)}</b></div>
-    <button class="btn" data-close style="width:100%;margin-top:14px">Start day ${s.day}</button>`;
-  $('sumDlg').showModal();
-};
 $('sumDlg').onclick = (e) => { if (e.target === $('sumDlg') || e.target.closest('[data-close]')) $('sumDlg').close(); };
 $('theme').onclick = () => {
   const dark = (document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
@@ -165,7 +144,15 @@ $('theme').onclick = () => {
   try { localStorage.setItem('stock-tycoon-theme', document.documentElement.dataset.theme); } catch {}
 };
 try { const t = localStorage.getItem('stock-tycoon-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
-render();
+window.cloudSaveChanged = () => { s = Account.load(localStorage) || s; render(); catchUp(); }; // a newer save arrived from another device
+
+syncClock().then(() => {
+  s = Account.load(localStorage);
+  if (!s) { s = Account.fresh(today()); save(); }
+  render(); catchUp();
+  setInterval(catchUp, 30000); // the page was left open past midnight
+  addEventListener('visibilitychange', () => { if (!document.hidden) catchUp(); });
+});
 </script>
 </body>
 </html>
