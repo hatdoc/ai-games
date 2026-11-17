@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Stock Tycoon</title>
 <script src="../cloudsave.js" data-game="stock-tycoon" data-keys="stock-tycoon-save" data-whole="rev"></script>
+<script src="../share.js"></script>
 <style>
   :root { --bg: #f4f5f7; --card: #fff; --text: #12161c; --muted: #6b7380; --line: #e3e6eb; --up: #0a9f5b; --down: #d93a34; --accent: #1f5eff; --on-accent: #fff; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme=light]) { --bg: #0c0f14; --card: #161b22; --text: #eef1f5; --muted: #8b95a3; --line: #262d38; --up: #2fd08a; --down: #ff6259; --accent: #5b8bff; --on-accent: #0c0f14; } }
@@ -91,6 +92,19 @@
   .err { color: var(--down); min-height: 20px; margin: 8px 0 0; font-size: 13px; }
   #toast { position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 99px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; z-index: 9; }
   #toast.on { opacity: 1; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .dates { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 2px; }
+  @media (prefers-reduced-motion: no-preference) {
+    #view.enter > * { animation: rise .2s ease-out both; }
+    #view.enter > :nth-child(2) { animation-delay: .03s; } #view.enter > :nth-child(3) { animation-delay: .06s; } #view.enter > :nth-child(n+4) { animation-delay: .09s; }
+    canvas.swap { animation: fade .25s ease-out; }
+    dialog[open] { animation: pop .16s ease-out; }
+    .btn, .mini, nav button, .chips button { transition: background-color .15s, color .15s, opacity .15s, transform .08s; }
+    .btn:active, .mini:active { transform: scale(.97); }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+    @keyframes fade { from { opacity: 0; } }
+    @keyframes pop { from { opacity: 0; transform: scale(.96); } }
+  }
   /* tablet and desktop: navigation becomes a sidebar, cards sit side by side */
   @media (min-width: 820px) {
     #app { grid-template: 'head head' auto 'nav main' 1fr / 200px minmax(0, 1fr); }
@@ -115,7 +129,7 @@
     <div class="bal"><small>Net worth</small><b id="worth"></b></div>
     <button id="theme" class="round" aria-label="Switch light or dark theme">◐</button>
   </header>
-  <main id="view"></main>
+  <main id="view"><p class="muted" style="text-align:center;margin-top:40px">Opening the exchange…</p></main>
   <nav id="nav"></nav>
 </div>
 <dialog id="tradeDlg"></dialog>
@@ -155,7 +169,7 @@ async function syncClock() {
 
 // s: the account. mkt: the market for the account's day. sym: the open stock page (or null). frame: chart timeframe.
 // me: the player's saved account. s: the account on screen, which is me, or me.chal.a while trading in the weekly challenge.
-let me, s, mkt, rk = 'worth', tab = 'market', sym = null, art = null, newsCat = 'All', frame = 'M', kind = 'line', disc = { q: '', sector: '', risk: '', sort: 'gain' }, trade = null;
+let me, s, mkt, shown = '', rk = 'worth', tab = 'market', sym = null, art = null, newsCat = 'All', frame = 'M', kind = 'line', disc = { q: '', sector: '', risk: '', sort: 'gain' }, trade = null;
 const save = () => { if (!Account.save(localStorage, me)) toast('Could not save. Check your browser storage.'); publishSoon(); };
 const inChal = () => s !== me;
 const market = () => (mkt && mkt.day === s.day ? mkt : (mkt = Market.build(s.day)));
@@ -348,7 +362,7 @@ const VIEWS = {
     const due = held.map(({ c, h }) => ({ c, h, v: mkt.nextDividend(c) })).filter((x) => x.v).sort((a, b) => a.v.pay - b.v.pay);
     const by = Object.entries(s.divBy).sort((a, b) => b[1] - a[1]);
     return `<h1>Portfolio</h1>
-    <div class="card"><h2>Net worth</h2><div class="big num" id="wpx"></div><div id="wch"></div>
+    <div class="card"><button class="mini" data-act="share" style="float:right">Share</button><h2>Net worth</h2><div class="big num" id="wpx"></div><div id="wch"></div>
       ${s.worth.length ? '<canvas id="wchart" aria-label="Net worth over time"></canvas>' : '<p class="muted" style="margin:8px 0 0">Your net worth chart starts tomorrow, with one point for every day.</p>'}</div>
     <div class="cols">
       <div class="card"><h2>Overview</h2>
@@ -462,7 +476,7 @@ const VIEWS = {
         <button class="round" data-act="watch" aria-label="${watching ? 'Remove from' : 'Add to'} watchlist" aria-pressed="${watching}">${watching ? '★' : '☆'}</button></div>
     <div class="card">
       <div class="big num" id="cpx"></div><div id="cch"></div>
-      <canvas id="chart" aria-label="Price chart"></canvas>
+      <canvas id="chart" aria-label="Price chart"></canvas><div class="dates"><span id="d0"></span><span id="d1"></span></div>
       <div class="chips" id="frames">${Object.keys(Market.FRAMES).map((f) => `<button data-frame="${f}" aria-pressed="${f === frame}">${f}</button>`).join('')}
         <button data-act="kind" aria-label="Switch between line and candlestick chart" style="flex:1.6;border:1px solid var(--line)">${kind === 'line' ? 'Candles' : 'Line'}</button></div>
     </div>
@@ -491,6 +505,10 @@ const VIEWS = {
 };
 
 function drawChart() {
+  const cv = $('chart'); cv.classList.remove('swap'); void cv.offsetWidth; cv.classList.add('swap');
+  drawChartNow();
+}
+function drawChartNow() {
   const c = mkt.get(sym), since = (ch, diff, note) => `<span class="${cls(ch)}">${signed(Math.round(diff * 100))} (${pct(ch)})</span> <span class="muted">${note}</span>`;
   if (kind === 'candle') {
     const bars = mkt.candles(c, frame), first = bars[0].o;
@@ -499,7 +517,7 @@ function drawChart() {
       $('cpx').textContent = money(Math.round(v * 100));
       $('cch').innerHTML = b ? `<span class="muted">${frame === 'D' ? 'during the day' : longDate(b.d)} · open ${b.o.toFixed(2)} · high ${b.h.toFixed(2)} · low ${b.l.toFixed(2)} · close ${b.c.toFixed(2)}</span>` : since(v / first - 1, v - first, FRAME_NAME[frame]);
     };
-    show(null);
+    show(null); $('d0').textContent = frame === 'D' ? 'Yesterday\'s close' : longDate(bars[0].d); $('d1').textContent = frame === 'D' ? 'Today' : longDate(bars[bars.length - 1].d);
     return Chart.candles($('chart'), bars, show);
   }
   const pts = mkt.series(c, frame);
@@ -508,7 +526,7 @@ function drawChart() {
     $('cpx').textContent = money(Math.round(v * 100));
     $('cch').innerHTML = since(pts[0].v ? v / pts[0].v - 1 : 0, v - pts[0].v, p ? longDate(p.d) + (frame === 'D' ? ' · during the day' : '') : FRAME_NAME[frame]);
   };
-  show(null);
+  show(null); $('d0').textContent = frame === 'D' ? 'Yesterday\'s close' : longDate(pts[0].d); $('d1').textContent = frame === 'D' ? 'Today' : longDate(pts[pts.length - 1].d);
   Chart.attach($('chart'), pts, show);
 }
 
@@ -535,7 +553,9 @@ function render() {
   const v = art !== null ? 'article' : sym ? 'stock' : tab;
   $('view').innerHTML = (inChal() ? `<div class="card" style="border-color:var(--accent)"><b>🏁 Weekly challenge account</b>
     <div class="row"><span>${pct(Account.chalReturn(s, mkt))} so far · ends ${longDate(Account.weekEnd(me.chal.w))}</span><button class="mini" data-act="chal-exit">Back to my portfolio</button></div></div>` : '') + VIEWS[v]();
-  if (v === 'stock') drawChart();
+  const key = v + (sym || '') + (art === null ? '' : art) + (inChal() ? 'c' : '');
+  if (key !== shown) { shown = key; $('view').classList.remove('enter'); void $('view').offsetWidth; $('view').classList.add('enter'); }
+  if (v === 'stock') drawChartNow();
   if (v === 'portfolio') drawWorth();
 }
 
@@ -674,6 +694,8 @@ $('view').onclick = (e) => {
   else if (t.dataset.act === 'back') { if (art !== null) art = null; else sym = null; render(); }
   else if (t.dataset.act === 'kind') { kind = kind === 'line' ? 'candle' : 'line'; t.textContent = kind === 'line' ? 'Candles' : 'Line'; drawChart(); }
   else if (t.dataset.act === 'adv-on' || t.dataset.act === 'adv-off') { const r = Account.setAdvanced(s, mkt, t.dataset.act === 'adv-on'); if (r.ok) { save(); render(); } toast(r.ok ? `Advanced trading is ${s.adv ? 'on' : 'off'}` : r.error); }
+  else if (t.dataset.act === 'share') { const st = myStats(); navigator.share({ title: 'Stock Tycoon', url: 'https://rank-game.com/games/stock-tycoon',
+    text: `I'm a ${Account.LEVELS[st.level][1]} on Stock Tycoon: net worth ${money(st.worth * 100)}, ${pct(st.ret / 10000)} from investing after ${days(st.days)}. Can you beat that?` }).catch(() => {}); }
   else if (t.dataset.act === 'drip') { Account.setDrip(s, !s.drip); save(); render(); }
   else if (t.dataset.act === 'watch') { toast(Account.toggleWatch(s, sym) ? 'Added to your watchlist' : 'Removed from your watchlist'); save(); render(); }
   else if (t.dataset.act === 'writeoff') { const r = Account.writeOff(s, mkt, sym); if (r.ok) { save(); render(); toast(`Written off · ${signed(r.pl)}`); } }
@@ -693,14 +715,21 @@ $('theme').onclick = () => {
 };
 try { const t = localStorage.getItem('stock-tycoon-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
 // redraw only the chart: a full render would drop the keyboard focus when a phone keyboard resizes the page
-const redraw = () => { if (!s || art !== null) return; if (sym) drawChart(); else if (tab === 'portfolio') drawWorth(); };
+const redraw = () => { if (!s || art !== null) return; if (sym) drawChartNow(); else if (tab === 'portfolio') drawWorth(); };
 addEventListener('resize', redraw);
 window.cloudSaveChanged = () => { me = s = Account.load(localStorage) || me; render(); catchUp(); }; // a newer save arrived from another device
 
 syncClock().then(() => {
   me = s = Account.load(localStorage);
-  if (!me) { me = s = Account.fresh(today()); save(); }
+  const fresh = !me;
+  if (fresh) { me = s = Account.fresh(today()); save(); }
+  if (window.rgAuth && window.rgAuth.onSite) { window.rgHasBoard = true; parent.postMessage({ type: 'rg-board' }, 'https://rank-game.com'); } // the page shows its sign-in and nickname box
   render(); catchUp();
+  if (fresh) { $('sumDlg').innerHTML = `<h1>Welcome to the Meridian Exchange</h1>
+    <p>You start with <b>${money(Account.START_CASH)}</b> in savings and a job that pays <b>${money(Account.SALARY)}</b> every ${Account.PAY_EVERY} days.</p>
+    <p>The market moves once a day, at midnight your time. Buy shares in companies you believe in, read the news, and come back tomorrow to see what happened.</p>
+    <p class="muted">Companies can soar, crash or go bankrupt. Nothing here is a sure thing, and nothing here is real money.</p>
+    <div style="display:flex;margin-top:14px"><button class="btn" data-close>Start investing</button></div>`; $('sumDlg').showModal(); }
   setInterval(catchUp, 30000); // the page was left open past midnight
   addEventListener('visibilitychange', () => { if (!document.hidden) catchUp(); });
 });

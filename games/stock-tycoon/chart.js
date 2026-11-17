@@ -2,6 +2,12 @@
 // period ends higher than it began, red otherwise. Dragging or hovering picks a point and calls onHover(point | null).
 const Chart = (() => {
   const PAD = { l: 8, r: 8, t: 14, b: 14 };
+  // the highest and lowest price on the chart, in the top and bottom right corners
+  const label = (v) => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function scale(x, css, w, h, top, lo) {
+    x.fillStyle = css.getPropertyValue('--muted').trim(); x.font = '11px system-ui, sans-serif'; x.textAlign = 'right';
+    x.fillText(label(top), w - PAD.r, 10); x.fillText(label(lo), w - PAD.r, h - 2);
+  }
   function draw(cv, pts, hi) {
     const dpr = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight, x = cv.getContext('2d');
     cv.width = w * dpr; cv.height = h * dpr; x.scale(dpr, dpr);
@@ -17,6 +23,7 @@ const Chart = (() => {
     x.lineTo(X(pts.length - 1), h); x.lineTo(X(0), h); x.closePath();
     const fill = x.createLinearGradient(0, 0, 0, h); fill.addColorStop(0, col + '40'); fill.addColorStop(1, col + '00'); x.fillStyle = fill; x.fill();
     const dot = (i, r) => { x.beginPath(); x.arc(X(i), Y(pts[i].v), r, 0, 7); x.fillStyle = col; x.fill(); };
+    scale(x, css, w, h, top, lo);
     if (hi == null) dot(pts.length - 1, 4); // the current price
     else {
       x.strokeStyle = css.getPropertyValue('--muted').trim(); x.lineWidth = 1; x.beginPath(); x.moveTo(X(hi), 0); x.lineTo(X(hi), h); x.stroke();
@@ -44,6 +51,7 @@ const Chart = (() => {
       x.beginPath(); x.moveTo(X(i), Y(b.h)); x.lineTo(X(i), Y(b.l)); x.stroke();
       x.fillRect(X(i) - bw / 2, Math.min(Y(b.o), Y(b.c)), bw, Math.max(1, Math.abs(Y(b.o) - Y(b.c))));
     });
+    scale(x, css, w, h, top, lo);
     return { index: (px) => Math.max(0, Math.min(bars.length - 1, Math.floor((px - PAD.l) / step))) };
   }
   function candles(cv, bars, onHover) {
