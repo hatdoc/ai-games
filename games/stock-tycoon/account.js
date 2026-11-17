@@ -2,7 +2,7 @@
 // its own: the caller passes in today's day number and the market. Runs in the browser and in Node (scripts/check-stock-tycoon.mjs).
 // Money is whole cents everywhere. A game day is a real calendar day in the player's own timezone.
 const Account = (() => {
-  const VERSION = 5, KEY = 'stock-tycoon-save', BAK = KEY + '-bak';
+  const VERSION = 6, KEY = 'stock-tycoon-save', BAK = KEY + '-bak';
   const START_CASH = 1000000; // savings the player arrives with
   const SALARY = 150000, PAY_EVERY = 14; // the job pays by itself every fortnight: the way back after losing everything
   // advanced trading (borrowing and short selling), off until the player turns it on
@@ -11,6 +11,10 @@ const Account = (() => {
   const MAINT = 0.3; // margin call: below this share, positions are closed for you until you are back at INIT
   const LOAN_SPREAD = 3, SHORT_FEE = 4; // yearly %: loans cost the central bank rate + 3, borrowed shares cost 4
   const ORDER_DAYS = 30, MAX_ORDERS = 20;
+  // Weekly challenge: everyone who joins gets a separate account with the same starting money, on the same market,
+  // Monday to Sunday in their own timezone. Ranked by percentage return. Nothing can move between it and the main account.
+  const CH_START = 1000000;
+  const weekOf = (day) => Math.floor((day + 3) / 7), weekStart = (w) => w * 7 - 3, weekEnd = (w) => w * 7 + 3; // Monday .. Sunday
   // wealth levels, by the highest net worth ever reached (cents)
   const LEVELS = [[0, 'Beginner investor', '🌱'], [1500000, 'Retail investor', '📈'], [5000000, 'Experienced investor', '🎯'], [25000000, 'Wealthy investor', '💼'],
     [100000000, 'Millionaire', '💎'], [1000000000, 'Multi-millionaire', '🏆'], [100000000000, 'Billionaire', '👑']];
@@ -43,7 +47,8 @@ const Account = (() => {
   // divs:     [{ d, k, sh, c: cents per share }] (sh negative = paid by a short). worth: [[day, net worth at close]]
   const fresh = (today) => ({ v: VERSION, rev: 0, start: today, day: today, cash: START_CASH, paid: 0, payTotal: 0, holdings: {}, trades: [], realised: 0, watch: [],
     divTotal: 0, divBy: {}, divs: [], worth: [], shorts: {}, orders: [], oid: 0, adv: false, costs: 0, // costs: interest and borrow fees paid
-    peak: START_CASH, items: [], drip: false, spent: 0 }); // spent: cash put into lifestyle, net of what sales returned // peak: highest net worth reached. items: lifestyle ids owned. drip: reinvest dividends
+    peak: START_CASH, items: [], drip: false, spent: 0,
+    chal: null, chalHist: [] }); // chal: { w: week, a: the challenge account }. chalHist: [{ w, ret: final return in hundredths of a percent }] // spent: cash put into lifestyle, net of what sales returned // peak: highest net worth reached. items: lifestyle ids owned. drip: reinvest dividends
   const value = (book, mkt, d) => Object.keys(book).reduce((v, k) => { const c = mkt.get(k); return v + (c ? book[k].sh * mkt.cents(c, d) : 0); }, 0);
   const holdingsValue = (s, mkt, d) => value(s.holdings, mkt, d);
   const shortValue = (s, mkt, d) => value(s.shorts, mkt, d); // what it would cost to buy back every shorted share
@@ -137,6 +142,7 @@ const Account = (() => {
   function toggleWatch(s, sym) { const i = s.watch.indexOf(sym); if (i < 0) s.watch.push(sym); else s.watch.splice(i, 1); return i < 0; }
   function setAdvanced(s, mkt, on) {
     if (mkt.day !== s.day) return no('The market is updating. Try again.');
+    if (s.noPay) return no('Not available in the challenge account');
     if (on && netWorth(s, mkt) < ADV_MIN) return no('Advanced trading needs a net worth of $20,000');
     if (!on && (s.cash < 0 || Object.keys(s.shorts).length)) return no('Repay your loan and cover your shorts first');
     s.adv = !!on;
@@ -159,6 +165,7 @@ const Account = (() => {
   }
   function buyItem(s, id) {
     const x = ITEMS.find((i) => i.id === id);
+    if (s.noPay) return no('Not available in the challenge account');
     if (!x) return no('No such item');
     if (s.items.includes(id)) return no('You already own this');
     if (x.price > s.cash) return no('Not enough cash. Lifestyle cannot be bought with borrowed money.');
@@ -174,6 +181,15 @@ const Account = (() => {
   function setDrip(s, on) { s.drip = !!on; return { ok: true }; }
   // a new high in net worth can raise the level; call after anything that can change net worth
   function touchPeak(s, mkt, d) { const before = level(s); s.peak = Math.max(s.peak, netWorth(s, mkt, d)); return level(s) > before; }
+  const chalReturn = (a, mkt, d) => netWorth(a, mkt, d) / CH_START - 1;
+  function joinChallenge(s) {
+    const w = weekOf(s.day);
+    if (s.noPay) return no('This is the challenge account');
+    if (s.chal) return no('You are already in this week\'s challenge');
+    if (s.chalHist.some((x) => x.w === w)) return no('You have already played this week');
+    s.chal = { w, a: { ...fresh(s.day), cash: CH_START, peak: CH_START, noPay: true } }; // noPay: no salary, lifestyle or borrowing in there
+    return { ok: true };
+  }
   function cancelOrder(s, id) { const i = s.orders.findIndex((o) => o.id === id); if (i < 0) return no('No such order'); s.orders.splice(i, 1); return { ok: true }; }
 
   // ---- the daily tick. Catch the account up to today, one day at a time: record each day's closing net worth, then on
@@ -185,7 +201,7 @@ const Account = (() => {
     for (let d = s.day; d < today; d++) {
       if (mkt) { s.worth.push([d, netWorth(s, mkt, d)]); if (s.worth.length > 2000) s.worth.shift(); } // ponytail: keeps the latest 2000 days
       const D = s.day = d + 1;
-      const due = Math.floor((D - s.start) / PAY_EVERY) - s.paid, pay = due * SALARY;
+      const due = s.noPay ? 0 : Math.floor((D - s.start) / PAY_EVERY) - s.paid, pay = due * SALARY;
       s.paid += due; s.cash += pay; s.payTotal += pay; out.paydays += due; out.pay += pay;
       if (!mkt) continue;
       const charge = (cents) => { s.cash -= cents; s.costs += cents; out.costs += cents; };
@@ -232,6 +248,11 @@ const Account = (() => {
       }
       if (touchPeak(s, mkt, D)) out.levelUp = true;
     }
+    if (s.chal && mkt) { // the challenge account runs to its Sunday and no further; after that the result is final
+      const { w, a } = s.chal, end = weekEnd(w);
+      out.chal = tick(a, Math.min(today, end), mkt);
+      if (today > end) { const ret = Math.round(chalReturn(a, mkt, end) * 10000); s.chalHist.push({ w, ret }); if (s.chalHist.length > 200) s.chalHist.shift(); s.chal = null; out.chalDone = { w, ret }; }
+    }
     return out;
   }
 
@@ -249,7 +270,12 @@ const Account = (() => {
       if (s.v === 2) Object.assign(s, { v: 3, divTotal: 0, divBy: {}, divs: [], worth: [] }); // before dividends existed
       if (s.v === 3) Object.assign(s, { v: 4, shorts: {}, orders: [], oid: 0, adv: false, costs: 0 }); // before advanced trading existed
       if (s.v === 4) Object.assign(s, { v: 5, peak: Math.max(START_CASH, ...s.worth.map((w) => w[1])), items: [], drip: false, spent: 0 }); // before levels and lifestyle existed
-      if (s.v !== VERSION) return null;
+      if (s.v === 5) Object.assign(s, { v: 6, chal: null, chalHist: [] }); // before the weekly challenge existed
+      return valid(s) ? s : null;
+    } catch { return null; }
+  }
+  function valid(s) {
+      if (s.v !== VERSION) return false;
       const ok = int(s.rev, 0) && int(s.start, 0) && int(s.day, s.start) && Number.isSafeInteger(s.cash) && (s.cash >= 0 || s.adv === true) && int(s.payTotal, 0)
         && int(s.paid, 0) && s.paid <= Math.floor((s.day - s.start) / PAY_EVERY) && Number.isSafeInteger(s.realised)
         && Number.isSafeInteger(s.divTotal) && Array.isArray(s.divs) && Array.isArray(s.worth) && obj(s.divBy)
@@ -258,9 +284,10 @@ const Account = (() => {
         && obj(s.shorts) && Object.values(s.shorts).every((h) => h && int(h.sh, 1) && int(h.got, 0)) && (s.adv === true || !Object.keys(s.shorts).length)
         && int(s.peak, 0) && int(s.spent, 0) && typeof s.drip === 'boolean' && Array.isArray(s.items) && new Set(s.items).size === s.items.length && s.items.every((id) => ITEMS.some((x) => x.id === id))
         && typeof s.adv === 'boolean' && int(s.oid, 0) && int(s.costs, 0) && Array.isArray(s.orders) && s.orders.length <= MAX_ORDERS
-        && s.orders.every((o) => o && int(o.id, 1) && typeof o.k === 'string' && (o.side === 'B' || o.side === 'S') && int(o.sh, 1) && int(o.lim, 1) && int(o.exp, 0));
-      return ok ? s : null;
-    } catch { return null; }
+        && s.orders.every((o) => o && int(o.id, 1) && typeof o.k === 'string' && (o.side === 'B' || o.side === 'S') && int(o.sh, 1) && int(o.lim, 1) && int(o.exp, 0))
+        && Array.isArray(s.chalHist) && s.chalHist.every((x) => x && int(x.w, 0) && Number.isSafeInteger(x.ret));
+      // the challenge account is a full account of its own, checked the same way; it can never hold a challenge itself
+      return ok && (s.chal === null || (obj(s.chal) && int(s.chal.w, 0) && obj(s.chal.a) && s.chal.a.noPay === true && s.chal.a.chal === null && !s.noPay && valid(s.chal.a)));
   }
   function load(storage) {
     try { for (const k of [KEY, BAK]) { const s = decode(storage.getItem(k)); if (s) return s; } } catch {}
@@ -277,7 +304,7 @@ const Account = (() => {
     } catch { return false; }
   }
 
-  return { VERSION, KEY, BAK, START_CASH, SALARY, PAY_EVERY, ADV_MIN, INIT, MAINT, LOAN_SPREAD, SHORT_FEE, ORDER_DAYS, MAX_ORDERS, LEVELS, ITEMS, RESALE, level, has, lifestyleValue, buyItem, sellItem, setDrip, touchPeak, dayNumber, date, fresh,
+  return { VERSION, KEY, BAK, START_CASH, SALARY, PAY_EVERY, ADV_MIN, INIT, MAINT, LOAN_SPREAD, SHORT_FEE, ORDER_DAYS, MAX_ORDERS, CH_START, weekOf, weekStart, weekEnd, chalReturn, joinChallenge, LEVELS, ITEMS, RESALE, level, has, lifestyleValue, buyItem, sellItem, setDrip, touchPeak, dayNumber, date, fresh,
     holdingsValue, shortValue, netWorth, exposure, marginLevel, buyingPower, dayCount, nextPayIn, tick,
     buy, sell, short, cover, writeOff, toggleWatch, setAdvanced, placeOrder, cancelOrder, encode, decode, load, save };
 })();

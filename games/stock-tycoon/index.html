@@ -154,12 +154,71 @@ async function syncClock() {
 }
 
 // s: the account. mkt: the market for the account's day. sym: the open stock page (or null). frame: chart timeframe.
-let s, mkt, tab = 'market', sym = null, art = null, newsCat = 'All', frame = 'M', kind = 'line', disc = { q: '', sector: '', risk: '', sort: 'gain' }, trade = null;
-const save = () => { if (!Account.save(localStorage, s)) toast('Could not save. Check your browser storage.'); };
+// me: the player's saved account. s: the account on screen, which is me, or me.chal.a while trading in the weekly challenge.
+let me, s, mkt, rk = 'worth', tab = 'market', sym = null, art = null, newsCat = 'All', frame = 'M', kind = 'line', disc = { q: '', sector: '', risk: '', sort: 'gain' }, trade = null;
+const save = () => { if (!Account.save(localStorage, me)) toast('Could not save. Check your browser storage.'); publishSoon(); };
+const inChal = () => s !== me;
 const market = () => (mkt && mkt.day === s.day ? mkt : (mkt = Market.build(s.day)));
 
 let toastT;
 function toast(msg) { $('toast').textContent = msg; $('toast').classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => $('toast').classList.remove('on'), 2200); }
+
+// ---- friends and rankings. Scores live in Firestore under stockTycoon/ (rule in the blog repo's firebase/firestore.rules).
+// Everything here fails quietly: the game is fully playable with no network and no sign-in.
+const FS = 'https://firestore.googleapis.com/v1/projects/hatdoc-blog-1048/databases/(default)/documents', FKEY = 'AIzaSyDz5J34ahi7fP48CU2cPrp1FNmqK-20D5E';
+const esc = (t) => String(t).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const dollars = (cents) => Math.round(cents / 100);
+// the numbers other players can see: whole dollars, return in hundredths of a percent
+function myStats() {
+  const m = market(), nw = Account.netWorth(me, m), putIn = Account.START_CASH + me.payTotal, closed = me.trades.filter((t) => t.t === 'S' || t.t === 'C');
+  return { worth: dollars(nw), cash: dollars(me.cash), stocks: dollars(Account.holdingsValue(me, m) - Account.shortValue(me, m)), realised: dollars(me.realised), divs: dollars(Math.max(0, me.divTotal)),
+    ret: Math.round((nw + me.spent - putIn) / putIn * 10000), wins: closed.filter((t) => t.pl > 0).length, closed: closed.length, level: Account.level(me), days: Account.dayCount(me) };
+}
+const fields = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, typeof v === 'string' ? { stringValue: v } : { integerValue: String(v) }]));
+const plain = (doc) => ({ uid: doc.name.split('/').pop(), ...Object.fromEntries(Object.entries(doc.fields || {}).map(([k, v]) => [k, 'integerValue' in v ? +v.integerValue : v.stringValue])) });
+let pubT;
+const publishSoon = () => { clearTimeout(pubT); pubT = setTimeout(publish, 4000); };
+async function publish(doneWeek) {
+  const A = window.rgAuth;
+  if (!A || !A.user || !A.user.nick || !me) return;
+  const put = (board, o) => A.api(`/stockTycoon/${board}/scores/${A.user.uid}`, { method: 'PATCH', body: JSON.stringify({ fields: fields({ name: A.user.nick, ...o }) }) }).catch(() => {});
+  await put('all', myStats());
+  const score = (ret) => Math.max(0, Math.round((1 + ret) * 10000));
+  if (me.chal) await put('c' + me.chal.w, { score: score(Account.chalReturn(me.chal.a, market())) });
+  if (doneWeek) await put('c' + doneWeek.w, { score: score(doneWeek.ret / 10000) }); // the final result of a week that just ended
+}
+async function topRows(board, field) {
+  const res = await fetch(`${FS}/stockTycoon/${board}:runQuery?key=${FKEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'scores' }], orderBy: [{ field: { fieldPath: field }, direction: 'DESCENDING' }], limit: 20 } }) });
+  if (!res.ok) throw 0;
+  return (await res.json()).filter((r) => r.document).map((r) => plain(r.document));
+}
+async function friendStats() {
+  const A = window.rgAuth, res = await A.api(`/friends/${A.user.uid}/list?pageSize=50`);
+  if (!res.ok) throw 0;
+  const ids = ((await res.json()).documents || []).map((d) => d.name.split('/').pop());
+  const docs = await Promise.all(ids.map((id) => fetch(`${FS}/stockTycoon/all/scores/${id}?key=${FKEY}`).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
+  const rows = docs.filter(Boolean).map(plain);
+  if (rows.length && A.user.nick) rows.push({ uid: A.user.uid, name: A.user.nick, ...myStats() });
+  return rows.sort((a, b) => b.worth - a.worth);
+}
+// a list that loads in the background: shows what it has (or "Loading"), fetches at most once a minute, then redraws the tab
+let net = {};
+function board(key, load, fmt, empty) {
+  const c = net[key] || (net[key] = { at: 0 });
+  if (Date.now() - c.at > 60000 && !c.busy) {
+    c.busy = true;
+    load().then((rows) => { c.rows = rows; c.err = false; }, () => { c.err = true; }).then(() => { c.busy = false; c.at = Date.now(); if (tab === 'friends' && !sym && art === null) render(); });
+  }
+  const uid = window.rgAuth && window.rgAuth.user && window.rgAuth.user.uid;
+  if (!c.rows) return `<p class="muted" style="margin:0">${c.err ? 'Rankings are offline right now.' : 'Loading…'}</p>`;
+  if (!c.rows.length) return `<p class="muted" style="margin:0">${empty}</p>`;
+  return c.rows.map((r, i) => (fmt ? `<div class="row"><span>${i + 1}. ${r.uid === uid ? `<b>${esc(r.name)} (you)</b>` : esc(r.name)}</span><b>${fmt(r)}</b></div>`
+    : `<div class="row"><span>${i + 1}. ${r.uid === uid ? `<b>${esc(r.name)} (you)</b>` : esc(r.name)} ${(Account.LEVELS[r.level] || Account.LEVELS[0])[2]}
+        <small>cash ${money(r.cash * 100)} · stocks ${money(r.stocks * 100)} · sold for ${signed(r.realised * 100)} · dividends ${money(r.divs * 100)} · ${r.wins} winning trades · day ${r.days}</small></span>
+        <b>${money(r.worth * 100)}<small class="${cls(r.ret)}">${pct(r.ret / 10000)}</small></b></div>`)).join('');
+}
+addEventListener('rg-auth', () => { net = {}; publishSoon(); if (me && tab === 'friends') render(); });
 
 // ---- pieces
 const logo = (c, lg) => `<span class="logo ${lg ? 'lg' : ''}" style="background:hsl(${c.hue} 55% 40%)">${c.sym.slice(0, 2)}</span>`;
@@ -356,7 +415,37 @@ const VIEWS = {
       ${mineIt ? `<button class="mini" data-sell-item="${x.id}">Sell for ${money(Math.floor(x.price * Account.RESALE))}</button>` : `<button class="mini" data-item="${x.id}" ${x.price > s.cash ? 'disabled style="opacity:.45"' : ''}>${money(x.price)}</button>`}</div>`; }).join('')}</div>`).join('')}
     <p class="muted">Lifestyle is paid from cash and is not counted in your net worth. Anything can be sold back for ${Account.RESALE * 100}% of its price.</p>`;
   },
-  friends: () => soon('Friends', 'Friend comparison and the weekly challenge arrive last.', 7),
+  friends() {
+    const w = Account.weekOf(me.day), c = me.chal, last = me.chalHist[me.chalHist.length - 1], played = me.chalHist.find((x) => x.w === w), A = window.rgAuth || {}, st = myStats();
+    const who = A.user && A.user.nick ? '' : `<div class="card"><b>Rank and compare</b><p class="muted" style="margin:4px 0 0">${!A.onSite ? 'Play on <a href="https://rank-game.com" target="_blank" rel="noopener">rank-game.com</a> and sign in to appear in the rankings and compare with friends. You can still take the challenge here.'
+      : !A.user ? 'Sign in to appear in the rankings and compare with friends. <button class="mini" data-act="login">Sign in</button>' : 'Pick a nickname under the game to appear in the rankings.'}</p></div>`;
+    return `<h1>Friends</h1>${who}
+    <div class="card"><h2>Weekly challenge</h2><b>${longDate(Account.weekStart(w))} to ${longDate(Account.weekEnd(w))}</b>
+      <p class="muted" style="margin:6px 0 10px">Everyone starts with ${money(Account.CH_START)} in a separate account, on the same market, with the same tools: no borrowing, no shorting, no salary, no office research. The highest percentage return at Sunday's close wins.</p>
+      ${c ? `<div class="row"><span>Your return so far</span><b class="${cls(Account.chalReturn(c.a, mkt))}">${pct(Account.chalReturn(c.a, mkt))}</b></div>
+          <div class="row"><span>Ends</span><b>${Account.weekEnd(w) === me.day ? 'tonight' : 'in ' + days(Account.weekEnd(w) - me.day + 1)}</b></div>
+          <div style="display:flex;margin-top:8px"><button class="btn" data-act="chal-enter">Trade in the challenge account</button></div>`
+        : played ? `<div class="row"><span>You finished this week</span><b class="${cls(played.ret)}">${pct(played.ret / 10000)}</b></div><p class="muted" style="margin:6px 0 0">A new challenge starts on Monday.</p>`
+        : `<div style="display:flex"><button class="btn" data-act="chal-join">Join this week's challenge</button></div>`}
+      ${last && last !== played ? `<div class="row" style="margin-top:8px"><span>Your last finished week</span><b class="${cls(last.ret)}">${pct(last.ret / 10000)}</b></div>` : ''}
+      <h2 style="margin-top:16px">Standings this week</h2>${board('c' + w, () => topRows('c' + w, 'score'), (r) => pct(r.score / 10000 - 1), 'Nobody has joined yet. Be the first.')}
+      <h2 style="margin-top:16px">Last week</h2>${board('c' + (w - 1), () => topRows('c' + (w - 1), 'score'), (r) => pct(r.score / 10000 - 1), 'Nobody played last week.')}</div>
+    <div class="card"><h2>Rankings</h2>
+      <div class="chips" id="rks">${[['worth', 'Net worth'], ['ret', 'Return'], ['divs', 'Dividends']].map(([k, n]) => `<button data-rk="${k}" aria-pressed="${k === rk}">${n}</button>`).join('')}</div>
+      ${board('all-' + rk, () => topRows('all', rk), (r) => (rk === 'ret' ? pct(r.ret / 10000) : money(r[rk] * 100)), 'No investors ranked yet.')}</div>
+    <div class="card"><h2>Your friends</h2>${!A.user ? '<p class="muted" style="margin:0">Sign in on rank-game.com to see how your friends are doing.</p>' : board('friends', friendStats, null, 'None of your friends are investing yet. Add friends on rank-game.com and invite them.')}</div>
+    <div class="card"><h2>What others see about you</h2>
+      <div class="row"><span>Level</span><b>${Account.LEVELS[st.level][2]} ${Account.LEVELS[st.level][1]}</b></div>
+      <div class="row"><span>Net worth</span><b>${money(st.worth * 100)}</b></div>
+      <div class="row"><span>Cash</span><b>${money(st.cash * 100)}</b></div>
+      <div class="row"><span>Stocks</span><b>${money(st.stocks * 100)}</b></div>
+      <div class="row"><span>Investment return</span><b class="${cls(st.ret)}">${pct(st.ret / 10000)}</b></div>
+      <div class="row"><span>Profit on stocks sold</span><b class="${cls(st.realised)}">${signed(st.realised * 100)}</b></div>
+      <div class="row"><span>Dividends received</span><b>${money(st.divs * 100)}</b></div>
+      <div class="row"><span>Winning trades</span><b>${st.wins} of ${st.closed} closed</b></div>
+      <div class="row"><span>Days investing</span><b>${st.days}</b></div>
+    </div>`;
+  },
   stock() {
     const c = mkt.get(sym), alive = mkt.trading(c), h = s.holdings[sym], watching = s.watch.includes(sym), nd = mkt.nextDividend(c);
     const stat = (k, v) => `<div class="row"><small>${k}</small><b>${v}</b></div>`;
@@ -444,7 +533,8 @@ function render() {
   $('worth').textContent = money(Account.netWorth(s, mkt));
   $('nav').innerHTML = TABS.map(([id, em, name]) => `<button data-tab="${id}" ${id === tab ? 'aria-current="page"' : ''}><span>${em}</span>${name}</button>`).join('');
   const v = art !== null ? 'article' : sym ? 'stock' : tab;
-  $('view').innerHTML = VIEWS[v]();
+  $('view').innerHTML = (inChal() ? `<div class="card" style="border-color:var(--accent)"><b>🏁 Weekly challenge account</b>
+    <div class="row"><span>${pct(Account.chalReturn(s, mkt))} so far · ends ${longDate(Account.weekEnd(me.chal.w))}</span><button class="mini" data-act="chal-exit">Back to my portfolio</button></div></div>` : '') + VIEWS[v]();
   if (v === 'stock') drawChart();
   if (v === 'portfolio') drawWorth();
 }
@@ -526,7 +616,8 @@ $('tradeDlg').onclick = (e) => {
 // Bring the account up to today; if days went by, say what happened while the player was away. Returns true if the day changed.
 function catchUp() {
   const t = today();
-  if (t <= s.day) return false;
+  if (t <= me.day) return false;
+  const wasChal = inChal(); s = me;
   const from = s.day, before = Account.netWorth(s, market()), atStake = Account.exposure(s, mkt), held = [...Object.keys(s.holdings), ...Object.keys(s.shorts)];
   mkt = Market.build(t);
   const r = Account.tick(s, t, mkt);
@@ -548,6 +639,7 @@ function catchUp() {
       <div class="row"><span>Worst: ${moves.at(-1).c.name}</span><b class="${cls(moves.at(-1).ch)}">${pct(moves.at(-1).ch)}</b></div>` : ''}
     ${bust.map((m) => `<div class="row"><span class="down">${m.c.name} went bankrupt. Your shares are worthless.</span></div>`).join('')}
     ${away.length ? `<div class="row" style="display:block"><span class="muted">Biggest news while you were away</span>${away.map(newsRow).join('')}</div>` : ''}
+    ${r.chalDone ? `<div class="row"><span><b>🏁 Weekly challenge finished</b></span><b class="${cls(r.chalDone.ret)}">${pct(r.chalDone.ret / 10000)}</b></div>` : ''}
     ${r.levelUp ? `<div class="row"><span><b>🎉 New level: ${Account.LEVELS[Account.level(s)][1]}</b></span></div>` : ''}
     ${r.reinvested ? `<div class="row"><span>Dividends reinvested in more shares</span><b>${money(r.reinvested)}</b></div>` : ''}
     ${r.div ? `<div class="row"><span>Dividends</span><b class="${cls(r.div)}">${signed(r.div)}</b></div>` : ''}
@@ -556,14 +648,21 @@ function catchUp() {
     <div class="row"><span>Next payday</span><b>in ${days(Account.nextPayIn(s))}</b></div>
     <div style="display:flex;margin-top:14px"><button class="btn" data-close>Continue</button></div>`;
   if (!$('sumDlg').open) $('sumDlg').showModal();
+  if (r.chalDone) { net = {}; publish(r.chalDone); }
+  if (wasChal && me.chal) { s = me.chal.a; render(); }
   return true;
 }
 
-const openYou = () => { tab = 'you'; sym = null; art = null; render(); $('view').scrollTop = 0; };
+const openYou = () => { s = me; tab = 'you'; sym = null; art = null; render(); $('view').scrollTop = 0; };
 $('youBtn').onclick = openYou;
 $('nav').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; sym = null; art = null; render(); $('view').scrollTop = 0; } };
 $('view').onclick = (e) => {
-  const t = e.target.closest('[data-sym],[data-frame],[data-act],[data-art],[data-cat],[data-cancel],[data-you],[data-item],[data-sell-item],[data-preset]'); if (!t) return;
+  const t = e.target.closest('[data-sym],[data-frame],[data-act],[data-art],[data-cat],[data-cancel],[data-you],[data-item],[data-sell-item],[data-preset],[data-rk]'); if (!t) return;
+  if (t.dataset.rk) { rk = t.dataset.rk; return render(); }
+  if (t.dataset.act === 'login') return window.rgAuth.login();
+  if (t.dataset.act === 'chal-join') { const r = Account.joinChallenge(me); if (!r.ok) return toast(r.error); save(); }
+  if (t.dataset.act === 'chal-join' || t.dataset.act === 'chal-enter') { s = me.chal.a; tab = 'market'; sym = art = null; render(); $('view').scrollTop = 0; return toast('You are trading the challenge account'); }
+  if (t.dataset.act === 'chal-exit') { s = me; render(); return toast('Back to your own portfolio'); }
   if ('you' in t.dataset) return openYou();
   if (t.dataset.item || t.dataset.sellItem) { const r = t.dataset.item ? Account.buyItem(s, t.dataset.item) : Account.sellItem(s, t.dataset.sellItem); if (r.ok) { save(); render(); } return toast(r.ok ? (t.dataset.item ? `${r.item.emoji} ${r.item.name} is yours` : `Sold for ${money(r.got)}`) : r.error); }
   if (t.dataset.preset) { const pr = PRESETS[t.dataset.preset]; if (pr.sort === 'value' && !Account.has(s, 'analyst')) return toast('Bargains needs the analyst view from a Private office'); Object.assign(disc, pr, { q: '', sector: '' }); return render(); }
@@ -596,11 +695,11 @@ try { const t = localStorage.getItem('stock-tycoon-theme'); if (t) document.docu
 // redraw only the chart: a full render would drop the keyboard focus when a phone keyboard resizes the page
 const redraw = () => { if (!s || art !== null) return; if (sym) drawChart(); else if (tab === 'portfolio') drawWorth(); };
 addEventListener('resize', redraw);
-window.cloudSaveChanged = () => { s = Account.load(localStorage) || s; render(); catchUp(); }; // a newer save arrived from another device
+window.cloudSaveChanged = () => { me = s = Account.load(localStorage) || me; render(); catchUp(); }; // a newer save arrived from another device
 
 syncClock().then(() => {
-  s = Account.load(localStorage);
-  if (!s) { s = Account.fresh(today()); save(); }
+  me = s = Account.load(localStorage);
+  if (!me) { me = s = Account.fresh(today()); save(); }
   render(); catchUp();
   setInterval(catchUp, 30000); // the page was left open past midnight
   addEventListener('visibilitychange', () => { if (!document.hidden) catchUp(); });

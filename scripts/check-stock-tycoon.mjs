@@ -342,4 +342,32 @@ ok([1, 2, 3].every((y) => liveAt(M.build(T + 365 * y)).length >= 50), 'at least 
   ok(nc > 100 && nd > 100 && cheap / nc > dear / nd + 0.01 && cheap / nc < dear / nd + 0.08, `over the next 90 days, stocks priced 10% under the analyst's estimate returned ${(cheap / nc * 100).toFixed(1)}% on average, those 10% over it ${(dear / nd * 100).toFixed(1)}%`);
 }
 
+
+// ---- weekly challenge
+{
+  const mon = A.weekStart(A.weekOf(T) + 1), sun = mon + 6, w = A.weekOf(mon); // next week, Monday to Sunday
+  ok(new Date(mon * 864e5).getUTCDay() === 1 && new Date(sun * 864e5).getUTCDay() === 0 && A.weekOf(sun) === w && A.weekOf(sun + 1) === w + 1 && A.weekEnd(w) === sun, 'a challenge week runs Monday to Sunday');
+  const mk0 = M.build(mon), rich = A.fresh(mon), poor = A.fresh(mon); rich.cash = 900000000; poor.cash = 5000;
+  ok(A.joinChallenge(rich).ok && A.joinChallenge(poor).ok && !A.joinChallenge(rich).ok, 'a player joins once per week');
+  ok(rich.chal.a.cash === A.CH_START && poor.chal.a.cash === A.CH_START && rich.cash === 900000000 && poor.cash === 5000, 'a millionaire and a beginner both start the challenge with exactly $10,000, and joining costs nothing');
+  const a = rich.chal.a, b = poor.chal.a;
+  ok(!A.setAdvanced(a, mk0, true).ok && !A.buyItem(a, 'car1').ok && !A.joinChallenge(a).ok && !A.has(a, 'analyst'), 'the challenge account has no borrowing, no shorting, no lifestyle and no office research');
+  for (const x of [a, b]) { A.buy(x, mk0, 'QLLN', 20); A.buy(x, mk0, 'HBSB', 50); }
+  A.placeOrder(a, mk0, 'NVCR', 'B', 1, 1);
+  const mid = M.build(mon + 3), r1 = A.tick(rich, mon + 3, mid); A.tick(poor, mon + 3, mid);
+  ok(rich.chal && a.day === mon + 3 && a.paid === 0 && r1.chal.pay === 0 && rich.paid === 0 && A.chalReturn(a, mid) === A.chalReturn(b, mid), 'same trades give the same return whatever the players\' wealth, and the challenge account gets no salary');
+  const want = Math.round((A.netWorth(a, M.build(sun), sun) / A.CH_START - 1) * 10000);
+  const after = M.build(sun + 9), r2 = A.tick(rich, sun + 9, after);
+  ok(rich.chal === null && r2.chalDone.w === w && r2.chalDone.ret === want && rich.chalHist.at(-1).ret === want && a.day === sun, `the result is fixed at Sunday's close (${(want / 100).toFixed(2)}%), however late the player comes back`);
+  ok(!A.joinChallenge(Object.assign(rich, { day: sun })).ok, 'a finished week cannot be replayed');
+  rich.day = sun + 9; ok(A.joinChallenge(rich).ok && rich.chal.w === A.weekOf(sun + 9), 'the next week can be joined');
+  const st = mem(); A.save(st, rich);
+  ok(JSON.stringify(A.load(st)) === JSON.stringify(rich), 'the challenge account and past results survive leaving and rejoining');
+  const forged = JSON.parse(JSON.stringify(rich)); forged.chal.a.cash = -5;
+  const noFlag = JSON.parse(JSON.stringify(rich)); delete noFlag.chal.a.noPay;
+  ok(A.decode(A.encode(forged)) === null && A.decode(A.encode(noFlag)) === null, 'a save whose challenge account is invalid is rejected');
+  const { chal, chalHist, ...v5 } = { ...A.fresh(T), v: 5 };
+  ok(A.decode(A.encode(v5))?.chal === null, 'a save from before the challenge existed still loads');
+}
+
 console.log(fails.length ? `\n${fails.length} FAILED` : '\nall ok'); process.exit(fails.length ? 1 : 0);
