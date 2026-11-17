@@ -17,7 +17,7 @@
   b, .num { font-variant-numeric: tabular-nums; }
   #app { height: 100%; display: grid; grid-template: 'head' auto 'main' 1fr 'nav' auto / minmax(0, 1fr); max-width: 1100px; margin: 0 auto; }
   header { grid-area: head; display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--card); }
-  header .when { flex: 1; min-width: 0; }
+  header .when { flex: 1; min-width: 0; text-align: left; }
   header .when b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   small, .label { color: var(--muted); font-size: 12px; display: block; }
   header .bal { text-align: right; }
@@ -66,6 +66,11 @@
   .chips button[aria-pressed=true] { background: var(--bg); color: var(--text); }
   .buy { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
   .buy .btn { flex: 1 1 40%; }
+  .bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; margin: 6px 0; }
+  .bar i { display: block; height: 100%; border-radius: 99px; background: var(--accent); }
+  .scene { display: flex; flex-wrap: wrap; gap: 10px; }
+  .tile { text-align: center; padding: 10px 8px; border: 1px solid var(--line); border-radius: 12px; flex: 1 1 90px; font-size: 12px; color: var(--muted); }
+  .tile span { font-size: 36px; display: block; line-height: 1.2; }
   .mini { min-height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); font-weight: 600; font-size: 13px; }
   .warn { border-color: var(--down); }
   .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
@@ -105,7 +110,7 @@
 <body>
 <div id="app">
   <header>
-    <div class="when"><b id="date"></b><small id="dayn"></small></div>
+    <button class="when" id="youBtn" aria-label="Your profile and lifestyle"><b id="date"></b><small id="dayn"></small></button>
     <div class="bal cash"><small>Cash</small><b id="cash"></b></div>
     <div class="bal"><small>Net worth</small><b id="worth"></b></div>
     <button id="theme" class="round" aria-label="Switch light or dark theme">◐</button>
@@ -174,6 +179,22 @@ const comingUp = () => { const n = Account.nextPayIn(s), items = [[s.day + n, `P
   for (const k of mine()) { const c = mkt.get(k); if (c && mkt.trading(c) && mkt.nextReport(c) - s.day <= 21) items.push([mkt.nextReport(c), `${c.name} reports earnings`]); }
   return `<div class="card"><h2>Coming up</h2>${items.sort((a, b) => a[0] - b[0]).map(([d, t]) => `<div class="row"><span>${t}</span><b>${d - s.day === 1 ? 'Tomorrow' : 'in ' + days(d - s.day)}<small>${longDate(d)}</small></b></div>`).join('')}</div>`; };
 const orderRow = (o) => `<div class="row"><span>${o.side === 'B' ? 'Buy' : 'Sell'} ${o.sh} ${o.k} at ${money(o.lim)}<small>placed ${longDate(o.d)} · expires ${longDate(o.exp)}</small></span><button class="mini" data-cancel="${o.id}">Cancel</button></div>`;
+const clamp = (x) => Math.max(0, Math.min(1, x));
+const gapOf = (c) => mkt.px(c) / mkt.fair(c) - 1; // how far the price is from the analyst's estimate
+const levelCard = (full) => { const lv = Account.level(s), next = Account.LEVELS[lv + 1], nw = Account.netWorth(s, mkt);
+  return `<${full ? 'div' : 'button data-you style="width:100%;text-align:left"'} class="card"><h2>${full ? 'Wealth level' : 'Your level'}</h2><b style="font-size:${full ? 22 : 16}px">${Account.LEVELS[lv][2]} ${Account.LEVELS[lv][1]}</b>
+    ${next ? `<div class="bar"><i style="width:${clamp(nw / next[0]) * 100}%"></i></div><div class="muted">${money(Math.max(0, next[0] - nw))} to go to ${next[1]} at ${money(next[0])}</div>` : '<div class="muted">The top of the ladder.</div>'}</${full ? 'div' : 'button'}>`; };
+// what kind of investor the player's own choices make them
+function style() {
+  const pos = [...Object.entries(s.holdings), ...Object.entries(s.shorts)].map(([k, h]) => ({ c: mkt.get(k), v: h.sh * (mkt.get(k) ? mkt.cents(mkt.get(k)) : 0) })).filter((x) => x.v > 0);
+  const tot = pos.reduce((a, x) => a + x.v, 0), w = (f) => (tot ? pos.reduce((a, x) => a + f(x.c) * x.v, 0) / tot : 0), recent = s.trades.filter((t) => t.d > s.day - 30 && !t.drip).length;
+  const bars = { Income: clamp(w((c) => mkt.yield(c)) / 0.04), Growth: clamp(w((c) => c.growth) / 0.15),
+    Risk: clamp((w((c) => c.risk) - 1) / 4 + (s.cash < 0 ? 0.2 : 0) + (Object.keys(s.shorts).length ? 0.2 : 0)) * (tot ? 1 : 0), Activity: clamp(recent / 20) };
+  const name = !tot && !recent ? ['Saver', 'Everything is in cash so far.'] : bars.Activity > 0.6 ? ['Day trader', 'You trade often and hold briefly.'] : bars.Risk > 0.7 ? ['Speculator', 'You favour risky companies, borrowing or shorting.']
+    : bars.Income > 0.5 && bars.Income >= bars.Growth ? ['Dividend investor', 'Your portfolio is built for steady income.'] : bars.Growth > 0.5 ? ['Growth investor', 'You back companies that are growing fast.']
+    : Account.has(s, 'analyst') && w((c) => -gapOf(c)) > 0.08 ? ['Value investor', 'You hold stocks priced below what analysts think they are worth.'] : ['Balanced investor', 'A mix of income, growth and risk.'];
+  return { name, bars };
+}
 const rows = (list, empty) => (list.length ? list.map((c) => stockRow(c)).join('') : `<p class="muted" style="margin:0">${empty}</p>`);
 const soon = (title, what, stage) => `<h1>${title}</h1><div class="card"><h2>Opens in Stage ${stage}</h2><p class="muted" style="margin:0">${what}</p></div>`;
 const live = () => mkt.companies.filter((c) => mkt.trading(c));
@@ -193,13 +214,16 @@ const SORTS = {
   vol: ['Most volatile', (a, b) => b.vol - a.vol],
   new: ['Newly listed', (a, b) => b.listDay - a.listDay],
   name: ['Name', (a, b) => a.name.localeCompare(b.name)],
+  value: ['Cheapest by analyst estimate', (a, b) => gapOf(a) - gapOf(b)],
 };
+// one-tap starting points for different ways of investing
+const PRESETS = { 'Dividend payers': { sort: 'yield', risk: '' }, 'Fast growers': { sort: 'growth', risk: '' }, 'Steady giants': { sort: 'cap', risk: 'low' }, 'High risk': { sort: 'vol', risk: 'high' }, Bargains: { sort: 'value', risk: '' }, 'New listings': { sort: 'new', risk: '' } };
 function discoverList() {
   const q = disc.q.trim().toLowerCase();
   const list = visible().filter((c) => (!q || c.name.toLowerCase().includes(q) || c.sym.toLowerCase().includes(q)) && (!disc.sector || c.sec === disc.sector)
     && (!disc.risk || (disc.risk === 'low' ? c.risk <= 2 : disc.risk === 'mid' ? c.risk === 3 : c.risk >= 4))).sort(SORTS[disc.sort][1]);
   const sub = { yield: (c) => `Yield ${(mkt.yield(c) * 100).toFixed(1)}%`, cap: (c) => `Worth ${big(mkt.cap(c))}`, growth: (c) => `Growing ${(c.growth * 100).toFixed(0)}% a year`,
-    vol: (c) => `${c.riskLabel} risk`, new: (c) => `Listed ${longDate(c.listDay)}` }[disc.sort];
+    vol: (c) => `${c.riskLabel} risk`, value: (c) => `${pct(gapOf(c))} against the analyst estimate`, new: (c) => `Listed ${longDate(c.listDay)}` }[disc.sort];
   return list.length ? list.map((c) => stockRow(c, sub && `${c.sym} · ${sub(c)}`)).join('') : '<p class="muted" style="margin:0">No companies match.</p>';
 }
 
@@ -223,6 +247,7 @@ const VIEWS = {
       <div class="card"><h2>Top gainers</h2>${rows(all.slice(0, 5))}</div>
       <div class="card"><h2>Top losers</h2>${rows(all.slice(-5).reverse())}</div>
     </div>
+    ${levelCard(false)}
     <div class="cols">
       <div class="card"><h2>Economy</h2>
         <div class="row"><span>Phase</span><b>${mkt.regime}</b></div>
@@ -237,8 +262,9 @@ const VIEWS = {
       <input id="q" type="search" placeholder="Search name or ticker" value="${disc.q.replace(/[&<>"]/g, '')}" aria-label="Search companies">
       <select id="sector" aria-label="Industry"><option value="">All industries</option>${Object.entries(Companies.SECTORS).map(([k, v]) => `<option value="${k}" ${disc.sector === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select>
       <select id="risk" aria-label="Risk">${[['', 'Any risk'], ['low', 'Low risk'], ['mid', 'Medium risk'], ['high', 'High risk']].map(([k, v]) => `<option value="${k}" ${disc.risk === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
-      <select id="sort" aria-label="Sort by">${Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${disc.sort === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select>
+      <select id="sort" aria-label="Sort by">${Object.entries(SORTS).filter(([k]) => k !== 'value' || Account.has(s, 'analyst')).map(([k, v]) => `<option value="${k}" ${disc.sort === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select>
     </div>
+    <div class="chips wrap">${Object.keys(PRESETS).map((k) => `<button data-preset="${k}">${k}</button>`).join('')}</div>
     <div class="card" id="list">${discoverList()}</div>`,
   news: () => `<h1>News</h1>
     <div class="chips wrap" id="cats">${Object.keys(NEWS_CATS).map((k) => `<button data-cat="${k}" aria-pressed="${k === newsCat}">${k}</button>`).join('')}</div>
@@ -259,7 +285,7 @@ const VIEWS = {
     const got = Object.values(s.shorts).reduce((a, h) => a + h.got, 0), un = hv - cost + got - sv, shorts = Object.entries(s.shorts).map(([k, h]) => ({ c: mkt.get(k), h })).filter((x) => x.c);
     const lvl = Account.marginLevel(s, mkt), nw = Account.netWorth(s, mkt);
     const held = Object.entries(s.holdings).map(([k, h]) => ({ c: mkt.get(k), h })).filter((x) => x.c);
-    const putIn = Account.START_CASH + s.payTotal, gain = nw - putIn; // everything the market has made or lost you
+    const putIn = Account.START_CASH + s.payTotal, gain = nw + s.spent - putIn; // everything the market has made or lost you
     const due = held.map(({ c, h }) => ({ c, h, v: mkt.nextDividend(c) })).filter((x) => x.v).sort((a, b) => a.v.pay - b.v.pay);
     const by = Object.entries(s.divBy).sort((a, b) => b[1] - a[1]);
     return `<h1>Portfolio</h1>
@@ -307,6 +333,7 @@ const VIEWS = {
       <div class="card"><h2>Money in</h2>
         <div class="row"><span>Starting savings</span><b>${money(Account.START_CASH)}</b></div>
         <div class="row"><span>Salary received</span><b>${money(s.payTotal)}</b></div>
+        <div class="row"><span>Spent on lifestyle</span><b>${money(s.spent)}</b></div>
       </div>
       ${comingUp()}
     </div>
@@ -314,6 +341,20 @@ const VIEWS = {
       <small>${longDate(t.d)}${t.t === 'X' ? ' · company went bankrupt' : ` · ${money(t.px)} each`}</small></span>
       <b>${t.t === 'X' ? '' : money(t.sh * t.px)}${t.t === 'B' || t.t === 'H' ? '' : `<small class="${cls(t.pl)}">${signed(t.pl)}</small>`}</b></div>`).join('')
       + (s.trades.length > 200 ? `<p class="muted">Showing the latest 200 of ${s.trades.length} trades.</p>` : '') : '<p class="muted" style="margin:0">Every buy and sell is recorded here.</p>'}</div>`;
+  },
+  you() {
+    const owned = Account.ITEMS.filter((x) => s.items.includes(x.id)), st = style(), cats = [...new Set(Account.ITEMS.map((x) => x.cat))];
+    return `<h1>You</h1>
+    <div class="cols">${levelCard(true)}
+      <div class="card"><h2>Investing style</h2><b style="font-size:18px">${st.name[0]}</b><div class="muted">${st.name[1]}</div>
+        ${Object.entries(st.bars).map(([k, v]) => `<div style="display:flex;align-items:center;gap:10px;margin-top:6px"><small style="width:62px">${k}</small><div class="bar" style="flex:1;margin:0"><i style="width:${v * 100}%"></i></div></div>`).join('')}</div>
+    </div>
+    <div class="card"><h2>Your life</h2><div class="scene">${owned.some((x) => x.cat === 'Home') ? '' : '<div class="tile"><span>🛏️</span>Basic apartment</div>'}${owned.map((x) => `<div class="tile"><span>${x.emoji}</span>${x.name}</div>`).join('')}</div></div>
+    <div class="card"><h2>Reinvest dividends</h2><div class="row"><span>${s.drip ? 'On: each dividend buys more shares of the same stock.' : 'Off: dividends arrive as cash.'}</span><button class="mini" data-act="drip">${s.drip ? 'Turn off' : 'Turn on'}</button></div></div>
+    <div class="card"><h2>Levels</h2>${Account.LEVELS.map(([at, name, em], i) => `<div class="row"><span>${em} ${name}</span><b class="${i <= Account.level(s) ? 'up' : 'muted'}">${i <= Account.level(s) ? 'Reached' : money(at)}</b></div>`).join('')}</div>
+    ${cats.map((cat) => `<div class="card"><h2>${cat}</h2>${Account.ITEMS.filter((x) => x.cat === cat).map((x) => { const mineIt = s.items.includes(x.id); return `<div class="row"><span>${x.emoji} ${x.name}<small>${x.about || 'For show'}</small></span>
+      ${mineIt ? `<button class="mini" data-sell-item="${x.id}">Sell for ${money(Math.floor(x.price * Account.RESALE))}</button>` : `<button class="mini" data-item="${x.id}" ${x.price > s.cash ? 'disabled style="opacity:.45"' : ''}>${money(x.price)}</button>`}</div>`; }).join('')}</div>`).join('')}
+    <p class="muted">Lifestyle is paid from cash and is not counted in your net worth. Anything can be sold back for ${Account.RESALE * 100}% of its price.</p>`;
   },
   friends: () => soon('Friends', 'Friend comparison and the weekly challenge arrive last.', 7),
   stock() {
@@ -341,6 +382,10 @@ const VIEWS = {
       : `<div class="card"><b class="down">Bankrupt and delisted on ${longDate(c.deadDay)}.</b><div class="muted">Its shares are worthless and no longer trade.</div></div>`}
     ${pos}${spos}
     ${orders.length ? `<div class="card"><h2>Your open orders</h2>${orders.map(orderRow).join('')}</div>` : ''}
+    ${!alive ? '' : Account.has(s, 'analyst') ? (() => { const g = gapOf(c); return `<div class="card"><h2>Analyst view</h2><b class="${g < -0.1 ? 'up' : g > 0.1 ? 'down' : ''}">${g < -0.1 ? 'Looks cheap' : g > 0.1 ? 'Looks expensive' : 'About fairly priced'}</b>
+      ${Account.has(s, 'desk') ? `<div class="row"><span>Estimated fair price</span><b>${money(Math.round(mkt.fair(c) * 100))}</b></div><div class="row"><span>Price against the estimate</span><b>${pct(g)}</b></div><div class="row"><span>Financial health score</span><b>${Math.max(0, Math.round(c.health))} / 100</b></div>` : ''}
+      <div class="muted" style="margin-top:6px">An estimate from the last quarterly report. Analysts are often wrong, most of all about volatile companies.</div></div>`; })()
+      : '<div class="card"><h2>Analyst view</h2><p class="muted" style="margin:0">A Private office adds an analyst view to every stock. Open your profile (top left) to see it.</p></div>'}
     <div class="card"><h2>News</h2>${newsRows(mkt.news.filter((x) => x.sym === sym).slice(-5).reverse(), 'No news about this company yet.')}</div>
     <div class="card"><h2>About</h2><p style="margin:0">${c.about}</p></div>
     <div class="card"><h2>Key numbers</h2><div class="stats">
@@ -394,7 +439,7 @@ function render() {
   if (sym && !mkt.get(sym)) sym = null;
   if (art !== null && !mkt.news[art]) art = null;
   $('date').textContent = longDate(s.day);
-  $('dayn').textContent = 'Day ' + Account.dayCount(s);
+  $('dayn').textContent = `${Account.LEVELS[Account.level(s)][1]} · Day ${Account.dayCount(s)}`;
   $('cash').textContent = money(s.cash);
   $('worth').textContent = money(Account.netWorth(s, mkt));
   $('nav').innerHTML = TABS.map(([id, em, name]) => `<button data-tab="${id}" ${id === tab ? 'aria-current="page"' : ''}><span>${em}</span>${name}</button>`).join('');
@@ -503,6 +548,8 @@ function catchUp() {
       <div class="row"><span>Worst: ${moves.at(-1).c.name}</span><b class="${cls(moves.at(-1).ch)}">${pct(moves.at(-1).ch)}</b></div>` : ''}
     ${bust.map((m) => `<div class="row"><span class="down">${m.c.name} went bankrupt. Your shares are worthless.</span></div>`).join('')}
     ${away.length ? `<div class="row" style="display:block"><span class="muted">Biggest news while you were away</span>${away.map(newsRow).join('')}</div>` : ''}
+    ${r.levelUp ? `<div class="row"><span><b>🎉 New level: ${Account.LEVELS[Account.level(s)][1]}</b></span></div>` : ''}
+    ${r.reinvested ? `<div class="row"><span>Dividends reinvested in more shares</span><b>${money(r.reinvested)}</b></div>` : ''}
     ${r.div ? `<div class="row"><span>Dividends</span><b class="${cls(r.div)}">${signed(r.div)}</b></div>` : ''}
     ${r.pay ? `<div class="row"><span>${r.paydays > 1 ? r.paydays + ' paydays' : 'Payday'}</span><b class="up">+${money(r.pay)}</b></div>` : ''}
     <div class="row"><span>Net worth</span><b>${money(Account.netWorth(s, mkt))}</b></div>
@@ -512,9 +559,14 @@ function catchUp() {
   return true;
 }
 
+const openYou = () => { tab = 'you'; sym = null; art = null; render(); $('view').scrollTop = 0; };
+$('youBtn').onclick = openYou;
 $('nav').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; sym = null; art = null; render(); $('view').scrollTop = 0; } };
 $('view').onclick = (e) => {
-  const t = e.target.closest('[data-sym],[data-frame],[data-act],[data-art],[data-cat],[data-cancel]'); if (!t) return;
+  const t = e.target.closest('[data-sym],[data-frame],[data-act],[data-art],[data-cat],[data-cancel],[data-you],[data-item],[data-sell-item],[data-preset]'); if (!t) return;
+  if ('you' in t.dataset) return openYou();
+  if (t.dataset.item || t.dataset.sellItem) { const r = t.dataset.item ? Account.buyItem(s, t.dataset.item) : Account.sellItem(s, t.dataset.sellItem); if (r.ok) { save(); render(); } return toast(r.ok ? (t.dataset.item ? `${r.item.emoji} ${r.item.name} is yours` : `Sold for ${money(r.got)}`) : r.error); }
+  if (t.dataset.preset) { const pr = PRESETS[t.dataset.preset]; if (pr.sort === 'value' && !Account.has(s, 'analyst')) return toast('Bargains needs the analyst view from a Private office'); Object.assign(disc, pr, { q: '', sector: '' }); return render(); }
   if (t.dataset.cancel) { Account.cancelOrder(s, +t.dataset.cancel); save(); render(); return toast('Order cancelled'); }
   if (t.dataset.sym) { sym = t.dataset.sym; art = null; render(); $('view').scrollTop = 0; }
   else if (t.dataset.art) { art = +t.dataset.art; render(); $('view').scrollTop = 0; }
@@ -523,6 +575,7 @@ $('view').onclick = (e) => {
   else if (t.dataset.act === 'back') { if (art !== null) art = null; else sym = null; render(); }
   else if (t.dataset.act === 'kind') { kind = kind === 'line' ? 'candle' : 'line'; t.textContent = kind === 'line' ? 'Candles' : 'Line'; drawChart(); }
   else if (t.dataset.act === 'adv-on' || t.dataset.act === 'adv-off') { const r = Account.setAdvanced(s, mkt, t.dataset.act === 'adv-on'); if (r.ok) { save(); render(); } toast(r.ok ? `Advanced trading is ${s.adv ? 'on' : 'off'}` : r.error); }
+  else if (t.dataset.act === 'drip') { Account.setDrip(s, !s.drip); save(); render(); }
   else if (t.dataset.act === 'watch') { toast(Account.toggleWatch(s, sym) ? 'Added to your watchlist' : 'Removed from your watchlist'); save(); render(); }
   else if (t.dataset.act === 'writeoff') { const r = Account.writeOff(s, mkt, sym); if (r.ok) { save(); render(); toast(`Written off · ${signed(r.pl)}`); } }
   else openTrade(t.dataset.act);

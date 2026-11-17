@@ -8,7 +8,7 @@ const Market = (() => {
   const { SECTORS, COMPANIES } = typeof module !== 'undefined' ? require('./companies.js') : Companies;
   const { LANDS, FIRST, LAST, SOURCES, CO, GLOBAL, REGIME_NEWS, coTitle, level, spc } = typeof module !== 'undefined' ? require('./events.js') : Events;
   const SEED = 505, GENESIS = 18932; // 1 Nov 2021: five years of history before launch
-  const DIV_LAG = 14, KAPPA = 0.012; // how fast mood swings fade back to fundamentals (half-life about 2 months)
+  const DIV_LAG = 14, KAPPA = 0.005; // how fast mood swings fade back to fundamentals
   // the economy moves through four phases; each has its own market drift and nervousness
   const REGIMES = ['Expansion', 'Slowdown', 'Recession', 'Recovery'];
   const MU = [0.00028, -0.00005, -0.0011, 0.0007], SIG = [0.007, 0.009, 0.016, 0.011], EXIT = [1 / 500, 1 / 150, 1 / 120, 1 / 150];
@@ -199,6 +199,11 @@ const Market = (() => {
       change(c, d = day) { return trading(c, d) && d > c.listDay ? px(c, d) / px(c, d - 1) - 1 : 0; },
       indexAt: (d = day) => index[Math.max(0, Math.min(day, d) - GENESIS)],
       cap: (c) => px(c) * c.shares,
+      // what an analyst thinks a share is worth. Analysts see the fundamentals imperfectly: each quarterly report gives them a fresh, persistent error.
+      // what an analyst thinks a share is worth. Analysts see the fundamentals imperfectly: each quarterly report gives them a fresh, persistent error.
+      // what an analyst thinks a share is worth. Analysts see the fundamentals imperfectly: each quarterly report gives them a fresh, persistent error.
+      // what an analyst thinks a share is worth. Analysts see the fundamentals imperfectly: each quarterly report gives them a fresh, persistent error.
+      fair: (c) => Math.exp(c.F + 22 * c.vol * g(c.lastReport, c.id, 200)),
       yield: (c) => (px(c) ? c.dps / px(c) : 0),
       // shares traded: busier on big moves
       volume(c, d = day) { return trading(c, d) ? Math.round(c.shares * 0.004 * (1 + 25 * Math.abs(mkt.change(c, d))) * (0.7 + 0.6 * u(d, c.id, 3))) : 0; },

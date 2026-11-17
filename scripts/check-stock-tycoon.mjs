@@ -313,4 +313,33 @@ ok([1, 2, 3].every((y) => liveAt(M.build(T + 365 * y)).length >= 50), 'at least 
   ok(A.decode(A.encode(v3))?.adv === false && A.decode(A.encode({ ...A.fresh(T), cash: -5 })) === null, 'a save from before advanced trading still loads; a debt without advanced trading is rejected');
 }
 
+
+// ---- wealth levels, lifestyle, reinvesting, research
+{
+  const p = A.fresh(T);
+  ok(A.level(p) === 0 && A.LEVELS.length === 7 && A.LEVELS.every((l, i) => !i || l[0] > A.LEVELS[i - 1][0]), 'a new player is a Beginner investor, with seven levels up to Billionaire');
+  p.cash = 6000000; ok(A.touchPeak(p, m) && A.level(p) === 2 && !A.touchPeak(p, m), 'reaching $60,000 makes an Experienced investor, announced once');
+  p.cash = 100; A.touchPeak(p, m); ok(A.level(p) === 2 && p.peak === 6000000, 'a level is never lost when net worth falls');
+  const q = A.fresh(T); q.cash = 5000000; const nw = A.netWorth(q, m);
+  ok(!A.buyItem(q, 'home2').ok && !A.buyItem(q, 'nope').ok && A.buyItem(q, 'office1').ok && !A.buyItem(q, 'office1').ok && q.cash === 2000000 && A.netWorth(q, m) === nw - 3000000, 'lifestyle is paid in full from cash, once each, and is not part of net worth');
+  ok(A.has(q, 'analyst') && !A.has(q, 'desk') && !A.has(A.fresh(T), 'analyst') && A.lifestyleValue(q) === 1800000, 'a private office unlocks the analyst view; it would sell for 60%');
+  const sold = A.sellItem(q, 'office1');
+  ok(sold.ok && sold.got === 1800000 && q.cash === 3800000 && !A.has(q, 'analyst') && !A.sellItem(q, 'office1').ok, 'selling it back returns 60% and removes the perk: buying and selling can never make money');
+  const b = A.fresh(T); b.cash = 3000000; A.setAdvanced(b, m, true); A.buy(b, m, 'QLLN', Math.floor(5500000 / m.cents(m.get('QLLN'))));
+  ok(b.cash < 0 && !A.buyItem(b, 'car1').ok, 'lifestyle cannot be bought with borrowed money');
+  ok(A.decode(A.encode({ ...A.fresh(T), items: ['office1', 'office1'] })) === null && A.decode(A.encode({ ...A.fresh(T), items: ['gold'] })) === null, 'a save with duplicate or made-up items is rejected');
+  const { peak, items, drip, ...v4 } = { ...A.fresh(T), v: 4, worth: [[T - 1, 2345600]] };
+  ok(A.decode(A.encode(v4))?.peak === 2345600, 'a save from before levels existed loads, with its level worked out from its history');
+  // reinvesting dividends
+  const end = T + 400, mk = M.build(end), plain = A.fresh(T), re = A.fresh(T); re.drip = true;
+  A.buy(plain, m, 'HBSB', 200); A.buy(re, m, 'HBSB', 200);
+  const rp = A.tick(plain, end, mk), rr = A.tick(re, end, mk), extra = re.holdings.HBSB.sh - 200;
+  ok(extra > 0 && rr.reinvested > 0 && re.trades.filter((t) => t.drip).length >= 4 && re.cash === plain.cash + (rr.div - rp.div) - rr.reinvested && re.cash >= 0, `with reinvesting on, 400 days of dividends bought ${extra} more shares, and every cent is accounted for`);
+  // research is worth something: stocks the analyst calls cheap do better than the ones called expensive
+  let cheap = 0, nc = 0, dear = 0, nd = 0;
+  for (let d = T - 1500; d <= T - 90; d += 30) { const then = M.build(d); for (const c of then.companies) { if (!then.trading(c) || c.deadDay !== null) continue; const now = m.get(c.sym), gap = then.px(c) / then.fair(c) - 1;
+    if (!m.trading(now, d + 90)) continue; const fwd = m.px(now, d + 90) / m.px(now, d) - 1; if (gap < -0.1) { cheap += fwd; nc++; } else if (gap > 0.1) { dear += fwd; nd++; } } }
+  ok(nc > 100 && nd > 100 && cheap / nc > dear / nd + 0.01 && cheap / nc < dear / nd + 0.08, `over the next 90 days, stocks priced 10% under the analyst's estimate returned ${(cheap / nc * 100).toFixed(1)}% on average, those 10% over it ${(dear / nd * 100).toFixed(1)}%`);
+}
+
 console.log(fails.length ? `\n${fails.length} FAILED` : '\nall ok'); process.exit(fails.length ? 1 : 0);

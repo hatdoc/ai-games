@@ -2,7 +2,7 @@
 // its own: the caller passes in today's day number and the market. Runs in the browser and in Node (scripts/check-stock-tycoon.mjs).
 // Money is whole cents everywhere. A game day is a real calendar day in the player's own timezone.
 const Account = (() => {
-  const VERSION = 4, KEY = 'stock-tycoon-save', BAK = KEY + '-bak';
+  const VERSION = 5, KEY = 'stock-tycoon-save', BAK = KEY + '-bak';
   const START_CASH = 1000000; // savings the player arrives with
   const SALARY = 150000, PAY_EVERY = 14; // the job pays by itself every fortnight: the way back after losing everything
   // advanced trading (borrowing and short selling), off until the player turns it on
@@ -11,6 +11,26 @@ const Account = (() => {
   const MAINT = 0.3; // margin call: below this share, positions are closed for you until you are back at INIT
   const LOAN_SPREAD = 3, SHORT_FEE = 4; // yearly %: loans cost the central bank rate + 3, borrowed shares cost 4
   const ORDER_DAYS = 30, MAX_ORDERS = 20;
+  // wealth levels, by the highest net worth ever reached (cents)
+  const LEVELS = [[0, 'Beginner investor', '🌱'], [1500000, 'Retail investor', '📈'], [5000000, 'Experienced investor', '🎯'], [25000000, 'Wealthy investor', '💼'],
+    [100000000, 'Millionaire', '💎'], [1000000000, 'Multi-millionaire', '🏆'], [100000000000, 'Billionaire', '👑']];
+  // lifestyle: things to spend wealth on. Bought with cash (never borrowed), sold back for 60%. They are not part of net worth.
+  // Offices come with research: 'analyst' shows whether a stock looks cheap or expensive, 'desk' shows the estimate itself.
+  const RESALE = 0.6;
+  const ITEMS = [
+    { id: 'home1', cat: 'Home', emoji: '🏠', name: 'Better apartment', price: 4000000 },
+    { id: 'home2', cat: 'Home', emoji: '🏙️', name: 'Luxury apartment', price: 25000000 },
+    { id: 'home3', cat: 'Home', emoji: '🌆', name: 'Penthouse', price: 200000000 },
+    { id: 'office1', cat: 'Office', emoji: '🗄️', name: 'Private office', price: 3000000, perk: 'analyst', about: 'Analyst view on every stock: cheap, fair or expensive' },
+    { id: 'office2', cat: 'Office', emoji: '🏢', name: 'Executive office', price: 50000000, perk: 'desk', about: 'Research desk: the estimated fair price and exact financial health of every stock' },
+    { id: 'car1', cat: 'Vehicle', emoji: '🚗', name: 'Reliable hatchback', price: 800000 },
+    { id: 'car2', cat: 'Vehicle', emoji: '🏎️', name: 'Sports car', price: 12000000 },
+    { id: 'car3', cat: 'Vehicle', emoji: '🚁', name: 'Helicopter', price: 300000000 },
+    { id: 'lux1', cat: 'Luxury', emoji: '⌚', name: 'Fine watch', price: 1500000 },
+    { id: 'lux2', cat: 'Luxury', emoji: '🛥️', name: 'Yacht', price: 500000000 },
+    { id: 'lux3', cat: 'Luxury', emoji: '🛩️', name: 'Private jet', price: 4000000000 },
+    { id: 'lux4', cat: 'Luxury', emoji: '🏝️', name: 'Private island', price: 30000000000 },
+  ];
 
   // calendar day number in the player's timezone; tzOffsetMin is Date#getTimezoneOffset() (minutes behind UTC)
   const dayNumber = (ms, tzOffsetMin) => Math.floor((ms - tzOffsetMin * 60000) / 864e5);
@@ -22,7 +42,8 @@ const Account = (() => {
   // trades:   [{ d, t: 'B' buy | 'S' sell | 'H' short | 'C' cover | 'X' written off, k, sh, px: cents each, pl: realised cents, lim?: limit order, liq?: margin call }]
   // divs:     [{ d, k, sh, c: cents per share }] (sh negative = paid by a short). worth: [[day, net worth at close]]
   const fresh = (today) => ({ v: VERSION, rev: 0, start: today, day: today, cash: START_CASH, paid: 0, payTotal: 0, holdings: {}, trades: [], realised: 0, watch: [],
-    divTotal: 0, divBy: {}, divs: [], worth: [], shorts: {}, orders: [], oid: 0, adv: false, costs: 0 }); // costs: interest and borrow fees paid
+    divTotal: 0, divBy: {}, divs: [], worth: [], shorts: {}, orders: [], oid: 0, adv: false, costs: 0, // costs: interest and borrow fees paid
+    peak: START_CASH, items: [], drip: false, spent: 0 }); // spent: cash put into lifestyle, net of what sales returned // peak: highest net worth reached. items: lifestyle ids owned. drip: reinvest dividends
   const value = (book, mkt, d) => Object.keys(book).reduce((v, k) => { const c = mkt.get(k); return v + (c ? book[k].sh * mkt.cents(c, d) : 0); }, 0);
   const holdingsValue = (s, mkt, d) => value(s.holdings, mkt, d);
   const shortValue = (s, mkt, d) => value(s.shorts, mkt, d); // what it would cost to buy back every shorted share
@@ -31,6 +52,9 @@ const Account = (() => {
   const marginLevel = (s, mkt, d) => { const g = exposure(s, mkt, d); return g ? netWorth(s, mkt, d) / g : Infinity; }; // 1 = no borrowing at all
   // how many cents of new positions can be opened right now
   const buyingPower = (s, mkt, d) => (s.adv ? Math.max(0, Math.floor(netWorth(s, mkt, d) / INIT) - exposure(s, mkt, d)) : Math.max(0, s.cash));
+  const level = (s) => { let i = 0; while (i + 1 < LEVELS.length && s.peak >= LEVELS[i + 1][0]) i++; return i; };
+  const has = (s, perk) => ITEMS.some((x) => x.perk === perk && s.items.includes(x.id)) || (perk === 'analyst' && has(s, 'desk'));
+  const lifestyleValue = (s) => ITEMS.reduce((a, x) => a + (s.items.includes(x.id) ? Math.floor(x.price * RESALE) : 0), 0); // what it would all sell for
   const dayCount = (s) => s.day - s.start + 1;
   const nextPayIn = (s) => PAY_EVERY - ((s.day - s.start) % PAY_EVERY); // days until the next payday, 1..14
 
@@ -133,6 +157,23 @@ const Account = (() => {
     s.orders.push(o);
     return { ok: true, order: o };
   }
+  function buyItem(s, id) {
+    const x = ITEMS.find((i) => i.id === id);
+    if (!x) return no('No such item');
+    if (s.items.includes(id)) return no('You already own this');
+    if (x.price > s.cash) return no('Not enough cash. Lifestyle cannot be bought with borrowed money.');
+    s.cash -= x.price; s.spent += x.price; s.items.push(id);
+    return { ok: true, item: x };
+  }
+  function sellItem(s, id) {
+    const x = ITEMS.find((i) => i.id === id), i = s.items.indexOf(id);
+    if (!x || i < 0) return no('You do not own this');
+    s.items.splice(i, 1); s.cash += Math.floor(x.price * RESALE); s.spent -= Math.floor(x.price * RESALE);
+    return { ok: true, item: x, got: Math.floor(x.price * RESALE) };
+  }
+  function setDrip(s, on) { s.drip = !!on; return { ok: true }; }
+  // a new high in net worth can raise the level; call after anything that can change net worth
+  function touchPeak(s, mkt, d) { const before = level(s); s.peak = Math.max(s.peak, netWorth(s, mkt, d)); return level(s) > before; }
   function cancelOrder(s, id) { const i = s.orders.findIndex((o) => o.id === id); if (i < 0) return no('No such order'); s.orders.splice(i, 1); return { ok: true }; }
 
   // ---- the daily tick. Catch the account up to today, one day at a time: record each day's closing net worth, then on
@@ -140,7 +181,7 @@ const Account = (() => {
   // Safe to call any number of times. A clock that went backwards changes nothing (the account never moves back in time).
   // mkt must be the market built for `today` (it can be left out only when the account has no positions or orders).
   function tick(s, today, mkt) {
-    const out = { days: Math.max(0, today - s.day), paydays: 0, pay: 0, div: 0, costs: 0, fills: [], dropped: [], liquidated: [], squeezed: [] };
+    const out = { days: Math.max(0, today - s.day), paydays: 0, pay: 0, div: 0, costs: 0, fills: [], dropped: [], liquidated: [], squeezed: [], reinvested: 0, levelUp: false };
     for (let d = s.day; d < today; d++) {
       if (mkt) { s.worth.push([d, netWorth(s, mkt, d)]); if (s.worth.length > 2000) s.worth.shift(); } // ponytail: keeps the latest 2000 days
       const D = s.day = d + 1;
@@ -153,7 +194,12 @@ const Account = (() => {
         s.divs.push({ d: D, k, sh, c: cents }); if (s.divs.length > 2000) s.divs.shift();
       };
       if (s.cash < 0) charge(Math.ceil(-s.cash * (mkt.rateAt(D) + LOAN_SPREAD) / 36500)); // a day's interest on the loan
-      for (const k in s.holdings) { const c = mkt.get(k), cents = c ? mkt.dividendOn(c, D) : 0; if (cents) dividend(k, s.holdings[k].sh, cents); }
+      for (const k of Object.keys(s.holdings)) {
+        const c = mkt.get(k), cents = c ? mkt.dividendOn(c, D) : 0; if (!cents) continue;
+        const got = s.holdings[k].sh * cents, px = mkt.cents(c, D), n = s.drip && px ? Math.floor(Math.min(got, Math.max(0, s.cash + got)) / px) : 0;
+        dividend(k, s.holdings[k].sh, cents);
+        if (n > 0) { doBuy(s, k, n, px, { drip: 1 }); out.reinvested += n * px; } // reinvest: whole shares of the same stock, the rest stays as cash
+      }
       for (const k of Object.keys(s.shorts)) {
         const c = mkt.get(k), h = s.shorts[k];
         if (!c || !mkt.trading(c, D)) { out.squeezed.push({ k, pl: doCover(s, k, h.sh, 0, { auto: 1 }) }); continue; } // bankrupt: nothing left to buy back
@@ -184,6 +230,7 @@ const Account = (() => {
         }
         s.orders.length = 0; // and every open order is cancelled
       }
+      if (touchPeak(s, mkt, D)) out.levelUp = true;
     }
     return out;
   }
@@ -201,6 +248,7 @@ const Account = (() => {
       if (s.v === 1) Object.assign(s, { v: 2, holdings: {}, trades: [], realised: 0, watch: [] }); // before trading existed
       if (s.v === 2) Object.assign(s, { v: 3, divTotal: 0, divBy: {}, divs: [], worth: [] }); // before dividends existed
       if (s.v === 3) Object.assign(s, { v: 4, shorts: {}, orders: [], oid: 0, adv: false, costs: 0 }); // before advanced trading existed
+      if (s.v === 4) Object.assign(s, { v: 5, peak: Math.max(START_CASH, ...s.worth.map((w) => w[1])), items: [], drip: false, spent: 0 }); // before levels and lifestyle existed
       if (s.v !== VERSION) return null;
       const ok = int(s.rev, 0) && int(s.start, 0) && int(s.day, s.start) && Number.isSafeInteger(s.cash) && (s.cash >= 0 || s.adv === true) && int(s.payTotal, 0)
         && int(s.paid, 0) && s.paid <= Math.floor((s.day - s.start) / PAY_EVERY) && Number.isSafeInteger(s.realised)
@@ -208,6 +256,7 @@ const Account = (() => {
         && Array.isArray(s.trades) && Array.isArray(s.watch) && s.watch.every((k) => typeof k === 'string')
         && obj(s.holdings) && Object.values(s.holdings).every((h) => h && int(h.sh, 1) && int(h.cost, 0))
         && obj(s.shorts) && Object.values(s.shorts).every((h) => h && int(h.sh, 1) && int(h.got, 0)) && (s.adv === true || !Object.keys(s.shorts).length)
+        && int(s.peak, 0) && int(s.spent, 0) && typeof s.drip === 'boolean' && Array.isArray(s.items) && new Set(s.items).size === s.items.length && s.items.every((id) => ITEMS.some((x) => x.id === id))
         && typeof s.adv === 'boolean' && int(s.oid, 0) && int(s.costs, 0) && Array.isArray(s.orders) && s.orders.length <= MAX_ORDERS
         && s.orders.every((o) => o && int(o.id, 1) && typeof o.k === 'string' && (o.side === 'B' || o.side === 'S') && int(o.sh, 1) && int(o.lim, 1) && int(o.exp, 0));
       return ok ? s : null;
@@ -228,7 +277,7 @@ const Account = (() => {
     } catch { return false; }
   }
 
-  return { VERSION, KEY, BAK, START_CASH, SALARY, PAY_EVERY, ADV_MIN, INIT, MAINT, LOAN_SPREAD, SHORT_FEE, ORDER_DAYS, MAX_ORDERS, dayNumber, date, fresh,
+  return { VERSION, KEY, BAK, START_CASH, SALARY, PAY_EVERY, ADV_MIN, INIT, MAINT, LOAN_SPREAD, SHORT_FEE, ORDER_DAYS, MAX_ORDERS, LEVELS, ITEMS, RESALE, level, has, lifestyleValue, buyItem, sellItem, setDrip, touchPeak, dayNumber, date, fresh,
     holdingsValue, shortValue, netWorth, exposure, marginLevel, buyingPower, dayCount, nextPayIn, tick,
     buy, sell, short, cover, writeOff, toggleWatch, setAdvanced, placeOrder, cancelOrder, encode, decode, load, save };
 })();
