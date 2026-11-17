@@ -8,7 +8,7 @@ const Market = (() => {
   const { SECTORS, COMPANIES } = typeof module !== 'undefined' ? require('./companies.js') : Companies;
   const { LANDS, FIRST, LAST, SOURCES, CO, GLOBAL, REGIME_NEWS, coTitle, level, spc } = typeof module !== 'undefined' ? require('./events.js') : Events;
   const SEED = 505, GENESIS = 18932; // 1 Nov 2021: five years of history before launch
-  const KAPPA = 0.012; // how fast mood swings fade back to fundamentals (half-life about 2 months)
+  const DIV_LAG = 14, KAPPA = 0.012; // how fast mood swings fade back to fundamentals (half-life about 2 months)
   // the economy moves through four phases; each has its own market drift and nervousness
   const REGIMES = ['Expansion', 'Slowdown', 'Recession', 'Recovery'];
   const MU = [0.00028, -0.00005, -0.0011, 0.0007], SIG = [0.007, 0.009, 0.016, 0.011], EXIT = [1 / 500, 1 / 150, 1 / 120, 1 / 150];
@@ -60,13 +60,15 @@ const Market = (() => {
       return { ...def, sector, si: SECKEYS.indexOf(def.sec), ps, margin, cyc, hue: (def.id * 47) % 360, shares: def.sharesM * 1e6, riskLabel: RISK[r - 1],
         beta: beta * (0.85 + 0.05 * r), vol: vol * (0.55 + 0.15 * r), growth: growth * (0.6 + 0.13 * r), debt: debt * (0.4 + 0.2 * r),
         health: 100 - 14 * r + (u(0, def.id, 7) - 0.5) * 16, rep: Math.round(40 + 55 * u(0, def.id, 8)), off: 1 + Math.floor(u(0, def.id, 9) * 90),
-        close: new Float64Array(n), listDay: null, deadDay: null, F: 0, S: 0, ceoN: 0 };
+        close: new Float64Array(n), listDay: null, deadDay: null, F: 0, S: 0, ceoN: 0, divs: [] };
     });
     // what the last earnings report showed: these are the numbers on the company page until the next report
     const report = (c, d) => {
       const fair = Math.exp(c.F);
       c.revenue = fair * c.shares / c.ps; c.profit = c.revenue * (c.margin + (c.health - 60) * 0.001); c.debtAbs = c.debt * c.revenue * 0.5;
       c.dps = c.health < 25 ? 0 : c.yld / 100 * fair; c.lastReport = d; // a company in trouble cuts its dividend
+      // each report declares the quarter's dividend, paid two weeks later to whoever held the shares the day before
+      if (c.dps > 0) c.divs.push({ decl: d, pay: d + DIV_LAG, cents: Math.max(1, Math.round(c.dps * 25)) });
     };
     const list = (c, d) => { c.listDay = d; c.F = Math.log(c.price); c.close[d - GENESIS] = c.price; report(c, d); };
     let nextReserve = cos.findIndex((c) => c.reserve), reg = 0;
@@ -130,6 +132,8 @@ const Market = (() => {
         c.F += (c.growth - 0.04) * 0.25 / 365 + c.beta * m + (c.cyc - 1) * TILT[reg] + sec[c.si] - RATE(c) * EXPECT[c.sec].mag;
         // mood: daily noise that fades back toward fundamentals
         c.S = c.S * (1 - KAPPA) + c.vol * g(d, c.id, 0);
+        const dv = c.divs[c.divs.length - 1]; // payment day: the cash leaves the company, so the share is worth that much less
+        if (dv && dv.pay === d) c.F += Math.log(Math.max(0.5, 1 - dv.cents / 100 / prev));
         if ((d - c.listDay) % 91 === c.off) { // quarterly earnings: a surprise moves value, health and growth
           const e = g(d, c.id, 2);
           c.F += e * c.vol * 2.2;
@@ -197,6 +201,9 @@ const Market = (() => {
       yield: (c) => (px(c) ? c.dps / px(c) : 0),
       // shares traded: busier on big moves
       volume(c, d = day) { return trading(c, d) ? Math.round(c.shares * 0.004 * (1 + 25 * Math.abs(mkt.change(c, d))) * (0.7 + 0.6 * u(d, c.id, 3))) : 0; },
+      // cents per share paid on day d (0 if none). A company that has gone bankrupt by then pays nothing.
+      dividendOn(c, d) { if (!(d <= day) || (c.deadDay !== null && d >= c.deadDay)) return 0; const v = c.divs.find((x) => x.pay === d); return v ? v.cents : 0; },
+      nextDividend: (c) => (c.deadDay === null && c.divs.find((x) => x.pay > day)) || null, // declared but not yet paid
       nextReport: (c) => day + ((c.off - (day - c.listDay)) % 91 + 91 - 1) % 91 + 1, // day of the next earnings report
       nextRates: () => day + (30 - day % 30), // day of the next interest rate decision
       healthLabel: (c) => (c.deadDay !== null ? 'Bankrupt' : c.health >= 70 ? 'Strong' : c.health >= 45 ? 'Stable' : c.health >= 25 ? 'Weak' : 'Distressed'),

@@ -167,6 +167,7 @@ const NEWS_CATS = { All: () => true, 'My stocks': (x) => mine().has(x.sym), Worl
   Companies: (x) => ['Company', 'Industry', 'Deals'].includes(x.cat), Results: (x) => x.cat === 'Results', Rumours: (x) => x.cat === 'Rumour', Markets: (x) => x.cat === 'Markets' };
 // what is coming: payday, the rate decision, and earnings reports for stocks the player holds or watches
 const comingUp = () => { const n = Account.nextPayIn(s), items = [[s.day + n, `Payday: ${money(Account.SALARY)}`], [mkt.nextRates(), 'Interest rate decision']];
+  for (const k in s.holdings) { const c = mkt.get(k), v = c && mkt.nextDividend(c); if (v) items.push([v.pay, `${c.name} dividend: ${money(v.cents * s.holdings[k].sh)}`]); }
   for (const k of mine()) { const c = mkt.get(k); if (c && mkt.trading(c) && mkt.nextReport(c) - s.day <= 21) items.push([mkt.nextReport(c), `${c.name} reports earnings`]); }
   return `<div class="card"><h2>Coming up</h2>${items.sort((a, b) => a[0] - b[0]).map(([d, t]) => `<div class="row"><span>${t}</span><b>${d - s.day === 1 ? 'Tomorrow' : 'in ' + days(d - s.day)}<small>${longDate(d)}</small></b></div>`).join('')}</div>`; };
 const rows = (list, empty) => (list.length ? list.map((c) => stockRow(c)).join('') : `<p class="muted" style="margin:0">${empty}</p>`);
@@ -249,34 +250,52 @@ const VIEWS = {
   portfolio() {
     const hv = Account.holdingsValue(s, mkt), cost = Object.values(s.holdings).reduce((a, h) => a + h.cost, 0), un = hv - cost;
     const held = Object.entries(s.holdings).map(([k, h]) => ({ c: mkt.get(k), h })).filter((x) => x.c);
+    const putIn = Account.START_CASH + s.payTotal, gain = s.cash + hv - putIn; // everything the market has made or lost you
+    const due = held.map(({ c, h }) => ({ c, h, v: mkt.nextDividend(c) })).filter((x) => x.v).sort((a, b) => a.v.pay - b.v.pay);
+    const by = Object.entries(s.divBy).sort((a, b) => b[1] - a[1]);
     return `<h1>Portfolio</h1>
+    <div class="card"><h2>Net worth</h2><div class="big num" id="wpx"></div><div id="wch"></div>
+      ${s.worth.length ? '<canvas id="wchart" aria-label="Net worth over time"></canvas>' : '<p class="muted" style="margin:8px 0 0">Your net worth chart starts tomorrow, with one point for every day.</p>'}</div>
     <div class="cols">
       <div class="card"><h2>Overview</h2>
-        <div class="row"><span>Net worth</span><b>${money(s.cash + hv)}</b></div>
         <div class="row"><span>Cash</span><b>${money(s.cash)}</b></div>
         <div class="row"><span>Stocks</span><b>${money(hv)}</b></div>
+        <div class="row"><span>Paid for those stocks</span><b>${money(cost)}</b></div>
         <div class="row"><span>Today on your stocks</span><b class="${cls(dayMove())}">${signed(dayMove())}</b></div>
       </div>
       <div class="card"><h2>Performance</h2>
+        <div class="row"><span>Made from investing, in total</span><b class="${cls(gain)}">${signed(gain)} (${pct(gain / putIn)})</b></div>
         <div class="row"><span>Profit on stocks you hold</span><b class="${cls(un)}">${signed(un)}${cost ? ` (${pct(un / cost)})` : ''}</b></div>
         <div class="row"><span>Profit on stocks you sold</span><b class="${cls(s.realised)}">${signed(s.realised)}</b></div>
-        <div class="row"><span>Starting savings</span><b>${money(Account.START_CASH)}</b></div>
-        <div class="row"><span>Salary received</span><b>${money(s.payTotal)}</b></div>
+        <div class="row"><span>Dividends received</span><b class="${cls(s.divTotal)}">${signed(s.divTotal)}</b></div>
       </div>
     </div>
     <div class="card"><h2>Holdings</h2>${held.length ? held.map(({ c, h }) => { const v = h.sh * mkt.cents(c), pl = v - h.cost; return `<button class="stock" data-sym="${c.sym}">${logo(c)}
-      <span class="nm"><b>${c.name}</b><small>${h.sh} shares · avg ${money(Math.round(h.cost / h.sh))} · now ${mkt.trading(c) ? money(mkt.cents(c)) : 'delisted'}</small></span>
+      <span class="nm"><b>${c.name}</b><small>${h.sh} shares · avg ${money(Math.round(h.cost / h.sh))} · now ${mkt.trading(c) ? money(mkt.cents(c)) : 'delisted'} · yield ${(mkt.yield(c) * 100).toFixed(1)}%</small></span>
       <span class="px"><b>${money(v)}</b><small class="${cls(pl)}">${signed(pl)} (${pct(h.cost ? pl / h.cost : 0)})</small></span></button>`; }).join('')
       : '<p class="muted" style="margin:0">You hold no stocks yet.</p>'}</div>
+    <div class="cols">
+      <div class="card"><h2>Dividends coming</h2>${due.length ? due.map(({ c, h, v }) => `<div class="row"><span>${c.name}<small>${longDate(v.pay)} · ${h.sh} shares x ${money(v.cents)}</small></span><b>${money(h.sh * v.cents)}</b></div>`).join('')
+        : '<p class="muted" style="margin:0">No dividends are declared on your stocks. Companies declare one with each quarterly report and pay it two weeks later, to shares held the day before.</p>'}</div>
+      <div class="card"><h2>Dividend income</h2><div class="row"><span>Total received</span><b>${money(s.divTotal)}</b></div>
+        ${by.map(([k, v]) => `<div class="row"><span>${(mkt.get(k) || { name: k }).name}</span><b>${money(v)}</b></div>`).join('')}</div>
+    </div>
+    ${s.divs.length ? `<div class="card"><h2>Dividend payments</h2>${s.divs.slice(-30).reverse().map((v) => `<div class="row"><span>${v.k}<small>${longDate(v.d)} · ${v.sh} shares x ${money(v.c)}</small></span><b class="up">+${money(v.sh * v.c)}</b></div>`).join('')}</div>` : ''}
+    <div class="cols">
+      <div class="card"><h2>Money in</h2>
+        <div class="row"><span>Starting savings</span><b>${money(Account.START_CASH)}</b></div>
+        <div class="row"><span>Salary received</span><b>${money(s.payTotal)}</b></div>
+      </div>
+      ${comingUp()}
+    </div>
     <div class="card"><h2>Trade history</h2>${s.trades.length ? s.trades.slice(-200).reverse().map((t) => `<div class="row"><span>${{ B: 'Bought', S: 'Sold', X: 'Wrote off' }[t.t]} ${t.sh} ${t.k}
       <small>${longDate(t.d)}${t.t === 'X' ? ' · company went bankrupt' : ` · ${money(t.px)} each`}</small></span>
       <b>${t.t === 'X' ? '' : money(t.sh * t.px)}${t.t === 'B' ? '' : `<small class="${cls(t.pl)}">${signed(t.pl)}</small>`}</b></div>`).join('')
-      + (s.trades.length > 200 ? `<p class="muted">Showing the latest 200 of ${s.trades.length} trades.</p>` : '') : '<p class="muted" style="margin:0">Every buy and sell is recorded here.</p>'}</div>
-    ${comingUp()}`;
+      + (s.trades.length > 200 ? `<p class="muted">Showing the latest 200 of ${s.trades.length} trades.</p>` : '') : '<p class="muted" style="margin:0">Every buy and sell is recorded here.</p>'}</div>`;
   },
   friends: () => soon('Friends', 'Friend comparison and the weekly challenge arrive last.', 7),
   stock() {
-    const c = mkt.get(sym), alive = mkt.trading(c), h = s.holdings[sym], watching = s.watch.includes(sym);
+    const c = mkt.get(sym), alive = mkt.trading(c), h = s.holdings[sym], watching = s.watch.includes(sym), nd = mkt.nextDividend(c);
     const stat = (k, v) => `<div class="row"><small>${k}</small><b>${v}</b></div>`;
     const pos = h ? (() => { const v = h.sh * mkt.cents(c), pl = v - h.cost; return `<div class="card"><h2>Your position</h2>
       <div class="row"><span>${h.sh} shares · avg ${money(Math.round(h.cost / h.sh))}</span><b>${money(v)}</b></div>
@@ -297,7 +316,7 @@ const VIEWS = {
     <div class="card"><h2>About</h2><p style="margin:0">${c.about}</p></div>
     <div class="card"><h2>Key numbers</h2><div class="stats">
       ${stat('Company value', big(mkt.cap(c)))}${stat('Shares traded today', mkt.volume(c).toLocaleString('en-US'))}
-      ${stat('Dividend yield', (mkt.yield(c) * 100).toFixed(2) + '%')}${stat('Dividend per share, yearly', money(Math.round(c.dps * 100)))}
+      ${stat('Dividend yield', (mkt.yield(c) * 100).toFixed(2) + '%')}${stat('Next dividend', nd ? `${money(nd.cents)} a share on ${longDate(nd.pay)}` : 'None declared')}
       ${stat('Revenue, yearly', big(c.revenue))}${stat('Profit, yearly', big(c.profit))}
       ${stat('Debt', big(c.debtAbs))}${stat('Growth rate', (c.growth * 100).toFixed(1) + '%')}
       ${stat('Risk', c.riskLabel)}${stat('Typical daily move', (c.vol * 100).toFixed(1) + '%')}
@@ -319,6 +338,17 @@ function drawChart() {
   Chart.attach($('chart'), pts, show);
 }
 
+function drawWorth() {
+  const pts = [...s.worth.map(([d, v]) => ({ d, v: v / 100 })), { d: s.day, v: Account.netWorth(s, mkt) / 100 }];
+  const show = (p) => {
+    const v = p ? p.v : pts[pts.length - 1].v, ch = v / pts[0].v - 1;
+    $('wpx').textContent = money(Math.round(v * 100));
+    $('wch').innerHTML = `<span class="${cls(ch)}">${signed(Math.round((v - pts[0].v) * 100))} (${pct(ch)})</span> <span class="muted">${p ? longDate(p.d) : 'since ' + longDate(pts[0].d) + ', salary included'}</span>`;
+  };
+  show(null);
+  if ($('wchart')) Chart.attach($('wchart'), pts, show);
+}
+
 function render() {
   market();
   if (sym && !mkt.get(sym)) sym = null;
@@ -331,6 +361,7 @@ function render() {
   const v = art !== null ? 'article' : sym ? 'stock' : tab;
   $('view').innerHTML = VIEWS[v]();
   if (v === 'stock') drawChart();
+  if (v === 'portfolio') drawWorth();
 }
 
 // ---- buy and sell
@@ -373,9 +404,11 @@ $('tradeDlg').onclick = (e) => {
 
 // Bring the account up to today; if days went by, say what happened while the player was away. Returns true if the day changed.
 function catchUp() {
+  const t = today();
+  if (t <= s.day) return false;
   const from = s.day, before = Account.holdingsValue(s, market()), held = Object.keys(s.holdings);
-  const r = Account.tick(s, today());
-  if (!r.days) return false;
+  mkt = Market.build(t);
+  const r = Account.tick(s, t, mkt);
   save(); render();
   const move = Account.holdingsValue(s, mkt) - before, idx = mkt.indexAt() / mkt.indexAt(from) - 1;
   const moves = held.map((k) => mkt.get(k)).filter((c) => c && mkt.px(c, from)).map((c) => ({ c, ch: mkt.px(c) / mkt.px(c, from) - 1 })).sort((a, b) => b.ch - a.ch);
@@ -389,6 +422,7 @@ function catchUp() {
       <div class="row"><span>Worst: ${moves.at(-1).c.name}</span><b class="${cls(moves.at(-1).ch)}">${pct(moves.at(-1).ch)}</b></div>` : ''}
     ${bust.map((m) => `<div class="row"><span class="down">${m.c.name} went bankrupt. Your shares are worthless.</span></div>`).join('')}
     ${away.length ? `<div class="row" style="display:block"><span class="muted">Biggest news while you were away</span>${away.map(newsRow).join('')}</div>` : ''}
+    ${r.div ? `<div class="row"><span>Dividends received</span><b class="up">+${money(r.div)}</b></div>` : ''}
     ${r.pay ? `<div class="row"><span>${r.paydays > 1 ? r.paydays + ' paydays' : 'Payday'}</span><b class="up">+${money(r.pay)}</b></div>` : ''}
     <div class="row"><span>Net worth</span><b>${money(Account.netWorth(s, mkt))}</b></div>
     <div class="row"><span>Next payday</span><b>in ${days(Account.nextPayIn(s))}</b></div>
@@ -419,10 +453,12 @@ $('theme').onclick = () => {
   const dark = (document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
   document.documentElement.dataset.theme = dark ? 'light' : 'dark';
   try { localStorage.setItem('stock-tycoon-theme', document.documentElement.dataset.theme); } catch {}
-  if (sym && art === null) drawChart();
+  redraw();
 };
 try { const t = localStorage.getItem('stock-tycoon-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
-addEventListener('resize', () => { if (sym && s && art === null) drawChart(); });
+// redraw only the chart: a full render would drop the keyboard focus when a phone keyboard resizes the page
+const redraw = () => { if (!s || art !== null) return; if (sym) drawChart(); else if (tab === 'portfolio') drawWorth(); };
+addEventListener('resize', redraw);
 window.cloudSaveChanged = () => { s = Account.load(localStorage) || s; render(); catchUp(); }; // a newer save arrived from another device
 
 syncClock().then(() => {

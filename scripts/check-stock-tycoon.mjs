@@ -126,7 +126,9 @@ ok([1, 2, 3].every((y) => liveAt(M.build(T + 365 * y)).length >= 50), 'at least 
   const st2 = mem(); A.toggleWatch(p, 'NVCR'); A.save(st2, p);
   ok(JSON.stringify(A.load(st2)) === JSON.stringify(p), 'holdings, trades and watchlist survive leaving and rejoining');
   const v1 = JSON.stringify({ v: 1, rev: 3, start: T, day: T, cash: 5, paid: 0, payTotal: 0 }), enc = JSON.parse(A.encode({})); enc.body = v1;
-  ok(A.decode(A.encode(JSON.parse(v1)))?.v === 2, 'a save from before trading existed still loads');
+  ok(A.decode(A.encode(JSON.parse(v1)))?.v === A.VERSION, 'a save from before trading existed still loads');
+  const { divTotal, divBy, divs, worth, ...v2 } = { ...p, v: 2 };
+  ok(A.decode(A.encode(v2))?.holdings.QLLN.sh === 15, 'a save from before dividends existed still loads with its holdings');
   ok(A.decode(A.encode({ ...p, holdings: { QLLN: { sh: -3, cost: 0 } } })) === null, 'a save with negative shares is rejected');
 }
 { // holding a company through bankruptcy
@@ -185,6 +187,34 @@ ok([1, 2, 3].every((y) => liveAt(M.build(T + 365 * y)).length >= 50), 'at least 
     `every true rumour (${truth.length}) is followed by the real announcement within a week, every false one (${rum.length - truth.length}) by a denial`);
   ok(far.companies.filter((c) => c.deadDay !== null).every((c) => N.some((x) => x.sym === c.sym && x.kind === 'bankrupt' && x.d === c.deadDay)) && far.companies.filter((c) => c.reserve).every((c) => N.some((x) => x.sym === c.sym && x.kind === 'ipo' && x.d === c.listDay)), 'every bankruptcy and every new listing has its news story on the day');
   ok(far.nextReport(far.get('QLLN')) > far.day && far.nextReport(far.get('QLLN')) <= far.day + 91 && far.nextRates() > far.day && far.nextRates() <= far.day + 30, 'the next earnings report and rate decision dates are in the future');
+}
+
+
+// ---- dividends
+{
+  const end = T + 400, mk = M.build(end), bank = mk.get('HBSB'), ai = mk.get('MDLM');
+  const pays = bank.divs.filter((v) => v.pay > T && v.pay <= end);
+  ok(pays.length >= 4 && pays.every((v) => v.pay === v.decl + 14 && v.cents > 0) && ai.divs.length === 0, `a bank declares a dividend every quarter (${pays.length} in 400 days), paid two weeks later; a company with no dividend policy never pays`);
+  const p = A.fresh(T); A.buy(p, m, 'HBSB', 50); const cash0 = p.cash;
+  const r = A.tick(p, end, mk), expect = pays.reduce((a, v) => a + 50 * v.cents, 0);
+  ok(r.div === expect && p.divTotal === expect && p.divBy.HBSB === expect && p.divs.length === pays.length && p.cash === cash0 + expect + r.pay, `50 shares held for 400 days receive exactly 50 x each payment (${(expect / 100).toFixed(2)} dollars), on top of salary`);
+  ok(A.tick(p, end, mk).div === 0 && p.divTotal === expect, 'checking again never pays a dividend twice');
+  const q = A.fresh(T); A.buy(q, m, 'HBSB', 50); for (let d = T + 1; d <= end; d++) A.tick(q, d, M.build(d));
+  ok(q.cash === p.cash && q.divTotal === p.divTotal, 'logging in every day pays the same as coming back after 400 days');
+  ok(p.worth.length === 400 && p.worth[0][0] === T && p.worth.at(-1)[0] === end - 1 && p.worth[0][1] === A.START_CASH && p.worth.every((w) => Number.isSafeInteger(w[1])), 'net worth is recorded once for every day that passed');
+  // who gets it: shares held overnight into the payment day
+  const pay = pays[0].pay, before = M.build(pay - 1), onDay = M.build(pay);
+  const early = A.fresh(pay - 1); A.buy(early, before, 'HBSB', 10); const e = A.tick(early, pay, onDay);
+  const late = A.fresh(pay); A.buy(late, onDay, 'HBSB', 10); const l = A.tick(late, pay + 1, M.build(pay + 1));
+  ok(e.div === 10 * pays[0].cents && l.div === 0, 'shares bought the day before a payment get it; shares bought on the payment day do not');
+  // no free money: the share price drops by the dividend on payment day
+  let edge = 0, n = 0;
+  for (const c of mk.companies) for (const v of c.divs) { if (v.pay > mk.day || !mk.trading(c, v.pay) || v.pay === c.deadDay) continue; edge += (mk.cents(c, v.pay) + mk.dividendOn(c, v.pay)) / mk.cents(c, v.pay - 1) - 1; n++; }
+  ok(n > 300 && Math.abs(edge / n) < 0.003, `buying the day before every dividend and selling on the day earns ${(edge / n * 100).toFixed(2)}% on average over ${n} payments: no free money`);
+  // a bankrupt company pays nothing
+  const far = M.build(T + 3650), dead = far.companies.filter((c) => c.deadDay !== null);
+  ok(dead.every((c) => { for (let d = c.deadDay; d <= c.deadDay + 20; d++) if (far.dividendOn(c, d)) return false; return far.nextDividend(c) === null; }), 'a bankrupt company never pays a dividend');
+  ok(far.dividendOn(bank, far.day + 5) === 0, 'a dividend is never paid for a day that has not happened yet');
 }
 
 console.log(fails.length ? `\n${fails.length} FAILED` : '\nall ok'); process.exit(fails.length ? 1 : 0);

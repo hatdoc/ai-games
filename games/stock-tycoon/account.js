@@ -2,7 +2,7 @@
 // the caller passes in today's day number. Runs in the browser and in Node (scripts/check-stock-tycoon.mjs).
 // Money is whole cents everywhere. A game day is a real calendar day in the player's own timezone.
 const Account = (() => {
-  const VERSION = 2, KEY = 'stock-tycoon-save', BAK = KEY + '-bak';
+  const VERSION = 3, KEY = 'stock-tycoon-save', BAK = KEY + '-bak';
   const START_CASH = 1000000; // savings the player arrives with
   const SALARY = 150000, PAY_EVERY = 14; // the job pays by itself every fortnight: the way back after losing everything
 
@@ -12,20 +12,32 @@ const Account = (() => {
 
   // holdings: { TICKER: { sh: shares, cost: total cents paid for them } }
   // trades: [{ d: day, t: 'B' buy | 'S' sell | 'X' written off, k: ticker, sh, px: cents per share, pl: realised cents }]
-  const fresh = (today) => ({ v: VERSION, rev: 0, start: today, day: today, cash: START_CASH, paid: 0, payTotal: 0, holdings: {}, trades: [], realised: 0, watch: [] });
+  const fresh = (today) => ({ v: VERSION, rev: 0, start: today, day: today, cash: START_CASH, paid: 0, payTotal: 0, holdings: {}, trades: [], realised: 0, watch: [],
+    divTotal: 0, divBy: {}, divs: [], worth: [] }); // divs: [{ d, k, sh, c: cents per share }]; worth: [[day, net worth at close]]
   const holdingsValue = (s, mkt, d) => Object.keys(s.holdings).reduce((v, k) => { const c = mkt.get(k); return v + (c ? s.holdings[k].sh * mkt.cents(c, d) : 0); }, 0);
   const netWorth = (s, mkt, d) => s.cash + holdingsValue(s, mkt, d);
   const dayCount = (s) => s.day - s.start + 1;
   const nextPayIn = (s) => PAY_EVERY - ((s.day - s.start) % PAY_EVERY); // days until the next payday, 1..14
 
-  // Catch the account up to today: pay every payday that has passed, once. Safe to call any number of times.
+  // Catch the account up to today, one day at a time: record each day's closing net worth, then on the new day
+  // pay salary and any dividends due on shares held overnight. Safe to call any number of times.
   // A clock that went backwards changes nothing (the account never moves back in time).
-  function tick(s, today) {
-    const days = Math.max(0, today - s.day);
-    s.day += days;
-    const due = Math.floor((s.day - s.start) / PAY_EVERY) - s.paid, pay = due * SALARY;
-    s.paid += due; s.cash += pay; s.payTotal += pay;
-    return { days, paydays: due, pay };
+  // mkt must be the market built for `today` (it can be left out only when the account holds no shares).
+  function tick(s, today, mkt) {
+    const from = s.day, out = { days: Math.max(0, today - from), paydays: 0, pay: 0, div: 0 };
+    for (let d = from; d < today; d++) {
+      if (mkt) { s.worth.push([d, netWorth(s, mkt, d)]); if (s.worth.length > 2000) s.worth.shift(); } // ponytail: keeps the latest 2000 days
+      s.day = d + 1;
+      const due = Math.floor((s.day - s.start) / PAY_EVERY) - s.paid, pay = due * SALARY;
+      s.paid += due; s.cash += pay; s.payTotal += pay; out.paydays += due; out.pay += pay;
+      if (mkt) for (const k in s.holdings) {
+        const c = mkt.get(k), cents = c ? mkt.dividendOn(c, s.day) : 0, sh = s.holdings[k].sh;
+        if (!cents) continue;
+        s.cash += sh * cents; s.divTotal += sh * cents; s.divBy[k] = (s.divBy[k] || 0) + sh * cents; out.div += sh * cents;
+        s.divs.push({ d: s.day, k, sh, c: cents }); if (s.divs.length > 2000) s.divs.shift();
+      }
+    }
+    return out;
   }
 
   // ---- trading. Prices never come from the caller: they are looked up in the market for the account's own day.
@@ -79,9 +91,11 @@ const Account = (() => {
       if (typeof body !== 'string' || fnv(body) !== sum) return null;
       const s = JSON.parse(body);
       if (s.v === 1) Object.assign(s, { v: 2, holdings: {}, trades: [], realised: 0, watch: [] }); // before trading existed
+      if (s.v === 2) Object.assign(s, { v: 3, divTotal: 0, divBy: {}, divs: [], worth: [] }); // before dividends existed
       if (s.v !== VERSION) return null;
       const ok = int(s.rev, 0) && int(s.start, 0) && int(s.day, s.start) && int(s.cash, 0) && int(s.payTotal, 0)
         && int(s.paid, 0) && s.paid <= Math.floor((s.day - s.start) / PAY_EVERY) && Number.isSafeInteger(s.realised)
+        && int(s.divTotal, 0) && Array.isArray(s.divs) && Array.isArray(s.worth) && s.divBy && typeof s.divBy === 'object'
         && Array.isArray(s.trades) && Array.isArray(s.watch) && s.watch.every((k) => typeof k === 'string')
         && s.holdings && typeof s.holdings === 'object' && Object.values(s.holdings).every((h) => h && int(h.sh, 1) && int(h.cost, 0));
       return ok ? s : null;
