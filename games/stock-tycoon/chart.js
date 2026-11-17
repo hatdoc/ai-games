@@ -30,5 +30,27 @@ const Chart = (() => {
     cv.onpointerdown = cv.onpointermove = pick;
     cv.onpointerleave = cv.onpointerup = cv.onpointercancel = (e) => { if (e.type === 'pointerup' && e.pointerType === 'mouse') return; draw(cv, pts, null); onHover(null); };
   }
-  return { attach };
+  // Candlesticks: bars are [{ o, h, l, c, ... }] oldest first. Green closed higher than it opened, red lower.
+  function drawCandles(cv, bars, hi) {
+    const dpr = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight, x = cv.getContext('2d');
+    cv.width = w * dpr; cv.height = h * dpr; x.scale(dpr, dpr);
+    const css = getComputedStyle(cv), col = (b) => css.getPropertyValue(b.c >= b.o ? '--up' : '--down').trim();
+    const lo = Math.min(...bars.map((b) => b.l)), top = Math.max(...bars.map((b) => b.h)), span = top - lo || 1;
+    const step = (w - PAD.l - PAD.r) / bars.length, bw = Math.max(1, Math.min(14, step * 0.65));
+    const X = (i) => PAD.l + step * (i + 0.5), Y = (v) => PAD.t + (top - v) / span * (h - PAD.t - PAD.b);
+    if (hi != null) { x.strokeStyle = css.getPropertyValue('--line').trim(); x.lineWidth = Math.max(bw + 4, 2); x.beginPath(); x.moveTo(X(hi), 0); x.lineTo(X(hi), h); x.stroke(); }
+    bars.forEach((b, i) => {
+      x.strokeStyle = x.fillStyle = col(b); x.lineWidth = 1;
+      x.beginPath(); x.moveTo(X(i), Y(b.h)); x.lineTo(X(i), Y(b.l)); x.stroke();
+      x.fillRect(X(i) - bw / 2, Math.min(Y(b.o), Y(b.c)), bw, Math.max(1, Math.abs(Y(b.o) - Y(b.c))));
+    });
+    return { index: (px) => Math.max(0, Math.min(bars.length - 1, Math.floor((px - PAD.l) / step))) };
+  }
+  function candles(cv, bars, onHover) {
+    const geo = drawCandles(cv, bars, null);
+    const pick = (e) => { const i = geo.index(e.clientX - cv.getBoundingClientRect().left); drawCandles(cv, bars, i); onHover(bars[i]); };
+    cv.onpointerdown = cv.onpointermove = pick;
+    cv.onpointerleave = cv.onpointerup = cv.onpointercancel = (e) => { if (e.type === 'pointerup' && e.pointerType === 'mouse') return; drawCandles(cv, bars, null); onHover(null); };
+  }
+  return { attach, candles };
 })();
