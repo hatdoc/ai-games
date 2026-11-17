@@ -17,11 +17,22 @@ Shared with other games: `../cloudsave.js` (signed-in saves and `rgAuth`), `../s
 
 ## How the market works
 
-- A game day is a real calendar day in the player's timezone. The market moves once a day, at midnight.
+- **One clock for everyone.** The market never closes and runs on real time. A market day is a UTC day; every piece of news
+  lands at a real moment (03:12 UTC, say) and moves the price at that moment for every player, wherever they are.
+- **The player's own timezone** only decides how times are shown, their Day count, and when their payday arrives: every
+  14 days at their local midnight. The user chose this so US players are not disadvantaged; do not switch to one fixed
+  daily update hour.
 - Nothing about the market is stored. `Market.build(day)` replays every day from 1 Nov 2021 using random numbers addressed by
-  (day, company, purpose), so every device gets the same prices and news for the same date, and charts are real history.
-- A day's move for a stock = the whole market (by economic phase) x its beta + its industry + its own noise, which fades back
-  toward fundamentals + a quarterly earnings surprise + any event that day.
+  (day, company, purpose), so every device gets the same prices and news for the same moment, and charts are real history.
+- A day's closing move for a stock = the whole market (by economic phase) x its beta + its industry + its own noise, which
+  fades back toward fundamentals + a quarterly earnings surprise + any event that day.
+- **During the day** the price travels from yesterday's close to today's along a random path (`bridge` in engine.js), plus a
+  jump at the exact moment of each story: company events, rumours, denials, earnings (each company at its own time of
+  day), world events, inflation (13:30 UTC), interest rates (18:00 UTC) and dividends (00:05 UTC). `priceAt(c, t)` gives
+  the price at any millisecond; `feed(t)` is the news that is out by then.
+- **The account** (`tick`) catches up moment by moment: closes are recorded at UTC midnight, dividends, interest and borrow
+  fees at 00:05 UTC, limit orders are checked every 5 minutes and margin every hour, whether or not the player is online.
+- The screens re-check the time every 15 seconds. A save is only written when something besides the clock changed.
 - Events are pure functions of (company, day). That is what lets a rumour appear a few days before the event it leaks.
 - A company whose financial health reaches zero goes bankrupt; a reserve company lists one to three months later.
 

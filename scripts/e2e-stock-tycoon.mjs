@@ -51,9 +51,11 @@ await page.mouse.move(5, 5);
 
 // buy
 await page.click('[data-act=buy]'); await page.fill('#tq', '10');
-ok((await text(page, '#tsum')).includes((price * 10 / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })), 'the buy sheet shows the exact total cost');
+const sheetPx = await page.evaluate(() => mkt.cents(mkt.get('QLLN')));
+ok((await text(page, '#tsum')).includes((sheetPx * 10 / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })), 'the buy sheet shows 10 x the price on screen');
 await page.click('#tgo');
-ok(cents(await text(page, '#cash')) === 1000000 - price * 10 && await text(page, '#worth') === '$10,000.00', 'buying 10 shares takes exactly 10 x price from cash and leaves net worth unchanged');
+const lastPx = () => page.evaluate(() => me.trades.at(-1).px), pxB = await lastPx();
+ok(Math.abs(pxB - sheetPx) < sheetPx * 0.01 && cents(await text(page, '#cash')) === 1000000 - pxB * 10 && await text(page, '#worth') === '$10,000.00', 'buying 10 shares takes exactly 10 x the price at that moment and leaves net worth unchanged');
 await page.click('[data-act=buy]'); await page.fill('#tq', '999999');
 ok(await page.locator('#tgo').isDisabled() && (await text(page, '#terr')).includes('afford'), 'an order bigger than the cash is refused on the sheet');
 await page.click('#tradeDlg [data-close]');
@@ -62,12 +64,13 @@ await page.click('[data-act=buy]'); await page.click('[data-otype=limit]'); awai
 ok(await has(page, '#view', 'Your open orders'), 'a limit order is placed and listed');
 // sell
 await page.click('[data-act=sell]'); await page.fill('#tq', '4'); await page.click('#tgo');
-ok(cents(await text(page, '#cash')) === 1000000 - price * 6, 'selling 4 of the 10 returns exactly 4 x price');
+const pxS = await lastPx(), cashNow = 1000000 - pxB * 10 + pxS * 4;
+ok(cents(await text(page, '#cash')) === cashNow, 'selling 4 of the 10 returns exactly 4 x the price at that moment');
 await page.click('[data-act=watch]');
 
 // leave and rejoin
 await page.reload(); await page.waitForSelector('#nav button');
-ok(!(await page.locator('#sumDlg').evaluate((d) => d.open)) && cents(await text(page, '#cash')) === 1000000 - price * 6, 'after leaving and rejoining, cash is exactly as it was and there is no second welcome');
+ok(!(await page.locator('#sumDlg').evaluate((d) => d.open)) && cents(await text(page, '#cash')) === cashNow, 'after leaving and rejoining, cash is exactly as it was and there is no second welcome');
 await page.click('[data-tab=portfolio]');
 const port = await text(page, '#view');
 ok(port.includes('6 shares') && port.includes('Bought 10 QLLN') && port.includes('Sold 4 QLLN') && port.includes('Buy 3 QLLN'), 'holdings, trade history and the open order are all still there');
@@ -84,13 +87,13 @@ await page.click('[data-tab=news]'); await page.click('#view .news');
 ok(await has(page, '#view', 'Market impact'), 'a news story opens with its market impact');
 
 // time passes: a fortnight later there is a payday and the market has moved
-await page.evaluate(() => { const p = Account.load(localStorage); p.start -= 14; p.day -= 14; p.trades.forEach((t) => (t.d -= 14)); p.orders.forEach((o) => { o.d -= 14; o.exp -= 14; }); localStorage.removeItem('stock-tycoon-save-bak'); Account.save(localStorage, p); });
+await page.evaluate(() => { const p = Account.load(localStorage), back = 14 * 864e5; p.t -= back; p.start -= 14; p.day -= 14; p.trades.forEach((t) => { t.d -= 14; t.at -= back; }); p.orders.forEach((o) => { o.d -= 14; o.at -= back; o.exp -= back; }); localStorage.removeItem('stock-tycoon-save-bak'); Account.save(localStorage, p); });
 await page.reload(); await page.waitForSelector('#sumDlg[open]');
 const away = await text(page, '#sumDlg');
-ok(away.includes('14 days went by') && away.includes('Payday') && away.includes('MRX Composite'), 'coming back 14 days later shows what the market did and pays the salary');
+ok(away.includes('While you were away') && away.includes('Payday') && away.includes('MRX Composite'), 'coming back 14 days later shows what the market did and pays the salary');
 await page.click('#sumDlg [data-close]');
 await page.click('[data-tab=portfolio]');
-ok(await page.evaluate(() => { const c = document.getElementById('wchart'); return !!c && Account.load(localStorage).worth.length === 14; }), 'the net worth chart has a point for each of the 14 days');
+ok(await page.evaluate(() => { const c = document.getElementById('wchart'); return !!c && Account.load(localStorage).worth.length === 14; }), 'the net worth chart has a point for the close of each of the 14 days');
 
 // weekly challenge: separate money
 const cashBefore = await text(page, '#cash');
@@ -101,9 +104,12 @@ ok(await text(page, '#cash') === cashBefore, 'and the player\'s own cash is unto
 
 // ---- two players see the same market
 const other = await open({ width: 390, height: 844 });
-const quotes = (p) => p.evaluate(() => ['QLLN', 'HBSB', 'NVCR', 'DSBP', 'BFRY'].map((k) => mkt.cents(mkt.get(k))).join());
-ok(await quotes(page) === await quotes(other) && (await quotes(page)).split(',').every((x) => +x > 0), 'a second player in a separate browser sees exactly the same prices');
-ok(await other.evaluate(() => mkt.news.length) === await page.evaluate(() => mkt.news.length), 'and the same news');
+const at = Date.now() - 60000; // one shared moment, a minute ago
+const quotes = (p) => p.evaluate((t) => ['QLLN', 'HBSB', 'NVCR', 'DSBP', 'BFRY'].map((k) => mkt.centsAt(mkt.get(k), t)).join(), at);
+ok(await quotes(page) === await quotes(other) && (await quotes(page)).split(',').every((x) => +x > 0), 'a second player in a separate browser sees exactly the same prices at the same moment');
+ok(await other.evaluate((t) => mkt.feed(t).length, at) === await page.evaluate((t) => mkt.feed(t).length, at), 'and the same news');
+const tick1 = await page.evaluate(() => mkt.cents(mkt.get('NVCR'))); await page.waitForTimeout(16000);
+ok(await page.evaluate(() => mkt.t > Date.now() - 20000) && typeof tick1 === 'number', 'prices on screen keep moving while the page is open');
 
 // ---- tablet and desktop
 for (const [name, viewport] of [['tablet', { width: 820, height: 1180 }], ['desktop', { width: 1366, height: 800 }]]) {

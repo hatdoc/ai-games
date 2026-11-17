@@ -152,13 +152,23 @@ const longDate = (day) => Account.date(day).toLocaleDateString('en-US', { weekda
 const days = (n) => n + (n === 1 ? ' day' : ' days');
 const LV = { Minor: 0, Moderate: 1, Major: 2, Severe: 3 };
 const TABS = [['market', '📈', 'Market'], ['discover', '🔎', 'Discover'], ['news', '📰', 'News'], ['portfolio', '💼', 'Portfolio'], ['friends', '👥', 'Friends']];
-const FRAME_NAME = { D: 'today', W: 'past week', M: 'past month', '6M': 'past 6 months', Y: 'past year', '5Y': 'past 5 years', MAX: 'since listing' };
+const DAY = 864e5;
+const FRAME_NAME = { D: 'past 24 hours', W: 'past week', M: 'past month', '6M': 'past 6 months', Y: 'past year', '5Y': 'past 5 years', MAX: 'since listing' };
 
-// Today comes from the web server's clock (the Date header of this page), shifted to the player's timezone, so
-// moving the device clock forward does not bring tomorrow's prices or payday closer.
-// ponytail: falls back to the device clock when that request fails; the weekly challenge (Stage 7) gets real server checks.
+// The time comes from the web server's clock (the Date header of this page), so moving the device clock forward does not
+// bring the market's future or payday closer. The market runs on that one clock for everyone; the device's timezone only
+// decides how times are shown and when the player's own payday falls (their local midnight).
+// ponytail: falls back to the device clock when that request fails; only a server check would make rankings tamper-proof.
 let skew = 0;
-const today = () => { const now = Date.now() + skew; return Account.dayNumber(now, new Date(now).getTimezoneOffset()); };
+const nowMs = () => Math.round(Date.now() + skew), tzNow = () => new Date(nowMs()).getTimezoneOffset();
+// a moment in the player's own time: "Today 2:32 PM", "Yesterday 9:10 AM", "Mon, Nov 16, 9:10 AM"
+function when(t, full) {
+  const day = Account.dayNumber(t, new Date(t).getTimezoneOffset()), today = Account.dayNumber(nowMs(), tzNow());
+  const time = new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }), date = new Date(t).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
+  return full ? `${date}, ${time}` : day === today ? `Today ${time}` : day === today - 1 ? `Yesterday ${time}` : day === today + 1 ? `Tomorrow ${time}` : `${date}, ${time}`;
+}
+// how long until a moment: "in 40 min", "in 5 hours", "in 3 days"
+function until(t) { const m = Math.max(1, Math.round((t - nowMs()) / 60000)); return m < 60 ? `in ${m} min` : m < 36 * 60 ? `in ${Math.round(m / 60)} hours` : `in ${days(Math.round(m / 1440))}`; }
 async function syncClock() {
   try {
     const r = await fetch(location.href, { method: 'HEAD', cache: 'no-store', signal: AbortSignal.timeout(2500) });
@@ -172,7 +182,8 @@ async function syncClock() {
 let me, s, mkt, shown = '', rk = 'worth', tab = 'market', sym = null, art = null, newsCat = 'All', frame = 'M', kind = 'line', disc = { q: '', sector: '', risk: '', sort: 'gain' }, trade = null;
 const save = () => { if (!Account.save(localStorage, me)) toast('Could not save. Check your browser storage.'); publishSoon(); };
 const inChal = () => s !== me;
-const market = () => (mkt && mkt.day === s.day ? mkt : (mkt = Market.build(s.day)));
+// the market at the account's moment (every account on screen has been brought up to the same moment)
+const market = () => { if (!mkt || !mkt.covers(me.t)) mkt = Market.build(Market.dayOf(me.t)); return mkt.setNow(me.t); };
 
 let toastT;
 function toast(msg) { $('toast').textContent = msg; $('toast').classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => $('toast').classList.remove('on'), 2200); }
@@ -241,17 +252,19 @@ const stockRow = (c, sub) => {
   return `<button class="stock" data-sym="${c.sym}">${logo(c)}<span class="nm"><b>${c.name}</b><small>${sub || `${c.sym} · ${c.sector}`}</small></span>
     <span class="px"><b>${on ? money(mkt.cents(c)) : 'Delisted'}</b><small class="${cls(ch)}">${on ? pct(ch) : 'Bankrupt'}</small></span></button>`;
 };
-const newsRow = (x) => `<button class="news" data-art="${x.id}"><span class="lv ${x.level}"></span><span><b>${x.title}</b><small>${x.d === s.day ? 'Today' : longDate(x.d)} · ${x.cat}${x.sym ? ' · ' + x.sym : ''} · ${x.level}</small></span></button>`;
+const newsRow = (x) => `<button class="news" data-art="${x.id}"><span class="lv ${x.level}"></span><span><b>${x.title}</b><small>${when(x.at)} · ${x.cat}${x.sym ? ' · ' + x.sym : ''} · ${x.level}</small></span></button>`;
 const newsRows = (list, empty) => (list.length ? list.map(newsRow).join('') : `<p class="muted" style="margin:0">${empty}</p>`);
 const mine = () => new Set([...Object.keys(s.holdings), ...Object.keys(s.shorts), ...s.watch]);
 const NEWS_CATS = { All: () => true, 'My stocks': (x) => mine().has(x.sym), World: (x) => ['Global', 'Politics'].includes(x.cat), Economy: (x) => x.cat === 'Economy',
   Companies: (x) => ['Company', 'Industry', 'Deals'].includes(x.cat), Results: (x) => x.cat === 'Results', Rumours: (x) => x.cat === 'Rumour', Markets: (x) => x.cat === 'Markets' };
 // what is coming: payday, the rate decision, and earnings reports for stocks the player holds or watches
-const comingUp = () => { const n = Account.nextPayIn(s), items = [[s.day + n, `Payday: ${money(Account.SALARY)}`], [mkt.nextRates(), 'Interest rate decision']];
-  for (const k in s.holdings) { const c = mkt.get(k), v = c && mkt.nextDividend(c); if (v) items.push([v.pay, `${c.name} dividend: ${money(v.cents * s.holdings[k].sh)}`]); }
-  for (const k of mine()) { const c = mkt.get(k); if (c && mkt.trading(c) && mkt.nextReport(c) - s.day <= 21) items.push([mkt.nextReport(c), `${c.name} reports earnings`]); }
-  return `<div class="card"><h2>Coming up</h2>${items.sort((a, b) => a[0] - b[0]).map(([d, t]) => `<div class="row"><span>${t}</span><b>${d - s.day === 1 ? 'Tomorrow' : 'in ' + days(d - s.day)}<small>${longDate(d)}</small></b></div>`).join('')}</div>`; };
-const orderRow = (o) => `<div class="row"><span>${o.side === 'B' ? 'Buy' : 'Sell'} ${o.sh} ${o.k} at ${money(o.lim)}<small>placed ${longDate(o.d)} · expires ${longDate(o.exp)}</small></span><button class="mini" data-cancel="${o.id}">Cancel</button></div>`;
+// payday is at the player's own midnight; everything else happens on the market's clock
+const comingUp = () => { const items = [[mkt.nextRates(), 'Interest rate decision']];
+  if (!s.noPay) items.push([(s.day + Account.nextPayIn(s)) * DAY + tzNow() * 60000, `Payday: ${money(Account.SALARY)}`]);
+  for (const k in s.holdings) { const c = mkt.get(k), v = c && mkt.nextDividend(c); if (v) items.push([mkt.dividendAt(v), `${c.name} dividend: ${money(v.cents * s.holdings[k].sh)}`]); }
+  for (const k of mine()) { const c = mkt.get(k); if (c && mkt.trading(c) && mkt.nextReport(c) - mkt.t <= 21 * DAY) items.push([mkt.nextReport(c), `${c.name} reports earnings`]); }
+  return `<div class="card"><h2>Coming up</h2>${items.sort((a, b) => a[0] - b[0]).map(([t, x]) => `<div class="row"><span>${x}</span><b>${until(t)}<small>${when(t)}</small></b></div>`).join('')}</div>`; };
+const orderRow = (o) => `<div class="row"><span>${o.side === 'B' ? 'Buy' : 'Sell'} ${o.sh} ${o.k} at ${money(o.lim)}<small>placed ${when(o.at)} · expires ${when(o.exp)}</small></span><button class="mini" data-cancel="${o.id}">Cancel</button></div>`;
 const clamp = (x) => Math.max(0, Math.min(1, x));
 const gapOf = (c) => mkt.px(c) / mkt.fair(c) - 1; // how far the price is from the analyst's estimate
 const levelCard = (full) => { const lv = Account.level(s), next = Account.LEVELS[lv + 1], nw = Account.netWorth(s, mkt);
@@ -272,13 +285,13 @@ const rows = (list, empty) => (list.length ? list.map((c) => stockRow(c)).join('
 const soon = (title, what, stage) => `<h1>${title}</h1><div class="card"><h2>Opens in Stage ${stage}</h2><p class="muted" style="margin:0">${what}</p></div>`;
 const live = () => mkt.companies.filter((c) => mkt.trading(c));
 // a bankrupt company stays visible for 90 days, or for as long as the player still holds it
-const visible = () => mkt.companies.filter((c) => mkt.trading(c) || s.holdings[c.sym] || s.day - c.deadDay <= 90);
-const positions = (d) => Account.holdingsValue(s, mkt, d) - Account.shortValue(s, mkt, d);
-const dayMove = () => positions() - positions(s.day - 1);
+const visible = () => mkt.companies.filter((c) => mkt.trading(c) || s.holdings[c.sym] || Market.dayOf(mkt.t) - c.deadDay <= 90);
+// how much the player's positions have moved in the last 24 hours
+const dayMove = () => { let v = 0; for (const [book, sign] of [[s.holdings, 1], [s.shorts, -1]]) for (const k in book) { const c = mkt.get(k); if (!c) continue; const now = mkt.centsAt(c, mkt.t); v += sign * book[k].sh * (now - (mkt.centsAt(c, mkt.t - DAY) || now)); } return v; };
 
 const SORTS = {
-  gain: ['Biggest gain today', (a, b) => mkt.change(b) - mkt.change(a)],
-  loss: ['Biggest loss today', (a, b) => mkt.change(a) - mkt.change(b)],
+  gain: ['Biggest gain, 24 hours', (a, b) => mkt.change(b) - mkt.change(a)],
+  loss: ['Biggest loss, 24 hours', (a, b) => mkt.change(a) - mkt.change(b)],
   high: ['Highest price', (a, b) => mkt.px(b) - mkt.px(a)],
   low: ['Lowest price', (a, b) => mkt.px(a) - mkt.px(b)],
   cap: ['Largest company', (a, b) => mkt.cap(b) - mkt.cap(a)],
@@ -302,18 +315,18 @@ function discoverList() {
 
 const VIEWS = {
   market() {
-    const mv = dayMove(), worth = Account.netWorth(s, mkt), idx = mkt.indexAt() / mkt.indexAt(s.day - 1) - 1, all = live().sort(SORTS.gain[1]);
+    const mv = dayMove(), worth = Account.netWorth(s, mkt), idx = mkt.indexAt() / mkt.indexNow(mkt.t - DAY) - 1, all = live().sort(SORTS.gain[1]);
     const held = [...Object.keys(s.holdings), ...Object.keys(s.shorts)].map((k) => mkt.get(k)).filter(Boolean), watch = s.watch.map((k) => mkt.get(k)).filter(Boolean);
     const lvl = Account.marginLevel(s, mkt);
-    return `<h1>Today</h1>
+    return `<h1>Market <small style="display:inline;font-size:13px;font-weight:600" class="up">● Live</small></h1>
     ${lvl < 0.4 ? `<div class="card warn"><b class="down">Margin warning</b><div>Your own money is ${(lvl * 100).toFixed(0)}% of what you have at stake. Below ${Account.MAINT * 100}% your positions are closed automatically. Sell, cover or wait for payday.</div></div>` : ''}
     <div class="cols">
       <div class="card"><h2>Net worth</h2><div class="big num">${money(worth)}</div>
-        <div class="${cls(mv)}">${held.length ? `${signed(mv)} today on your stocks` : '<span class="muted">All in cash. Pick a company to invest in.</span>'}</div></div>
+        <div class="${cls(mv)}">${held.length ? `${signed(mv)} in 24 hours on your stocks` : '<span class="muted">All in cash. Pick a company to invest in.</span>'}</div></div>
       <div class="card"><h2>MRX Composite</h2><div class="big num">${mkt.indexAt().toFixed(0)}</div>
-        <div><span class="${cls(idx)}">${pct(idx)} today</span> <span class="muted">· ${live().length} companies</span></div></div>
+        <div><span class="${cls(idx)}">${pct(idx)} in 24 hours</span> <span class="muted">· ${live().length} companies</span></div></div>
     </div>
-    <div class="card"><h2>Today's news</h2>${newsRows(mkt.news.filter((x) => x.d === s.day).sort((a, b) => LV[b.level] - LV[a.level]).slice(0, 6), 'A quiet day. No major news.')}</div>
+    <div class="card"><h2>Latest news</h2>${newsRows(mkt.feed().filter((x) => x.at > mkt.t - DAY).sort((a, b) => LV[b.level] - LV[a.level] || b.at - a.at).slice(0, 6), 'A quiet day so far. No major news.')}</div>
     ${held.length ? `<div class="card"><h2>Your stocks</h2>${rows(held)}</div>` : ''}
     ${watch.length ? `<div class="card"><h2>Watchlist</h2>${rows(watch)}</div>` : ''}
     <div class="cols">
@@ -341,15 +354,15 @@ const VIEWS = {
     <div class="card" id="list">${discoverList()}</div>`,
   news: () => `<h1>News</h1>
     <div class="chips wrap" id="cats">${Object.keys(NEWS_CATS).map((k) => `<button data-cat="${k}" aria-pressed="${k === newsCat}">${k}</button>`).join('')}</div>
-    <div class="card">${newsRows(mkt.news.filter(NEWS_CATS[newsCat]).slice(-80).reverse(), 'Nothing here yet.')}</div>`,
+    <div class="card">${newsRows(mkt.feed().filter(NEWS_CATS[newsCat]).slice(-80).reverse(), 'Nothing here yet.')}</div>`,
   article() {
-    const x = mkt.news[art], c = x.sym && mkt.get(x.sym), since = c && mkt.px(c, x.d - 1) ? mkt.px(c) / mkt.px(c, x.d - 1) - 1 : null;
-    const related = mkt.news.filter((y) => y.id !== x.id && (x.sym ? y.sym === x.sym : !y.sym && (y.kind === x.kind || y.cat === x.cat))).slice(-4).reverse();
+    const x = mkt.news[art], c = x.sym && mkt.get(x.sym), since = c && mkt.priceAt(c, x.at - 1) ? mkt.px(c) / mkt.priceAt(c, x.at - 1) - 1 : null;
+    const related = mkt.feed().filter((y) => y.id !== x.id && (x.sym ? y.sym === x.sym : !y.sym && (y.kind === x.kind || y.cat === x.cat))).slice(-4).reverse();
     return `<div class="head"><button class="round" data-act="back" aria-label="Back">←</button><div class="nm"><small>${x.cat} · ${x.level} importance</small></div></div>
-    <div class="card article"><small>${longDate(x.d)}</small><h1>${x.title}</h1><p>${x.body}</p></div>
+    <div class="card article"><small>${when(x.at, true)}</small><h1>${x.title}</h1><p>${x.body}</p></div>
     ${x.cat === 'Rumour' ? `<div class="card"><h2>How far to trust this</h2><p style="margin:0">Source reliability: <b>${Events.SOURCES[x.rumour][1]}</b>. Rumours are sometimes true, sometimes exaggerated and sometimes false. If it is real, an announcement usually follows within a week; if not, expect a denial.</p></div>` : ''}
     <div class="card"><h2>Market impact</h2><p style="margin:0">${x.impact}</p></div>
-    ${c ? `<div class="card"><h2>Related company</h2>${stockRow(c)}${since === null ? '' : `<div class="row"><span>Price move since the day before this story</span><b class="${cls(since)}">${mkt.trading(c) ? pct(since) : 'Delisted'}</b></div>`}</div>` : ''}
+    ${c ? `<div class="card"><h2>Related company</h2>${stockRow(c)}${since === null ? '' : `<div class="row"><span>Price move since just before this story</span><b class="${cls(since)}">${mkt.trading(c) ? pct(since) : 'Delisted'}</b></div>`}</div>` : ''}
     ${x.secs && x.secs.length ? `<div class="card"><h2>Industries affected</h2><p style="margin:0">${x.secs.map((k) => Companies.SECTORS[k][0]).join(', ')}</p></div>` : ''}
     <div class="card"><h2>Related stories</h2>${newsRows(related, 'No related stories.')}</div>`;
   },
@@ -369,7 +382,7 @@ const VIEWS = {
         ${s.cash >= 0 ? `<div class="row"><span>Cash</span><b>${money(s.cash)}</b></div>` : `<div class="row"><span>Borrowed</span><b class="down">${money(-s.cash)}</b></div>`}
         <div class="row"><span>Stocks</span><b>${money(hv)}</b></div>
         ${sv ? `<div class="row"><span>Owed on shorts</span><b class="down">${money(sv)}</b></div>` : `<div class="row"><span>Paid for those stocks</span><b>${money(cost)}</b></div>`}
-        <div class="row"><span>Today on your stocks</span><b class="${cls(dayMove())}">${signed(dayMove())}</b></div>
+        <div class="row"><span>Past 24 hours on your stocks</span><b class="${cls(dayMove())}">${signed(dayMove())}</b></div>
       </div>
       <div class="card"><h2>Performance</h2>
         <div class="row"><span>Made from investing, in total</span><b class="${cls(gain)}">${signed(gain)} (${pct(gain / putIn)})</b></div>
@@ -396,12 +409,12 @@ const VIEWS = {
       : `<p style="margin:0 0 10px">Borrow to buy up to twice what you own, and sell short to profit when a price falls. Both can lose money faster than you put it in: if your own money drops below ${Account.MAINT * 100}% of what you have at stake, your positions are closed automatically. Loans cost the central bank rate plus ${Account.LOAN_SPREAD}% a year; shorts cost ${Account.SHORT_FEE}% a year.</p>
       <div style="display:flex"><button class="btn sell" data-act="adv-on" ${nw < Account.ADV_MIN ? 'disabled' : ''}>${nw < Account.ADV_MIN ? `Needs a net worth of ${money(Account.ADV_MIN)}` : 'Turn on advanced trading'}</button></div>`}</div>
     <div class="cols">
-      <div class="card"><h2>Dividends coming</h2>${due.length ? due.map(({ c, h, v }) => `<div class="row"><span>${c.name}<small>${longDate(v.pay)} · ${h.sh} shares x ${money(v.cents)}</small></span><b>${money(h.sh * v.cents)}</b></div>`).join('')
+      <div class="card"><h2>Dividends coming</h2>${due.length ? due.map(({ c, h, v }) => `<div class="row"><span>${c.name}<small>${when(mkt.dividendAt(v))} · ${h.sh} shares x ${money(v.cents)}</small></span><b>${money(h.sh * v.cents)}</b></div>`).join('')
         : '<p class="muted" style="margin:0">No dividends are declared on your stocks. Companies declare one with each quarterly report and pay it two weeks later, to shares held the day before.</p>'}</div>
       <div class="card"><h2>Dividend income</h2><div class="row"><span>Total received</span><b>${money(s.divTotal)}</b></div>
         ${by.map(([k, v]) => `<div class="row"><span>${(mkt.get(k) || { name: k }).name}</span><b>${money(v)}</b></div>`).join('')}</div>
     </div>
-    ${s.divs.length ? `<div class="card"><h2>Dividend payments</h2>${s.divs.slice(-30).reverse().map((v) => `<div class="row"><span>${v.k}<small>${longDate(v.d)} · ${Math.abs(v.sh)} shares x ${money(v.c)}${v.sh < 0 ? ' · paid on your short' : ''}</small></span><b class="${cls(v.sh)}">${signed(v.sh * v.c)}</b></div>`).join('')}</div>` : ''}
+    ${s.divs.length ? `<div class="card"><h2>Dividend payments</h2>${s.divs.slice(-30).reverse().map((v) => `<div class="row"><span>${v.k}<small>${v.at ? when(v.at) : longDate(v.d)} · ${Math.abs(v.sh)} shares x ${money(v.c)}${v.sh < 0 ? ' · paid on your short' : ''}</small></span><b class="${cls(v.sh)}">${signed(v.sh * v.c)}</b></div>`).join('')}</div>` : ''}
     <div class="cols">
       <div class="card"><h2>Money in</h2>
         <div class="row"><span>Starting savings</span><b>${money(Account.START_CASH)}</b></div>
@@ -411,7 +424,7 @@ const VIEWS = {
       ${comingUp()}
     </div>
     <div class="card"><h2>Trade history</h2>${s.trades.length ? s.trades.slice(-200).reverse().map((t) => `<div class="row"><span>${{ B: 'Bought', S: 'Sold', H: 'Shorted', C: 'Covered', X: 'Wrote off' }[t.t]} ${t.sh} ${t.k}${t.lim ? ' <span class="tag">LIMIT</span>' : ''}${t.liq ? ' <span class="tag">MARGIN CALL</span>' : ''}
-      <small>${longDate(t.d)}${t.t === 'X' ? ' · company went bankrupt' : ` · ${money(t.px)} each`}</small></span>
+      <small>${t.at ? when(t.at) : longDate(t.d)}${t.t === 'X' ? ' · company went bankrupt' : ` · ${money(t.px)} each`}</small></span>
       <b>${t.t === 'X' ? '' : money(t.sh * t.px)}${t.t === 'B' || t.t === 'H' ? '' : `<small class="${cls(t.pl)}">${signed(t.pl)}</small>`}</b></div>`).join('')
       + (s.trades.length > 200 ? `<p class="muted">Showing the latest 200 of ${s.trades.length} trades.</p>` : '') : '<p class="muted" style="margin:0">Every buy and sell is recorded here.</p>'}</div>`;
   },
@@ -430,14 +443,14 @@ const VIEWS = {
     <p class="muted">Lifestyle is paid from cash and is not counted in your net worth. Anything can be sold back for ${Account.RESALE * 100}% of its price.</p>`;
   },
   friends() {
-    const w = Account.weekOf(me.day), c = me.chal, last = me.chalHist[me.chalHist.length - 1], played = me.chalHist.find((x) => x.w === w), A = window.rgAuth || {}, st = myStats();
+    const w = Account.weekOf(Account.utcDay(me.t)), c = me.chal, last = me.chalHist[me.chalHist.length - 1], played = me.chalHist.find((x) => x.w === w), A = window.rgAuth || {}, st = myStats();
     const who = A.user && A.user.nick ? '' : `<div class="card"><b>Rank and compare</b><p class="muted" style="margin:4px 0 0">${!A.onSite ? 'Play on <a href="https://rank-game.com" target="_blank" rel="noopener">rank-game.com</a> and sign in to appear in the rankings and compare with friends. You can still take the challenge here.'
       : !A.user ? 'Sign in to appear in the rankings and compare with friends. <button class="mini" data-act="login">Sign in</button>' : 'Pick a nickname under the game to appear in the rankings.'}</p></div>`;
     return `<h1>Friends</h1>${who}
-    <div class="card"><h2>Weekly challenge</h2><b>${longDate(Account.weekStart(w))} to ${longDate(Account.weekEnd(w))}</b>
-      <p class="muted" style="margin:6px 0 10px">Everyone starts with ${money(Account.CH_START)} in a separate account, on the same market, with the same tools: no borrowing, no shorting, no salary, no office research. The highest percentage return at Sunday's close wins.</p>
+    <div class="card"><h2>Weekly challenge</h2><b>${when(Account.weekStart(w) * DAY + 1, true)} to ${when(Account.chalEnd(w), true)}</b>
+      <p class="muted" style="margin:6px 0 10px">Everyone starts with ${money(Account.CH_START)} in a separate account, on the same market, with the same tools: no borrowing, no shorting, no salary, no office research. It starts and ends at the same moment for everyone, shown here in your time. The highest percentage return at the end wins.</p>
       ${c ? `<div class="row"><span>Your return so far</span><b class="${cls(Account.chalReturn(c.a, mkt))}">${pct(Account.chalReturn(c.a, mkt))}</b></div>
-          <div class="row"><span>Ends</span><b>${Account.weekEnd(w) === me.day ? 'tonight' : 'in ' + days(Account.weekEnd(w) - me.day + 1)}</b></div>
+          <div class="row"><span>Ends</span><b>${until(Account.chalEnd(w))}</b></div>
           <div style="display:flex;margin-top:8px"><button class="btn" data-act="chal-enter">Trade in the challenge account</button></div>`
         : played ? `<div class="row"><span>You finished this week</span><b class="${cls(played.ret)}">${pct(played.ret / 10000)}</b></div><p class="muted" style="margin:6px 0 0">A new challenge starts on Monday.</p>`
         : `<div style="display:flex"><button class="btn" data-act="chal-join">Join this week's challenge</button></div>`}
@@ -489,7 +502,7 @@ const VIEWS = {
       ${Account.has(s, 'desk') ? `<div class="row"><span>Estimated fair price</span><b>${money(Math.round(mkt.fair(c) * 100))}</b></div><div class="row"><span>Price against the estimate</span><b>${pct(g)}</b></div><div class="row"><span>Financial health score</span><b>${Math.max(0, Math.round(c.health))} / 100</b></div>` : ''}
       <div class="muted" style="margin-top:6px">An estimate from the last quarterly report. Analysts are often wrong, most of all about volatile companies.</div></div>`; })()
       : '<div class="card"><h2>Analyst view</h2><p class="muted" style="margin:0">A Private office adds an analyst view to every stock. Open your profile (top left) to see it.</p></div>'}
-    <div class="card"><h2>News</h2>${newsRows(mkt.news.filter((x) => x.sym === sym).slice(-5).reverse(), 'No news about this company yet.')}</div>
+    <div class="card"><h2>News</h2>${newsRows(mkt.feed().filter((x) => x.sym === sym).slice(-5).reverse(), 'No news about this company yet.')}</div>
     <div class="card"><h2>About</h2><p style="margin:0">${c.about}</p></div>
     <div class="card"><h2>Key numbers</h2><div class="stats">
       ${stat('Company value', big(mkt.cap(c)))}${stat('Shares traded today', mkt.volume(c).toLocaleString('en-US'))}
@@ -498,7 +511,7 @@ const VIEWS = {
       ${stat('Debt', big(c.debtAbs))}${stat('Growth rate', (c.growth * 100).toFixed(1) + '%')}
       ${stat('Risk', c.riskLabel)}${stat('Typical daily move', (c.vol * 100).toFixed(1) + '%')}
       ${stat('Financial health', mkt.healthLabel(c))}${stat('Management reputation', c.rep + ' / 100')}
-      ${stat('Last earnings report', longDate(c.lastReport))}${alive ? stat('Next earnings report', longDate(mkt.nextReport(c))) : stat('Delisted', longDate(c.deadDay))}
+      ${stat('Last earnings report', longDate(c.lastReport))}${alive ? stat('Next earnings report', when(mkt.nextReport(c))) : stat('Delisted', longDate(c.deadDay))}
       ${stat('Chief executive', mkt.ceo(c))}${stat('Listed since', longDate(c.listDay))}
     </div></div>`;
   },
@@ -515,18 +528,18 @@ function drawChartNow() {
     const show = (b) => {
       const v = (b || bars[bars.length - 1]).c;
       $('cpx').textContent = money(Math.round(v * 100));
-      $('cch').innerHTML = b ? `<span class="muted">${frame === 'D' ? 'during the day' : longDate(b.d)} · open ${b.o.toFixed(2)} · high ${b.h.toFixed(2)} · low ${b.l.toFixed(2)} · close ${b.c.toFixed(2)}</span>` : since(v / first - 1, v - first, FRAME_NAME[frame]);
+      $('cch').innerHTML = b ? `<span class="muted">${b.at ? when(b.at) : longDate(b.d)} · open ${b.o.toFixed(2)} · high ${b.h.toFixed(2)} · low ${b.l.toFixed(2)} · close ${b.c.toFixed(2)}</span>` : since(v / first - 1, v - first, FRAME_NAME[frame]);
     };
-    show(null); $('d0').textContent = frame === 'D' ? 'Yesterday\'s close' : longDate(bars[0].d); $('d1').textContent = frame === 'D' ? 'Today' : longDate(bars[bars.length - 1].d);
+    show(null); $('d0').textContent = bars[0].at ? when(bars[0].at) : longDate(bars[0].d); $('d1').textContent = 'Now';
     return Chart.candles($('chart'), bars, show);
   }
   const pts = mkt.series(c, frame);
   const show = (p) => {
     const v = p ? p.v : pts[pts.length - 1].v;
     $('cpx').textContent = money(Math.round(v * 100));
-    $('cch').innerHTML = since(pts[0].v ? v / pts[0].v - 1 : 0, v - pts[0].v, p ? longDate(p.d) + (frame === 'D' ? ' · during the day' : '') : FRAME_NAME[frame]);
+    $('cch').innerHTML = since(pts[0].v ? v / pts[0].v - 1 : 0, v - pts[0].v, p ? (p.at === mkt.t ? 'now' : frame === 'D' ? when(p.at) : longDate(p.d)) : FRAME_NAME[frame]);
   };
-  show(null); $('d0').textContent = frame === 'D' ? 'Yesterday\'s close' : longDate(pts[0].d); $('d1').textContent = frame === 'D' ? 'Today' : longDate(pts[pts.length - 1].d);
+  show(null); $('d0').textContent = frame === 'D' ? when(pts[0].at) : longDate(pts[0].d); $('d1').textContent = pts[pts.length - 1].at === mkt.t ? 'Now' : longDate(pts[pts.length - 1].d);
   Chart.attach($('chart'), pts, show);
 }
 
@@ -544,15 +557,15 @@ function drawWorth() {
 function render() {
   market();
   if (sym && !mkt.get(sym)) sym = null;
-  if (art !== null && !mkt.news[art]) art = null;
-  $('date').textContent = longDate(s.day);
+  if (art !== null && !(mkt.news[art] && mkt.news[art].at <= mkt.t)) art = null;
+  $('date').textContent = when(nowMs(), true);
   $('dayn').textContent = `${Account.LEVELS[Account.level(s)][1]} · Day ${Account.dayCount(s)}`;
   $('cash').textContent = money(s.cash);
   $('worth').textContent = money(Account.netWorth(s, mkt));
   $('nav').innerHTML = TABS.map(([id, em, name]) => `<button data-tab="${id}" ${id === tab ? 'aria-current="page"' : ''}><span>${em}</span>${name}</button>`).join('');
   const v = art !== null ? 'article' : sym ? 'stock' : tab;
   $('view').innerHTML = (inChal() ? `<div class="card" style="border-color:var(--accent)"><b>🏁 Weekly challenge account</b>
-    <div class="row"><span>${pct(Account.chalReturn(s, mkt))} so far · ends ${longDate(Account.weekEnd(me.chal.w))}</span><button class="mini" data-act="chal-exit">Back to my portfolio</button></div></div>` : '') + VIEWS[v]();
+    <div class="row"><span>${pct(Account.chalReturn(s, mkt))} so far · ends ${when(Account.chalEnd(me.chal.w))}</span><button class="mini" data-act="chal-exit">Back to my portfolio</button></div></div>` : '') + VIEWS[v]();
   const key = v + (sym || '') + (art === null ? '' : art) + (inChal() ? 'c' : '');
   if (key !== shown) { shown = key; $('view').classList.remove('enter'); void $('view').offsetWidth; $('view').classList.add('enter'); }
   if (v === 'stock') drawChartNow();
@@ -565,7 +578,7 @@ const trow = (k, v, c = '') => `<div class="row"><span>${k}</span><b class="${c}
 function openTrade(mode) {
   trade = { mode, limit: false }; const c = mkt.get(sym);
   $('tradeDlg').innerHTML = `<h1>${WORDS[mode]} ${c.name}</h1><p class="muted" style="margin:0">${c.sym} · ${money(mkt.cents(c))} a share</p>
-    ${mode === 'buy' || mode === 'sell' ? `<div class="chips" id="otype"><button data-otype="market" aria-pressed="true">At today's price</button><button data-otype="limit" aria-pressed="false">Limit order</button></div>` : ''}
+    ${mode === 'buy' || mode === 'sell' ? `<div class="chips" id="otype"><button data-otype="market" aria-pressed="true">Market price</button><button data-otype="limit" aria-pressed="false">Limit order</button></div>` : ''}
     <div class="two"><label>Shares<input id="tq" type="number" inputmode="numeric" min="1" step="1" placeholder="0"></label>
       <label>or amount in $<input id="ta" type="number" inputmode="decimal" min="0" step="any" placeholder="0.00"></label>
       <button class="btn sell" data-max>Max</button></div>
@@ -582,7 +595,7 @@ function updateTrade() {
   let html = '', err = '';
   if (trade.limit) {
     html = trow(mode === 'buy' ? 'Buys when the price falls to' : 'Sells when the price rises to', money(at)) + trow(mode === 'buy' ? 'Cost if it fills' : 'You receive if it fills', money(total))
-      + fine(`It can fill from tomorrow, for ${Account.ORDER_DAYS} days. If the price jumps past your limit overnight, you get the better price. ${mode === 'buy' ? 'Your cash is checked again when it fills.' : ''}`);
+      + fine(`It is checked every 5 minutes for ${Account.ORDER_DAYS} days, even while you are away, and fills at the price at that check: your limit or better. ${mode === 'buy' ? 'Your cash is checked again when it fills.' : ''}`);
     if (!at) err = 'Enter a limit price.'; else if (mode === 'sell' && (!h || sh > h.sh)) err = `You only own ${h ? h.sh : 0}.`;
   } else if (mode === 'buy') {
     const after = s.cash - total;
@@ -625,7 +638,7 @@ $('tradeDlg').onclick = (e) => {
   }
   if (e.target.id !== 'tgo') return;
   const sh = Math.floor(+$('tq').value), m = trade.mode, lim = tradePx();
-  if (catchUp()) return; // midnight passed while the sheet was open: prices changed, so nothing is traded
+  catchUp(); // trade at the price right now, which may have moved since the sheet opened
   const r = trade.limit ? Account.placeOrder(s, market(), sym, m === 'buy' ? 'B' : 'S', sh, lim) : Account[m](s, market(), sym, sh);
   if (!r.ok) { $('terr').textContent = r.error; return; }
   save(); $('tradeDlg').close(); render();
@@ -633,26 +646,37 @@ $('tradeDlg').onclick = (e) => {
     : `${m === 'sell' ? 'Sold' : 'Covered'} ${sh} ${sym} · ${signed(r.pl)}`);
 };
 
-// Bring the account up to today; if days went by, say what happened while the player was away. Returns true if the day changed.
+// Bring the account up to now. Usually (every 15 seconds) that just moves prices along and reports anything that
+// happened, like an order filling. After 3 hours or more away, a sheet shows what happened meanwhile.
+const snap = (x) => JSON.stringify({ ...x, t: 0, day: 0, rev: 0, tz: 0, chal: x.chal && { ...x.chal, a: { ...x.chal.a, t: 0, day: 0, tz: 0 } } });
 function catchUp() {
-  const t = today();
-  if (t <= me.day) return false;
+  const t = nowMs();
+  if (t <= me.t) return null;
   const wasChal = inChal(); s = me;
-  const from = s.day, before = Account.netWorth(s, market()), atStake = Account.exposure(s, mkt), held = [...Object.keys(s.holdings), ...Object.keys(s.shorts)];
-  mkt = Market.build(t);
-  const r = Account.tick(s, t, mkt);
-  save(); render();
-  const move = Account.netWorth(s, mkt) - before - r.pay, idx = mkt.indexAt() / mkt.indexAt(from) - 1;
-  const moves = held.map((k) => mkt.get(k)).filter((c) => c && mkt.px(c, from)).map((c) => ({ c, ch: mkt.px(c) / mkt.px(c, from) - 1 })).sort((a, b) => b.ch - a.ch);
+  const from = me.t, m0 = market(), before = Account.netWorth(me, m0), atStake = Account.exposure(me, m0), held = [...Object.keys(me.holdings), ...Object.keys(me.shorts)], was = snap(me);
+  if (!mkt.covers(t)) mkt = Market.build(Market.dayOf(t));
+  const r = Account.tick(me, t, mkt, tzNow());
+  market();
+  if (snap(me) !== was) save(); // time passing alone needs no save: replaying it gives the same result
+  if (r.chalDone) { net = {}; publish(r.chalDone); }
+  if (wasChal && me.chal) s = me.chal.a;
+  const note = [...r.fills.map((o) => `Limit order filled: ${o.side === 'B' ? 'bought' : 'sold'} ${o.sh} ${o.k} at ${money(o.px)}`),
+    ...r.liquidated.map((x) => `Margin call: ${x.short ? 'covered' : 'sold'} ${x.sh} ${x.k}`), ...(r.pay ? [`Payday: +${money(r.pay)}`] : []), ...(r.div ? [`Dividends: ${signed(r.div)}`] : []),
+    ...(r.chalDone ? [`Weekly challenge finished: ${pct(r.chalDone.ret / 10000)}`] : []), ...(r.levelUp ? [`New level: ${Account.LEVELS[Account.level(me)][1]}`] : [])];
+  if (t - from < 3 * 3600000) { if (note.length) { toast(note.join(' · ')); render(); } return r; }
+  s = me;
+  const move = Account.netWorth(me, mkt) - before - r.pay, idx = mkt.indexNow(t) / mkt.indexNow(from) - 1;
+  const moves = held.map((k) => mkt.get(k)).filter((c) => c && mkt.priceAt(c, from)).map((c) => ({ c, ch: mkt.px(c) / mkt.priceAt(c, from) - 1 })).sort((a, b) => b.ch - a.ch);
   const bust = moves.filter((m) => !mkt.trading(m.c)), own = mine();
-  const away = mkt.news.filter((x) => x.d > from && (own.has(x.sym) ? x.level !== 'Minor' || x.cat === 'Rumour' : !x.sym && LV[x.level] >= 2)).sort((a, b) => LV[b.level] - LV[a.level] || b.d - a.d).slice(0, 3);
+  const away = mkt.feed().filter((x) => x.at > from && (own.has(x.sym) ? x.level !== 'Minor' || x.cat === 'Rumour' : !x.sym && LV[x.level] >= 2)).sort((a, b) => LV[b.level] - LV[a.level] || b.at - a.at).slice(0, 3);
+  render();
   $('tradeDlg').close();
-  $('sumDlg').innerHTML = `<h1>${r.days === 1 ? 'A new day' : days(r.days) + ' went by'}</h1><p class="muted" style="margin:0 0 8px">${longDate(s.day)}</p>
+  $('sumDlg').innerHTML = `<h1>While you were away</h1><p class="muted" style="margin:0 0 8px">Last here ${when(from)}</p>
     <div class="row"><span>MRX Composite</span><b class="${cls(idx)}">${pct(idx)}</b></div>
     ${held.length ? `<div class="row"><span>Your investments</span><b class="${cls(move)}">${signed(move)}${atStake ? ` (${pct(move / atStake)})` : ''}</b></div>` : ''}
     ${r.liquidated.length ? `<div class="row"><span class="down">Margin call: ${r.liquidated.map((x) => `${x.short ? 'covered' : 'sold'} ${x.sh} ${x.k}`).join(', ')}. Your own money fell below ${Account.MAINT * 100}% of what you had at stake.</span></div>` : ''}
     ${r.squeezed.map((x) => `<div class="row"><span>${x.k} went bankrupt while you were short</span><b class="up">${signed(x.pl)}</b></div>`).join('')}
-    ${r.fills.map((o) => `<div class="row"><span>Limit order filled: ${o.side === 'B' ? 'bought' : 'sold'} ${o.sh} ${o.k}</span><b>${money(o.px)} each</b></div>`).join('')}
+    ${r.fills.map((o) => `<div class="row"><span>Limit order filled: ${o.side === 'B' ? 'bought' : 'sold'} ${o.sh} ${o.k}<small>${when(o.at)}</small></span><b>${money(o.px)} each</b></div>`).join('')}
     ${r.dropped.map((o) => `<div class="row"><span class="muted">Limit order to ${o.side === 'B' ? 'buy' : 'sell'} ${o.sh} ${o.k} was dropped: ${o.why}.</span></div>`).join('')}
     ${r.costs ? `<div class="row"><span>Interest and borrow fees</span><b class="down">-${money(r.costs)}</b></div>` : ''}
     ${moves.length > 1 ? `<div class="row"><span>Best: ${moves[0].c.name}</span><b class="${cls(moves[0].ch)}">${pct(moves[0].ch)}</b></div>
@@ -660,17 +684,22 @@ function catchUp() {
     ${bust.map((m) => `<div class="row"><span class="down">${m.c.name} went bankrupt. Your shares are worthless.</span></div>`).join('')}
     ${away.length ? `<div class="row" style="display:block"><span class="muted">Biggest news while you were away</span>${away.map(newsRow).join('')}</div>` : ''}
     ${r.chalDone ? `<div class="row"><span><b>🏁 Weekly challenge finished</b></span><b class="${cls(r.chalDone.ret)}">${pct(r.chalDone.ret / 10000)}</b></div>` : ''}
-    ${r.levelUp ? `<div class="row"><span><b>🎉 New level: ${Account.LEVELS[Account.level(s)][1]}</b></span></div>` : ''}
+    ${r.levelUp ? `<div class="row"><span><b>🎉 New level: ${Account.LEVELS[Account.level(me)][1]}</b></span></div>` : ''}
     ${r.reinvested ? `<div class="row"><span>Dividends reinvested in more shares</span><b>${money(r.reinvested)}</b></div>` : ''}
     ${r.div ? `<div class="row"><span>Dividends</span><b class="${cls(r.div)}">${signed(r.div)}</b></div>` : ''}
     ${r.pay ? `<div class="row"><span>${r.paydays > 1 ? r.paydays + ' paydays' : 'Payday'}</span><b class="up">+${money(r.pay)}</b></div>` : ''}
-    <div class="row"><span>Net worth</span><b>${money(Account.netWorth(s, mkt))}</b></div>
-    <div class="row"><span>Next payday</span><b>in ${days(Account.nextPayIn(s))}</b></div>
+    <div class="row"><span>Net worth</span><b>${money(Account.netWorth(me, mkt))}</b></div>
+    <div class="row"><span>Next payday</span><b>in ${days(Account.nextPayIn(me))}</b></div>
     <div style="display:flex;margin-top:14px"><button class="btn" data-close>Continue</button></div>`;
   if (!$('sumDlg').open) $('sumDlg').showModal();
-  if (r.chalDone) { net = {}; publish(r.chalDone); }
   if (wasChal && me.chal) { s = me.chal.a; render(); }
-  return true;
+  return r;
+}
+// redraw the screen with the latest prices, unless the player is in the middle of something
+function refresh() {
+  const el = document.activeElement;
+  if (!s || $('tradeDlg').open || $('sumDlg').open || (el && /INPUT|SELECT|TEXTAREA/.test(el.tagName)) || document.querySelector('canvas:hover')) return;
+  const y = $('view').scrollTop; render(); $('view').scrollTop = y;
 }
 
 const openYou = () => { s = me; tab = 'you'; sym = null; art = null; render(); $('view').scrollTop = 0; };
@@ -722,16 +751,16 @@ window.cloudSaveChanged = () => { me = s = Account.load(localStorage) || me; ren
 syncClock().then(() => {
   me = s = Account.load(localStorage);
   const fresh = !me;
-  if (fresh) { me = s = Account.fresh(today()); save(); }
+  if (fresh) { me = s = Account.fresh(nowMs(), tzNow()); save(); }
   if (window.rgAuth && window.rgAuth.onSite) { window.rgHasBoard = true; parent.postMessage({ type: 'rg-board' }, 'https://rank-game.com'); } // the page shows its sign-in and nickname box
   render(); catchUp();
   if (fresh) { $('sumDlg').innerHTML = `<h1>Welcome to the Meridian Exchange</h1>
     <p>You start with <b>${money(Account.START_CASH)}</b> in savings and a job that pays <b>${money(Account.SALARY)}</b> every ${Account.PAY_EVERY} days.</p>
-    <p>The market moves once a day, at midnight your time. Buy shares in companies you believe in, read the news, and come back tomorrow to see what happened.</p>
+    <p>The market never closes. Prices move all day as news breaks, at the same moment for every player in the world. Buy shares in companies you believe in, read the news, and check back to see what happened.</p>
     <p class="muted">Companies can soar, crash or go bankrupt. Nothing here is a sure thing, and nothing here is real money.</p>
     <div style="display:flex;margin-top:14px"><button class="btn" data-close>Start investing</button></div>`; $('sumDlg').showModal(); }
-  setInterval(catchUp, 30000); // the page was left open past midnight
-  addEventListener('visibilitychange', () => { if (!document.hidden) catchUp(); });
+  setInterval(() => { catchUp(); refresh(); }, 15000); // prices are live
+  addEventListener('visibilitychange', () => { if (!document.hidden) { catchUp(); refresh(); } });
 });
 </script>
 </body>
