@@ -43,6 +43,15 @@
   .stock .nm { flex: 1; min-width: 0; }
   .stock .nm b, .stock .nm small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
   .stock .px { text-align: right; }
+  .news { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 11px 0; border-top: 1px solid var(--line); text-align: left; }
+  .news:first-of-type { border-top: 0; }
+  .news b { display: block; font-weight: 600; }
+  .lv { width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; flex: none; background: var(--muted); }
+  .lv.Moderate { background: var(--accent); } .lv.Major { background: #e08a00; } .lv.Severe { background: var(--down); }
+  .chips.wrap { flex-wrap: wrap; margin: 0 0 12px; }
+  .chips.wrap button { flex: none; padding: 0 12px; border: 1px solid var(--line); }
+  .article h1 { font-size: 24px; line-height: 1.25; margin: 4px 0 6px; }
+  .article p { font-size: 16px; line-height: 1.55; margin: 12px 0 0; }
   .logo { width: 38px; height: 38px; border-radius: 10px; color: #fff; font-weight: 800; font-size: 13px; display: grid; place-items: center; flex: none; letter-spacing: .5px; }
   .logo.lg { width: 52px; height: 52px; font-size: 17px; border-radius: 14px; }
   .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
@@ -106,6 +115,7 @@
 <div id="toast" role="status"></div>
 
 <script src="companies.js"></script>
+<script src="events.js"></script>
 <script src="engine.js"></script>
 <script src="account.js"></script>
 <script src="chart.js"></script>
@@ -118,6 +128,7 @@ const pct = (x) => (x > 0 ? '+' : '') + (x * 100).toFixed(2) + '%';
 const cls = (x) => (x > 0 ? 'up' : x < 0 ? 'down' : '');
 const longDate = (day) => Account.date(day).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 const days = (n) => n + (n === 1 ? ' day' : ' days');
+const LV = { Minor: 0, Moderate: 1, Major: 2, Severe: 3 };
 const TABS = [['market', '📈', 'Market'], ['discover', '🔎', 'Discover'], ['news', '📰', 'News'], ['portfolio', '💼', 'Portfolio'], ['friends', '👥', 'Friends']];
 const FRAME_NAME = { D: 'today', W: 'past week', M: 'past month', '6M': 'past 6 months', Y: 'past year', '5Y': 'past 5 years', MAX: 'since listing' };
 
@@ -135,7 +146,7 @@ async function syncClock() {
 }
 
 // s: the account. mkt: the market for the account's day. sym: the open stock page (or null). frame: chart timeframe.
-let s, mkt, tab = 'market', sym = null, frame = 'M', disc = { q: '', sector: '', risk: '', sort: 'gain' }, trade = null;
+let s, mkt, tab = 'market', sym = null, art = null, newsCat = 'All', frame = 'M', disc = { q: '', sector: '', risk: '', sort: 'gain' }, trade = null;
 const save = () => { if (!Account.save(localStorage, s)) toast('Could not save. Check your browser storage.'); };
 const market = () => (mkt && mkt.day === s.day ? mkt : (mkt = Market.build(s.day)));
 
@@ -149,10 +160,17 @@ const stockRow = (c, sub) => {
   return `<button class="stock" data-sym="${c.sym}">${logo(c)}<span class="nm"><b>${c.name}</b><small>${sub || `${c.sym} · ${c.sector}`}</small></span>
     <span class="px"><b>${on ? money(mkt.cents(c)) : 'Delisted'}</b><small class="${cls(ch)}">${on ? pct(ch) : 'Bankrupt'}</small></span></button>`;
 };
+const newsRow = (x) => `<button class="news" data-art="${x.id}"><span class="lv ${x.level}"></span><span><b>${x.title}</b><small>${x.d === s.day ? 'Today' : longDate(x.d)} · ${x.cat}${x.sym ? ' · ' + x.sym : ''} · ${x.level}</small></span></button>`;
+const newsRows = (list, empty) => (list.length ? list.map(newsRow).join('') : `<p class="muted" style="margin:0">${empty}</p>`);
+const mine = () => new Set([...Object.keys(s.holdings), ...s.watch]);
+const NEWS_CATS = { All: () => true, 'My stocks': (x) => mine().has(x.sym), World: (x) => ['Global', 'Politics'].includes(x.cat), Economy: (x) => x.cat === 'Economy',
+  Companies: (x) => ['Company', 'Industry', 'Deals'].includes(x.cat), Results: (x) => x.cat === 'Results', Rumours: (x) => x.cat === 'Rumour', Markets: (x) => x.cat === 'Markets' };
+// what is coming: payday, the rate decision, and earnings reports for stocks the player holds or watches
+const comingUp = () => { const n = Account.nextPayIn(s), items = [[s.day + n, `Payday: ${money(Account.SALARY)}`], [mkt.nextRates(), 'Interest rate decision']];
+  for (const k of mine()) { const c = mkt.get(k); if (c && mkt.trading(c) && mkt.nextReport(c) - s.day <= 21) items.push([mkt.nextReport(c), `${c.name} reports earnings`]); }
+  return `<div class="card"><h2>Coming up</h2>${items.sort((a, b) => a[0] - b[0]).map(([d, t]) => `<div class="row"><span>${t}</span><b>${d - s.day === 1 ? 'Tomorrow' : 'in ' + days(d - s.day)}<small>${longDate(d)}</small></b></div>`).join('')}</div>`; };
 const rows = (list, empty) => (list.length ? list.map((c) => stockRow(c)).join('') : `<p class="muted" style="margin:0">${empty}</p>`);
 const soon = (title, what, stage) => `<h1>${title}</h1><div class="card"><h2>Opens in Stage ${stage}</h2><p class="muted" style="margin:0">${what}</p></div>`;
-const payCard = () => { const n = Account.nextPayIn(s); return `<div class="card"><h2>Next payday</h2><b>${money(Account.SALARY)} in ${days(n)}</b>
-  <div class="muted">${longDate(s.day + n)} · your job pays every ${Account.PAY_EVERY} days, whatever the market does</div></div>`; };
 const live = () => mkt.companies.filter((c) => mkt.trading(c));
 // a bankrupt company stays visible for 90 days, or for as long as the player still holds it
 const visible = () => mkt.companies.filter((c) => mkt.trading(c) || s.holdings[c.sym] || s.day - c.deadDay <= 90);
@@ -188,15 +206,23 @@ const VIEWS = {
       <div class="card"><h2>Net worth</h2><div class="big num">${money(worth)}</div>
         <div class="${cls(mv)}">${held.length ? `${signed(mv)} today on your stocks` : '<span class="muted">All in cash. Pick a company to invest in.</span>'}</div></div>
       <div class="card"><h2>MRX Composite</h2><div class="big num">${mkt.indexAt().toFixed(0)}</div>
-        <div><span class="${cls(idx)}">${pct(idx)} today</span> <span class="muted">· ${live().length} companies · economy in ${mkt.regime.toLowerCase()}</span></div></div>
+        <div><span class="${cls(idx)}">${pct(idx)} today</span> <span class="muted">· ${live().length} companies</span></div></div>
     </div>
+    <div class="card"><h2>Today's news</h2>${newsRows(mkt.news.filter((x) => x.d === s.day).sort((a, b) => LV[b.level] - LV[a.level]).slice(0, 6), 'A quiet day. No major news.')}</div>
     ${held.length ? `<div class="card"><h2>Your stocks</h2>${rows(held)}</div>` : ''}
     ${watch.length ? `<div class="card"><h2>Watchlist</h2>${rows(watch)}</div>` : ''}
     <div class="cols">
       <div class="card"><h2>Top gainers</h2>${rows(all.slice(0, 5))}</div>
       <div class="card"><h2>Top losers</h2>${rows(all.slice(-5).reverse())}</div>
     </div>
-    ${payCard()}`;
+    <div class="cols">
+      <div class="card"><h2>Economy</h2>
+        <div class="row"><span>Phase</span><b>${mkt.regime}</b></div>
+        <div class="row"><span>Interest rate</span><b>${mkt.rate.toFixed(2)}%</b></div>
+        <div class="row"><span>Inflation</span><b>${mkt.infl.toFixed(1)}%</b></div>
+      </div>
+      ${comingUp()}
+    </div>`;
   },
   discover: () => `<h1>Discover</h1>
     <div class="filters">
@@ -206,7 +232,20 @@ const VIEWS = {
       <select id="sort" aria-label="Sort by">${Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${disc.sort === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select>
     </div>
     <div class="card" id="list">${discoverList()}</div>`,
-  news: () => soon('News', 'World and company news arrive with the live economy.', 3),
+  news: () => `<h1>News</h1>
+    <div class="chips wrap" id="cats">${Object.keys(NEWS_CATS).map((k) => `<button data-cat="${k}" aria-pressed="${k === newsCat}">${k}</button>`).join('')}</div>
+    <div class="card">${newsRows(mkt.news.filter(NEWS_CATS[newsCat]).slice(-80).reverse(), 'Nothing here yet.')}</div>`,
+  article() {
+    const x = mkt.news[art], c = x.sym && mkt.get(x.sym), since = c && mkt.px(c, x.d - 1) ? mkt.px(c) / mkt.px(c, x.d - 1) - 1 : null;
+    const related = mkt.news.filter((y) => y.id !== x.id && (x.sym ? y.sym === x.sym : !y.sym && (y.kind === x.kind || y.cat === x.cat))).slice(-4).reverse();
+    return `<div class="head"><button class="round" data-act="back" aria-label="Back">←</button><div class="nm"><small>${x.cat} · ${x.level} importance</small></div></div>
+    <div class="card article"><small>${longDate(x.d)}</small><h1>${x.title}</h1><p>${x.body}</p></div>
+    ${x.cat === 'Rumour' ? `<div class="card"><h2>How far to trust this</h2><p style="margin:0">Source reliability: <b>${Events.SOURCES[x.rumour][1]}</b>. Rumours are sometimes true, sometimes exaggerated and sometimes false. If it is real, an announcement usually follows within a week; if not, expect a denial.</p></div>` : ''}
+    <div class="card"><h2>Market impact</h2><p style="margin:0">${x.impact}</p></div>
+    ${c ? `<div class="card"><h2>Related company</h2>${stockRow(c)}${since === null ? '' : `<div class="row"><span>Price move since the day before this story</span><b class="${cls(since)}">${mkt.trading(c) ? pct(since) : 'Delisted'}</b></div>`}</div>` : ''}
+    ${x.secs && x.secs.length ? `<div class="card"><h2>Industries affected</h2><p style="margin:0">${x.secs.map((k) => Companies.SECTORS[k][0]).join(', ')}</p></div>` : ''}
+    <div class="card"><h2>Related stories</h2>${newsRows(related, 'No related stories.')}</div>`;
+  },
   portfolio() {
     const hv = Account.holdingsValue(s, mkt), cost = Object.values(s.holdings).reduce((a, h) => a + h.cost, 0), un = hv - cost;
     const held = Object.entries(s.holdings).map(([k, h]) => ({ c: mkt.get(k), h })).filter((x) => x.c);
@@ -233,7 +272,7 @@ const VIEWS = {
       <small>${longDate(t.d)}${t.t === 'X' ? ' · company went bankrupt' : ` · ${money(t.px)} each`}</small></span>
       <b>${t.t === 'X' ? '' : money(t.sh * t.px)}${t.t === 'B' ? '' : `<small class="${cls(t.pl)}">${signed(t.pl)}</small>`}</b></div>`).join('')
       + (s.trades.length > 200 ? `<p class="muted">Showing the latest 200 of ${s.trades.length} trades.</p>` : '') : '<p class="muted" style="margin:0">Every buy and sell is recorded here.</p>'}</div>
-    ${payCard()}`;
+    ${comingUp()}`;
   },
   friends: () => soon('Friends', 'Friend comparison and the weekly challenge arrive last.', 7),
   stock() {
@@ -254,6 +293,7 @@ const VIEWS = {
     ${alive ? `<div class="buy"><button class="btn" data-act="buy">Buy</button><button class="btn sell" data-act="sell" ${h ? '' : 'disabled'}>Sell</button></div>`
       : `<div class="card"><b class="down">Bankrupt and delisted on ${longDate(c.deadDay)}.</b><div class="muted">Its shares are worthless and no longer trade.</div></div>`}
     ${pos}
+    <div class="card"><h2>News</h2>${newsRows(mkt.news.filter((x) => x.sym === sym).slice(-5).reverse(), 'No news about this company yet.')}</div>
     <div class="card"><h2>About</h2><p style="margin:0">${c.about}</p></div>
     <div class="card"><h2>Key numbers</h2><div class="stats">
       ${stat('Company value', big(mkt.cap(c)))}${stat('Shares traded today', mkt.volume(c).toLocaleString('en-US'))}
@@ -262,7 +302,8 @@ const VIEWS = {
       ${stat('Debt', big(c.debtAbs))}${stat('Growth rate', (c.growth * 100).toFixed(1) + '%')}
       ${stat('Risk', c.riskLabel)}${stat('Typical daily move', (c.vol * 100).toFixed(1) + '%')}
       ${stat('Financial health', mkt.healthLabel(c))}${stat('Management reputation', c.rep + ' / 100')}
-      ${stat('Last earnings report', longDate(c.lastReport))}${stat('Listed since', longDate(c.listDay))}
+      ${stat('Last earnings report', longDate(c.lastReport))}${alive ? stat('Next earnings report', longDate(mkt.nextReport(c))) : stat('Delisted', longDate(c.deadDay))}
+      ${stat('Chief executive', mkt.ceo(c))}${stat('Listed since', longDate(c.listDay))}
     </div></div>`;
   },
 };
@@ -281,13 +322,15 @@ function drawChart() {
 function render() {
   market();
   if (sym && !mkt.get(sym)) sym = null;
+  if (art !== null && !mkt.news[art]) art = null;
   $('date').textContent = longDate(s.day);
   $('dayn').textContent = 'Day ' + Account.dayCount(s);
   $('cash').textContent = money(s.cash);
   $('worth').textContent = money(Account.netWorth(s, mkt));
   $('nav').innerHTML = TABS.map(([id, em, name]) => `<button data-tab="${id}" ${id === tab ? 'aria-current="page"' : ''}><span>${em}</span>${name}</button>`).join('');
-  $('view').innerHTML = VIEWS[sym ? 'stock' : tab]();
-  if (sym) drawChart();
+  const v = art !== null ? 'article' : sym ? 'stock' : tab;
+  $('view').innerHTML = VIEWS[v]();
+  if (v === 'stock') drawChart();
 }
 
 // ---- buy and sell
@@ -336,7 +379,8 @@ function catchUp() {
   save(); render();
   const move = Account.holdingsValue(s, mkt) - before, idx = mkt.indexAt() / mkt.indexAt(from) - 1;
   const moves = held.map((k) => mkt.get(k)).filter((c) => c && mkt.px(c, from)).map((c) => ({ c, ch: mkt.px(c) / mkt.px(c, from) - 1 })).sort((a, b) => b.ch - a.ch);
-  const bust = moves.filter((m) => !mkt.trading(m.c));
+  const bust = moves.filter((m) => !mkt.trading(m.c)), own = mine();
+  const away = mkt.news.filter((x) => x.d > from && (own.has(x.sym) ? x.level !== 'Minor' || x.cat === 'Rumour' : !x.sym && LV[x.level] >= 2)).sort((a, b) => LV[b.level] - LV[a.level] || b.d - a.d).slice(0, 3);
   $('tradeDlg').close();
   $('sumDlg').innerHTML = `<h1>${r.days === 1 ? 'A new day' : days(r.days) + ' went by'}</h1><p class="muted" style="margin:0 0 8px">${longDate(s.day)}</p>
     <div class="row"><span>MRX Composite</span><b class="${cls(idx)}">${pct(idx)}</b></div>
@@ -344,6 +388,7 @@ function catchUp() {
     ${moves.length > 1 ? `<div class="row"><span>Best: ${moves[0].c.name}</span><b class="${cls(moves[0].ch)}">${pct(moves[0].ch)}</b></div>
       <div class="row"><span>Worst: ${moves.at(-1).c.name}</span><b class="${cls(moves.at(-1).ch)}">${pct(moves.at(-1).ch)}</b></div>` : ''}
     ${bust.map((m) => `<div class="row"><span class="down">${m.c.name} went bankrupt. Your shares are worthless.</span></div>`).join('')}
+    ${away.length ? `<div class="row" style="display:block"><span class="muted">Biggest news while you were away</span>${away.map(newsRow).join('')}</div>` : ''}
     ${r.pay ? `<div class="row"><span>${r.paydays > 1 ? r.paydays + ' paydays' : 'Payday'}</span><b class="up">+${money(r.pay)}</b></div>` : ''}
     <div class="row"><span>Net worth</span><b>${money(Account.netWorth(s, mkt))}</b></div>
     <div class="row"><span>Next payday</span><b>in ${days(Account.nextPayIn(s))}</b></div>
@@ -352,26 +397,32 @@ function catchUp() {
   return true;
 }
 
-$('nav').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; sym = null; render(); $('view').scrollTop = 0; } };
+$('nav').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; sym = null; art = null; render(); $('view').scrollTop = 0; } };
 $('view').onclick = (e) => {
-  const t = e.target.closest('[data-sym],[data-frame],[data-act]'); if (!t) return;
-  if (t.dataset.sym) { sym = t.dataset.sym; render(); $('view').scrollTop = 0; }
+  const t = e.target.closest('[data-sym],[data-frame],[data-act],[data-art],[data-cat]'); if (!t) return;
+  if (t.dataset.sym) { sym = t.dataset.sym; art = null; render(); $('view').scrollTop = 0; }
+  else if (t.dataset.art) { art = +t.dataset.art; render(); $('view').scrollTop = 0; }
+  else if (t.dataset.cat) { newsCat = t.dataset.cat; render(); }
   else if (t.dataset.frame) { frame = t.dataset.frame; for (const b of $('frames').children) b.setAttribute('aria-pressed', b === t); drawChart(); }
-  else if (t.dataset.act === 'back') { sym = null; render(); }
+  else if (t.dataset.act === 'back') { if (art !== null) art = null; else sym = null; render(); }
   else if (t.dataset.act === 'watch') { toast(Account.toggleWatch(s, sym) ? 'Added to your watchlist' : 'Removed from your watchlist'); save(); render(); }
   else if (t.dataset.act === 'writeoff') { const r = Account.writeOff(s, mkt, sym); if (r.ok) { save(); render(); toast(`Written off · ${signed(r.pl)}`); } }
   else openTrade(t.dataset.act);
 };
 $('view').oninput = (e) => { if (!(e.target.id in disc)) return; disc[e.target.id] = e.target.value; $('list').innerHTML = discoverList(); };
-$('sumDlg').onclick = (e) => { if (e.target === $('sumDlg') || e.target.closest('[data-close]')) $('sumDlg').close(); };
+$('sumDlg').onclick = (e) => {
+  const a = e.target.closest('[data-art]');
+  if (a) { art = +a.dataset.art; $('sumDlg').close(); render(); $('view').scrollTop = 0; }
+  else if (e.target === $('sumDlg') || e.target.closest('[data-close]')) $('sumDlg').close();
+};
 $('theme').onclick = () => {
   const dark = (document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
   document.documentElement.dataset.theme = dark ? 'light' : 'dark';
   try { localStorage.setItem('stock-tycoon-theme', document.documentElement.dataset.theme); } catch {}
-  if (sym) drawChart();
+  if (sym && art === null) drawChart();
 };
 try { const t = localStorage.getItem('stock-tycoon-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
-addEventListener('resize', () => { if (sym && s) drawChart(); });
+addEventListener('resize', () => { if (sym && s && art === null) drawChart(); });
 window.cloudSaveChanged = () => { s = Account.load(localStorage) || s; render(); catchUp(); }; // a newer save arrived from another device
 
 syncClock().then(() => {
