@@ -54,7 +54,7 @@ const Market = (() => {
 
   function build(day) {
     day = Math.max(day, GENESIS + 1);
-    const n = day - GENESIS + 1, index = new Float64Array(n), regime = new Uint8Array(n);
+    const n = day - GENESIS + 1, index = new Float64Array(n), regime = new Uint8Array(n), rates = new Float32Array(n).fill(3);
     const cos = COMPANIES.map((def) => {
       const [sector, beta, vol, growth, ps, margin, debt, cyc] = SECTORS[def.sec], r = def.risk;
       return { ...def, sector, si: SECKEYS.indexOf(def.sec), ps, margin, cyc, hue: (def.id * 47) % 360, shares: def.sharesM * 1e6, riskLabel: RISK[r - 1],
@@ -122,6 +122,7 @@ const Market = (() => {
             : step < 0 ? 'Borrowing gets cheaper. Property, builders and fast-growing technology companies benefit; banks earn less on loans.' : 'No change this month.',
           impact: step ? `${step > 0 ? 'Helped' : 'Hurt'}: Banking, Insurance. ${step > 0 ? 'Hurt' : 'Helped'}: Real Estate, Construction, Technology.` : '' });
       }
+      rates[t] = rate;
       while (ipos.length && ipos[0].day <= d) { const c = cos[ipos.shift().id]; list(c, d);
         say(c, d, { cat: 'Markets', level: 'Moderate', kind: 'ipo', title: `${c.name} begins trading on the Meridian Exchange`, body: `${c.name} (${c.sym}) listed today at $${c.price.toFixed(2)} a share. ${c.about.replace('Newly listed. ', '')}`, ch: 0, impact: `${c.sym} starts trading` }); }
       let sum = 0, cnt = 0;
@@ -212,6 +213,20 @@ const Market = (() => {
         const b = Math.log(px(c, d)), a = d > c.listDay ? Math.log(px(c, d - 1)) : b, w = [0];
         for (let k = 1; k <= steps; k++) w.push(w[k - 1] + c.vol / Math.sqrt(steps) * g(d, c.id, 20 + 2 * k));
         return w.map((x, k) => ({ d, f: k / steps, v: Math.exp(a + (b - a) * k / steps + x - w[steps] * k / steps) }));
+      },
+      rateAt: (d = day) => rates[Math.max(0, Math.min(day, d) - GENESIS)], // the central bank rate on day d, in percent
+      // day d's trading range in cents: open (the previous close), high, low, close. Limit orders fill against this.
+      range(c, d = day) {
+        const path = mkt.intraday(c, d).map((q) => Math.max(1, Math.round(q.v * 100))), o = d > c.listDay ? cents(c, d - 1) : cents(c, d), cl = cents(c, d);
+        return { d, o, h: Math.max(o, cl, ...path), l: Math.min(o, cl, ...path), c: cl };
+      },
+      // candlestick bars for a timeframe: at most about 60 bars, each covering one or more whole days (D: slices of the day)
+      candles(c, frame) {
+        const last = c.deadDay === null ? day : Math.min(day, c.deadDay), bar = (xs, d) => ({ d, o: xs[0].o, c: xs[xs.length - 1].c, h: Math.max(...xs.map((x) => x.h)), l: Math.min(...xs.map((x) => x.l)) });
+        if (frame === 'D') { const q = mkt.intraday(c, last).map((x) => x.v), out = []; for (let i = 0; i + 2 < q.length; i += 2) out.push({ d: last, o: q[i], c: q[i + 2], h: Math.max(q[i], q[i + 1], q[i + 2]), l: Math.min(q[i], q[i + 1], q[i + 2]) }); return out; }
+        const first = Math.max(c.listDay, last - FRAMES[frame]), per = Math.ceil((last - first + 1) / 60), out = [];
+        for (let d = first; d <= last; d += per) { const xs = []; for (let e = d; e < d + per && e <= last; e++) { const r = mkt.range(c, e); xs.push({ o: r.o / 100, h: r.h / 100, l: r.l / 100, c: r.c / 100 }); } out.push(bar(xs, Math.min(last, d + per - 1))); }
+        return out;
       },
       // chart points for a company (or 'index') over a timeframe: real closes, oldest first
       series(c, frame) {
