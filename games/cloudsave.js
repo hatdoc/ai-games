@@ -30,9 +30,14 @@
   // compare saves by content, so the same data saved with keys in another order isn't "changed"
   const canon = (v) => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort()) : x));
   const same = (a, b) => a === b || (a != null && b != null && parse(a) !== undefined && canon(parse(a)) === canon(parse(b)));
+  // data-whole="rev": never merge field by field (that would let money be duplicated across devices); the save whose
+  // counter field is higher wins whole. The field is read from the save itself or from its JSON `body` envelope.
+  const whole = me.dataset.whole;
+  const num = (v) => { const o = typeof v?.body === 'string' ? parse(v.body) : v; return typeof o?.[whole] === 'number' ? o[whole] : -1; };
   const mergeVal = (l, c) => { // localStorage strings
     if (l == null) return c; if (c == null) return l;
     const L = parse(l), C = parse(c);
+    if (whole) return num(C) > num(L) ? c : l;
     return L === undefined || C === undefined ? l : JSON.stringify(deep(L, C));
   };
 
