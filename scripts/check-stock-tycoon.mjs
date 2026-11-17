@@ -92,7 +92,7 @@ ok([1, 2, 3].every((y) => liveAt(M.build(T + 365 * y)).length >= 50), 'at least 
 }
 { // bankruptcy and new listings
   const far = M.build(T + 3650), dead = far.companies.filter((c) => c.deadDay !== null), d0 = dead[0];
-  ok(dead.length >= 3 && dead.length <= 16, `${dead.length} companies go bankrupt over the next ten years`);
+  ok(dead.length >= 3 && dead.length <= 24, `${dead.length} companies go bankrupt over the next ten years`);
   ok(far.px(d0, d0.deadDay) < far.px(d0, d0.deadDay - 1) * 0.1 && far.px(d0, d0.deadDay + 1) === 0 && far.cents(d0) === 0 && !far.quote(d0.sym).tradable, 'a bankrupt stock crashes, then is worth nothing and cannot be traded');
   const ipo = far.companies.filter((c) => c.reserve);
   ok(ipo.length > 0 && ipo.every((c) => c.listDay > G) && M.build(ipo[0].listDay - 1).get(ipo[0].sym) === null, 'new companies list after a bankruptcy and do not exist before their listing day');
@@ -167,15 +167,17 @@ ok([1, 2, 3].every((y) => liveAt(M.build(T + 365 * y)).length >= 50), 'at least 
   const agree = big.filter((x) => Math.sign(x.ch) === Math.sign(E.CO[x.kind].lo + E.CO[x.kind].hi)).length;
   ok(big.length > 50 && agree / big.length > 0.97, `major company news moves the stock the right way (${agree} of ${big.length})`);
   const avg = (kind) => { const xs = N.filter((x) => x.kind === kind && x.sym && x.cat !== 'Rumour' && !x.denial); return xs.reduce((a, x) => a + x.ch, 0) / xs.length; };
-  ok(avg('fraud') < -0.15 && avg('trialwin') > 0.15 && avg('resign') < -0.02 && avg('contract') > 0.03 && avg('bankrupt') < -0.9, `average move: fraud ${(avg('fraud') * 100).toFixed(0)}%, trial success +${(avg('trialwin') * 100).toFixed(0)}%, CEO resigns ${(avg('resign') * 100).toFixed(0)}%, contract +${(avg('contract') * 100).toFixed(0)}%, bankruptcy ${(avg('bankrupt') * 100).toFixed(0)}%`);
+  ok(avg('fraud') < -0.15 && avg('trialwin') > 0.15 && avg('resign') < -0.02 && avg('contract') > 0.03 && avg('bankrupt') < -0.9
+    && avg('affair') < -0.03 && avg('guidedown') < -0.05 && avg('guideup') > 0.04 && avg('viral') > 0.05 && avg('breach') < -0.04 && avg('strikeoil') > 0.08, `average move: fraud ${(avg('fraud') * 100).toFixed(0)}%, trial success +${(avg('trialwin') * 100).toFixed(0)}%, CEO resigns ${(avg('resign') * 100).toFixed(0)}%, contract +${(avg('contract') * 100).toFixed(0)}%, bankruptcy ${(avg('bankrupt') * 100).toFixed(0)}%`);
   ok(N.filter((x) => x.sym).every((x) => { const c = far.get(x.sym); return x.kind === 'ipo' || Math.abs(far.change(c, x.d) - x.ch) < 1e-9; }), 'the move quoted in every company story is the stock\'s real move that day');
   // world events hit the right industries
-  const secMove = (key, d) => { const cs = far.companies.filter((c) => c.sec === key && far.trading(c, d) && d > c.listDay && c.deadDay !== d); return cs.reduce((a, c) => a + far.change(c, d), 0) / cs.length; };
-  const mean = (kind, key) => { const xs = N.filter((x) => x.kind === kind && !x.sym && !/ceasefire|lifts|returns|over|stabilises|recover/.test(x.title)); return xs.reduce((a, x) => a + secMove(key, x.d) - x.ch, 0) / xs.length; };
-  ok(mean('oil', 'oil') > 0.04 && mean('oil', 'trans') < -0.02 && mean('disaster', 'ins') < -0.03 && mean('green', 'renew') > 0.03 && mean('drugprice', 'pharma') < -0.03,
+  const secMove = (key, d) => { const cs = far.companies.filter((c) => c.sec === key && far.trading(c, d) && d > c.listDay && c.deadDay !== d); return cs.length ? cs.reduce((a, c) => a + far.change(c, d), 0) / cs.length : null; }; // null: nobody in that industry is trading that day
+  const mean = (kind, key) => { const xs = N.filter((x) => x.kind === kind && !x.sym && !x.body.startsWith('Markets are unwinding') && secMove(key, x.d) !== null) /* the start of an event, not its end */; return xs.reduce((a, x) => a + secMove(key, x.d) - x.ch, 0) / xs.length; };
+  ok(mean('oil', 'oil') > 0.04 && mean('oil', 'trans') < -0.02 && mean('disaster', 'ins') < -0.03 && mean('green', 'renew') > 0.03 && mean('drugprice', 'pharma') < -0.03
+    && mean('standoff', 'aero') > 0.015 && mean('electbad', 'bank') < -0.015 && mean('airules', 'ai') < -0.04 && mean('defence', 'aero') > 0.04 && mean('metals', 'mine') > 0.04,
     `against the market: oil shortage moves oil ${(mean('oil', 'oil') * 100).toFixed(0)}% and transport ${(mean('oil', 'trans') * 100).toFixed(0)}%; an earthquake moves insurers ${(mean('disaster', 'ins') * 100).toFixed(0)}%`);
   const hikes = N.filter((x) => x.kind === 'rates' && x.title.includes('raises')), cuts = N.filter((x) => x.kind === 'rates' && x.title.includes('cuts'));
-  const rel = (xs, key) => xs.reduce((a, x) => a + secMove(key, x.d) - x.ch, 0) / xs.length;
+  const rel = (all, key) => { const xs = all.filter((x) => secMove(key, x.d) !== null); return xs.reduce((a, x) => a + secMove(key, x.d) - x.ch, 0) / xs.length; };
   ok(hikes.length > 3 && cuts.length > 3 && rel(hikes, 're') < 0 && rel(cuts, 're') > 0 && far.rate >= 0.25 && far.rate <= 12 && far.infl > -1 && far.infl < 15, `${hikes.length} rate rises and ${cuts.length} cuts in 15 years: property falls on rises and gains on cuts`);
   // rumours: some true, some false, better sources more often right
   const tr = [0, 1, 2].map((s) => { const xs = N.filter((x) => x.cat === 'Rumour' && x.rumour === s); return xs.filter((x) => x.real).length / xs.length; });

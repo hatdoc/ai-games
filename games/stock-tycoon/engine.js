@@ -50,6 +50,10 @@ const Market = (() => {
   // each industry gets back, a little every day, exactly what its events cost on average (same for financial health).
   const EXPECT = Object.fromEntries(SECKEYS.map((s) => { const ks = KINDS[s][0], w = ks.reduce((a, k) => a + CO[k].w, 0);
     return [s, { mag: ks.reduce((a, k) => a + CO[k].w * (CO[k].lo + CO[k].hi) / 200 * (CO[k].rumour ? 0.904 : 1), 0) / w, health: ks.reduce((a, k) => a + CO[k].w * (CO[k].fx.health || 0), 0) / w }]; }));
+  // The same for world events: their average pull on the market and on each industry is already in prices, so wars and
+  // crashes are shocks around a fair trend rather than a slow leak. Events that last undo part of their hit when they end.
+  const WORLD = { m: 0, sec: SECKEYS.map(() => 0) };
+  for (const k of GLOBAL) { const net = k.p * (k.dur ? 0.75 : 1) / 100; WORLD.m += k.m * net; for (const s in k.sec) WORLD.sec[SI[s]] += k.sec[s] * net; }
   const rumourBody = (c, f) => `${SOURCES[f.src][0]} ${f.src ? 'say' : 'claims'} ${c.name} ${f.k.rumour}. The company has not commented. Source reliability: ${SOURCES[f.src][1]}.`;
 
   function build(day) {
@@ -89,7 +93,8 @@ const Market = (() => {
       if (u(d, -1, 0) < EXIT[reg]) reg = reg === 0 ? 1 : reg === 1 ? (u(d, -1, 5) < 0.6 ? 2 : 0) : reg === 2 ? 3 : 0;
       regime[t] = reg;
       let m = MU[reg] + SIG[reg] * g(d, -1, 1);
-      const sec = SECKEYS.map((k, si) => 0.005 * g(d, -10 - si, 0));
+      m -= WORLD.m;
+      const sec = SECKEYS.map((k, si) => 0.005 * g(d, -10 - si, 0) - WORLD.sec[si]);
       const world = []; // today's world news, finished once the Composite's move is known
       const hit = (k, x) => { m += k.m * x / 100; for (const s in k.sec) sec[SI[s]] += k.sec[s] * x / 100; };
       const effects = (k) => { const up = [], dn = []; for (const s in k.sec) (k.sec[s] > 0 ? up : dn).push(SECTORS[s][0]); return (up.length ? `Helped: ${up.join(', ')}. ` : '') + (dn.length ? `Hurt: ${dn.join(', ')}.` : ''); };
@@ -150,7 +155,7 @@ const Market = (() => {
           const k = ev.k, x = { n: c.name, ceo: ceo(c), next: ceo(c, 1) };
           c.F += ev.mag;
           if (k.fx.health) c.health = Math.min(100, c.health + k.fx.health);
-          if (k.fx.rep) c.rep = Math.max(5, c.rep + k.fx.rep);
+          if (k.fx.rep) c.rep = Math.max(5, Math.min(99, c.rep + k.fx.rep));
           if (k.fx.growth) c.growth += k.fx.growth;
           if (k.fx.ceo) { c.ceoN++; c.rep = Math.round(40 + 55 * u(c.ceoN, c.id, 62)); }
           const leaked = ev.rumoured && d - ev.lead > c.listDay;
