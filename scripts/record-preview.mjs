@@ -33,6 +33,13 @@ const GENERIC = { skip: 6, len: 7, poster: 3, async play(page, until) {
 } };
 
 const BOTS = {
+  'goose-guard': { skip: 5, len: 9, poster: 6, async play(page) { // the bot pushes stage 28 with six troop types and some upgrades
+    await page.evaluate(() => {
+      for (let n = 1; n < 28; n++) gg.save.stars[n] = 3;
+      Object.assign(gg.save.up, { hero: 5, honk: 5, grain: 5, barn: 5 }); gg.save.u = gg.save.u.map(() => 5);
+      gg.go(28); gg.S.bot = true; for (let i = 0; i < 35 * 60; i++) gg.update(1 / 60); // open mid-battle
+    });
+  } },
   'stock-tycoon': { skip: 1, len: 8, poster: 2, async play(page) { // a stock page: timeframes, candles, a purchase, then the news
     const tap = (sel) => page.evaluate((q) => document.querySelector(q).click(), sel); // clicks without scrolling the name and price off screen
     await tap('#sumDlg [data-close]').catch(() => {});
