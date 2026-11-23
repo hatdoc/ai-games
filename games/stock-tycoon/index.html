@@ -509,7 +509,7 @@ const VIEWS = {
       ${stat('Dividend yield', (mkt.yield(c) * 100).toFixed(2) + '%')}${stat('Next dividend', nd ? `${money(nd.cents)} a share on ${longDate(nd.pay)}` : 'None declared')}
       ${stat('Revenue, yearly', big(c.revenue))}${stat('Profit, yearly', big(c.profit))}
       ${stat('Debt', big(c.debtAbs))}${stat('Growth rate', (c.growth * 100).toFixed(1) + '%')}
-      ${stat('Risk', c.riskLabel)}${stat('Typical daily move', (c.vol * 100).toFixed(1) + '%')}
+      ${stat('Risk', c.riskLabel)}${stat('Typical daily move', (mkt.vol(c) * 100).toFixed(1) + '%')}
       ${stat('Financial health', mkt.healthLabel(c))}${stat('Management reputation', c.rep + ' / 100')}
       ${stat('Last earnings report', longDate(c.lastReport))}${alive ? stat('Next earnings report', when(mkt.nextReport(c))) : stat('Delisted', longDate(c.deadDay))}
       ${stat('Chief executive', mkt.ceo(c))}${stat('Listed since', longDate(c.listDay))}
