@@ -39,7 +39,8 @@ Shared with other games: `../cloudsave.js` (signed-in saves and `rgAuth`), `../s
 ## The rule that matters after launch
 
 **Changing any number or formula in `engine.js`, `events.js` or `companies.js` rewrites the price history for every player.**
-Holdings stay, but their prices, past and present, change. New companies go in a new list at the very end of
+Holdings stay, but their prices, past and present, change. To retune after launch, add a dated step (see `MOVES` in
+engine.js: from 24 Nov 2026 every move is 1.5 times larger), so only days nobody has seen yet change. New companies go in a new list at the very end of
 `companies.js` (after `RESERVE2`), which leaves every existing company's history untouched. Treat
 everything else in those three files as frozen. Tuning has to be finished before the game is published.
 

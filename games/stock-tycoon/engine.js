@@ -12,6 +12,10 @@ const Market = (() => {
   const { LANDS, FIRST, LAST, SOURCES, CO, GLOBAL, REGIME_NEWS, coTitle, level, spc } = typeof module !== 'undefined' ? require('./events.js') : Events;
   const SEED = 505, GENESIS = 18932; // 1 Nov 2021: five years of history before launch
   const DIV_LAG = 14, KAPPA = 0.005; // how fast mood swings fade back to fundamentals
+  // Bigger moves, it's a game: from 24 Nov 2026 (UTC day 20781) every source of movement is 1.5 times larger: daily
+  // noise, moves during the day, news jumps, earnings surprises, rumours and world events. Days before that are exactly
+  // as they were, so no player's history changes. To retune again later, add a new dated step here; never change a past one.
+  const MOVES = (d) => (d >= 20781 ? 1.5 : 1);
   // the economy moves through four phases; each has its own market drift and nervousness
   const REGIMES = ['Expansion', 'Slowdown', 'Recession', 'Recovery'];
   const MU = [0.00028, -0.00005, -0.0011, 0.0007], SIG = [0.007, 0.009, 0.016, 0.011], EXIT = [1 / 500, 1 / 150, 1 / 120, 1 / 150];
@@ -40,7 +44,7 @@ const Market = (() => {
   function bridge(c, d, f) {
     let lo = 0, hi = 1, vlo = 0, vhi = 0, node = 1;
     for (let k = 0; k < 11; k++) {
-      const mid = (lo + hi) / 2, v = (vlo + vhi) / 2 + c.vol * Math.sqrt(hi - lo) / 2 * g(d, c.id, 1000 + 2 * node);
+      const mid = (lo + hi) / 2, v = (vlo + vhi) / 2 + c.vol * MOVES(d) * Math.sqrt(hi - lo) / 2 * g(d, c.id, 1000 + 2 * node);
       if (f < mid) { hi = mid; vhi = v; node *= 2; } else { lo = mid; vlo = v; node = node * 2 + 1; }
     }
     return vlo + (vhi - vlo) * (f - lo) / (hi - lo);
@@ -111,14 +115,15 @@ const Market = (() => {
       const t = d - GENESIS, was = reg;
       if (u(d, -1, 0) < EXIT[reg]) reg = reg === 0 ? 1 : reg === 1 ? (u(d, -1, 5) < 0.6 ? 2 : 0) : reg === 2 ? 3 : 0;
       regime[t] = reg;
-      let m = MU[reg] + SIG[reg] * g(d, -1, 1);
-      m -= WORLD.m;
-      const sec = SECKEYS.map((k, si) => 0.005 * g(d, -10 - si, 0) - WORLD.sec[si]);
+      const X = MOVES(d); // multiplying by 1 changes nothing, so days before the switch are bit-for-bit the same
+      let m = MU[reg] + SIG[reg] * X * g(d, -1, 1);
+      m -= WORLD.m * X;
+      const sec = SECKEYS.map((k, si) => 0.005 * X * g(d, -10 - si, 0) - WORLD.sec[si] * X);
       const world = [], shocks = []; // today's world news, finished once its effect on the Composite is known
       // a shock hits the market at one moment; each company's share of it is a jump in its price at that moment
-      const shock = (ms, dm, dsec) => { m += dm; for (const s in dsec) sec[SI[s]] += dsec[s]; shocks.push({ ms, m: dm, sec: dsec, sum: 0, n: 0 }); return shocks.length - 1; };
+      const shock = (ms, dm, dsec) => { dm *= X; for (const s in dsec) dsec[s] *= X; m += dm; for (const s in dsec) sec[SI[s]] += dsec[s]; shocks.push({ ms, m: dm, sec: dsec, sum: 0, n: 0 }); return shocks.length - 1; };
       const scaled = (k, x) => Object.fromEntries(Object.keys(k.sec).map((s) => [s, k.sec[s] * x / 100]));
-      const hit = (k, x) => { m += k.m * x / 100; for (const s in k.sec) sec[SI[s]] += k.sec[s] * x / 100; }; // gradual pressure, spread over the day
+      const hit = (k, x) => { m += k.m * x / 100 * X; for (const s in k.sec) sec[SI[s]] += k.sec[s] * x / 100 * X; }; // gradual pressure, spread over the day
       const effects = (k) => { const up = [], dn = []; for (const s in k.sec) (k.sec[s] > 0 ? up : dn).push(SECTORS[s][0]); return (up.length ? `Helped: ${up.join(', ')}. ` : '') + (dn.length ? `Hurt: ${dn.join(', ')}.` : ''); };
       if (reg !== was) { const r = REGIME_NEWS[reg], ms = moment(u(d, -1, 8)); world.push({ ms, sh: shock(ms, r.m, {}), cat: 'Economy', level: reg === 2 ? 'Severe' : 'Major', kind: 'regime', title: r.title, body: r.body }); }
       GLOBAL.forEach((k, i) => {
@@ -160,14 +165,14 @@ const Market = (() => {
         // todo: this company's stories today. J: the moments today's news moved its price, as [ms, jump, ms, jump, ...] in log terms.
         const prev = c.close[t - 1], todo = [], J = [];
         // fundamentals: growth above the average, the market, the sector
-        c.F += (c.growth - 0.04) * 0.25 / 365 + c.beta * m + (c.cyc - 1) * TILT[reg] + sec[c.si] - RATE(c) * EXPECT[c.sec].mag;
+        c.F += (c.growth - 0.04) * 0.25 / 365 + c.beta * m + (c.cyc - 1) * TILT[reg] + sec[c.si] - RATE(c) * EXPECT[c.sec].mag * X;
         for (const sh of shocks) { const j = c.beta * sh.m + (sh.sec[c.sec] || 0); if (j) J.push(sh.ms, j); }
         // mood: daily noise that fades back toward fundamentals
-        c.S = c.S * (1 - KAPPA) + c.vol * g(d, c.id, 0);
+        c.S = c.S * (1 - KAPPA) + c.vol * X * g(d, c.id, 0);
         const dv = c.divs[c.divs.length - 1]; // payment day: the cash leaves the company, so the share is worth that much less
         if (dv && dv.pay === d) { const j = Math.log(Math.max(0.5, 1 - dv.cents / 100 / prev)); c.F += j; J.push(DIV_AT, j); }
         if ((d - c.listDay) % 91 === c.off) { // quarterly earnings: a surprise moves value, health and growth
-          const e = g(d, c.id, 2), j = e * c.vol * 2.2;
+          const e = g(d, c.id, 2), j = e * c.vol * 2.2 * X;
           c.F += j; J.push(c.repAt, j);
           c.health = Math.min(100, c.health + 5 * e + 0.8 - 0.8 * c.debt - 91 * RATE(c) * EXPECT[c.sec].health);
           c.growth = 0.04 + 0.92 * (c.growth - 0.04) + 0.01 * e;
@@ -178,27 +183,28 @@ const Market = (() => {
         const ev = coEvent(c, d);
         if (ev) { // something happens to this company today
           const k = ev.k, x = { n: c.name, ceo: ceo(c), next: ceo(c, 1) };
-          c.F += ev.mag; J.push(ev.ms, ev.mag);
+          const mag = ev.mag * X;
+          c.F += mag; J.push(ev.ms, mag);
           if (k.fx.health) c.health = Math.min(100, c.health + k.fx.health);
           if (k.fx.rep) c.rep = Math.max(5, Math.min(99, c.rep + k.fx.rep));
           if (k.fx.growth) c.growth += k.fx.growth;
           if (k.fx.ceo) { c.ceoN++; c.rep = Math.round(40 + 55 * u(c.ceoN, c.id, 62)); }
           const leaked = ev.rumoured && d - ev.lead > c.listDay;
-          todo.push({ ms: ev.ms, j: ev.mag, cat: k.cat, level: level(ev.mag), kind: ev.key, after: k.after, body: k.what(x) + (leaked ? (ev.partial ? ' The news turned out smaller than the rumours suggested.' : ' The announcement confirms rumours from earlier this week.') : '') });
+          todo.push({ ms: ev.ms, j: mag, cat: k.cat, level: level(mag), kind: ev.key, after: k.after, body: k.what(x) + (leaked ? (ev.partial ? ' The news turned out smaller than the rumours suggested.' : ' The announcement confirms rumours from earlier this week.') : '') });
         }
         for (let L = 2; L <= 7; L++) { // a real event a few days away leaks: a true rumour
           const f = coEvent(c, d + L);
           if (!f || !f.rumoured || f.lead !== L) continue;
-          const ms = moment(u(d, c.id, 130 + L)), j = 0.3 * f.full * SRC_W[f.src];
+          const ms = moment(u(d, c.id, 130 + L)), j = 0.3 * f.full * SRC_W[f.src] * X;
           c.S += j; J.push(ms, j);
           todo.push({ ms, j, cat: 'Rumour', level: 'Minor', kind: f.key, rumour: f.src, real: true, title: `Rumour: ${c.name} ${f.k.rumour}`, body: rumourBody(c, f) });
         }
         const fk = fakeRumour(c, d); // a rumour with nothing behind it
-        if (fk) { const j = 0.3 * fk.full * SRC_W[fk.src]; c.S += j; J.push(fk.ms, j); todo.push({ ms: fk.ms, j, cat: 'Rumour', level: 'Minor', kind: fk.key, rumour: fk.src, real: false, title: `Rumour: ${c.name} ${fk.k.rumour}`, body: rumourBody(c, fk) }); }
+        if (fk) { const j = 0.3 * fk.full * SRC_W[fk.src] * X; c.S += j; J.push(fk.ms, j); todo.push({ ms: fk.ms, j, cat: 'Rumour', level: 'Minor', kind: fk.key, rumour: fk.src, real: false, title: `Rumour: ${c.name} ${fk.k.rumour}`, body: rumourBody(c, fk) }); }
         for (let L = 3; L <= 8; L++) { // ...which the company denies a few days later
           const o = d - L > c.listDay && fakeRumour(c, d - L);
           if (!o || o.deny !== L) continue;
-          const ms = moment(u(d, c.id, 140 + L)), j = -(0.24 * o.full * SRC_W[o.src]);
+          const ms = moment(u(d, c.id, 140 + L)), j = -(0.24 * o.full * SRC_W[o.src] * X);
           c.S += j; J.push(ms, j);
           todo.push({ ms, j, cat: 'Company', level: 'Minor', kind: o.key, denial: true, title: `${c.name} ${o.k.deny}`, body: `${c.name} issued a statement denying the recent rumour. Shares gave back most of the move it caused.` });
         }
@@ -214,7 +220,7 @@ const Market = (() => {
         c.close[t] = px; if (J.length) c.jumps.set(t, J);
         if (c.deadDay === null) { sum += Math.log(px / prev); cnt++; for (const sh of shocks) { sh.sum += c.beta * sh.m + (sh.sec[c.sec] || 0); sh.n++; } }
         const ch = px / prev - 1;
-        if (!todo.length && Math.abs(ch) > Math.max(0.1, 3.2 * c.vol)) todo.push({ ms: MOVE_AT, whole: true, cat: 'Markets', level: 'Moderate', kind: 'move', after: 'on heavy trading', body: `${c.name} was one of the most traded shares on the exchange today, with no announcement from the company.` });
+        if (!todo.length && Math.abs(ch) > Math.max(0.1, 3.2 * c.vol * X)) todo.push({ ms: MOVE_AT, whole: true, cat: 'Markets', level: 'Moderate', kind: 'move', after: 'on heavy trading', body: `${c.name} was one of the most traded shares on the exchange today, with no announcement from the company.` });
         for (const { ms, j, whole, ...o } of todo) { const x = whole ? ch : Math.exp(j) - 1; say(c, d, { ...o, at: d * DAY + ms, ch: x, title: o.title || coTitle(c.name, x, o.after), impact: `${c.sym} ${spc(x)} ${whole ? 'on the day' : 'on the news'}` }); }
       }
       index[t] = index[t - 1] * Math.exp(cnt ? sum / cnt : 0); // the Composite: the typical move of surviving companies
@@ -268,6 +274,7 @@ const Market = (() => {
       indexAt: (d) => (d === undefined ? indexNow(mkt.t) : index[Math.max(0, Math.min(day, d) - GENESIS)]),
       indexNow,
       cap: (c) => px(c) * c.shares,
+      vol: (c) => c.vol * MOVES(dayOf(mkt.t)), // a company's typical daily move right now
       // what an analyst thinks a share is worth. Analysts see the fundamentals imperfectly: each quarterly report gives them a fresh, persistent error.
       fair: (c) => Math.exp(c.F + 22 * c.vol * g(c.lastReport, c.id, 200)),
       yield: (c) => (px(c) ? c.dps / px(c) : 0),
